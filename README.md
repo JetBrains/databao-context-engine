@@ -6,7 +6,7 @@ You can install it following the instructions [here](https://docs.astral.sh/uv/g
 
 # How to run?
 
-The project doesn't do much yet, it only exposes a nemory CLI, that has an info su-command.
+The project doesn't do much yet, it only exposes a nemory CLI, that has an info subcommand.
 
 You can run it with:
 
