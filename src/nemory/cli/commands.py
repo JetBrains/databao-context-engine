@@ -34,6 +34,11 @@ def info(ctx: Context) -> None:
 
 
 @nemory.command()
+@click.option(
+    "--property-file",
+    type=click.STRING,
+    help="Location of a data connection property file",
+)
 @click.pass_context
-def build(ctx: Context) -> None:
-    build_all_datasources(project_dir=ctx.obj["project_dir"])
+def build(ctx: Context, property_file: str | None) -> None:
+    build_all_datasources(project_dir=ctx.obj["project_dir"], property_file_path=property_file)
