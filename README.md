@@ -43,8 +43,10 @@ Note: when we actually release our built Python package, users that don't use `u
 You can run it with the following:
 
 ```bash
-uv run mypy --strict src
+uv run mypy --strict src --exclude "test_*"
 ```
+
+NB: the above runs type checking on all files within the `src` directory, excluding all test files.
 
 # Running tests
 
