@@ -9,3 +9,7 @@ wheels/
 # Virtual environments
 .venv
 
+### IntelliJ IDEA ###
+*.iws
+*.iml
+*.ipr
