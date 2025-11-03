@@ -3,6 +3,7 @@ from importlib.metadata import version
 
 from click import Context
 
+from nemory.config.logging import configure_logging
 from nemory.features.build_sources.public.api import build_all_datasources
 
 
@@ -17,6 +18,8 @@ from nemory.features.build_sources.public.api import build_all_datasources
 )
 @click.pass_context
 def nemory(ctx: Context, verbose: bool, project_dir: str) -> None:
+    configure_logging(verbose=verbose, project_dir=project_dir)
+
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["project_dir"] = project_dir

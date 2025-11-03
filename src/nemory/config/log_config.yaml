@@ -1,0 +1,13 @@
+version: 1
+formatters:
+  main:
+    format: '%(asctime)s %(levelname)s %(name)s: %(message)s'
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: main
+    stream: ext://sys.stdout
+loggers:
+  nemory:
+    level: INFO
+    handlers: [console]
