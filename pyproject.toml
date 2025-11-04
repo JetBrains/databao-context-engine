@@ -24,3 +24,6 @@ dev = [
 
 [project.scripts]
 nemory = "nemory.main:main"
+
+[tool.uv.build-backend]
+source-exclude = ["tests"]
