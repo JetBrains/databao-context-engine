@@ -13,3 +13,6 @@ wheels/
 *.iws
 *.iml
 *.ipr
+
+# macOS system files
+**/.DS_Store
