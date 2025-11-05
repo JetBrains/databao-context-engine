@@ -16,8 +16,8 @@ def connect(database_path: str | Path, read_only=True):
 
 
 def load_embeddings_schema_sql():
-    return read_text("nemory.embeddings.impl", "schema.sql")
+    return read_text(__name__, "schema.sql")
 
 
 def load_vss_extension_sql():
-    return read_text("nemory.embeddings.impl", "vss.sql")
+    return read_text(__name__, "vss.sql")
