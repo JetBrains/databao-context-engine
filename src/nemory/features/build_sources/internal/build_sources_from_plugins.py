@@ -21,9 +21,7 @@ def _get_all_build_plugins() -> dict[str, BuildPlugin]:
     return dict()
 
 
-def _get_plugin_to_execute(
-    plugins_per_type: dict[str, BuildPlugin], full_type: str
-) -> BuildPlugin | None:
+def _get_plugin_to_execute(plugins_per_type: dict[str, BuildPlugin], full_type: str) -> BuildPlugin | None:
     return plugins_per_type[full_type]
 
 
@@ -37,9 +35,7 @@ def _execute_plugin_for_config_file(
         file_config = yaml.safe_load(yaml_stream)
         file_subtype = file_config["type"]
         if not file_subtype:
-            logger.warning(
-                f"Found a data source with no type at: {str(config_file.resolve())}"
-            )
+            logger.warning(f"Found a data source with no type at: {str(config_file.resolve())}")
             return None
 
         full_type = f"{main_type}/{file_subtype}"
@@ -65,10 +61,7 @@ def _execute_plugins_for_all_config_files(
     results = []
     for folder in CONFIG_SRC_FOLDERS:
         current_folder_directory = source_folder.joinpath(folder)
-        if (
-            not current_folder_directory.exists()
-            or not current_folder_directory.is_dir()
-        ):
+        if not current_folder_directory.exists() or not current_folder_directory.is_dir():
             continue
 
         for file in current_folder_directory.iterdir():

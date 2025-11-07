@@ -12,10 +12,7 @@ def with_dummy_plugin() -> dict[str, BuildPlugin]:
     )
 
     dummy_plugin = DummyBuildPlugin()
-    return {
-        supported_type: dummy_plugin
-        for supported_type in dummy_plugin.supported_types()
-    }
+    return {supported_type: dummy_plugin for supported_type in dummy_plugin.supported_types()}
 
 
 def test_execute_plugins_for_all_config_files():

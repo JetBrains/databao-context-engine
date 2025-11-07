@@ -64,9 +64,7 @@ class DummyBuildPlugin(BuildPlugin):
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
 
-    def execute(
-        self, full_type: str, file_config: dict[str, Any]
-    ) -> BuildExecutionResult:
+    def execute(self, full_type: str, file_config: dict[str, Any]) -> BuildExecutionResult:
         return DummyBuildResult(
             id=str(uuid.uuid4()),
             name=file_config["displayName"],
