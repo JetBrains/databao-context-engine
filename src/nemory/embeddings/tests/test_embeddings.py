@@ -4,7 +4,7 @@ from nemory.embeddings.impl.storage import (
     load_embeddings_schema_sql,
     load_vss_extension_sql,
     init_storage,
-    connect
+    connect,
 )
 
 
@@ -26,6 +26,6 @@ def test_init_duckdb(tmp_path: Path):
             FROM information_schema.tables
             WHERE table_catalog = ?
             """,
-            params=["test_db"]
+            params=["test_db"],
         ).fetchall()
-        assert 'embeddings' in [table[0] for table in tables]
+        assert "embeddings" in [table[0] for table in tables]

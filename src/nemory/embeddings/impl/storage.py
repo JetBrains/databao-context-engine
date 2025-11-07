@@ -3,6 +3,7 @@ from pathlib import Path
 
 import duckdb
 
+
 def init_storage(database_path: str | Path):
     with connect(database_path, read_only=False) as connection:
         vss_extension_sql = load_vss_extension_sql()

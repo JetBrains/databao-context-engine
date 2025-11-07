@@ -26,7 +26,7 @@ def _get_logging_file_handler(logs_dir_path: Path) -> dict[str, Any]:
         "class": "logging.handlers.RotatingFileHandler",
         "formatter": "main",
         "maxBytes": 100000000,  # 100MB
-        "backupCount": 12
+        "backupCount": 12,
     }
 
 

@@ -34,12 +34,14 @@ def build_all_datasources(project_dir: str, property_file_path: str | None) -> N
                 ignored_databases = {"system", "temp"}
                 for database_name in database_names:
                     if database_name not in ignored_databases:
-                        connection.execute("SELECT schema_name FROM information_schema.schemata WHERE catalog_name = ?",
-                                           [database_name])
+                        connection.execute(
+                            "SELECT schema_name FROM information_schema.schemata WHERE catalog_name = ?",
+                            [database_name],
+                        )
                         schema_names_result = connection.fetchall()
                         # The DB connection returns a tuple for each row
                         schema_names = [result[0] for result in schema_names_result]
                         logger.info(f"Schemas in {database_name}: {schema_names}")
 
-        except yaml.YAMLError as exc:
+        except yaml.YAMLError:
             logger.exception("Failed to parse properties file")
