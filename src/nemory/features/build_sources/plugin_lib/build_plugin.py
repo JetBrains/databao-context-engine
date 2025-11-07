@@ -4,14 +4,19 @@ from typing import Protocol, Any
 
 
 @dataclass
-class EmbeddingChunk:
+class EmbeddableChunk:
     """
     A chunk that will be embedded as a vector and used when searching context from a given AI prompt
     """
 
-    object_type: str
-    text: str
-    metadata: dict[str, str | None]
+    embeddable_text: str
+    """
+    The text to embed as a vector for search usage
+    """
+    content: dict[str, Any]
+    """
+    The content to return as a response when the embeddings has been selected in a search
+    """
 
 
 class BuildExecutionResult(Protocol):
@@ -58,7 +63,7 @@ class BuildExecutionResult(Protocol):
     This dictionary should be serializable in JSON or YAML format.
     """
 
-    def get_chunks(self) -> list[EmbeddingChunk]: ...
+    def get_chunks(self) -> list[EmbeddableChunk]: ...
 
     """
     A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
