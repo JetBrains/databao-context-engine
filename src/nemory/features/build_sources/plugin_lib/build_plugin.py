@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol
 
+StructuredContent = dict[str, Any]
+
 
 @dataclass
 class EmbeddableChunk:
@@ -13,7 +15,7 @@ class EmbeddableChunk:
     """
     The text to embed as a vector for search usage
     """
-    content: dict[str, Any]
+    content: StructuredContent
     """
     The content to return as a response when the embeddings has been selected in a search
     """
@@ -57,7 +59,7 @@ class BuildExecutionResult(Protocol):
     The time of execution of the build plugin
     """
 
-    result: dict[str, Any]
+    result: StructuredContent
     """
     A dictionary containing the actual result that should be stored as context for the data source.
     This dictionary should be serializable in JSON or YAML format.
