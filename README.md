@@ -4,6 +4,12 @@ This README assumes you will use `uv` as your package manager.
 
 You can install it following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/)
 
+If you are going to push to the repository, please make sure to install git pre-commit hooks by running
+
+```bash
+  uv run pre-commit install
+```
+
 # How to run?
 
 The project doesn't do much yet, it only exposes a nemory CLI, that has an info subcommand.
