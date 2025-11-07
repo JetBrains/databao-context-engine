@@ -6,7 +6,7 @@ from typing import Any, TypedDict
 from nemory.features.build_sources.plugin_lib.build_plugin import (
     BuildPlugin,
     BuildExecutionResult,
-    EmbeddingChunk,
+    EmbeddableChunk,
 )
 
 
@@ -21,18 +21,10 @@ class DbSchema(TypedDict):
     tables: list[DbTable]
 
 
-def _convert_table_to_embedding_chunk(
-    database_id: str, catalog_name: str, schema_name: str, table: DbTable
-) -> EmbeddingChunk:
-    return EmbeddingChunk(
-        object_type="db_table",
-        text=f"{table['name']} - {table['description']}",
-        metadata={
-            "databaseId": database_id,
-            "catalog": catalog_name,
-            "schema": schema_name,
-            "table": table["name"],
-        },
+def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
+    return EmbeddableChunk(
+        embeddable_text=f"{table['name']} - {table['description']}",
+        content=table,  # type: ignore[arg-type]
     )
 
 
@@ -46,12 +38,9 @@ class DummyBuildResult(BuildExecutionResult):
     version: str
     result: dict[str, Any]
 
-    def get_chunks(self) -> list[EmbeddingChunk]:
+    def get_chunks(self) -> list[EmbeddableChunk]:
         return [
             _convert_table_to_embedding_chunk(
-                database_id=self.id,
-                catalog_name=catalog["name"],
-                schema_name=schema["name"],
                 table=table,
             )
             for catalog in self.result.get("catalogs", list())
