@@ -38,16 +38,6 @@ class DummyBuildResult(BuildExecutionResult):
     version: str
     result: dict[str, Any]
 
-    def get_chunks(self) -> list[EmbeddableChunk]:
-        return [
-            _convert_table_to_embedding_chunk(
-                table=table,
-            )
-            for catalog in self.result.get("catalogs", list())
-            for schema in catalog.get("schemas", list())
-            for table in schema.get("tables", list())
-        ]
-
 
 class DummyBuildPlugin(BuildPlugin):
     def supported_types(self) -> set[str]:
@@ -86,3 +76,13 @@ class DummyBuildPlugin(BuildPlugin):
                 ]
             },
         )
+
+    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+        return [
+            _convert_table_to_embedding_chunk(
+                table=table,
+            )
+            for catalog in build_result.result.get("catalogs", list())
+            for schema in catalog.get("schemas", list())
+            for table in schema.get("tables", list())
+        ]
