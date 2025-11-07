@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, Any
+from typing import Any, Protocol
 
 
 @dataclass
@@ -63,12 +63,6 @@ class BuildExecutionResult(Protocol):
     This dictionary should be serializable in JSON or YAML format.
     """
 
-    def get_chunks(self) -> list[EmbeddableChunk]: ...
-
-    """
-    A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
-    """
-
 
 class BuildPlugin(Protocol):
     """ """
@@ -84,4 +78,10 @@ class BuildPlugin(Protocol):
 
     """
     The method that will be called when a config file has been found for a data source supported by this plugin.
+    """
+
+    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]: ...
+
+    """
+    A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
     """

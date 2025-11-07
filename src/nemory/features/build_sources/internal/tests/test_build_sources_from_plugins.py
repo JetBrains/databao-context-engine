@@ -33,5 +33,5 @@ def test_execute_plugins_for_all_config_files():
     assert dummy_plugin_result.type == "databases/dummy_db"
     assert len(dummy_plugin_result.result["catalogs"][0]["schemas"][0]["tables"]) == 2
 
-    chunks = dummy_plugin_result.get_chunks()
+    chunks = next(iter(test_plugins.values())).divide_result_into_chunks(dummy_plugin_result)
     assert len(chunks) == 2
