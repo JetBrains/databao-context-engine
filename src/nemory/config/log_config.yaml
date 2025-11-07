@@ -10,4 +10,4 @@ handlers:
 loggers:
   nemory:
     level: INFO
-    handlers: [console]
+    handlers: [ console ]

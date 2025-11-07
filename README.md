@@ -2,7 +2,7 @@
 
 This README assumes you will use `uv` as your package manager.
 
-You can install it following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/) 
+You can install it following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/)
 
 # How to run?
 
@@ -19,22 +19,29 @@ Not providing the `info` subcommand or using the `--help` flag will show the hel
 ## Using the nemory command directly
 
 To be able to use the `nemory` command directly (without using `uv run` or `python`), we need to:
+
 1. Build the project by running
+
 ```bash
   uv build
 ```
+
 2. Installing the project on our machine by running:
+
 ```bash
   uv tool install -e .
 ```
+
 This second step will install the `nemory` script on your machine and add it into your path.
 
 You can then directly use:
+
 ```bash
   nemory --help
 ```
 
-Note: when we actually release our built Python package, users that don't use `uv` will still be able to install the CLI by using `pipx install` instead. 
+Note: when we actually release our built Python package, users that don't use `uv` will still be able to install the CLI
+by using `pipx install` instead.
 
 # Running Mypy
 
