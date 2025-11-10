@@ -1,5 +1,4 @@
 import uuid
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, TypedDict
 
@@ -28,23 +27,12 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
     )
 
 
-@dataclass
-class DummyBuildResult(BuildExecutionResult):
-    id: str
-    name: str
-    type: str
-    description: str
-    executed_at: datetime
-    version: str
-    result: dict[str, Any]
-
-
 class DummyBuildDatasourcePlugin(BuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
 
     def execute(self, full_type: str, file_config: dict[str, Any]) -> BuildExecutionResult:
-        return DummyBuildResult(
+        return BuildExecutionResult(
             id=str(uuid.uuid4()),
             name=file_config["displayName"],
             type=full_type,
