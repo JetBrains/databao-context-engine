@@ -66,9 +66,7 @@ class BuildExecutionResult(Protocol):
     """
 
 
-class BuildPlugin(Protocol):
-    """ """
-
+class BuildDatasourcePlugin(Protocol):
     def supported_types(self) -> set[str]: ...
 
     """
@@ -76,7 +74,7 @@ class BuildPlugin(Protocol):
     If the plugin supports multiple types, they should check the type given in the `full_type` argument when `execute` is called.
     """
 
-    def execute(self, full_type: str, file_config: dict[str, Any]) -> BuildExecutionResult: ...
+    def execute(self, full_type: str, file_config: StructuredContent) -> BuildExecutionResult: ...
 
     """
     The method that will be called when a config file has been found for a data source supported by this plugin.
