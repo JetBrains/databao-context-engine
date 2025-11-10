@@ -1,8 +1,6 @@
 from pathlib import Path
 
-from nemory.features.build_sources.internal.build_sources_from_plugins import (
-    _execute_plugins_for_all_config_files,
-)
+from nemory.features.build_sources.internal.execute_plugins import execute_plugins_for_all_datasource_files
 from nemory.features.build_sources.plugin_lib.build_plugin import BuildDatasourcePlugin
 
 
@@ -19,16 +17,16 @@ def with_dummy_plugin() -> dict[str, BuildDatasourcePlugin]:
     }
 
 
-def test_execute_plugins_for_all_config_files():
+def test_execute_plugins_for_all_datasource_files():
     test_plugins = with_dummy_plugin()
 
-    results = _execute_plugins_for_all_config_files(
+    results = execute_plugins_for_all_datasource_files(
         project_dir=Path(__file__).parent.joinpath("data"),
         plugins_per_type=test_plugins,
     )
 
     assert len(results) == 1
-    dummy_plugin_result = results[0]
+    (dummy_plugin_result, plugin) = results[0]
     assert dummy_plugin_result.name == "my connection"
     assert dummy_plugin_result.type == "databases/dummy_db"
     assert len(dummy_plugin_result.result["catalogs"][0]["schemas"][0]["tables"]) == 2
