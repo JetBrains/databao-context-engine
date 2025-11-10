@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 from nemory.features.build_sources.plugin_lib.build_plugin import (
-    BuildPlugin,
+    BuildDatasourcePlugin,
     BuildExecutionResult,
 )
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 CONFIG_SRC_FOLDERS = ["databases", "dbt", "others"]
 
 
-def _get_all_build_plugins() -> dict[str, BuildPlugin]:
+def _get_all_datasource_build_plugins() -> dict[str, BuildDatasourcePlugin]:
     # TODO: Load plugins:
     #  1. Load internal plugins (dynamically importing all plugins in a specific folder? or statically importing all the plugins?)
     #  2. Load external plugins (using entry points?)
@@ -21,12 +21,14 @@ def _get_all_build_plugins() -> dict[str, BuildPlugin]:
     return dict()
 
 
-def _get_plugin_to_execute(plugins_per_type: dict[str, BuildPlugin], full_type: str) -> BuildPlugin | None:
+def _get_plugin_to_execute(
+    plugins_per_type: dict[str, BuildDatasourcePlugin], full_type: str
+) -> BuildDatasourcePlugin | None:
     return plugins_per_type[full_type]
 
 
 def _execute_plugin_for_config_file(
-    config_file: Path, main_type: str, plugins_per_type: dict[str, BuildPlugin]
+    config_file: Path, main_type: str, plugins_per_type: dict[str, BuildDatasourcePlugin]
 ) -> BuildExecutionResult | None:
     if config_file.suffix not in {".yaml", ".yml"}:
         return None
@@ -52,7 +54,7 @@ def _execute_plugin_for_config_file(
 
 
 def _execute_plugins_for_all_config_files(
-    project_dir: Path, plugins_per_type: dict[str, BuildPlugin]
+    project_dir: Path, plugins_per_type: dict[str, BuildDatasourcePlugin]
 ) -> list[BuildExecutionResult]:
     source_folder = project_dir.joinpath("src")
     if not source_folder.exists() or not source_folder.is_dir():
@@ -84,7 +86,7 @@ def _build_embeddings(results: list[BuildExecutionResult]) -> None:
 
 def build_all_datasources(project_dir: str) -> None:
     # 1. Find all plugins that can be run
-    plugins_per_type = _get_all_build_plugins()
+    plugins_per_type = _get_all_datasource_build_plugins()
 
     # 2. Browse the src directory to find all config file and execute the right plugin for each
     results = _execute_plugins_for_all_config_files(Path(project_dir), plugins_per_type)

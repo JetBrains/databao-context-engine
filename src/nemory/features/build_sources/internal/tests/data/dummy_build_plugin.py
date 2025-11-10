@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, TypedDict
 
 from nemory.features.build_sources.plugin_lib.build_plugin import (
-    BuildPlugin,
+    BuildDatasourcePlugin,
     BuildExecutionResult,
     EmbeddableChunk,
 )
@@ -39,7 +39,7 @@ class DummyBuildResult(BuildExecutionResult):
     result: dict[str, Any]
 
 
-class DummyBuildPlugin(BuildPlugin):
+class DummyBuildDatasourcePlugin(BuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
 

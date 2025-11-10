@@ -3,15 +3,15 @@ from pathlib import Path
 from nemory.features.build_sources.internal.build_sources_from_plugins import (
     _execute_plugins_for_all_config_files,
 )
-from nemory.features.build_sources.plugin_lib.build_plugin import BuildPlugin
+from nemory.features.build_sources.plugin_lib.build_plugin import BuildDatasourcePlugin
 
 
-def with_dummy_plugin() -> dict[str, BuildPlugin]:
+def with_dummy_plugin() -> dict[str, BuildDatasourcePlugin]:
     from nemory.features.build_sources.internal.tests.data.dummy_build_plugin import (
-        DummyBuildPlugin,
+        DummyBuildDatasourcePlugin,
     )
 
-    dummy_plugin = DummyBuildPlugin()
+    dummy_plugin = DummyBuildDatasourcePlugin()
     return {
         # fmt: skip
         supported_type: dummy_plugin
