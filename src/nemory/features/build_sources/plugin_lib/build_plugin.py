@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
 from io import BufferedReader
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable, Mapping
 
-StructuredContent = dict[str, Any]
+StructuredContent = Mapping[str, Any]
 
 
 @dataclass
