@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import Any, TypedDict
+from typing import TypedDict
 
 from nemory.features.build_sources.plugin_lib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,
     EmbeddableChunk,
+    StructuredContent,
 )
 
 
@@ -23,7 +24,7 @@ class DbSchema(TypedDict):
 def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
     return EmbeddableChunk(
         embeddable_text=f"{table['name']} - {table['description']}",
-        content=table,  # type: ignore[arg-type]
+        content=table,
     )
 
 
@@ -31,7 +32,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
 
-    def execute(self, full_type: str, file_config: dict[str, Any]) -> BuildExecutionResult:
+    def execute(self, full_type: str, file_config: StructuredContent) -> BuildExecutionResult:
         return BuildExecutionResult(
             id=str(uuid.uuid4()),
             name=file_config["displayName"],
