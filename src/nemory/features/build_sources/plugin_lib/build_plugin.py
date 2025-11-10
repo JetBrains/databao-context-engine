@@ -21,9 +21,10 @@ class EmbeddableChunk:
     """
 
 
-class BuildExecutionResult(Protocol):
+@dataclass()
+class BuildExecutionResult:
     """
-    Protocol defining the result of the execution of a build plugin.
+    Dataclass defining the result of the execution of a build plugin.
 
     The implementing class must contain the defined attributes
     as well as a method that allows to create chunks from the result.
