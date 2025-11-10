@@ -7,9 +7,10 @@ from nemory.features.build_sources.internal.types import PluginList
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,
-    BuildPlugin,
     BuildFilePlugin,
+    BuildPlugin,
 )
+from nemory.project.layout import get_source_dir
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,12 @@ def _execute_plugin_for_config_file(
             )
             return None
 
-        return (plugin.execute(full_type=full_type, file_config=file_config), plugin)
+        logger.info(f"Config file found at src/{main_type}/{config_file.name}, with type {full_type}")
+        logger.info(f"Plugin {plugin.name} will be executed")
+
+        plugin_result = plugin.execute(full_type=full_type, file_config=file_config)
+
+        return plugin_result, plugin
 
 
 def _execute_plugin_for_file(
@@ -69,15 +75,18 @@ def _execute_plugin_for_file(
         )
         return None
 
+    logger.info(f"Raw file found at src/{main_type}/{file.name}, with type {full_type}")
+    logger.info(f"Plugin {plugin.name} will be executed")
+
     with file.open("rb") as file_stream:
         plugin_result = plugin.execute(full_type=full_type, file_name=file.name, file_buffer=file_stream)
-        return (plugin_result, plugin)
+        return plugin_result, plugin
 
 
 def execute_plugins_for_all_datasource_files(
     project_dir: Path, plugins_per_type: PluginList
 ) -> list[tuple[BuildExecutionResult, BuildPlugin]]:
-    source_folder = project_dir.joinpath("src")
+    source_folder = get_source_dir(project_dir)
     if not source_folder.exists() or not source_folder.is_dir():
         raise ValueError(f"src directory does not exist in {project_dir}")
 
