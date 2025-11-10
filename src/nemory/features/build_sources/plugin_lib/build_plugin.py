@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from io import BufferedReader
 from typing import Any, Protocol, runtime_checkable
 
 StructuredContent = dict[str, Any]
@@ -87,3 +88,28 @@ class BuildDatasourcePlugin(Protocol):
     """
     A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
     """
+
+
+@runtime_checkable
+class BuildFilePlugin(Protocol):
+    def supported_types(self) -> set[str]: ...
+
+    """
+    Returns the list of all supported types for this plugin.
+    If the plugin supports multiple types, they should check the type given in the `full_type` argument when `execute` is called.
+    """
+
+    def execute(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> BuildExecutionResult: ...
+
+    """
+    The method that will be called when a file has been found as a data source supported by this plugin.
+    """
+
+    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]: ...
+
+    """
+    A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
+    """
+
+
+BuildPlugin = BuildDatasourcePlugin | BuildFilePlugin
