@@ -68,8 +68,9 @@ class BuildExecutionResult:
     """
 
 
-@runtime_checkable
-class BuildDatasourcePlugin(Protocol):
+class BaseBuildPlugin(Protocol):
+    name: str
+
     def supported_types(self) -> set[str]: ...
 
     """
@@ -77,38 +78,28 @@ class BuildDatasourcePlugin(Protocol):
     If the plugin supports multiple types, they should check the type given in the `full_type` argument when `execute` is called.
     """
 
+    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]: ...
+
+    """
+    A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
+    """
+
+
+@runtime_checkable
+class BuildDatasourcePlugin(BaseBuildPlugin, Protocol):
     def execute(self, full_type: str, file_config: StructuredContent) -> BuildExecutionResult: ...
 
     """
     The method that will be called when a config file has been found for a data source supported by this plugin.
     """
 
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]: ...
-
-    """
-    A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
-    """
-
 
 @runtime_checkable
-class BuildFilePlugin(Protocol):
-    def supported_types(self) -> set[str]: ...
-
-    """
-    Returns the list of all supported types for this plugin.
-    If the plugin supports multiple types, they should check the type given in the `full_type` argument when `execute` is called.
-    """
-
+class BuildFilePlugin(BaseBuildPlugin, Protocol):
     def execute(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> BuildExecutionResult: ...
 
     """
     The method that will be called when a file has been found as a data source supported by this plugin.
-    """
-
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]: ...
-
-    """
-    A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
     """
 
 

@@ -13,17 +13,19 @@ class FileChunk(TypedDict):
 
 
 class InternalUnstructuredFilesPlugin(BuildFilePlugin):
-    SUPPORTED_FILES_EXTENSIONS = {"txt", "md"}
+    name = "Unstructured Files Plugin"
 
-    DEFAULT_MAX_TOKENS = 300
-    DEFAULT_TOKENS_OVERLAP = 50
+    _SUPPORTED_FILES_EXTENSIONS = {"txt", "md"}
+
+    _DEFAULT_MAX_TOKENS = 300
+    _DEFAULT_TOKENS_OVERLAP = 50
 
     def __init__(self, max_tokens: int | None = None, tokens_overlap: int | None = None):
-        self.max_tokens = max_tokens or self.DEFAULT_MAX_TOKENS
-        self.tokens_overlap = tokens_overlap or self.DEFAULT_TOKENS_OVERLAP
+        self.max_tokens = max_tokens or self._DEFAULT_MAX_TOKENS
+        self.tokens_overlap = tokens_overlap or self._DEFAULT_TOKENS_OVERLAP
 
     def supported_types(self) -> set[str]:
-        return {f"files/{extension}" for extension in self.SUPPORTED_FILES_EXTENSIONS}
+        return {f"files/{extension}" for extension in self._SUPPORTED_FILES_EXTENSIONS}
 
     def execute(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> BuildExecutionResult:
         file_content = self._read_file(file_buffer)
