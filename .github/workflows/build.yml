@@ -48,6 +48,9 @@ jobs:
       - name: Run ruff format
         run: uv run ruff format --check
 
+      - name: Run mypy type checking
+        run: uv run mypy . --exclude dist --exclude docs
+
       - name: Run tests
         run: uv run pytest
 
