@@ -29,6 +29,8 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
 
 
 class DummyBuildDatasourcePlugin(BuildDatasourcePlugin):
+    name = "Dummy Plugin"
+
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
 
