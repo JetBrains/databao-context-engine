@@ -4,9 +4,10 @@ from pathlib import Path
 from nemory.features.build_sources.internal.execute_plugins import (
     execute_plugins_for_all_datasource_files,
 )
-from nemory.features.build_sources.internal.types import BuildPlugin, PluginList
+from nemory.features.build_sources.internal.types import PluginList
 from nemory.features.build_sources.plugin_lib.build_plugin import (
     BuildExecutionResult,
+    BuildPlugin,
 )
 
 logger = logging.getLogger(__name__)

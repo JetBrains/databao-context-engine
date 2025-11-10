@@ -3,23 +3,25 @@ from pathlib import Path
 
 import yaml
 
-from nemory.features.build_sources.internal.types import BuildPlugin, PluginList
+from nemory.features.build_sources.internal.types import PluginList
 from nemory.features.build_sources.plugin_lib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,
+    BuildPlugin,
+    BuildFilePlugin,
 )
 
 logger = logging.getLogger(__name__)
 
 
 def _get_plugin_to_execute(plugins_per_type: PluginList, full_type: str) -> BuildPlugin | None:
-    return plugins_per_type[full_type]
+    return plugins_per_type.get(full_type)
 
 
 def _execute_plugin_for_datasource(
     datasource_file: Path, main_type: str, plugins_per_type: PluginList
 ) -> tuple[BuildExecutionResult, BuildPlugin] | None:
-    if datasource_file.suffix in {".yaml", ".yml"}:
+    if datasource_file.suffix in {".yaml", ".yml"} and not main_type == "files":
         return _execute_plugin_for_config_file(
             config_file=datasource_file, main_type=main_type, plugins_per_type=plugins_per_type
         )
@@ -56,7 +58,20 @@ def _execute_plugin_for_config_file(
 def _execute_plugin_for_file(
     file: Path, main_type: str, plugins_per_type: PluginList
 ) -> tuple[BuildExecutionResult, BuildPlugin] | None:
-    raise NotImplementedError("Files datasources are not supported yet")
+    file_extension = file.suffix[1:]
+    full_type = f"{main_type}/{file_extension}"
+
+    plugin = _get_plugin_to_execute(plugins_per_type, full_type)
+
+    if plugin is None or not isinstance(plugin, BuildFilePlugin):
+        logger.warning(
+            f"No plugin found for configuration file of type {full_type}. Make sure you have installed a plugin that can handle that type of data source."
+        )
+        return None
+
+    with file.open("rb") as file_stream:
+        plugin_result = plugin.execute(full_type=full_type, file_name=file.name, file_buffer=file_stream)
+        return (plugin_result, plugin)
 
 
 def execute_plugins_for_all_datasource_files(
