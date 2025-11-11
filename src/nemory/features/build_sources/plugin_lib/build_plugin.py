@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
-StructuredContent = dict[str, Any]
+StructuredContent = str
 
 
 @dataclass

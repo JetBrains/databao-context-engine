@@ -5,6 +5,7 @@ from click import Context
 
 from nemory.config.logging import configure_logging
 from nemory.features.build_sources.public.api import build_all_datasources
+from nemory.core.db.migrate import migrate
 
 
 @click.group()
@@ -23,6 +24,8 @@ def nemory(ctx: Context, verbose: bool, project_dir: str) -> None:
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["project_dir"] = project_dir
+
+    migrate()
 
 
 @nemory.command()
