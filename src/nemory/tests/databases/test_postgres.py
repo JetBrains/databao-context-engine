@@ -152,4 +152,3 @@ def test_postgres_container(postgres_container: PostgresContainer):
             )
         ]
     )
-    print(introspection_result)
