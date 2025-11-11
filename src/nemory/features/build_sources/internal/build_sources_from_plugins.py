@@ -1,8 +1,10 @@
 import logging
+from datetime import datetime
 
 from nemory.features.build_sources.internal.execute_plugins import (
     execute_plugins_for_all_datasource_files,
 )
+from nemory.features.build_sources.internal.export_results import export_build_results
 from nemory.features.build_sources.internal.types import PluginList
 from nemory.pluginlib.build_plugin import (
     BuildExecutionResult,
@@ -42,11 +44,6 @@ def _get_all_build_plugins() -> PluginList:
     return plugin_list
 
 
-def _export_results(results: list[tuple[BuildExecutionResult, BuildPlugin]]) -> None:
-    # TODO: Implement writing the results in files
-    pass
-
-
 def _build_embeddings(results: list[tuple[BuildExecutionResult, BuildPlugin]]) -> None:
     # TODO: Use the get_chunks method of each result to create embeddings
     pass
@@ -55,12 +52,14 @@ def _build_embeddings(results: list[tuple[BuildExecutionResult, BuildPlugin]]) -
 def build_all_datasources(project_dir: str) -> None:
     project_path = ensure_project_dir(project_dir)
 
+    build_start_time = datetime.now()
+
     # 1. Find all plugins that can be run
     plugins_per_type = _get_all_build_plugins()
 
     # 2. Browse the src directory to find all config file and execute the right plugin for each
     results = execute_plugins_for_all_datasource_files(project_path, plugins_per_type)
 
-    _export_results(results)
+    export_build_results(project_path, build_start_time, [result for (result, _) in results])
 
     _build_embeddings(results)
