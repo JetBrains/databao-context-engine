@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Any
 
-import pytest
 import psycopg2
+import pytest
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
 
