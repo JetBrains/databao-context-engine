@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from nemory.features.build_sources.internal.execute_plugins import execute_plugins_for_all_datasource_files
+from nemory.build_sources.internal.execute_plugins import execute_plugins_for_all_datasource_files
+from nemory.build_sources.internal.tests.data.dummy_build_plugin import DummyBuildDatasourcePlugin
+from nemory.pluginlib.build_plugin import BuildExecutionResult, BuildPlugin, EmbeddableChunk
 from nemory.plugins.unstructured_files_plugin import InternalUnstructuredFilesPlugin
-from nemory.features.build_sources.internal.tests.data.dummy_build_plugin import DummyBuildDatasourcePlugin
-from nemory.pluginlib.build_plugin import BuildPlugin, EmbeddableChunk, BuildExecutionResult
 
 
 def with_dummy_plugin() -> dict[str, BuildPlugin]:
