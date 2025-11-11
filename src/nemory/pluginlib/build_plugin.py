@@ -3,6 +3,8 @@ from datetime import datetime
 from io import BufferedReader
 from typing import Any, Mapping, Protocol, runtime_checkable
 
+StructuredContent = str
+
 
 @dataclass
 class EmbeddableChunk:

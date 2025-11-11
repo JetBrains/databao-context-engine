@@ -6,6 +6,7 @@ from click import Context
 from nemory.config.logging import configure_logging
 from nemory.storage.migrate import migrate
 from nemory.build_sources.public.api import build_all_datasources
+from nemory.core.db.migrate import migrate
 
 
 @click.group()
