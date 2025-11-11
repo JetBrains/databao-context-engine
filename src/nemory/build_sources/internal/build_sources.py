@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from nemory.features.build_sources.internal.connections import duckdb_connection
+from nemory.build_sources.internal.connections import duckdb_connection
 
 logger = logging.getLogger(__name__)
 
