@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from nemory.features.build_sources.internal.types import PluginList
+from nemory.build_sources.internal.types import PluginList
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,

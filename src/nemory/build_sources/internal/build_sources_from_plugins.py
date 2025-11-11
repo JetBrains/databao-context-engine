@@ -1,11 +1,11 @@
 import logging
 from datetime import datetime
 
-from nemory.features.build_sources.internal.execute_plugins import (
+from nemory.build_sources.internal.execute_plugins import (
     execute_plugins_for_all_datasource_files,
 )
-from nemory.features.build_sources.internal.export_results import export_build_results
-from nemory.features.build_sources.internal.types import PluginList
+from nemory.build_sources.internal.export_results import export_build_results
+from nemory.build_sources.internal.types import PluginList
 from nemory.pluginlib.build_plugin import (
     BuildExecutionResult,
     BuildPlugin,
