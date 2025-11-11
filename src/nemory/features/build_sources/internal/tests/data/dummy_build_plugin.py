@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TypedDict
 
-from nemory.features.build_sources.plugin_lib.build_plugin import (
+from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,
     EmbeddableChunk,
