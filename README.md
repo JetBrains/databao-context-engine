@@ -56,7 +56,7 @@ by using `pipx install` instead.
 You can run it with the following:
 
 ```bash
-  uv run mypy src --exclude "test_*"
+  uv run mypy src --exclude "test_*" --exclude dist
 ```
 
 NB: the above runs type checking on all files within the `src` directory, excluding all test files.
