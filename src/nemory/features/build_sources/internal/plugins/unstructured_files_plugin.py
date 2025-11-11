@@ -4,7 +4,7 @@ from datetime import datetime
 from io import BufferedReader
 from typing import TypedDict
 
-from nemory.features.build_sources.plugin_lib.build_plugin import BuildFilePlugin, BuildExecutionResult, EmbeddableChunk
+from nemory.pluginlib.build_plugin import BuildFilePlugin, BuildExecutionResult, EmbeddableChunk
 
 
 class FileChunk(TypedDict):
