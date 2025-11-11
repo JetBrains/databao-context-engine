@@ -25,5 +25,9 @@ def get_source_dir(project_dir: Path) -> Path:
     return project_dir.joinpath("src")
 
 
+def get_output_dir(project_dir: Path) -> Path:
+    return project_dir.joinpath("output")
+
+
 def get_config_file(project_dir: Path) -> Path:
     return project_dir.joinpath("nemory.ini")
