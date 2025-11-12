@@ -3,8 +3,6 @@ from datetime import datetime
 from io import BufferedReader
 from typing import Any, Protocol, runtime_checkable, Mapping
 
-StructuredContent = Mapping[str, Any]
-
 
 @dataclass
 class EmbeddableChunk:
@@ -16,7 +14,7 @@ class EmbeddableChunk:
     """
     The text to embed as a vector for search usage
     """
-    content: StructuredContent
+    content: Any
     """
     The content to return as a response when the embeddings has been selected in a search
     """
@@ -61,7 +59,7 @@ class BuildExecutionResult:
     The time of execution of the build plugin
     """
 
-    result: StructuredContent
+    result: Any
     """
     A dictionary containing the actual result that should be stored as context for the data source.
     This dictionary should be serializable in JSON or YAML format.
@@ -87,7 +85,7 @@ class BaseBuildPlugin(Protocol):
 
 @runtime_checkable
 class BuildDatasourcePlugin(BaseBuildPlugin, Protocol):
-    def execute(self, full_type: str, file_config: StructuredContent) -> BuildExecutionResult: ...
+    def execute(self, full_type: str, file_config: Mapping[str, Any]) -> BuildExecutionResult: ...
 
     """
     The method that will be called when a config file has been found for a data source supported by this plugin.
