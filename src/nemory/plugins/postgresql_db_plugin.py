@@ -1,12 +1,13 @@
 import uuid
 from datetime import datetime
-from typing import Mapping, Any
+from typing import Any, Mapping
 
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,
     EmbeddableChunk,
 )
+from nemory.plugins.databases.database_chunker import build_database_chunks
 from nemory.plugins.databases.postgresql_introspector import PostgresqlIntrospector
 
 
@@ -33,5 +34,4 @@ class PostgresqlDbPlugin(BuildDatasourcePlugin):
         )
 
     def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
-        # TODO: Create chunks from the introspection result
-        return []
+        return build_database_chunks(build_result.result)
