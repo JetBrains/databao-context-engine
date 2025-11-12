@@ -49,7 +49,7 @@ class BuildExecutionResult:
     A description of the data source
     """
 
-    version: str
+    version: str | None
     """
     The version number of the data source when it was built
     """
