@@ -33,7 +33,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
 
-    def execute(self, full_type: str, file_config: Mapping[str, Any]) -> BuildExecutionResult:
+    def execute(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> BuildExecutionResult:
         return BuildExecutionResult(
             id=str(uuid.uuid4()),
             name=file_config["displayName"],
