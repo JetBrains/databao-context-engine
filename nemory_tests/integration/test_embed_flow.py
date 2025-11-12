@@ -1,10 +1,13 @@
 from nemory.core.services.persistence_service import PersistenceService
 from nemory.core.services.segment_embedding_service import SegmentEmbeddingService
+from nemory.core.services.shards.table_name_policy import TableNamePolicy
 from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 from nemory.core.db.run_repository import RunStatus
 
 
-def test_embed_flow_persists_segments_and_embeddings(conn, run_repo, entity_repo, segment_repo, embedding_repo):
+def test_embed_flow_persists_segments_and_embeddings(
+    conn, run_repo, entity_repo, segment_repo, embedding_repo, registry_repo, resolver
+):
     run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id")
     entity = entity_repo.create(
         run_id=run.run_id,
@@ -14,45 +17,56 @@ def test_embed_flow_persists_segments_and_embeddings(conn, run_repo, entity_repo
     )
 
     persistence = PersistenceService(conn=conn, segment_repo=segment_repo, embedding_repo=embedding_repo)
-    provider = _StubProvider(dim=768, model_id="nomic-embed-text", embedder="ollama")
-    segment_embedding_service = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
+    provider = _StubProvider(dim=768, model_id="dummy:v1", embedder="tests")
+    segment_embedding_service = SegmentEmbeddingService(
+        persistence_service=persistence, provider=provider, shard_resolver=resolver
+    )
 
     chunks = [
         EmbeddableChunk("alpha", "Alpha"),
         EmbeddableChunk("beta", "Beta"),
         EmbeddableChunk("gamma", "Gamma"),
     ]
-
     segment_embedding_service.embed_chunks(entity_id=entity.entity_id, chunks=chunks)
 
-    seg_count = conn.execute(
-        """
-        SELECT 
-            COUNT(*) 
-        FROM 
-            segment 
-        WHERE 
-            entity_id = ?
-        """,
-        [entity.entity_id],
-    ).fetchone()[0]
-    assert seg_count == 3
+    table_name = TableNamePolicy().build(embedder="tests", model_id="dummy:v1", dim=768)
+    reg = registry_repo.get(embedder="tests", model_id="dummy:v1")
+    assert reg.table_name == table_name
 
-    emb_count = conn.execute(
-        """
-        SELECT 
-            COUNT(*)
-        FROM 
-            embedding e
-            JOIN segment s ON s.segment_id = e.segment_id
-        WHERE 
-            s.entity_id = ?
-            AND e.embedder = ?
-            AND e.model_id = ?
-        """,
-        [entity.entity_id, provider.embedder, provider.model_id],
-    ).fetchone()[0]
-    assert emb_count == 3
+    segments = segment_repo.list()
+    segments_for_entity = [s for s in segments if s.entity_id == entity.entity_id]
+    assert len(segments_for_entity) == 3
+    assert [s.embeddable_text for s in segments_for_entity] == ["gamma", "beta", "alpha"]
+
+    rows = embedding_repo.list(table_name=table_name)
+    assert len(rows) == 3
+
+
+def test_embed_flow_is_idempotent_on_resolver(
+    conn, run_repo, entity_repo, segment_repo, embedding_repo, registry_repo, resolver
+):
+    entity = entity_repo.create(
+        run_id=run_repo.create(status=RunStatus.RUNNING, project_id="project-id").run_id,
+        plugin="p",
+        source_id="s",
+        storage_directory="/path",
+    )
+    provider = _StubProvider(embedder="tests", model_id="idempotent:v1", dim=768)
+    persistence = PersistenceService(conn, segment_repo, embedding_repo)
+    svc = SegmentEmbeddingService(
+        persistence_service=persistence,
+        provider=provider,
+        shard_resolver=resolver,
+    )
+
+    svc.embed_chunks(entity_id=entity.entity_id, chunks=[EmbeddableChunk("x", "...")])
+    svc.embed_chunks(entity_id=entity.entity_id, chunks=[EmbeddableChunk("y", "...")])
+
+    (count,) = conn.execute(
+        "SELECT COUNT(*) FROM embedding_model_registry WHERE embedder=? AND model_id=?",
+        ["tests", "idempotent:v1"],
+    ).fetchone()
+    assert count == 1
 
 
 class _StubProvider:

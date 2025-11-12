@@ -8,8 +8,9 @@ from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChun
 def test_noop_on_empty_chunks():
     persistence = _FakePersistence(seg_ids=[])
     provider = _FakeProvider()
+    shard_resolver = _FakeResolver()
 
-    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
+    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=shard_resolver)
     svc.embed_chunks(entity_id=123, chunks=[])
 
     assert persistence.calls["write_segments"] == []
@@ -23,8 +24,10 @@ def test_writes_segments_then_embeddings():
 
     persistence = _FakePersistence(seg_ids=seg_ids)
     provider = _FakeProvider(dim=768, model_id="ollama:nomic-embed-text;dim=768")
+    shard_resolver = _FakeResolver(table_name="embedding_tests__dummy__8")
 
-    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
+    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=shard_resolver)
+
     svc.embed_chunks(entity_id=7, chunks=chunks)
 
     assert len(persistence.calls["write_segments"]) == 1
@@ -34,9 +37,8 @@ def test_writes_segments_then_embeddings():
     assert provider.calls == ["a", "b", "c"]
 
     assert len(persistence.calls["write_embeddings"]) == 1
-    items, embedder, model_id = persistence.calls["write_embeddings"][0]
-    assert embedder == "fake-provider"
-    assert model_id == "ollama:nomic-embed-text;dim=768"
+    items, table_name = persistence.calls["write_embeddings"][0]
+    assert table_name == "embedding_tests__dummy__8"
     assert [it.segment_id for it in items] == seg_ids
     assert all(isinstance(it, EmbeddingItem) for it in items)
 
@@ -45,8 +47,9 @@ def test_provider_error_aborts_before_embedding_write():
     chunks = [EmbeddableChunk("ok", "ok"), EmbeddableChunk("boom", "boom"), EmbeddableChunk("later", "later")]
     persistence = _FakePersistence(seg_ids=[1, 2, 3])
     provider = _FakeProvider(fail_at={1})
+    shard_resolver = _FakeResolver()
 
-    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
+    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=shard_resolver)
 
     with pytest.raises(RuntimeError):
         svc.embed_chunks(entity_id=1, chunks=chunks)
@@ -59,8 +62,9 @@ def test_provider_bad_dim_bubbles_and_no_embeddings_written():
     chunks = [EmbeddableChunk("x", "x"), EmbeddableChunk("y", "y")]
     persistence = _FakePersistence(seg_ids=[5, 6])
     provider = _FakeProvider(bad_dim_at={0})
+    shard_resolver = _FakeResolver()
 
-    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
+    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=shard_resolver)
 
     with pytest.raises(ValueError):
         svc.embed_chunks(entity_id=9, chunks=chunks)
@@ -72,8 +76,9 @@ def test_embedding_persistence_failure_bubbles_after_provider_calls():
     chunks = [EmbeddableChunk("a", "a"), EmbeddableChunk("b", "b")]
     persistence = _FakePersistence(seg_ids=[100, 101], should_raise_on_embeddings=True)
     provider = _FakeProvider()
+    shard_resolver = _FakeResolver()
 
-    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
+    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=shard_resolver)
 
     with pytest.raises(RuntimeError):
         svc.embed_chunks(entity_id=2, chunks=chunks)
@@ -86,8 +91,9 @@ def test_segment_count_mismatch_raises():
     chunks = [EmbeddableChunk("only-one", "only-one")]
     persistence = _FakePersistence(seg_ids=[])
     provider = _FakeProvider()
+    shard_resolver = _FakeResolver()
 
-    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
+    svc = SegmentEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=shard_resolver)
 
     with pytest.raises(RuntimeError):
         svc.embed_chunks(entity_id=3, chunks=chunks)
@@ -109,8 +115,8 @@ class _FakePersistence:
         self.calls["write_segments"].append((entity_id, list(chunks)))
         return list(self.seg_ids)
 
-    def write_embeddings(self, *, items: list[EmbeddingItem], embedder: str, model_id: str) -> int:
-        self.calls["write_embeddings"].append((list(items), embedder, model_id))
+    def write_embeddings(self, *, items: list[EmbeddingItem], table_name: str) -> int:
+        self.calls["write_embeddings"].append((list(items), table_name))
         if self.should_raise_on_embeddings:
             raise RuntimeError("DB fail")
         return len(items)
@@ -152,3 +158,15 @@ class _FakeProvider:
         if idx in self._bad_dim_at:
             raise ValueError("wrong dim")
         return [float(idx)] * self._dim
+
+
+class _FakeResolver:
+    def __init__(self, table_name="embedding_tests__dummy__8"):
+        self.table_name = table_name
+        self.calls = 0
+
+    def resolve_or_create(self, *, embedder: str, model_id: str, dim: int) -> str:
+        self.calls += 1
+
+        assert isinstance(embedder, str) and isinstance(model_id, str) and isinstance(dim, int)
+        return self.table_name

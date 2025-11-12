@@ -7,6 +7,7 @@ from nemory.core.services.providers.ollama.provider import OllamaEmbeddingProvid
 from nemory.core.services.providers.ollama.runtime import OllamaRuntime
 from nemory.core.services.providers.ollama.service import OllamaService
 from nemory.core.services.segment_embedding_service import SegmentEmbeddingService
+from nemory.core.services.shards.table_name_policy import TableNamePolicy
 from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 
 MODEL = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
@@ -26,7 +27,9 @@ def test_service_embed_returns_vector():
     assert all(isinstance(x, float) for x in vec)
 
 
-def test_ollama_embed_and_persist_e2e(conn, run_repo, entity_repo, segment_repo, embedding_repo, tmp_path):
+def test_ollama_embed_and_persist_e2e(
+    conn, run_repo, entity_repo, segment_repo, embedding_repo, tmp_path, registry_repo, resolver
+):
     config = OllamaConfig(host=HOST, port=PORT)
     svc = OllamaService(config)
     rt = OllamaRuntime(service=svc, config=config)
@@ -35,11 +38,14 @@ def test_ollama_embed_and_persist_e2e(conn, run_repo, entity_repo, segment_repo,
     svc.pull_model(model=MODEL, timeout=180)
 
     provider = OllamaEmbeddingProvider(service=svc, model_id=MODEL, dim=768)
+
     persistence = PersistenceService(conn=conn, segment_repo=segment_repo, embedding_repo=embedding_repo)
-    seg_embed = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
+    seg_embed = SegmentEmbeddingService(persistence_service=persistence, shard_resolver=resolver, provider=provider)
 
     run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id")
-    entity = entity_repo.create(run_id=run.run_id, plugin="integration-test", source_id="src-ollama", storage_directory="/some/path")
+    entity = entity_repo.create(
+        run_id=run.run_id, plugin="integration-test", source_id="src-ollama", storage_directory="/some/path"
+    )
 
     chunks = [EmbeddableChunk("alpha", "Alpha"), EmbeddableChunk("beta", "Beta")]
     seg_embed.embed_chunks(entity_id=entity.entity_id, chunks=chunks)
@@ -48,16 +54,18 @@ def test_ollama_embed_and_persist_e2e(conn, run_repo, entity_repo, segment_repo,
         "SELECT segment_id FROM segment WHERE entity_id = ? ORDER BY segment_id", [entity.entity_id]
     ).fetchall()
     assert len(seg_rows) == 2
+    seg_ids = [r[0] for r in seg_rows]
 
-    emb_count = conn.execute(
-        """
-        SELECT COUNT(*)
-        FROM embedding e
-        JOIN segment s ON s.segment_id = e.segment_id
-        WHERE s.entity_id = ?
-          AND e.embedder = 'ollama'
-          AND e.model_id = ?
-        """,
-        [entity.entity_id, provider.model_id],
-    ).fetchone()[0]
+    expected_table = TableNamePolicy().build(embedder=provider.embedder, model_id=provider.model_id, dim=provider.dim)
+    reg = registry_repo.get(embedder=provider.embedder, model_id=provider.model_id)
+    assert reg and reg.table_name == expected_table and reg.dim == 768
+
+    (emb_count,) = conn.execute(
+        f"""
+            SELECT COUNT(*)
+            FROM {expected_table} e
+            WHERE e.segment_id IN ({",".join("?" for _ in seg_ids)})
+            """,
+        seg_ids,
+    ).fetchone()
     assert emb_count == 2

@@ -30,6 +30,10 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
     def model_id(self) -> str:
         return self._model_id
 
+    @property
+    def dim(self) -> int:
+        return self._dim
+
     def embed(self, text: str) -> Sequence[float]:
         try:
             vec = self._service.embed(model=self._model_id, text=text)
