@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
-StructuredContent = str
+StructuredContent = dict[str, Any]
 
 
 @dataclass
@@ -15,7 +15,7 @@ class EmbeddableChunk:
     """
     The text to embed as a vector for search usage
     """
-    content: StructuredContent
+    content: Any
     """
     The content to return as a response when the embeddings has been selected in a search
     """

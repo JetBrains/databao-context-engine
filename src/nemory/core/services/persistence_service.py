@@ -36,7 +36,7 @@ class PersistenceService:
         with transaction(self._conn):
             for chunk in chunks:
                 segment = self._segment_repo.create(
-                    entity_id=entity_id, embeddable_text=chunk.embeddable_text, display_text=chunk.content
+                    entity_id=entity_id, embeddable_text=chunk.embeddable_text, display_text=repr(chunk.content)
                 )
                 created_segment_ids.append(segment.segment_id)
         return created_segment_ids

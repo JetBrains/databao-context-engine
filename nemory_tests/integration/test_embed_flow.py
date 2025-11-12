@@ -5,12 +5,12 @@ from nemory.core.db.run_repository import RunStatus
 
 
 def test_embed_flow_persists_segments_and_embeddings(conn, run_repo, entity_repo, segment_repo, embedding_repo):
-    run = run_repo.create(status=RunStatus.RUNNING)
+    run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id")
     entity = entity_repo.create(
         run_id=run.run_id,
         plugin="test-plugin",
         source_id="src-1",
-        document="{}",
+        storage_directory="/path",
     )
 
     persistence = PersistenceService(conn=conn, segment_repo=segment_repo, embedding_repo=embedding_repo)

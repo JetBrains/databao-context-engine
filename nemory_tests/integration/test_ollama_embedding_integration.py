@@ -38,8 +38,8 @@ def test_ollama_embed_and_persist_e2e(conn, run_repo, entity_repo, segment_repo,
     persistence = PersistenceService(conn=conn, segment_repo=segment_repo, embedding_repo=embedding_repo)
     seg_embed = SegmentEmbeddingService(persistence_service=persistence, provider=provider)
 
-    run = run_repo.create(status=RunStatus.RUNNING)
-    entity = entity_repo.create(run_id=run.run_id, plugin="integration-test", source_id="src-ollama", document="{}")
+    run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id")
+    entity = entity_repo.create(run_id=run.run_id, plugin="integration-test", source_id="src-ollama", storage_directory="/some/path")
 
     chunks = [EmbeddableChunk("alpha", "Alpha"), EmbeddableChunk("beta", "Beta")]
     seg_embed.embed_chunks(entity_id=entity.entity_id, chunks=chunks)
