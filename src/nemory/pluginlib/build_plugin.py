@@ -1,7 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from io import BufferedReader
-from typing import Any, Protocol, runtime_checkable, Mapping
+from typing import Any, Mapping, Protocol, runtime_checkable
 
 
 @dataclass
@@ -64,6 +64,9 @@ class BuildExecutionResult:
     A dictionary containing the actual result that should be stored as context for the data source.
     This dictionary should be serializable in JSON or YAML format.
     """
+
+    def _to_yaml_serializable(self) -> dict[str, Any]:
+        return asdict(replace(self, result=repr(self.result)))
 
 
 class BaseBuildPlugin(Protocol):
