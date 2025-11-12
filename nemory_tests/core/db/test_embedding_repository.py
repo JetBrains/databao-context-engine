@@ -4,9 +4,9 @@ from nemory.core.db.dtos import RunStatus, EmbeddingDTO
 from nemory.core.db.exceptions.exceptions import IntegrityError
 
 
-def _make_entity(entity_repo, run_repo, *, plugin="p", source_id="s", document="d"):
-    run = run_repo.create(status=RunStatus.RUNNING, nemory_version=None)
-    return entity_repo.create(run_id=run.run_id, plugin=plugin, source_id=source_id, document=document)
+def _make_entity(entity_repo, run_repo, *, plugin="p", source_id="s", storage_directory="d"):
+    run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id", nemory_version=None)
+    return entity_repo.create(run_id=run.run_id, plugin=plugin, source_id=source_id, storage_directory=storage_directory)
 
 
 def _make_segment(segment_repo, entity_repo, run_repo, *, emb="e", disp="d"):

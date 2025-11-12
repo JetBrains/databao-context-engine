@@ -9,18 +9,19 @@ CREATE SEQUENCE IF NOT EXISTS segment_id_seq START 1;
 CREATE TABLE IF NOT EXISTS run (
     run_id          BIGINT PRIMARY KEY DEFAULT nextval('run_id_seq'),
     status          TEXT NOT NULL,
+    project_id      TEXT NOT NULL,
     started_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ended_at        TIMESTAMP,
     nemory_version  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS entity (
-    entity_id    BIGINT PRIMARY KEY DEFAULT nextval('entity_id_seq'),
-    run_id       BIGINT NOT NULL REFERENCES run(run_id),
-    plugin       TEXT NOT NULL,
-    source_id    TEXT NOT NULL,
-    document     TEXT NOT NULL,
-    created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    entity_id           BIGINT PRIMARY KEY DEFAULT nextval('entity_id_seq'),
+    run_id              BIGINT NOT NULL REFERENCES run(run_id),
+    plugin              TEXT NOT NULL,
+    source_id           TEXT NOT NULL,
+    storage_directory   TEXT NOT NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS segment (

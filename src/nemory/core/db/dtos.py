@@ -16,6 +16,7 @@ class RunStatus(str, Enum):
 class RunDTO:
     run_id: int
     status: RunStatus
+    project_id: str
     started_at: datetime
     ended_at: Optional[datetime]
     nemory_version: str
@@ -27,7 +28,7 @@ class EntityDTO:
     run_id: int
     plugin: str
     source_id: str
-    document: str
+    storage_directory: str
     created_at: datetime
 
 

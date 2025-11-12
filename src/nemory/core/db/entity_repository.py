@@ -17,19 +17,19 @@ class EntityRepository:
         run_id: int,
         plugin: str,
         source_id: str,
-        document: str,
+        storage_directory: str,
     ) -> EntityDTO:
         try:
             row = self._conn.execute(
                 """
             INSERT INTO
-                entity(run_id, plugin, source_id, document)
+                entity(run_id, plugin, source_id, storage_directory)
             VALUES
                 (?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [run_id, plugin, source_id, document],
+                [run_id, plugin, source_id, storage_directory],
             ).fetchone()
             return self._row_to_dto(row)
         except ConstraintException as e:
@@ -55,7 +55,7 @@ class EntityRepository:
         *,
         plugin: Optional[str] = None,
         source_id: Optional[str] = None,
-        document: Optional[str] = None,
+        storage_directory: Optional[str] = None,
     ) -> Optional[EntityDTO]:
         sets, params = [], []
 
@@ -65,9 +65,9 @@ class EntityRepository:
         if source_id is not None:
             sets.append("source_id = ?")
             params.append(source_id)
-        if document is not None:
-            sets.append("document = ?")
-            params.append(document)
+        if storage_directory is not None:
+            sets.append("storage_directory = ?")
+            params.append(storage_directory)
 
         if not sets:
             return self.get(entity_id)
@@ -118,12 +118,12 @@ class EntityRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> EntityDTO:
-        entity_id, run_id, plugin, source_id, document, created_at = row
+        entity_id, run_id, plugin, source_id, storage_directory, created_at = row
         return EntityDTO(
             entity_id=int(entity_id),
             run_id=int(run_id),
             plugin=str(plugin),
             source_id=str(source_id),
-            document=str(document),
+            storage_directory=str(storage_directory),
             created_at=created_at,
         )
