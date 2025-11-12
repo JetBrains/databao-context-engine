@@ -56,7 +56,10 @@ def _execute_plugin_for_config_file(
         logger.info(f"Config file found at src/{main_type}/{config_file.name}, with type {full_type}")
         logger.info(f"Plugin {plugin.name} will be executed")
 
-        plugin_result = plugin.execute(full_type=full_type, file_config=file_config)
+        config_file_name_without_extension = config_file.name.split(".")[0]
+        plugin_result = plugin.execute(
+            full_type=full_type, datasource_name=config_file_name_without_extension, file_config=file_config
+        )
 
         return plugin_result, plugin
 
