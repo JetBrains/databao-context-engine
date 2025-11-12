@@ -1,5 +1,4 @@
 import logging
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -31,7 +30,7 @@ def _export_build_result(run_dir: Path, result: BuildExecutionResult):
     export_file_path = _get_result_export_file_path(run_dir, result)
 
     with export_file_path.open("w") as export_file:
-        yaml.safe_dump(asdict(result), export_file, sort_keys=False)
+        yaml.safe_dump(result._to_yaml_serializable(), export_file, sort_keys=False)
 
     logger.info(f"Exported result to {export_file_path.resolve()}")
 
