@@ -19,12 +19,12 @@ class PostgresqlDbPlugin(BuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return {"databases/postgres"}
 
-    def execute(self, full_type: str, file_config: Mapping[str, Any]) -> BuildExecutionResult:
+    def execute(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> BuildExecutionResult:
         introspection_result = self._introspector.introspect_database(file_config)
 
         return BuildExecutionResult(
             id=file_config.get("id", str(uuid.uuid4())),
-            name=file_config.get("name"),
+            name=file_config.get("name", datasource_name),
             type=full_type,
             description=None,
             version=None,

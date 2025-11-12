@@ -41,7 +41,7 @@ def test_postgres_container(postgres_container_with_columns: PostgresContainer):
 
     config_file = _create_config_file_from_container(postgres_container_with_columns)
 
-    execution_result = plugin.execute(config_file["type"], config_file)
+    execution_result = plugin.execute(config_file["type"], "file_name", config_file)
 
     assert execution_result.result == DatabaseIntrospectionResult(
         catalogs=[

@@ -88,7 +88,7 @@ class BaseBuildPlugin(Protocol):
 
 @runtime_checkable
 class BuildDatasourcePlugin(BaseBuildPlugin, Protocol):
-    def execute(self, full_type: str, file_config: Mapping[str, Any]) -> BuildExecutionResult: ...
+    def execute(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> BuildExecutionResult: ...
 
     """
     The method that will be called when a config file has been found for a data source supported by this plugin.
