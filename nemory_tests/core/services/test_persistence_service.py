@@ -1,4 +1,3 @@
-import re
 from collections import namedtuple, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -10,106 +9,96 @@ from uuid import UUID, uuid4
 import pytest
 
 
-from nemory.core.db.dtos import RunStatus
 from nemory.core.db.exceptions.exceptions import IntegrityError
 from nemory.core.services.models import EmbeddingItem
 from nemory.core.services.persistence_service import PersistenceService
+
 from nemory.pluginlib.build_plugin import EmbeddableChunk
+from nemory_tests._utils.factories import make_entity
 
 
-def _make_entity(entity_repo, run_repo):
-    run = run_repo.create(
-        status=RunStatus.RUNNING,
-        project_id="project-id",
-        nemory_version=None,
-    )
-    return entity_repo.create(run_id=run.run_id, plugin="p", source_id="s", storage_directory="d")
-
-
-def _make_segments(conn, embedding_repo, segment_repo, entity_repo, run_repo, texts):
-    ent = _make_entity(entity_repo, run_repo)
-    persistence_service = PersistenceService(conn, segment_repo, embedding_repo)
+def _write_segments(entity_repo, run_repo, persistence_service, texts):
+    ent = make_entity(run_repo, entity_repo)
     chunks = [EmbeddableChunk(t, f"disp:{t}") for t in texts]
     return persistence_service.write_segments(entity_id=ent.entity_id, chunks=chunks)
 
 
-def test_write_embeddings(conn, embedding_repo, segment_repo, entity_repo, run_repo):
-    seg_ids = _make_segments(conn, embedding_repo, segment_repo, entity_repo, run_repo, ["a", "b", "c"])
+def test_write_embeddings(conn, embedding_repo, segment_repo, entity_repo, run_repo, table_name):
+    service = PersistenceService(conn, segment_repo, embedding_repo)
+    seg_ids = _write_segments(entity_repo, run_repo, service, ["a", "b", "c"])
     items = [
         EmbeddingItem(segment_id=seg_ids[0], vec=_vec(1.0)),
         EmbeddingItem(segment_id=seg_ids[1], vec=_vec(2.0)),
         EmbeddingItem(segment_id=seg_ids[2], vec=_vec(3.0)),
     ]
-    service = PersistenceService(conn, segment_repo, embedding_repo)
 
-    count = service.write_embeddings(items=items, embedder="ollama", model_id="m1")
+    count = service.write_embeddings(items=items, table_name=table_name)
 
     assert count == 3
-    rows = embedding_repo.list()
+    rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3
 
     assert {r.segment_id for r in rows} == set(seg_ids)
-    assert all(r.model_id == "m1" for r in rows)
-    assert all(r.embedder == "ollama" for r in rows)
 
 
-def test_empty_items_raises_value_error(conn, segment_repo, embedding_repo):
+def test_empty_items_raises_value_error(conn, segment_repo, embedding_repo, table_name):
     service = PersistenceService(conn, segment_repo, embedding_repo)
     with pytest.raises(ValueError):
-        service.write_embeddings(items=[], embedder="ollama", model_id="m1")
+        service.write_embeddings(items=[], table_name=table_name)
 
 
-def test_wrong_vector_length_raises_and_writes_nothing(conn, embedding_repo, segment_repo, entity_repo, run_repo):
-    seg_ids = _make_segments(conn, embedding_repo, segment_repo, entity_repo, run_repo, ["x"])
+def test_wrong_vector_length_raises_and_writes_nothing(
+    conn, embedding_repo, segment_repo, entity_repo, run_repo, table_name
+):
+    service = PersistenceService(conn, segment_repo, embedding_repo)
+    seg_ids = _write_segments(entity_repo, run_repo, service, ["x"])
     bad = EmbeddingItem(segment_id=seg_ids[0], vec=[0.0])
-    service = PersistenceService(conn, segment_repo, embedding_repo)
 
     with pytest.raises(ValueError):
-        service.write_embeddings(items=[bad], embedder="ollama", model_id="m1")
+        service.write_embeddings(items=[bad], table_name=table_name)
 
-    assert embedding_repo.list() == []
+    assert embedding_repo.list(table_name=table_name) == []
 
 
-def test_invalid_fk_raises_and_writes_nothing(conn, segment_repo, embedding_repo):
+def test_invalid_fk_raises_and_writes_nothing(conn, segment_repo, embedding_repo, table_name):
     items = [EmbeddingItem(segment_id=999_999, vec=_vec(0.0))]
     service = PersistenceService(conn, segment_repo, embedding_repo)
 
     with pytest.raises(IntegrityError):
-        service.write_embeddings(items=items, embedder="ollama", model_id="m1")
+        service.write_embeddings(items=items, table_name=table_name)
 
-    assert embedding_repo.list() == []
+    assert embedding_repo.list(table_name) == []
 
 
 def test_mid_batch_failure_rolls_back_entire_batch(
-    conn, embedding_repo, segment_repo, entity_repo, run_repo, monkeypatch
+    conn, embedding_repo, segment_repo, entity_repo, run_repo, monkeypatch, table_name
 ):
-    seg_ids = _make_segments(conn, embedding_repo, segment_repo, entity_repo, run_repo, ["a", "b", "c"])
+    service = PersistenceService(conn, segment_repo, embedding_repo)
+    seg_ids = _write_segments(entity_repo, run_repo, service, ["a", "b", "c"])
     items = [
         EmbeddingItem(segment_id=seg_ids[0], vec=_vec(1.0)),
         EmbeddingItem(segment_id=seg_ids[1], vec=_vec(2.0)),
         EmbeddingItem(segment_id=seg_ids[2], vec=_vec(3.0)),
     ]
 
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-
     calls = {"n": 0}
 
-    def flaky_create(*, segment_id: int, embedder: str, model_id: str, vec):
+    def flaky_create(*, segment_id: int, table_name: str, vec):
         calls["n"] += 1
         if calls["n"] == 2:
             raise RuntimeError("boom")
-        return embedding_repo.create(segment_id=segment_id, embedder=embedder, model_id=model_id, vec=vec)
+        return embedding_repo.create(segment_id=segment_id, table_name=table_name, vec=vec)
 
     monkeypatch.setattr(type(embedding_repo), "create", lambda self, **kw: flaky_create(**kw))
 
     with pytest.raises(RuntimeError):
-        service.write_embeddings(items=items, embedder="ollama", model_id="m1")
+        service.write_embeddings(items=items, table_name=table_name)
 
-    assert embedding_repo.list() == []
+    assert embedding_repo.list(table_name) == []
 
 
 def test_write_segments(conn, segment_repo, entity_repo, run_repo, embedding_repo):
-    entity = _make_entity(entity_repo, run_repo)
+    entity = make_entity(run_repo, entity_repo)
     service = PersistenceService(conn, segment_repo, embedding_repo)
 
     chunks = [EmbeddableChunk("e1", 1), EmbeddableChunk("e2", True), EmbeddableChunk("e3", "d3")]
@@ -132,7 +121,7 @@ def test_write_segments(conn, segment_repo, entity_repo, run_repo, embedding_rep
 
 
 def test_write_segments_with_complex_content(conn, segment_repo, entity_repo, run_repo, embedding_repo):
-    entity = _make_entity(entity_repo, run_repo)
+    entity = make_entity(run_repo, entity_repo)
     service = PersistenceService(conn, segment_repo, embedding_repo)
 
     class Status(Enum):
@@ -151,6 +140,7 @@ def test_write_segments_with_complex_content(conn, segment_repo, entity_repo, ru
         def __init__(self, name: str, tags: set[str]):
             self.name = name
             self.tags = tags
+
         def __repr__(self) -> str:
             return f"Widget(name={self.name!r}, tags={sorted(self.tags)!r})"
 
@@ -159,21 +149,24 @@ def test_write_segments_with_complex_content(conn, segment_repo, entity_repo, ru
     widget = Widget("w1", {"alpha", "beta"})
 
     complex_items = [
-        ("dict", {
-            "id": 123,
-            "status": Status.ACTIVE,
-            "owner": owner,
-            "price": Decimal("19.99"),
-            "path": Path("/srv/models/model.sql"),
-            "when": now,
-            "tags": {"dbt", "bi"},
-            "alias": ("m1", "m2"),
-            "file": FileRef(Path("/a/b/c.sql"), 42),
-            "queue": deque([1, 2, 3], maxlen=10),
-            "wid": uuid4(),
-            "widget": widget,
-            "bytes": b"\x00\x01\xff",
-        }),
+        (
+            "dict",
+            {
+                "id": 123,
+                "status": Status.ACTIVE,
+                "owner": owner,
+                "price": Decimal("19.99"),
+                "path": Path("/srv/models/model.sql"),
+                "when": now,
+                "tags": {"dbt", "bi"},
+                "alias": ("m1", "m2"),
+                "file": FileRef(Path("/a/b/c.sql"), 42),
+                "queue": deque([1, 2, 3], maxlen=10),
+                "wid": uuid4(),
+                "widget": widget,
+                "bytes": b"\x00\x01\xff",
+            },
+        ),
         ("enum", Status.DISABLED),
         ("decimal", Decimal("0.000123")),
         ("uuid", uuid4()),
@@ -214,7 +207,7 @@ def test_invalid_fk_rolls_back(conn, segment_repo, embedding_repo):
 
 
 def test_mid_batch_failure_rolls_back(conn, segment_repo, entity_repo, run_repo, embedding_repo, monkeypatch):
-    ent = _make_entity(entity_repo, run_repo)
+    ent = make_entity(run_repo, entity_repo)
     service = PersistenceService(conn, segment_repo, embedding_repo)
 
     calls = {"n": 0}

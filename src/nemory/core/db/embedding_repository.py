@@ -4,6 +4,7 @@ from _duckdb import ConstraintException
 
 from nemory.core.db.dtos import EmbeddingDTO
 from nemory.core.db.exceptions.exceptions import IntegrityError
+from nemory.core.services.shards.table_name_policy import TableNamePolicy
 
 
 class EmbeddingRepository:
@@ -13,34 +14,35 @@ class EmbeddingRepository:
     def create(
         self,
         *,
+        table_name: str,
         segment_id: int,
-        embedder: str,
-        model_id: str,
         vec: Sequence[float],
     ) -> EmbeddingDTO:
         try:
+            TableNamePolicy.validate_table_name(table_name=table_name)
             row = self._conn.execute(
-                """
+                f"""
             INSERT INTO
-                embedding(segment_id, embedder, model_id, vec)
+                {table_name} (segment_id, vec)
             VALUES
-                (?, ?, ?, ?)
+                (?, ?)
             RETURNING
                 *
             """,
-                [segment_id, embedder, model_id, vec],
+                [segment_id, vec],
             ).fetchone()
             return self._row_to_dto(row)
         except ConstraintException as e:
             raise IntegrityError from e
 
-    def get(self, segment_id: int) -> Optional[EmbeddingDTO]:
+    def get(self, *, table_name: str, segment_id: int) -> Optional[EmbeddingDTO]:
+        TableNamePolicy.validate_table_name(table_name=table_name)
         row = self._conn.execute(
-            """
+            f"""
             SELECT 
                 *
             FROM 
-                embedding
+                {table_name}
             WHERE 
                 segment_id = ?
             """,
@@ -50,52 +52,50 @@ class EmbeddingRepository:
 
     def update(
         self,
-        segment_id: int,
-        embedder: str,
-        model_id: str,
         *,
+        table_name: str,
+        segment_id: int,
         vec: Sequence[float],
     ) -> Optional[EmbeddingDTO]:
+        TableNamePolicy.validate_table_name(table_name=table_name)
         row = self._conn.execute(
-            """
+            f"""
             UPDATE 
-                embedding
+                {table_name}
             SET 
                 vec = ?
             WHERE 
-                segment_id = ? AND 
-                embedder = ? AND
-                model_id = ?
+                segment_id = ?
             RETURNING
                 *
             """,
-            [list(vec), segment_id, embedder, model_id],
+            [list(vec), segment_id],
         ).fetchone()
         return self._row_to_dto(row) if row else None
 
-    def delete(self, segment_id: int, embedder: str, model_id: str) -> int:
+    def delete(self, *, table_name: str, segment_id: int) -> int:
+        TableNamePolicy.validate_table_name(table_name=table_name)
         row = self._conn.execute(
-            """
+            f"""
             DELETE FROM 
-                embedding
+                {table_name}
             WHERE 
-                segment_id = ? AND
-                embedder = ? AND
-                model_id = ?
+                segment_id = ?
             RETURNING 
                 segment_id
             """,
-            [segment_id, embedder, model_id],
+            [segment_id],
         ).fetchone()
         return 1 if row else 0
 
-    def list(self) -> list[EmbeddingDTO]:
+    def list(self, table_name: str) -> list[EmbeddingDTO]:
+        TableNamePolicy.validate_table_name(table_name=table_name)
         rows = self._conn.execute(
-            """
+            f"""
             SELECT
                 *
-            FROM 
-                embedding
+            FROM                
+                {table_name}
             ORDER BY 
                 segment_id DESC
             """
@@ -104,11 +104,9 @@ class EmbeddingRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> EmbeddingDTO:
-        segment_id, embedder, model_id, vec, created_at = row
+        segment_id, vec, created_at = row
         return EmbeddingDTO(
             segment_id=int(segment_id),
-            embedder=str(embedder),
-            model_id=str(model_id),
             vec=list(vec) if not isinstance(vec, list) else vec,
             created_at=created_at,
         )

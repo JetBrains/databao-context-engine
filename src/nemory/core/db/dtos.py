@@ -42,9 +42,16 @@ class SegmentDTO:
 
 
 @dataclass(frozen=True)
-class EmbeddingDTO:
-    segment_id: int
+class EmbeddingModelRegistryDTO:
     embedder: str
     model_id: str
+    dim: int
+    table_name: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class EmbeddingDTO:
+    segment_id: int
     vec: Sequence[float]
     created_at: datetime

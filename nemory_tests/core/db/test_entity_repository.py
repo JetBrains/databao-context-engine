@@ -1,15 +1,12 @@
 import pytest
 
-from nemory.core.db.dtos import RunStatus, EntityDTO
+from nemory.core.db.dtos import EntityDTO
 from nemory.core.db.exceptions.exceptions import IntegrityError
-
-
-def _make_run(run_repo, project_id: str | None = "project-id", version: str | None = None):
-    return run_repo.create(status=RunStatus.RUNNING, project_id=project_id, nemory_version=version)
+from nemory_tests._utils.factories import make_run
 
 
 def test_create_and_get(entity_repo, run_repo):
-    run = _make_run(run_repo)
+    run = make_run(run_repo)
     created = entity_repo.create(
         run_id=run.run_id,
         plugin="dbt",
@@ -43,7 +40,7 @@ def test_create_with_missing_fk_raises(entity_repo):
 
 
 def test_update_fields(entity_repo, run_repo):
-    run = _make_run(run_repo)
+    run = make_run(run_repo)
     ent = entity_repo.create(run_id=run.run_id, plugin="dbt", source_id="path/a", storage_directory="/path")
 
     updated = entity_repo.update(
@@ -67,7 +64,7 @@ def test_update_missing_returns_none(entity_repo):
 
 
 def test_delete(entity_repo, run_repo):
-    run = _make_run(run_repo)
+    run = make_run(run_repo)
     ent = entity_repo.create(run_id=run.run_id, plugin="p", source_id="s", storage_directory="s")
 
     deleted = entity_repo.delete(ent.entity_id)
@@ -80,7 +77,7 @@ def test_delete_missing_returns_zero(entity_repo):
 
 
 def test_list(entity_repo, run_repo):
-    run = _make_run(run_repo)
+    run = make_run(run_repo)
 
     e1 = entity_repo.create(run_id=run.run_id, plugin="p1", source_id="s1", storage_directory="s1")
     e2 = entity_repo.create(run_id=run.run_id, plugin="p2", source_id="s2", storage_directory="s2")

@@ -41,7 +41,7 @@ class PersistenceService:
                 created_segment_ids.append(segment.segment_id)
         return created_segment_ids
 
-    def write_embeddings(self, *, items: list[EmbeddingItem], embedder: str, model_id: str) -> int:
+    def write_embeddings(self, *, items: list[EmbeddingItem], table_name: str) -> int:
         """
         Persist embeddings for segments
 
@@ -61,8 +61,6 @@ class PersistenceService:
         inserted = 0
         with transaction(self._conn):
             for item in items:
-                self._embedding_repo.create(
-                    segment_id=item.segment_id, embedder=embedder, model_id=model_id, vec=item.vec
-                )
+                self._embedding_repo.create(segment_id=item.segment_id, table_name=table_name, vec=item.vec)
                 inserted += 1
         return inserted
