@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import TextIO
 
 import yaml
 
@@ -16,6 +17,8 @@ def export_build_results(project_dir: Path, build_start_time: datetime, results:
     for result in results:
         _export_build_result(run_dir, result)
 
+    _export_to_all_results_file(run_dir, results)
+
 
 def _create_run_dir(project_dir: Path, build_start_time: datetime) -> Path:
     output_dir = get_output_dir(project_dir)
@@ -30,9 +33,24 @@ def _export_build_result(run_dir: Path, result: BuildExecutionResult):
     export_file_path = _get_result_export_file_path(run_dir, result)
 
     with export_file_path.open("w") as export_file:
-        yaml.safe_dump(result._to_yaml_serializable(), export_file, sort_keys=False)
+        _write_result_in_file(export_file, result)
 
     logger.info(f"Exported result to {export_file_path.resolve()}")
+
+
+def _export_to_all_results_file(run_dir: Path, results: list[BuildExecutionResult]):
+    if len(results) == 0:
+        return
+
+    with run_dir.joinpath("all_results.yaml").open("w") as all_results_file:
+        for result in results:
+            all_results_file.write(f"# ===== {result.type} - {result.name} =====\n\n")
+            _write_result_in_file(all_results_file, result)
+            all_results_file.write("\n")
+
+
+def _write_result_in_file(export_file: TextIO, result: BuildExecutionResult):
+    yaml.safe_dump(result._to_yaml_serializable(), export_file, sort_keys=False)
 
 
 def _get_result_export_file_path(run_dir: Path, result: BuildExecutionResult) -> Path:
