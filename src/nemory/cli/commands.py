@@ -7,6 +7,7 @@ from click import Context
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
 from nemory.project.init_project import init_project_dir
+from nemory.project.layout import read_config_file
 from nemory.storage.migrate import migrate
 
 
@@ -38,9 +39,13 @@ def info(ctx: Context) -> None:
     """
     Display system-wide information
     """
+
+    project_dir = ctx.obj["project_dir"]
+
     click.echo(f"Nemory version: {version('nemory')}")
-    click.echo(f"is verbose? {ctx.obj['verbose']}")
-    click.echo(f"project dir: {ctx.obj['project_dir']}")
+    click.echo(f"Is verbose? {ctx.obj['verbose']}")
+    click.echo(f"Project dir: {project_dir}")
+    click.echo(f"Project ID: {read_config_file(Path(project_dir)).project_id}")
 
 
 @nemory.command()

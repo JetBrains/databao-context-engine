@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from nemory.project.project_config import ProjectConfig
+
 
 def ensure_project_dir(project_dir: str, should_be_initialised: bool = True) -> Path:
     project_path = Path(project_dir)
@@ -59,3 +61,7 @@ def get_examples_dir(project_path: Path) -> Path:
 
 def get_config_file(project_dir: Path) -> Path:
     return project_dir.joinpath("nemory.ini")
+
+
+def read_config_file(project_dir: Path) -> ProjectConfig:
+    return ProjectConfig.from_file(get_config_file(project_dir))
