@@ -1,12 +1,13 @@
-import click
 from importlib.metadata import version
 from pathlib import Path
 
+import click
 from click import Context
 
-from nemory.config.logging import configure_logging
-from nemory.storage.migrate import migrate
 from nemory.build_sources.public.api import build_all_datasources
+from nemory.config.logging import configure_logging
+from nemory.project.init_project import init_project_dir
+from nemory.storage.migrate import migrate
 
 
 @click.group()
@@ -40,6 +41,15 @@ def info(ctx: Context) -> None:
     click.echo(f"Nemory version: {version('nemory')}")
     click.echo(f"is verbose? {ctx.obj['verbose']}")
     click.echo(f"project dir: {ctx.obj['project_dir']}")
+
+
+@nemory.command()
+@click.pass_context
+def init(ctx: Context) -> None:
+    """
+    Create an empty Nemory project
+    """
+    init_project_dir(project_dir=ctx.obj["project_dir"])
 
 
 @nemory.command()
