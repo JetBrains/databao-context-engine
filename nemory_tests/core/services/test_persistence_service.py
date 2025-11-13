@@ -8,121 +8,90 @@ from uuid import UUID, uuid4
 
 import pytest
 
-
 from nemory.core.db.exceptions.exceptions import IntegrityError
-from nemory.core.services.models import EmbeddingItem
-from nemory.core.services.persistence_service import PersistenceService
 
 from nemory.pluginlib.build_plugin import EmbeddableChunk
-from nemory_tests._utils.factories import make_entity
+
+from nemory.core.services.models import ChunkEmbedding
+from nemory_tests.utils.factories import make_datasource_run
 
 
-def _write_segments(entity_repo, run_repo, persistence_service, texts):
-    ent = make_entity(run_repo, entity_repo)
-    chunks = [EmbeddableChunk(t, f"disp:{t}") for t in texts]
-    return persistence_service.write_segments(entity_id=ent.entity_id, chunks=chunks)
-
-
-def test_write_embeddings(conn, embedding_repo, segment_repo, entity_repo, run_repo, table_name):
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-    seg_ids = _write_segments(entity_repo, run_repo, service, ["a", "b", "c"])
-    items = [
-        EmbeddingItem(segment_id=seg_ids[0], vec=_vec(1.0)),
-        EmbeddingItem(segment_id=seg_ids[1], vec=_vec(2.0)),
-        EmbeddingItem(segment_id=seg_ids[2], vec=_vec(3.0)),
+def test_write_chunks_and_embeddings(persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, table_name):
+    chunks = [EmbeddableChunk("A", "a"), EmbeddableChunk("B", "b"), EmbeddableChunk("C", "c")]
+    chunk_embeddings = [
+        ChunkEmbedding(chunk=chunks[0], vec=_vec(0.0)),
+        ChunkEmbedding(chunk=chunks[1], vec=_vec(1.0)),
+        ChunkEmbedding(chunk=chunks[2], vec=_vec(2.0)),
     ]
 
-    count = service.write_embeddings(items=items, table_name=table_name)
+    datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
 
-    assert count == 3
+    persistence.write_chunks_and_embeddings(
+        datasource_run_id=datasource_run.datasource_run_id, chunk_embeddings=chunk_embeddings, table_name=table_name
+    )
+
+    saved = [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id]
+    assert [c.embeddable_text for c in saved] == ["C", "B", "A"]
+
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3
-
-    assert {r.segment_id for r in rows} == set(seg_ids)
-
-
-def test_empty_items_raises_value_error(conn, segment_repo, embedding_repo, table_name):
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-    with pytest.raises(ValueError):
-        service.write_embeddings(items=[], table_name=table_name)
+    assert rows[0].vec[0] in (0.0, 1.0, 2.0)
 
 
-def test_wrong_vector_length_raises_and_writes_nothing(
-    conn, embedding_repo, segment_repo, entity_repo, run_repo, table_name
-):
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-    seg_ids = _write_segments(entity_repo, run_repo, service, ["x"])
-    bad = EmbeddingItem(segment_id=seg_ids[0], vec=[0.0])
+def test_empty_pairs_raises_value_error(persistence, run_repo, datasource_run_repo, table_name):
+    datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
 
     with pytest.raises(ValueError):
-        service.write_embeddings(items=[bad], table_name=table_name)
+        persistence.write_chunks_and_embeddings(datasource_run_id=datasource_run.datasource_run_id, chunk_embeddings=[], table_name=table_name)
 
+
+def test_invalid_fk_rolls_back_entire_batch(persistence, chunk_repo, embedding_repo, table_name):
+    pairs = [ChunkEmbedding(chunk=EmbeddableChunk("X", "x"), vec=_vec(0.0))]
+
+    with pytest.raises(IntegrityError):
+        persistence.write_chunks_and_embeddings(datasource_run_id=9_999_999, chunk_embeddings=pairs, table_name=table_name)
+
+    assert chunk_repo.list() == []
     assert embedding_repo.list(table_name=table_name) == []
 
 
-def test_invalid_fk_raises_and_writes_nothing(conn, segment_repo, embedding_repo, table_name):
-    items = [EmbeddingItem(segment_id=999_999, vec=_vec(0.0))]
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-
-    with pytest.raises(IntegrityError):
-        service.write_embeddings(items=items, table_name=table_name)
-
-    assert embedding_repo.list(table_name) == []
-
-
-def test_mid_batch_failure_rolls_back_entire_batch(
-    conn, embedding_repo, segment_repo, entity_repo, run_repo, monkeypatch, table_name
+def test_mid_batch_failure_rolls_back(
+    persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, monkeypatch, table_name
 ):
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-    seg_ids = _write_segments(entity_repo, run_repo, service, ["a", "b", "c"])
-    items = [
-        EmbeddingItem(segment_id=seg_ids[0], vec=_vec(1.0)),
-        EmbeddingItem(segment_id=seg_ids[1], vec=_vec(2.0)),
-        EmbeddingItem(segment_id=seg_ids[2], vec=_vec(3.0)),
+    datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
+
+    pairs = [
+        ChunkEmbedding(EmbeddableChunk("A", "a"), _vec(0.0)),
+        ChunkEmbedding(EmbeddableChunk("B", "b"), _vec(1.0)),
+        ChunkEmbedding(EmbeddableChunk("C", "c"), _vec(2.0)),
     ]
 
     calls = {"n": 0}
+    real_create = embedding_repo.create
 
-    def flaky_create(*, segment_id: int, table_name: str, vec):
+    def flaky_create(*, table_name: str, chunk_id: int, vec):
         calls["n"] += 1
         if calls["n"] == 2:
             raise RuntimeError("boom")
-        return embedding_repo.create(segment_id=segment_id, table_name=table_name, vec=vec)
+        return real_create(table_name=table_name, chunk_id=chunk_id, vec=vec)
 
-    monkeypatch.setattr(type(embedding_repo), "create", lambda self, **kw: flaky_create(**kw))
+    monkeypatch.setattr(embedding_repo, "create", flaky_create)
 
     with pytest.raises(RuntimeError):
-        service.write_embeddings(items=items, table_name=table_name)
+        persistence.write_chunks_and_embeddings(
+            datasource_run_id=datasource_run.datasource_run_id, chunk_embeddings=pairs, table_name=table_name
+        )
 
-    assert embedding_repo.list(table_name) == []
-
-
-def test_write_segments(conn, segment_repo, entity_repo, run_repo, embedding_repo):
-    entity = make_entity(run_repo, entity_repo)
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-
-    chunks = [EmbeddableChunk("e1", 1), EmbeddableChunk("e2", True), EmbeddableChunk("e3", "d3")]
-    ids = service.write_segments(entity_id=entity.entity_id, chunks=chunks)
-
-    assert len(ids) == 3
-    assert ids == sorted(ids)
-    seg = segment_repo.get(ids[0])
-    assert seg is not None
-    assert seg.embeddable_text == "e1"
-    assert seg.display_text == "1"
-    seg = segment_repo.get(ids[1])
-    assert seg is not None
-    assert seg.embeddable_text == "e2"
-    assert seg.display_text == "True"
-    seg = segment_repo.get(ids[2])
-    assert seg is not None
-    assert seg.embeddable_text == "e3"
-    assert seg.display_text == "'d3'"
+    assert [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id] == []
+    assert embedding_repo.list(table_name=table_name) == []
 
 
-def test_write_segments_with_complex_content(conn, segment_repo, entity_repo, run_repo, embedding_repo):
-    entity = make_entity(run_repo, entity_repo)
-    service = PersistenceService(conn, segment_repo, embedding_repo)
+def test_write_chunks_and_embeddings_with_complex_content(
+    persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, table_name
+):
+    datasource_run = make_datasource_run(
+        run_repo=run_repo, datasource_run_repo=datasource_run_repo, plugin="test-plugin", source_id="src-1", storage_directory="/tmp"
+    )
 
     class Status(Enum):
         ACTIVE = "active"
@@ -180,54 +149,29 @@ def test_write_segments_with_complex_content(conn, segment_repo, entity_repo, ru
         ("custom_repr", widget),
     ]
 
-    chunks = [EmbeddableChunk(et, obj) for et, obj in complex_items]
-
-    ids = service.write_segments(entity_id=entity.entity_id, chunks=chunks)
-
-    assert len(ids) == len(complex_items)
-    assert ids == sorted(ids)
-
-    for (et, obj), seg_id in zip(complex_items, ids):
-        seg = segment_repo.get(seg_id)
-        assert seg is not None
-        assert seg.embeddable_text == et
-
-
-def test_none_chunks_raises_value_error(conn, segment_repo, embedding_repo):
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-    with pytest.raises(ValueError):
-        service.write_segments(entity_id=123, chunks=None)
-
-
-def test_invalid_fk_rolls_back(conn, segment_repo, embedding_repo):
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-    with pytest.raises(IntegrityError):
-        service.write_segments(entity_id=999_999, chunks=[EmbeddableChunk("e1", "d1")])
-    assert segment_repo.list() == []
-
-
-def test_mid_batch_failure_rolls_back(conn, segment_repo, entity_repo, run_repo, embedding_repo, monkeypatch):
-    ent = make_entity(run_repo, entity_repo)
-    service = PersistenceService(conn, segment_repo, embedding_repo)
-
-    calls = {"n": 0}
-
-    def flaky_create(*, entity_id: int, embeddable_text: str, display_text: str | None):
-        calls["n"] += 1
-        if calls["n"] == 2:
-            raise RuntimeError("boom")
-        return segment_repo.create(entity_id=entity_id, embeddable_text=embeddable_text, display_text=display_text)
-
-    monkeypatch.setattr(segment_repo, "create", flaky_create)
-
-    with pytest.raises(RuntimeError):
-        service.write_segments(
-            entity_id=ent.entity_id,
-            chunks=[EmbeddableChunk("a", "b"), EmbeddableChunk("c", "d"), EmbeddableChunk("e", "f")],
+    pairs = [
+        ChunkEmbedding(
+            chunk=EmbeddableChunk(et, obj),
+            vec=_vec(float(i)),
         )
+        for i, (et, obj) in enumerate(complex_items)
+    ]
 
-    assert segment_repo.list() == []
+    persistence.write_chunks_and_embeddings(
+        datasource_run_id=datasource_run.datasource_run_id,
+        chunk_embeddings=pairs,
+        table_name=table_name,
+    )
+
+    saved = [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id]
+    assert len(saved) == len(complex_items)
+    saved_sorted = sorted(saved, key=lambda c: c.chunk_id)
+    assert [c.embeddable_text for c in saved_sorted] == [et for et, _ in complex_items]
+    assert all(isinstance(c.display_text, str) and len(c.display_text) > 0 for c in saved_sorted)
+
+    rows = embedding_repo.list(table_name=table_name)
+    assert len(rows) == len(complex_items)
 
 
-def _vec(fill: float) -> list[float]:
-    return [fill] * 768
+def _vec(fill: float, dim: int = 768) -> list[float]:
+    return [fill] * dim

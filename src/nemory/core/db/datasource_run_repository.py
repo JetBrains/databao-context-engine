@@ -3,11 +3,11 @@ from typing import Tuple, Optional
 import duckdb
 from _duckdb import ConstraintException
 
-from nemory.core.db.dtos import EntityDTO
+from nemory.core.db.dtos import DatasourceRunDTO
 from nemory.core.db.exceptions.exceptions import IntegrityError
 
 
-class EntityRepository:
+class DatasourceRunRepository:
     def __init__(self, conn: duckdb.DuckDBPyConnection):
         self._conn = conn
 
@@ -18,12 +18,12 @@ class EntityRepository:
         plugin: str,
         source_id: str,
         storage_directory: str,
-    ) -> EntityDTO:
+    ) -> DatasourceRunDTO:
         try:
             row = self._conn.execute(
                 """
             INSERT INTO
-                entity(run_id, plugin, source_id, storage_directory)
+                datasource_run(run_id, plugin, source_id, storage_directory)
             VALUES
                 (?, ?, ?, ?)
             RETURNING
@@ -35,28 +35,28 @@ class EntityRepository:
         except ConstraintException as e:
             raise IntegrityError from e
 
-    def get(self, entity_id: int) -> Optional[EntityDTO]:
+    def get(self, datasource_run_id: int) -> Optional[DatasourceRunDTO]:
         row = self._conn.execute(
             """
         SELECT
             *
         FROM
-            entity
+            datasource_run 
         WHERE
-            entity_id = ?
+            datasource_run_id = ?
         """,
-            [entity_id],
+            [datasource_run_id],
         ).fetchone()
         return self._row_to_dto(row) if row else None
 
     def update(
         self,
-        entity_id: int,
+        datasource_run_id: int,
         *,
         plugin: Optional[str] = None,
         source_id: Optional[str] = None,
         storage_directory: Optional[str] = None,
-    ) -> Optional[EntityDTO]:
+    ) -> Optional[DatasourceRunDTO]:
         sets, params = [], []
 
         if plugin is not None:
@@ -70,17 +70,17 @@ class EntityRepository:
             params.append(storage_directory)
 
         if not sets:
-            return self.get(entity_id)
+            return self.get(datasource_run_id)
 
-        params.append(entity_id)
+        params.append(datasource_run_id)
         row = self._conn.execute(
             f"""
             UPDATE 
-                entity
+                datasource_run
             SET 
                 {", ".join(sets)}
             WHERE 
-                entity_id = ?
+                datasource_run_id = ?
             RETURNING
              *
             """,
@@ -89,38 +89,38 @@ class EntityRepository:
 
         return self._row_to_dto(row) if row else None
 
-    def delete(self, entity_id: int) -> int:
+    def delete(self, datasource_run_id: int) -> int:
         row = self._conn.execute(
             """
             DELETE FROM 
-                entity 
+                datasource_run 
             WHERE 
-                entity_id = ? 
+                datasource_run_id = ? 
             RETURNING 
-                entity_id
+                datasource_run_id
             """,
-            [entity_id],
+            [datasource_run_id],
         ).fetchone()
         return 1 if row else 0
 
-    def list(self) -> list[EntityDTO]:
+    def list(self) -> list[DatasourceRunDTO]:
         rows = self._conn.execute(
             """
             SELECT
               *
             FROM 
-                entity
+                datasource_run
             ORDER BY
-                entity_id DESC
+                datasource_run_id DESC
             """
         ).fetchall()
         return [self._row_to_dto(r) for r in rows]
 
     @staticmethod
-    def _row_to_dto(row: Tuple) -> EntityDTO:
-        entity_id, run_id, plugin, source_id, storage_directory, created_at = row
-        return EntityDTO(
-            entity_id=int(entity_id),
+    def _row_to_dto(row: Tuple) -> DatasourceRunDTO:
+        datasource_run_id, run_id, plugin, source_id, storage_directory, created_at = row
+        return DatasourceRunDTO(
+            datasource_run_id=int(datasource_run_id),
             run_id=int(run_id),
             plugin=str(plugin),
             source_id=str(source_id),

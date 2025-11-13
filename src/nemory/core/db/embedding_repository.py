@@ -15,7 +15,7 @@ class EmbeddingRepository:
         self,
         *,
         table_name: str,
-        segment_id: int,
+        chunk_id: int,
         vec: Sequence[float],
     ) -> EmbeddingDTO:
         try:
@@ -23,19 +23,19 @@ class EmbeddingRepository:
             row = self._conn.execute(
                 f"""
             INSERT INTO
-                {table_name} (segment_id, vec)
+                {table_name} (chunk_id, vec)
             VALUES
                 (?, ?)
             RETURNING
                 *
             """,
-                [segment_id, vec],
+                [chunk_id, vec],
             ).fetchone()
             return self._row_to_dto(row)
         except ConstraintException as e:
             raise IntegrityError from e
 
-    def get(self, *, table_name: str, segment_id: int) -> Optional[EmbeddingDTO]:
+    def get(self, *, table_name: str, chunk_id: int) -> Optional[EmbeddingDTO]:
         TableNamePolicy.validate_table_name(table_name=table_name)
         row = self._conn.execute(
             f"""
@@ -44,9 +44,9 @@ class EmbeddingRepository:
             FROM 
                 {table_name}
             WHERE 
-                segment_id = ?
+                chunk_id = ?
             """,
-            [segment_id],
+            [chunk_id],
         ).fetchone()
         return self._row_to_dto(row) if row else None
 
@@ -54,7 +54,7 @@ class EmbeddingRepository:
         self,
         *,
         table_name: str,
-        segment_id: int,
+        chunk_id: int,
         vec: Sequence[float],
     ) -> Optional[EmbeddingDTO]:
         TableNamePolicy.validate_table_name(table_name=table_name)
@@ -65,26 +65,26 @@ class EmbeddingRepository:
             SET 
                 vec = ?
             WHERE 
-                segment_id = ?
+                chunk_id = ?
             RETURNING
                 *
             """,
-            [list(vec), segment_id],
+            [list(vec), chunk_id],
         ).fetchone()
         return self._row_to_dto(row) if row else None
 
-    def delete(self, *, table_name: str, segment_id: int) -> int:
+    def delete(self, *, table_name: str, chunk_id: int) -> int:
         TableNamePolicy.validate_table_name(table_name=table_name)
         row = self._conn.execute(
             f"""
             DELETE FROM 
                 {table_name}
             WHERE 
-                segment_id = ?
+                chunk_id = ?
             RETURNING 
-                segment_id
+                chunk_id
             """,
-            [segment_id],
+            [chunk_id],
         ).fetchone()
         return 1 if row else 0
 
@@ -97,16 +97,16 @@ class EmbeddingRepository:
             FROM                
                 {table_name}
             ORDER BY 
-                segment_id DESC
+                chunk_id DESC
             """
         ).fetchall()
         return [self._row_to_dto(r) for r in rows]
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> EmbeddingDTO:
-        segment_id, vec, created_at = row
+        chunk_id, vec, created_at = row
         return EmbeddingDTO(
-            segment_id=int(segment_id),
+            chunk_id=int(chunk_id),
             vec=list(vec) if not isinstance(vec, list) else vec,
             created_at=created_at,
         )

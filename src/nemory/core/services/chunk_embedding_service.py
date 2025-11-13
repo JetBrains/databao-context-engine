@@ -1,11 +1,11 @@
-from nemory.core.services.models import EmbeddingItem
+from nemory.core.services.models import ChunkEmbedding
 from nemory.core.services.persistence_service import PersistenceService
 from nemory.core.services.providers.base import EmbeddingProvider
 from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.core.services.shards.embedding_shard_resolver import EmbeddingShardResolver
 
 
-class SegmentEmbeddingService:
+class ChunkEmbeddingService:
     def __init__(
         self,
         *,
@@ -17,23 +17,22 @@ class SegmentEmbeddingService:
         self._provider = provider
         self._shard_resolver = shard_resolver
 
-    def embed_chunks(self, *, entity_id: int, chunks: list[EmbeddableChunk]) -> None:
+    def embed_chunks(self, *, datasource_run_id: int, chunks: list[EmbeddableChunk]) -> None:
         """
-        Turn plugin chunks into persisted segments and embeddings
+        Turn plugin chunks into persisted chunks and embeddings
 
         Flow:
-        1) Persist segments for the given chunks
+        1) Embed each chunk into an embedded vector
         2) Get or create embedding table for the appropriate model and embedding dimensions
-        3) For each chunk, embed the chunk
-        4) Persist embeddings vectors
+        3) Persist chunks and embeddings vectors in a single transaction
         """
 
         if not chunks:
             return
 
-        segment_ids = self._persistence_service.write_segments(entity_id=entity_id, chunks=chunks)
-        if len(segment_ids) != len(chunks):
-            raise RuntimeError(f"segment count mismatch (segments={len(segment_ids)} chunks={len(chunks)})")
+        chunk_embeddings: list[ChunkEmbedding] = [
+            ChunkEmbedding(chunk=chunk, vec = self._provider.embed(chunk.embeddable_text)) for chunk in chunks
+        ]
 
         table_name = self._shard_resolver.resolve_or_create(
             embedder=self._provider.embedder,
@@ -41,9 +40,8 @@ class SegmentEmbeddingService:
             dim=self._provider.dim,
         )
 
-        items: list[EmbeddingItem] = []
-        for segment_id, chunk in zip(segment_ids, chunks):
-            vec = self._provider.embed(chunk.embeddable_text)
-            items.append(EmbeddingItem(segment_id=segment_id, vec=vec))
-
-        self._persistence_service.write_embeddings(items=items, table_name=table_name)
+        self._persistence_service.write_chunks_and_embeddings(
+            datasource_run_id=datasource_run_id,
+            chunk_embeddings=chunk_embeddings,
+            table_name=table_name,
+        )
