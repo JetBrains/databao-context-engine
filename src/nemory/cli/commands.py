@@ -1,5 +1,6 @@
 import click
 from importlib.metadata import version
+from pathlib import Path
 
 from click import Context
 
@@ -14,11 +15,13 @@ from nemory.build_sources.public.api import build_all_datasources
     "-d",
     "--project-dir",
     type=click.STRING,
-    default="./",
     help="Location of your Nemory project",
 )
 @click.pass_context
-def nemory(ctx: Context, verbose: bool, project_dir: str) -> None:
+def nemory(ctx: Context, verbose: bool, project_dir: str | None) -> None:
+    if project_dir is None:
+        project_dir = str(Path.cwd())
+
     configure_logging(verbose=verbose, project_dir=project_dir)
 
     ctx.ensure_object(dict)
