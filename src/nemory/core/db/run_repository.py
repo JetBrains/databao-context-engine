@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 import duckdb
-from nemory.core.db.dtos import RunDTO, RunStatus
+from nemory.core.db.dtos import RunDTO
 
 
 class RunRepository:
@@ -9,18 +9,18 @@ class RunRepository:
         self._conn = conn
 
     def create(
-        self, *, status: RunStatus = RunStatus.RUNNING, project_id: str, nemory_version: Optional[str] = None
+        self, *, project_id: str, nemory_version: Optional[str] = None
     ) -> RunDTO:
         row = self._conn.execute(
             """
             INSERT INTO 
-                run (status, project_id, nemory_version)
+                run (project_id, nemory_version)
             VALUES 
-                (?, ?, ?)
+                (?, ?)
             RETURNING 
                 *
             """,
-            [status.value, project_id, nemory_version],
+            [project_id, nemory_version],
         ).fetchone()
         return self._row_to_dto(row)
 
@@ -42,16 +42,12 @@ class RunRepository:
         self,
         run_id: int,
         *,
-        status: Optional[RunStatus] = None,
         project_id: Optional[str] = None,
         ended_at: Optional[datetime] = None,
         nemory_version: Optional[str] = None,
     ) -> Optional[RunDTO]:
         sets, params = [], []
 
-        if status is not None:
-            sets.append("status = ?")
-            params.append(status.value)
         if project_id is not None:
             sets.append("project_id = ?")
             params.append(project_id)
@@ -111,10 +107,9 @@ class RunRepository:
 
     @staticmethod
     def _row_to_dto(row: tuple) -> RunDTO:
-        run_id, status, project_id, started_at, ended_at, nemory_version = row
+        run_id, project_id, started_at, ended_at, nemory_version = row
         return RunDTO(
             run_id=int(run_id),
-            status=RunStatus(status),
             project_id=str(project_id),
             started_at=started_at,
             ended_at=ended_at,

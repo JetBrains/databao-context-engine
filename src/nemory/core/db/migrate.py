@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+import sys
 from importlib.resources import files, as_file
 from pathlib import Path
 
@@ -25,7 +26,8 @@ def migrate(db_path: str | Path | None = None) -> None:
         )
 
         logger.debug("Running migrations")
-        completed = subprocess.run(["pyway", "migrate"], env=env, text=True, capture_output=True)
+        cmd = [sys.executable, "-m", "pyway.scripts.main", "migrate"]
+        completed = subprocess.run(cmd, env=env, text=True, capture_output=True)
         if completed.returncode != 0:
             logger.error(
                 "Pyway migrate failed (exit %s)\n--- stderr ---\n%s\n--- stdout ---\n%s",

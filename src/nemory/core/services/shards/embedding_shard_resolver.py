@@ -48,10 +48,10 @@ class EmbeddingShardResolver:
         self._conn.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
-                segment_id BIGINT NOT NULL REFERENCES segment(segment_id),
+                chunk_id BIGINT NOT NULL REFERENCES chunk(chunk_id),
                 vec FLOAT[{dim}] NOT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (segment_id)
+                PRIMARY KEY (chunk_id)
             )
             """
         )

@@ -7,10 +7,11 @@ import pytest
 
 from nemory.core.db.embedding_model_registry_repository import EmbeddingModelRegistryRepository
 from nemory.core.db.embedding_repository import EmbeddingRepository
-from nemory.core.db.entity_repository import EntityRepository
+from nemory.core.db.datasource_run_repository import DatasourceRunRepository
 from nemory.core.db.migrate import migrate
 from nemory.core.db.run_repository import RunRepository
-from nemory.core.db.segment_repository import SegmentRepository
+from nemory.core.db.chunk_repository import ChunkRepository
+from nemory.core.services.persistence_service import PersistenceService
 from nemory.core.services.shards.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.core.services.shards.table_name_policy import TableNamePolicy
 
@@ -40,13 +41,13 @@ def run_repo(conn) -> RunRepository:
 
 
 @pytest.fixture
-def entity_repo(conn) -> EntityRepository:
-    return EntityRepository(conn)
+def datasource_run_repo(conn) -> DatasourceRunRepository:
+    return DatasourceRunRepository(conn)
 
 
 @pytest.fixture
-def segment_repo(conn) -> SegmentRepository:
-    return SegmentRepository(conn)
+def chunk_repo(conn) -> ChunkRepository:
+    return ChunkRepository(conn)
 
 
 @pytest.fixture
@@ -66,16 +67,21 @@ def resolver(conn, registry_repo):
 
 
 @pytest.fixture
+def persistence(conn, chunk_repo, embedding_repo):
+    return PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
+
+
+@pytest.fixture
 def table_name(conn):
     name = "embedding_tests__dummy_model__768"
     conn.execute("LOAD vss;")
     conn.execute("SET hnsw_enable_experimental_persistence = true;")
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {name} (
-            segment_id BIGINT NOT NULL REFERENCES segment(segment_id),
+            chunk_id BIGINT NOT NULL REFERENCES chunk(chunk_id),
             vec        FLOAT[768] NOT NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (segment_id)
+            PRIMARY KEY (chunk_id)
         );
     """)
     conn.execute(f"""

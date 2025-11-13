@@ -1,9 +1,12 @@
+from collections.abc import Sequence
+
 import duckdb
 
+from nemory.core.db.dtos import ChunkDTO
 from nemory.core.db.embedding_repository import EmbeddingRepository
-from nemory.core.db.segment_repository import SegmentRepository
+from nemory.core.db.chunk_repository import ChunkRepository
 from nemory.core.db.tx import transaction
-from nemory.core.services.models import EmbeddingItem
+from nemory.core.services.models import ChunkEmbedding
 from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 
 
@@ -11,56 +14,39 @@ class PersistenceService:
     def __init__(
         self,
         conn: duckdb.DuckDBPyConnection,
-        segment_repo: SegmentRepository,
+        chunk_repo: ChunkRepository,
         embedding_repo: EmbeddingRepository,
         *,
         dim: int = 768,
     ):
         self._conn = conn
-        self._segment_repo = segment_repo
+        self._chunk_repo = chunk_repo
         self._embedding_repo = embedding_repo
         self._dim = dim
 
-    def write_segments(self, *, entity_id: int, chunks: list[EmbeddableChunk]) -> list[int]:
+    def write_chunks_and_embeddings(self, *, datasource_run_id: int, chunk_embeddings: list[ChunkEmbedding], table_name: str):
         """
-        Persists all segments for an already persisted entity
-
-        - Writes the segments atomically
-        - On any error, the transaction is rolled back, and no segments are created.
+        Atomically persist chunks and their vectors.
+        Returns the number of embeddings written.
         """
-        if chunks is None:
-            raise ValueError("chunks must not be None")
-
-        created_segment_ids: list[int] = []
+        if not chunk_embeddings:
+            raise ValueError("chunk_embeddings must be a non-empty list")
 
         with transaction(self._conn):
-            for chunk in chunks:
-                segment = self._segment_repo.create(
-                    entity_id=entity_id, embeddable_text=chunk.embeddable_text, display_text=repr(chunk.content)
-                )
-                created_segment_ids.append(segment.segment_id)
-        return created_segment_ids
+            for chunk_embedding in chunk_embeddings:
+                chunk_dto = self.create_chunk(datasource_run_id=datasource_run_id, chunk=chunk_embedding.chunk)
+                self.create_embedding(table_name=table_name, chunk_id=chunk_dto.chunk_id, vec=chunk_embedding.vec)
 
-    def write_embeddings(self, *, items: list[EmbeddingItem], table_name: str) -> int:
-        """
-        Persist embeddings for segments
+    def create_chunk(self, *, datasource_run_id: int, chunk: EmbeddableChunk) -> ChunkDTO:
+        return self._chunk_repo.create(
+            datasource_run_id=datasource_run_id,
+            embeddable_text=chunk.embeddable_text,
+            display_text=repr(chunk.content),
+        )
 
-        - Validates vector length before opening the transaction
-        - Writes the batch atomically
-        - On any error, the transaction is rolled back, and no embeddings are created.
-        """
-        if not items:
-            raise ValueError("Items must be a non-empty list of EmbeddingItem")
-
-        for item in items:
-            if len(item.vec) != self._dim:
-                raise ValueError(
-                    f"embedding vec must be length {self._dim}, got {len(item.vec)} (segment_id={item.segment_id})"
-                )
-
-        inserted = 0
-        with transaction(self._conn):
-            for item in items:
-                self._embedding_repo.create(segment_id=item.segment_id, table_name=table_name, vec=item.vec)
-                inserted += 1
-        return inserted
+    def create_embedding(self, *, table_name: str, chunk_id: int, vec: Sequence[float]):
+        self._embedding_repo.create(
+            table_name=table_name,
+            chunk_id=chunk_id,
+            vec=vec,
+        )

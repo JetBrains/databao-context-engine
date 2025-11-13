@@ -1,14 +1,13 @@
 from datetime import timedelta
 
-from nemory.core.db.dtos import RunStatus, RunDTO
+from nemory.core.db.dtos import RunDTO
 
 
 def test_create_and_get(run_repo):
-    created = run_repo.create(status=RunStatus.RUNNING, project_id="project-id", nemory_version="0.1.0")
+    created = run_repo.create(project_id="project-id", nemory_version="0.1.0")
 
     assert isinstance(created, RunDTO)
     assert created.run_id > 0
-    assert created.status == RunStatus.RUNNING
     assert created.project_id == "project-id"
     assert created.ended_at is None
     assert created.nemory_version == "0.1.0"
@@ -22,41 +21,39 @@ def test_get_missing_returns_none(run_repo):
 
 
 def test_update_multiple_fields(run_repo):
-    run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id", nemory_version="0.1.0")
+    run = run_repo.create(project_id="project-id", nemory_version="0.1.0")
     end = run.started_at + timedelta(minutes=5)
 
     updated = run_repo.update(
         run.run_id,
-        status=RunStatus.FAILED,
         project_id="project-id2",
         ended_at=end,
         nemory_version="0.2.0",
     )
     assert updated is not None
-    assert updated.status is RunStatus.FAILED
     assert updated.project_id == "project-id2"
     assert updated.ended_at == end
     assert updated.nemory_version == "0.2.0"
     assert updated.started_at == run.started_at
 
 
-def test_update_status_only(run_repo):
-    run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id")
+def test_update_project_id_only(run_repo):
+    run = run_repo.create(project_id="project-id")
 
     updated = run_repo.update(
         run.run_id,
-        status=RunStatus.SUCCEEDED,
+        project_id="project-id2",
     )
 
-    assert updated.status == RunStatus.SUCCEEDED
+    assert updated.project_id == "project-id2"
 
 
 def test_update_missing_returns_none(run_repo):
-    assert run_repo.update(999999, status=RunStatus.FAILED) is None
+    assert run_repo.update(999999) is None
 
 
 def test_delete(run_repo):
-    run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id")
+    run = run_repo.create(project_id="project-id")
 
     deleted = run_repo.delete(run.run_id)
 
@@ -65,9 +62,9 @@ def test_delete(run_repo):
 
 
 def test_list(run_repo):
-    r1 = run_repo.create(status=RunStatus.RUNNING, project_id="project-id")
-    r2 = run_repo.create(status=RunStatus.SUCCEEDED, project_id="project-id")
-    r3 = run_repo.create(status=RunStatus.FAILED, project_id="project-id")
+    r1 = run_repo.create(project_id="project-id1")
+    r2 = run_repo.create(project_id="project-id2")
+    r3 = run_repo.create(project_id="project-id3")
 
     rows = run_repo.list()
     assert [r.run_id for r in rows] == [r3.run_id, r2.run_id, r1.run_id]

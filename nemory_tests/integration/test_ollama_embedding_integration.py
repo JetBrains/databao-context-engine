@@ -1,12 +1,11 @@
 import os
 
-from nemory.core.db.dtos import RunStatus
 from nemory.core.services.persistence_service import PersistenceService
 from nemory.core.services.providers.ollama.config import OllamaConfig
 from nemory.core.services.providers.ollama.provider import OllamaEmbeddingProvider
 from nemory.core.services.providers.ollama.runtime import OllamaRuntime
 from nemory.core.services.providers.ollama.service import OllamaService
-from nemory.core.services.segment_embedding_service import SegmentEmbeddingService
+from nemory.core.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.core.services.shards.table_name_policy import TableNamePolicy
 from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 
@@ -17,44 +16,44 @@ PORT = int(os.getenv("OLLAMA_PORT", "11434"))
 
 def test_service_embed_returns_vector():
     cfg = OllamaConfig(host=HOST, port=PORT)
-    svc = OllamaService(cfg)
+    service = OllamaService(cfg)
 
-    svc.pull_model(model=MODEL, timeout=120)
+    service.pull_model(model=MODEL, timeout=120)
 
-    vec = svc.embed(model=MODEL, text="hello world")
+    vec = service.embed(model=MODEL, text="hello world")
     assert isinstance(vec, list)
     assert len(vec) == 768
     assert all(isinstance(x, float) for x in vec)
 
 
 def test_ollama_embed_and_persist_e2e(
-    conn, run_repo, entity_repo, segment_repo, embedding_repo, tmp_path, registry_repo, resolver
+    conn, run_repo, datasource_run_repo, chunk_repo, embedding_repo, tmp_path, registry_repo, resolver
 ):
     config = OllamaConfig(host=HOST, port=PORT)
-    svc = OllamaService(config)
-    rt = OllamaRuntime(service=svc, config=config)
+    service = OllamaService(config)
+    rt = OllamaRuntime(service=service, config=config)
 
     rt.start_and_await(timeout=60, poll_interval=0.5)
-    svc.pull_model(model=MODEL, timeout=180)
+    service.pull_model(model=MODEL, timeout=180)
 
-    provider = OllamaEmbeddingProvider(service=svc, model_id=MODEL, dim=768)
+    provider = OllamaEmbeddingProvider(service=service, model_id=MODEL, dim=768)
 
-    persistence = PersistenceService(conn=conn, segment_repo=segment_repo, embedding_repo=embedding_repo)
-    seg_embed = SegmentEmbeddingService(persistence_service=persistence, shard_resolver=resolver, provider=provider)
+    persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
+    chunk_embedding_service = ChunkEmbeddingService(persistence_service=persistence, shard_resolver=resolver, provider=provider)
 
-    run = run_repo.create(status=RunStatus.RUNNING, project_id="project-id")
-    entity = entity_repo.create(
+    run = run_repo.create(project_id="project-id")
+    datasource_run = datasource_run_repo.create(
         run_id=run.run_id, plugin="integration-test", source_id="src-ollama", storage_directory="/some/path"
     )
 
     chunks = [EmbeddableChunk("alpha", "Alpha"), EmbeddableChunk("beta", "Beta")]
-    seg_embed.embed_chunks(entity_id=entity.entity_id, chunks=chunks)
+    chunk_embedding_service.embed_chunks(datasource_run_id=datasource_run.datasource_run_id, chunks=chunks)
 
-    seg_rows = conn.execute(
-        "SELECT segment_id FROM segment WHERE entity_id = ? ORDER BY segment_id", [entity.entity_id]
+    chunk_rows = conn.execute(
+        "SELECT chunk_id FROM chunk WHERE datasource_run_id = ? ORDER BY chunk_id", [datasource_run.datasource_run_id]
     ).fetchall()
-    assert len(seg_rows) == 2
-    seg_ids = [r[0] for r in seg_rows]
+    assert len(chunk_rows) == 2
+    chunk_ids = [r[0] for r in chunk_rows]
 
     expected_table = TableNamePolicy().build(embedder=provider.embedder, model_id=provider.model_id, dim=provider.dim)
     reg = registry_repo.get(embedder=provider.embedder, model_id=provider.model_id)
@@ -64,8 +63,8 @@ def test_ollama_embed_and_persist_e2e(
         f"""
             SELECT COUNT(*)
             FROM {expected_table} e
-            WHERE e.segment_id IN ({",".join("?" for _ in seg_ids)})
+            WHERE e.chunk_id IN ({",".join("?" for _ in chunk_ids)})
             """,
-        seg_ids,
+        chunk_ids,
     ).fetchone()
     assert emb_count == 2

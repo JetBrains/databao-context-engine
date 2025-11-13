@@ -8,17 +8,17 @@ def test_resolve_existing_returns_table_name(conn, registry_repo):
     table_name = "embedding_tests__model_v1__768"
     registry_repo.create(embedder="tests", model_id="model:v1", dim=768, table_name=table_name)
 
-    svc = EmbeddingShardResolver(conn=conn, registry_repo=registry_repo)
-    table_name = svc.resolve(embedder="tests", model_id="model:v1")
-    assert table_name == table_name
+    resolver = EmbeddingShardResolver(conn=conn, registry_repo=registry_repo)
+    resolved_table_name = resolver.resolve(embedder="tests", model_id="model:v1")
+    assert table_name == resolved_table_name
 
 
 def test_resolve_or_create_creates_table_index_and_registry(conn, registry_repo, resolver):
     table_name = TableNamePolicy().build(embedder="ollama", model_id="nomic-embed-text:v1.5", dim=768)
 
-    table_name = resolver.resolve_or_create(embedder="ollama", model_id="nomic-embed-text:v1.5", dim=768)
+    resolved_table_name = resolver.resolve_or_create(embedder="ollama", model_id="nomic-embed-text:v1.5", dim=768)
 
-    assert table_name == table_name
+    assert table_name == resolved_table_name
 
     assert _table_exists(conn, table_name)
     assert _hnsw_index_exists(conn, table_name)

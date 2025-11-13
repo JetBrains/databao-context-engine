@@ -8,11 +8,11 @@ from nemory.core.services.providers.ollama.runtime import (
 
 
 def test_start_if_needed_when_already_healthy_does_not_spawn(monkeypatch, tmp_path):
-    svc = _StubService()
-    svc.set_healthy(True)
+    service = _StubService()
+    service.set_healthy(True)
 
     config = OllamaConfig(bin_path="ollama", host="127.0.0.1", port=11434, work_dir=tmp_path)
-    rt = OllamaRuntime(service=svc, config=config)
+    rt = OllamaRuntime(service=service, config=config)
 
     popen_calls = []
 
@@ -28,8 +28,8 @@ def test_start_if_needed_when_already_healthy_does_not_spawn(monkeypatch, tmp_pa
 
 
 def test_start_if_needed_spawns_with_correct_env_and_cwd(monkeypatch, tmp_path):
-    svc = _StubService()
-    svc.set_healthy(False)
+    service = _StubService()
+    service.set_healthy(False)
 
     config = OllamaConfig(
         bin_path="ollama",
@@ -38,7 +38,7 @@ def test_start_if_needed_spawns_with_correct_env_and_cwd(monkeypatch, tmp_path):
         work_dir=tmp_path,
         extra_env={"FOO": "BAR"},
     )
-    rt = OllamaRuntime(service=svc, config=config)
+    rt = OllamaRuntime(service=service, config=config)
 
     captured = {}
 
@@ -67,11 +67,11 @@ def test_start_if_needed_spawns_with_correct_env_and_cwd(monkeypatch, tmp_path):
 
 
 def test_start_and_await_already_healthy_returns_none_and_no_spawn(monkeypatch, tmp_path):
-    svc = _StubService()
-    svc.set_healthy(True)
+    service = _StubService()
+    service.set_healthy(True)
 
     config = OllamaConfig(work_dir=tmp_path)
-    rt = OllamaRuntime(service=svc, config=config)
+    rt = OllamaRuntime(service=service, config=config)
 
     called = {"popen": 0}
     monkeypatch.setattr("subprocess.Popen", lambda *a, **k: called.__setitem__("popen", called["popen"] + 1))
@@ -82,12 +82,12 @@ def test_start_and_await_already_healthy_returns_none_and_no_spawn(monkeypatch, 
 
 
 def test_start_and_await_starts_then_becomes_healthy(monkeypatch, tmp_path):
-    svc = _StubService()
-    svc.set_healthy(False)
-    svc.set_wait_result(True)
+    service = _StubService()
+    service.set_healthy(False)
+    service.set_wait_result(True)
 
     config = OllamaConfig(bin_path="ollama", host="127.0.0.1", port=11434, work_dir=tmp_path)
-    rt = OllamaRuntime(service=svc, config=config)
+    rt = OllamaRuntime(service=service, config=config)
 
     spawned = {"proc": None}
 
@@ -104,12 +104,12 @@ def test_start_and_await_starts_then_becomes_healthy(monkeypatch, tmp_path):
 
 
 def test_start_and_await_times_out_kills_process(monkeypatch, tmp_path):
-    svc = _StubService()
-    svc.set_healthy(False)
-    svc.set_wait_result(False)
+    service = _StubService()
+    service.set_healthy(False)
+    service.set_wait_result(False)
 
     config = OllamaConfig(bin_path="ollama", host="127.0.0.1", port=11434, work_dir=tmp_path)
-    rt = OllamaRuntime(service=svc, config=config)
+    rt = OllamaRuntime(service=service, config=config)
 
     created = {"proc": None}
 
