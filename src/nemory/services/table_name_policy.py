@@ -6,11 +6,7 @@ _TABLE_NAME_RE = re.compile(r"^embedding_[a-z0-9_]+$")
 class TableNamePolicy:
     @staticmethod
     def build(*, embedder: str, model_id: str, dim: int) -> str:
-        safe_model = (model_id
-                      .replace(":", "_")
-                      .replace("-", "_")
-                      .replace(" ", "_")
-                      .replace(".", "_"))
+        safe_model = model_id.replace(":", "_").replace("-", "_").replace(" ", "_").replace(".", "_")
         return f"embedding_{embedder}__{safe_model}__{dim}"
 
     @staticmethod

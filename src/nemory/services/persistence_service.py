@@ -24,7 +24,9 @@ class PersistenceService:
         self._embedding_repo = embedding_repo
         self._dim = dim
 
-    def write_chunks_and_embeddings(self, *, datasource_run_id: int, chunk_embeddings: list[ChunkEmbedding], table_name: str):
+    def write_chunks_and_embeddings(
+        self, *, datasource_run_id: int, chunk_embeddings: list[ChunkEmbedding], table_name: str
+    ):
         """
         Atomically persist chunks and their vectors.
         Returns the number of embeddings written.

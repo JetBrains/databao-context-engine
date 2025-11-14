@@ -41,7 +41,9 @@ def test_create_with_missing_fk_raises(datasource_run_repo):
 
 def test_update_fields(datasource_run_repo, run_repo):
     run = make_run(run_repo)
-    datasource_run = datasource_run_repo.create(run_id=run.run_id, plugin="dbt", source_id="path/a", storage_directory="/path")
+    datasource_run = datasource_run_repo.create(
+        run_id=run.run_id, plugin="dbt", source_id="path/a", storage_directory="/path"
+    )
 
     updated = datasource_run_repo.update(
         datasource_run.datasource_run_id,

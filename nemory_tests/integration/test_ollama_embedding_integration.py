@@ -39,7 +39,9 @@ def test_ollama_embed_and_persist_e2e(
     provider = OllamaEmbeddingProvider(service=service, model_id=MODEL, dim=768)
 
     persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
-    chunk_embedding_service = ChunkEmbeddingService(persistence_service=persistence, shard_resolver=resolver, provider=provider)
+    chunk_embedding_service = ChunkEmbeddingService(
+        persistence_service=persistence, shard_resolver=resolver, provider=provider
+    )
 
     run = run_repo.create(project_id="project-id")
     datasource_run = datasource_run_repo.create(

@@ -8,9 +8,7 @@ class RunRepository:
     def __init__(self, conn: duckdb.DuckDBPyConnection):
         self._conn = conn
 
-    def create(
-        self, *, project_id: str, nemory_version: Optional[str] = None
-    ) -> RunDTO:
+    def create(self, *, project_id: str, nemory_version: Optional[str] = None) -> RunDTO:
         row = self._conn.execute(
             """
             INSERT INTO 

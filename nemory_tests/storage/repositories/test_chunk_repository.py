@@ -34,7 +34,9 @@ def test_update_fields(chunk_repo, datasource_run_repo, run_repo):
 
 def test_delete(chunk_repo, datasource_run_repo, run_repo):
     datasource_run = make_datasource_run(run_repo, datasource_run_repo)
-    chunk = chunk_repo.create(datasource_run_id=datasource_run.datasource_run_id, embeddable_text="x", display_text=None)
+    chunk = chunk_repo.create(
+        datasource_run_id=datasource_run.datasource_run_id, embeddable_text="x", display_text=None
+    )
 
     deleted = chunk_repo.delete(chunk.chunk_id)
     assert deleted == 1

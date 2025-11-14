@@ -4,6 +4,7 @@ from nemory.services.persistence_service import PersistenceService
 from nemory.embeddings.provider import EmbeddingProvider
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 
+
 class ChunkEmbeddingService:
     def __init__(
         self,
@@ -30,7 +31,7 @@ class ChunkEmbeddingService:
             return
 
         chunk_embeddings: list[ChunkEmbedding] = [
-            ChunkEmbedding(chunk=chunk, vec = self._provider.embed(chunk.embeddable_text)) for chunk in chunks
+            ChunkEmbedding(chunk=chunk, vec=self._provider.embed(chunk.embeddable_text)) for chunk in chunks
         ]
 
         table_name = self._shard_resolver.resolve_or_create(

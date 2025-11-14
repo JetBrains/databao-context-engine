@@ -47,7 +47,9 @@ def test_embeds_resolves_and_persists(
     provider = _FakeProvider(embedder="ollama", model_id="nomic-embed-text:v1.5", dim=768)
     service = ChunkEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=resolver)
 
-    datasource_run = make_datasource_run(run_repo, datasource_run_repo, plugin="p", source_id="s", storage_directory="/tmp")
+    datasource_run = make_datasource_run(
+        run_repo, datasource_run_repo, plugin="p", source_id="s", storage_directory="/tmp"
+    )
 
     chunks = [EmbeddableChunk("A", "a"), EmbeddableChunk("B", "b"), EmbeddableChunk("C", "c")]
 
@@ -70,10 +72,15 @@ def test_provider_failure_writes_nothing(
     provider = _FakeProvider(fail_at={1})
     service = ChunkEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=resolver)
 
-    datasource_run = make_datasource_run(run_repo, datasource_run_repo, plugin="p", source_id="s", storage_directory="/tmp")
+    datasource_run = make_datasource_run(
+        run_repo, datasource_run_repo, plugin="p", source_id="s", storage_directory="/tmp"
+    )
 
     with pytest.raises(RuntimeError):
-        service.embed_chunks(datasource_run_id=datasource_run.datasource_run_id, chunks=[EmbeddableChunk("X", "x"), EmbeddableChunk("Y", "y")])
+        service.embed_chunks(
+            datasource_run_id=datasource_run.datasource_run_id,
+            chunks=[EmbeddableChunk("X", "x"), EmbeddableChunk("Y", "y")],
+        )
 
     assert registry_repo.get(embedder=provider.embedder, model_id=provider.model_id) is None
     assert [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id] == []
