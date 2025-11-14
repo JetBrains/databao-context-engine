@@ -1,5 +1,6 @@
 import os
 
+from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.embeddings.providers.ollama.config import OllamaConfig
 from nemory.embeddings.providers.ollama.provider import OllamaEmbeddingProvider
 from nemory.services.persistence_service import PersistenceService
@@ -7,7 +8,6 @@ from nemory.embeddings.providers.ollama.runtime import OllamaRuntime
 from nemory.embeddings.providers.ollama.service import OllamaService
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.table_name_policy import TableNamePolicy
-from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 
 MODEL = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
 HOST = os.getenv("OLLAMA_HOST", "127.0.0.1")

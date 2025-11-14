@@ -2,9 +2,9 @@ from typing import List, Sequence
 
 import pytest
 
+from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.table_name_policy import TableNamePolicy
-from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 from nemory_tests.utils.factories import make_datasource_run
 
 

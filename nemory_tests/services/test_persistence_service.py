@@ -6,15 +6,16 @@ from enum import Enum
 from pathlib import Path
 from uuid import UUID, uuid4
 
-import pytest
-
+from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.storage.exceptions.exceptions import IntegrityError
 from nemory.services.models import ChunkEmbedding
-from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 from nemory_tests.utils.factories import make_datasource_run
+import pytest
 
 
-def test_write_chunks_and_embeddings(persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, table_name):
+def test_write_chunks_and_embeddings(
+    persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, table_name
+):
     chunks = [EmbeddableChunk("A", "a"), EmbeddableChunk("B", "b"), EmbeddableChunk("C", "c")]
     chunk_embeddings = [
         ChunkEmbedding(chunk=chunks[0], vec=_vec(0.0)),
@@ -40,14 +41,18 @@ def test_empty_pairs_raises_value_error(persistence, run_repo, datasource_run_re
     datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
 
     with pytest.raises(ValueError):
-        persistence.write_chunks_and_embeddings(datasource_run_id=datasource_run.datasource_run_id, chunk_embeddings=[], table_name=table_name)
+        persistence.write_chunks_and_embeddings(
+            datasource_run_id=datasource_run.datasource_run_id, chunk_embeddings=[], table_name=table_name
+        )
 
 
 def test_invalid_fk_rolls_back_entire_batch(persistence, chunk_repo, embedding_repo, table_name):
     pairs = [ChunkEmbedding(chunk=EmbeddableChunk("X", "x"), vec=_vec(0.0))]
 
     with pytest.raises(IntegrityError):
-        persistence.write_chunks_and_embeddings(datasource_run_id=9_999_999, chunk_embeddings=pairs, table_name=table_name)
+        persistence.write_chunks_and_embeddings(
+            datasource_run_id=9_999_999, chunk_embeddings=pairs, table_name=table_name
+        )
 
     assert chunk_repo.list() == []
     assert embedding_repo.list(table_name=table_name) == []
@@ -88,7 +93,11 @@ def test_write_chunks_and_embeddings_with_complex_content(
     persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, table_name
 ):
     datasource_run = make_datasource_run(
-        run_repo=run_repo, datasource_run_repo=datasource_run_repo, plugin="test-plugin", source_id="src-1", storage_directory="/tmp"
+        run_repo=run_repo,
+        datasource_run_repo=datasource_run_repo,
+        plugin="test-plugin",
+        source_id="src-1",
+        storage_directory="/tmp",
     )
 
     class Status(Enum):
