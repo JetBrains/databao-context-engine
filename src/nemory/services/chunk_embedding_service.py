@@ -4,7 +4,6 @@ from nemory.embeddings.provider import EmbeddingProvider
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 
-
 class ChunkEmbeddingService:
     def __init__(
         self,
