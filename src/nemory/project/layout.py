@@ -2,6 +2,11 @@ from pathlib import Path
 
 from nemory.project.project_config import ProjectConfig
 
+SOURCE_FOLDER_NAME = "src"
+OUTPUT_FOLDER_NAME = "output"
+EXAMPLES_FOLDER_NAME = "examples"
+CONFIG_FILE_NAME = "nemory.ini"
+
 
 def ensure_project_dir(project_dir: str, should_be_initialised: bool = True) -> Path:
     project_path = Path(project_dir)
@@ -48,19 +53,19 @@ def ensure_can_init_project(project_dir: str) -> bool:
 
 
 def get_source_dir(project_dir: Path) -> Path:
-    return project_dir.joinpath("src")
+    return project_dir.joinpath(SOURCE_FOLDER_NAME)
 
 
 def get_output_dir(project_dir: Path) -> Path:
-    return project_dir.joinpath("output")
+    return project_dir.joinpath(OUTPUT_FOLDER_NAME)
 
 
 def get_examples_dir(project_path: Path) -> Path:
-    return project_path.joinpath("examples")
+    return project_path.joinpath(EXAMPLES_FOLDER_NAME)
 
 
 def get_config_file(project_dir: Path) -> Path:
-    return project_dir.joinpath("nemory.ini")
+    return project_dir.joinpath(CONFIG_FILE_NAME)
 
 
 def read_config_file(project_dir: Path) -> ProjectConfig:
