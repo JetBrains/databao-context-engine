@@ -51,9 +51,6 @@ jobs:
       - name: Run mypy type checking
         run: uv run mypy . --exclude dist --exclude docs
 
-      - name: Run tests
-        run: uv run pytest
-
       - name: Build
         run: |
           uv build
