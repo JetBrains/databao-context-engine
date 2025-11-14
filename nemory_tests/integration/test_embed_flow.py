@@ -1,6 +1,6 @@
-from nemory.core.services.persistence_service import PersistenceService
-from nemory.core.services.chunk_embedding_service import ChunkEmbeddingService
-from nemory.core.services.shards.table_name_policy import TableNamePolicy
+from nemory.services.persistence_service import PersistenceService
+from nemory.services.chunk_embedding_service import ChunkEmbeddingService
+from nemory.services.table_name_policy import TableNamePolicy
 from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 
 

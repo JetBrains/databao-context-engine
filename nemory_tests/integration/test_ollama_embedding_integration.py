@@ -1,12 +1,12 @@
 import os
 
-from nemory.core.services.persistence_service import PersistenceService
-from nemory.core.services.providers.ollama.config import OllamaConfig
-from nemory.core.services.providers.ollama.provider import OllamaEmbeddingProvider
-from nemory.core.services.providers.ollama.runtime import OllamaRuntime
-from nemory.core.services.providers.ollama.service import OllamaService
-from nemory.core.services.chunk_embedding_service import ChunkEmbeddingService
-from nemory.core.services.shards.table_name_policy import TableNamePolicy
+from nemory.embeddings.providers.ollama.config import OllamaConfig
+from nemory.embeddings.providers.ollama.provider import OllamaEmbeddingProvider
+from nemory.services.persistence_service import PersistenceService
+from nemory.embeddings.providers.ollama.runtime import OllamaRuntime
+from nemory.embeddings.providers.ollama.service import OllamaService
+from nemory.services.chunk_embedding_service import ChunkEmbeddingService
+from nemory.services.table_name_policy import TableNamePolicy
 from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 
 MODEL = os.getenv("OLLAMA_MODEL", "nomic-embed-text")

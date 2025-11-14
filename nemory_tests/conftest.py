@@ -5,15 +5,15 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from nemory.core.db.embedding_model_registry_repository import EmbeddingModelRegistryRepository
-from nemory.core.db.embedding_repository import EmbeddingRepository
-from nemory.core.db.datasource_run_repository import DatasourceRunRepository
-from nemory.core.db.migrate import migrate
-from nemory.core.db.run_repository import RunRepository
-from nemory.core.db.chunk_repository import ChunkRepository
-from nemory.core.services.persistence_service import PersistenceService
-from nemory.core.services.shards.embedding_shard_resolver import EmbeddingShardResolver
-from nemory.core.services.shards.table_name_policy import TableNamePolicy
+from nemory.storage.repositories.embedding_model_registry_repository import EmbeddingModelRegistryRepository
+from nemory.storage.repositories.embedding_repository import EmbeddingRepository
+from nemory.storage.repositories.datasource_run_repository import DatasourceRunRepository
+from nemory.storage.migrate import migrate
+from nemory.storage.repositories.run_repository import RunRepository
+from nemory.storage.repositories.chunk_repository import ChunkRepository
+from nemory.services.persistence_service import PersistenceService
+from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
+from nemory.services.table_name_policy import TableNamePolicy
 
 
 @pytest.fixture(scope="session")

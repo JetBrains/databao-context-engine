@@ -1,8 +1,8 @@
-from nemory.core.db.dtos import RunDTO, DatasourceRunDTO, ChunkDTO, EmbeddingDTO
-from nemory.core.db.embedding_repository import EmbeddingRepository
-from nemory.core.db.datasource_run_repository import DatasourceRunRepository
-from nemory.core.db.run_repository import RunRepository
-from nemory.core.db.chunk_repository import ChunkRepository
+from nemory.storage.models import RunDTO, DatasourceRunDTO, ChunkDTO, EmbeddingDTO
+from nemory.storage.repositories.embedding_repository import EmbeddingRepository
+from nemory.storage.repositories.datasource_run_repository import DatasourceRunRepository
+from nemory.storage.repositories.run_repository import RunRepository
+from nemory.storage.repositories.chunk_repository import ChunkRepository
 
 
 def make_run(
