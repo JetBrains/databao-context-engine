@@ -50,7 +50,9 @@ class ChunkRepository:
         ).fetchone()
         return self._row_to_dto(row) if row else None
 
-    def update(self, chunk_id: int, *, embeddable_text: Optional[str], display_text: Optional[str]) -> Optional[ChunkDTO]:
+    def update(
+        self, chunk_id: int, *, embeddable_text: Optional[str], display_text: Optional[str]
+    ) -> Optional[ChunkDTO]:
         sets: list[Any] = []
         params: list[Any] = []
 
