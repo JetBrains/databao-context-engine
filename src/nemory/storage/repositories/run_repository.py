@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 import duckdb
 from nemory.storage.models import RunDTO
 
@@ -20,6 +20,8 @@ class RunRepository:
             """,
             [project_id, nemory_version],
         ).fetchone()
+        if row is None:
+            raise RuntimeError("Run creation returned no object")
         return self._row_to_dto(row)
 
     def get(self, run_id: int) -> Optional[RunDTO]:
@@ -44,7 +46,8 @@ class RunRepository:
         ended_at: Optional[datetime] = None,
         nemory_version: Optional[str] = None,
     ) -> Optional[RunDTO]:
-        sets, params = [], []
+        sets: list[Any] = []
+        params: list[Any] = []
 
         if project_id is not None:
             sets.append("project_id = ?")

@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 
 import duckdb
 from _duckdb import ConstraintException
@@ -31,6 +31,8 @@ class DatasourceRunRepository:
             """,
                 [run_id, plugin, source_id, storage_directory],
             ).fetchone()
+            if row is None:
+                raise RuntimeError("datasource_run creation returned no object")
             return self._row_to_dto(row)
         except ConstraintException as e:
             raise IntegrityError from e
@@ -57,7 +59,8 @@ class DatasourceRunRepository:
         source_id: Optional[str] = None,
         storage_directory: Optional[str] = None,
     ) -> Optional[DatasourceRunDTO]:
-        sets, params = [], []
+        sets: list[Any] = []
+        params: list[Any] = []
 
         if plugin is not None:
             sets.append("plugin = ?")

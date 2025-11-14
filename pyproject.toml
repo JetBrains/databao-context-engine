@@ -34,3 +34,7 @@ nemory = "nemory.main:main"
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]
+
+[[tool.mypy.overrides]]
+module = ["requests", "requests.*"]
+ignore_missing_imports = true

@@ -31,6 +31,8 @@ class EmbeddingRepository:
             """,
                 [chunk_id, vec],
             ).fetchone()
+            if row is None:
+                raise RuntimeError("Embedding creation returned no object")
             return self._row_to_dto(row)
         except ConstraintException as e:
             raise IntegrityError from e

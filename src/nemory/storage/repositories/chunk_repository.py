@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 
 import duckdb
 from _duckdb import ConstraintException
@@ -30,6 +30,8 @@ class ChunkRepository:
             """,
                 [datasource_run_id, embeddable_text, display_text],
             ).fetchone()
+            if row is None:
+                raise RuntimeError("chunk creation returned no object")
             return self._row_to_dto(row)
         except ConstraintException as e:
             raise IntegrityError from e
@@ -48,8 +50,9 @@ class ChunkRepository:
         ).fetchone()
         return self._row_to_dto(row) if row else None
 
-    def update(self, chunk_id: int, *, embeddable_text: Optional[str], display_text: Optional[str]) -> ChunkDTO:
-        sets, params = [], []
+    def update(self, chunk_id: int, *, embeddable_text: Optional[str], display_text: Optional[str]) -> Optional[ChunkDTO]:
+        sets: list[Any] = []
+        params: list[Any] = []
 
         if embeddable_text is not None:
             sets.append("embeddable_text = ?")

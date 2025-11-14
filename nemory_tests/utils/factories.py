@@ -58,9 +58,9 @@ def make_embedding(
     embedding_repo: EmbeddingRepository,
     *,
     table_name: str,
-    chunk_id: int = None,
+    chunk_id: int | None = None,
     dim: int = 768,
-    vec: list[float] = None,
+    vec: list[float] | None = None,
 ) -> EmbeddingDTO:
     vec = vec or [0.0] * dim
     if chunk_id is None:

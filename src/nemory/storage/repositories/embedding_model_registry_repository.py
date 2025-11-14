@@ -31,6 +31,8 @@ class EmbeddingModelRegistryRepository:
             """,
             [embedder, model_id, dim, table_name],
         ).fetchone()
+        if row is None:
+            raise RuntimeError("Embedding_model_registry creatuib returned no object")
         return self._row_to_dto(row)
 
     def get(
