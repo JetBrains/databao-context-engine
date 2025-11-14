@@ -4,6 +4,7 @@ from importlib.metadata import version
 from click import Context
 
 from nemory.config.logging import configure_logging
+from nemory.storage.migrate import migrate
 from nemory.build_sources.public.api import build_all_datasources
 
 
@@ -23,6 +24,8 @@ def nemory(ctx: Context, verbose: bool, project_dir: str) -> None:
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["project_dir"] = project_dir
+
+    migrate()
 
 
 @nemory.command()

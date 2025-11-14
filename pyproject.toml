@@ -7,8 +7,11 @@ requires-python = ">=3.12"
 dependencies = [
     "click>=8.3.0",
     "duckdb>=1.4.1",
-    "psycopg[binary]>=3.2.12",
+    "pyway>=0.3.32",
     "pyyaml>=6.0.3",
+    "requests>=2.32.5",
+    "psycopg2-binary>=2.9.11",
+    "psycopg[binary]>=3.2.12",
 ]
 
 [build-system]
@@ -31,3 +34,7 @@ nemory = "nemory.main:main"
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]
+
+[[tool.mypy.overrides]]
+module = ["requests", "requests.*"]
+ignore_missing_imports = true
