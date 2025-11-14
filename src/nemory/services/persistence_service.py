@@ -2,12 +2,12 @@ from collections.abc import Sequence
 
 import duckdb
 
+from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.storage.models import ChunkDTO
 from nemory.storage.repositories.embedding_repository import EmbeddingRepository
 from nemory.storage.repositories.chunk_repository import ChunkRepository
 from nemory.storage.transaction import transaction
 from nemory.services.models import ChunkEmbedding
-from nemory.features.build_sources.plugin_lib.build_plugin import EmbeddableChunk
 
 
 class PersistenceService:
