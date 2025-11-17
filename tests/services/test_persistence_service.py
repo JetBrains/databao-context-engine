@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.storage.exceptions.exceptions import IntegrityError
 from nemory.services.models import ChunkEmbedding
-from nemory_tests.utils.factories import make_datasource_run
+from tests.utils.factories import make_datasource_run
 import pytest
 
 

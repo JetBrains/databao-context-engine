@@ -2,7 +2,7 @@ import pytest
 
 from nemory.storage.models import EmbeddingDTO
 from nemory.storage.exceptions.exceptions import IntegrityError
-from nemory_tests.utils.factories import make_chunk
+from tests.utils.factories import make_chunk
 
 
 def test_create_and_get(embedding_repo, chunk_repo, datasource_run_repo, run_repo, table_name):

@@ -2,7 +2,7 @@ import pytest
 
 from nemory.storage.models import DatasourceRunDTO
 from nemory.storage.exceptions.exceptions import IntegrityError
-from nemory_tests.utils.factories import make_run
+from tests.utils.factories import make_run
 
 
 def test_create_and_get(datasource_run_repo, run_repo):

@@ -2,7 +2,7 @@ import pytest
 
 from nemory.storage.models import ChunkDTO
 from nemory.storage.exceptions.exceptions import IntegrityError
-from nemory_tests.utils.factories import make_datasource_run
+from tests.utils.factories import make_datasource_run
 
 
 def test_create_and_get(chunk_repo, datasource_run_repo, run_repo):

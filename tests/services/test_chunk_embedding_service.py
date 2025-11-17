@@ -5,7 +5,7 @@ import pytest
 from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.table_name_policy import TableNamePolicy
-from nemory_tests.utils.factories import make_datasource_run
+from tests.utils.factories import make_datasource_run
 
 
 class _FakeProvider:
