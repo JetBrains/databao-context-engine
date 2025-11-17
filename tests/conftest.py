@@ -5,6 +5,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
+from nemory.project.init_project import init_project_dir
 from nemory.storage.repositories.embedding_model_registry_repository import EmbeddingModelRegistryRepository
 from nemory.storage.repositories.embedding_repository import EmbeddingRepository
 from nemory.storage.repositories.datasource_run_repository import DatasourceRunRepository
@@ -89,3 +90,12 @@ def table_name(conn):
         ON {name} USING HNSW (vec) WITH (metric='cosine');
     """)
     return name
+
+
+@pytest.fixture
+def project_path(tmp_path) -> Path:
+    tmp_project_dir = tmp_path.joinpath("project_dir")
+    tmp_project_dir.mkdir(parents=True, exist_ok=True)
+    init_project_dir(project_dir=str(tmp_project_dir))
+
+    return tmp_project_dir
