@@ -1,9 +1,21 @@
 from pathlib import Path
 
+import pytest
+
 from nemory.build_sources.internal.execute_plugins import execute_plugins_for_all_datasource_files
-from nemory.build_sources.internal.tests.data.dummy_build_plugin import DummyBuildDatasourcePlugin
 from nemory.pluginlib.build_plugin import BuildExecutionResult, BuildPlugin, EmbeddableChunk
 from nemory.plugins.unstructured_files_plugin import InternalUnstructuredFilesPlugin
+from tests.utils.dummy_build_plugin import DummyBuildDatasourcePlugin
+from tests.utils.project_creation import copy_resources_as_datasources
+
+
+@pytest.fixture
+def project_dir_for_execute_plugins_tests(project_path: Path) -> Path:
+    copy_resources_as_datasources(
+        project_path, [("databases", "dummy-db-connection.yml"), ("files", "unstructured.txt")]
+    )
+
+    return project_path
 
 
 def with_dummy_plugin() -> dict[str, BuildPlugin]:
@@ -26,11 +38,11 @@ def with_unstructured_files_plugin(
     }
 
 
-def test_execute_plugins_for_dummy_config_file():
+def test_execute_plugins_for_dummy_config_file(project_dir_for_execute_plugins_tests: Path):
     test_plugins = with_dummy_plugin()
 
     results = execute_plugins_for_all_datasource_files(
-        project_dir=Path(__file__).parent.joinpath("data"),
+        project_dir=project_dir_for_execute_plugins_tests,
         plugins_per_type=test_plugins,
     )
 
@@ -48,11 +60,11 @@ def _assert_dummy_plugin_result(dummy_plugin_result: BuildExecutionResult):
     assert len(dummy_plugin_result.result["catalogs"][0]["schemas"][0]["tables"]) == 2
 
 
-def test_execute_plugins_with_unstructured_files_plugin():
+def test_execute_plugins_with_unstructured_files_plugin(project_dir_for_execute_plugins_tests: Path):
     test_plugins = with_unstructured_files_plugin(3, 1)
 
     results = execute_plugins_for_all_datasource_files(
-        project_dir=Path(__file__).parent.joinpath("data"),
+        project_dir=project_dir_for_execute_plugins_tests,
         plugins_per_type=test_plugins,
     )
 
@@ -75,12 +87,14 @@ def _assert_unstructured_files_plugin_result(plugin_result: BuildExecutionResult
     assert len(plugin_result.result["chunks"]) == 3
 
 
-def test_execute_plugins_with_unstructured_files_plugin_and_dummy_config_file_plugin():
+def test_execute_plugins_with_unstructured_files_plugin_and_dummy_config_file_plugin(
+    project_dir_for_execute_plugins_tests: Path,
+):
     test_plugins = with_dummy_plugin()
     test_plugins.update(with_unstructured_files_plugin(3, 1))
 
     results = execute_plugins_for_all_datasource_files(
-        project_dir=Path(__file__).parent.joinpath("data"),
+        project_dir=project_dir_for_execute_plugins_tests,
         plugins_per_type=test_plugins,
     )
 
