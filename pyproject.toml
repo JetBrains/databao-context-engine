@@ -39,3 +39,6 @@ source-exclude = ["tests"]
 [[tool.mypy.overrides]]
 module = ["requests", "requests.*"]
 ignore_missing_imports = true
+
+[tool.pytest]
+addopts = ["--import-mode=importlib"]
