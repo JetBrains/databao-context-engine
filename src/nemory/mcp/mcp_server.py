@@ -43,6 +43,14 @@ def _create_mcp_server(
     def all_results_tool():
         return _read_all_results_file(run_directory)
 
+    @mcp.tool(
+        description="Query the context built from various resources, including databases, dbt tools, plain and structured files, to retrieve relevant information",
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
+    )
+    def query_tool():
+        # TODO
+        raise NotImplementedError("query_tool is not yet implemented")
+
     return mcp
 
 
