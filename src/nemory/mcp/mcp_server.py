@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from mcp.server import FastMCP
 from mcp.types import ToolAnnotations
@@ -8,6 +9,8 @@ from mcp.types import ToolAnnotations
 from nemory.project.layout import ALL_RESULTS_FILE_NAME, ensure_project_dir, get_latest_run_dir, get_run_dir
 
 logger = logging.getLogger(__name__)
+
+McpTransport = Literal["stdio", "streamable-http"]
 
 
 @asynccontextmanager
@@ -43,7 +46,9 @@ def _create_mcp_server(
     return mcp
 
 
-def run_mcp_server(project_dir: str, run_name: str | None, host: str | None = None, port: int | None = None) -> None:
+def run_mcp_server(
+    project_dir: str, run_name: str | None, transport: McpTransport, host: str | None = None, port: int | None = None
+) -> None:
     server = _create_mcp_server(project_dir=project_dir, run_name=run_name, host=host, port=port)
 
-    server.run(transport="streamable-http")
+    server.run(transport=transport)

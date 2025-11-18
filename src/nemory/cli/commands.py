@@ -6,7 +6,7 @@ from click import Context
 
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
-from nemory.mcp.mcp_server import run_mcp_server
+from nemory.mcp.mcp_server import McpTransport, run_mcp_server
 from nemory.project.init_project import init_project_dir
 from nemory.project.layout import read_config_file
 from nemory.storage.migrate import migrate
@@ -83,9 +83,16 @@ def build(ctx: Context) -> None:
     type=click.INT,
     help="Port to bind to. Defaults to 8000",
 )
+@click.option(
+    "-t",
+    "--transport",
+    type=click.Choice(["stdio", "streamable-http"]),
+    default="stdio",
+    help="Transport to use. Defaults to stdio",
+)
 @click.pass_context
-def mcp(ctx: Context, run_name: str | None, host: str | None, port: int | None) -> None:
+def mcp(ctx: Context, run_name: str | None, host: str | None, port: int | None, transport: McpTransport) -> None:
     """
     Run Nemory's MCP server
     """
-    run_mcp_server(project_dir=ctx.obj["project_dir"], run_name=run_name, host=host, port=port)
+    run_mcp_server(project_dir=ctx.obj["project_dir"], run_name=run_name, transport=transport, host=host, port=port)

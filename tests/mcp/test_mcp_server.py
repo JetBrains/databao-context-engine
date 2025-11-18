@@ -22,11 +22,11 @@ async def run_mcp_server_test(
 ):
     """
     Runs a MCP Server integration test by:
-    1. Spawning a new process to run the MCP server
+    1. Spawning a new process to run the MCP server in streamable-http mode
     2. Creating a client connecting with the MCP Server (we're retrying 5 times to wait for the server to be up and running)
     3. Yielding the MCP client session for the test to run
     """
-    server_process = Process(target=run_mcp_server, args=(project_dir, run_name, host, port))
+    server_process = Process(target=run_mcp_server, args=(project_dir, run_name, "streamable-http", host, port))
     server_process.start()
 
     try:
