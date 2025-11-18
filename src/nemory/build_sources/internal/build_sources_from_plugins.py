@@ -32,6 +32,8 @@ def _add_plugin(plugin_list: PluginList, plugin: BuildPlugin) -> None:
 
 
 def _get_all_build_plugins() -> PluginList:
+    from nemory.plugins.clickhouse_plugin import ClickhouseDbPlugin
+    from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
     from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
     from nemory.plugins.unstructured_files_plugin import InternalUnstructuredFilesPlugin
 
@@ -40,6 +42,8 @@ def _get_all_build_plugins() -> PluginList:
     # TODO: Statically load more internal plugins
     _add_plugin(plugin_list, InternalUnstructuredFilesPlugin())
     _add_plugin(plugin_list, PostgresqlDbPlugin())
+    _add_plugin(plugin_list, MySQLDbPlugin())
+    _add_plugin(plugin_list, ClickhouseDbPlugin())
 
     # TODO: Load external plugins using entry points
 
