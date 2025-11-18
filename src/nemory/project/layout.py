@@ -70,3 +70,7 @@ def get_config_file(project_dir: Path) -> Path:
 
 def read_config_file(project_dir: Path) -> ProjectConfig:
     return ProjectConfig.from_file(get_config_file(project_dir))
+
+
+def get_db_path() -> Path:
+    return Path("~/.nemory/nemory.duckdb")

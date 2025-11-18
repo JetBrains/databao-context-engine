@@ -76,7 +76,7 @@ class DatasourceRunRepository:
             return self.get(datasource_run_id)
 
         params.append(datasource_run_id)
-        row = self._conn.execute(
+        self._conn.execute(
             f"""
             UPDATE 
                 datasource_run
@@ -84,13 +84,11 @@ class DatasourceRunRepository:
                 {", ".join(sets)}
             WHERE 
                 datasource_run_id = ?
-            RETURNING
-             *
             """,
             params,
-        ).fetchone()
+        )
 
-        return self._row_to_dto(row) if row else None
+        return self.get(datasource_run_id)
 
     def delete(self, datasource_run_id: int) -> int:
         row = self._conn.execute(

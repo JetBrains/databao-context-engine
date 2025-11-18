@@ -5,13 +5,33 @@ from pathlib import Path
 import pytest
 import yaml
 
-from nemory.build_sources.internal.export_results import export_build_results
+from nemory.build_sources.internal.export_results import (
+    create_run_dir,
+    export_build_result,
+    append_result_to_all_results,
+)
 from nemory.pluginlib.build_plugin import BuildExecutionResult
 
 
 @pytest.fixture
 def build_start_time() -> datetime:
     return datetime(2025, 11, 13, 10, 50, 15, 275)
+
+
+def _run_dir(tmp_path: Path) -> Path:
+    return tmp_path.joinpath("output").joinpath("run-2025-11-13T10:50:15")
+
+
+def _make_result(*, name: str, full_type: str, payload: object) -> BuildExecutionResult:
+    return BuildExecutionResult(
+        id=str(uuid.uuid4()),
+        name=name,
+        type=full_type,
+        description="desc",
+        version="1.0.0",
+        executed_at=datetime.now(),
+        result=payload,
+    )
 
 
 def assert_run_folder_exists(tmp_path: Path) -> Path:
@@ -22,72 +42,48 @@ def assert_run_folder_exists(tmp_path: Path) -> Path:
     return run_folder
 
 
-def test_export_build_results__empty_results(tmp_path: Path, build_start_time: datetime) -> None:
-    export_build_results(tmp_path, build_start_time, [])
+def test_create_run_dir_creates_folder(tmp_path: Path, build_start_time: datetime) -> None:
+    run_dir = create_run_dir(project_dir=tmp_path, build_start_time=build_start_time)
+    assert run_dir == _run_dir(tmp_path)
+    assert run_dir.is_dir()
+    assert list(run_dir.iterdir()) == []
 
-    run_folder = assert_run_folder_exists(tmp_path)
-    assert len(list(run_folder.iterdir())) == 0
+
+def test_export_build_result_writes_yaml(tmp_path: Path) -> None:
+    run_dir = _run_dir(tmp_path)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    res = _make_result(
+        name="Datasource 1",
+        full_type="databases/my-db",
+        payload={"tables": [{"name": "t1"}]},
+    )
+
+    export_build_result(run_dir, res)
+
+    out = run_dir / "databases" / "Datasource 1.yaml"
+    assert out.is_file()
+    data = yaml.safe_load(out.read_text())
+    assert data["name"] == "Datasource 1"
+    assert data["type"] == "databases/my-db"
+    assert data["result"] == repr(res.result)
 
 
-def test_export_build_results(tmp_path: Path, build_start_time: datetime) -> None:
-    result_inputs = [
-        BuildExecutionResult(
-            id=str(uuid.uuid4()),
-            name="Datasource 1",
-            type="databases/my-db",
-            description="My datasource description",
-            version="1.0.0",
-            executed_at=datetime.now(),
-            result={
-                "tables": {
-                    "name": "table1",
-                }
-            },
-        ),
-        BuildExecutionResult(
-            id=str(uuid.uuid4()),
-            name="My file",
-            type="files/txt",
-            description="A txt file",
-            version=None,
-            executed_at=datetime.now(),
-            result={
-                "chunks": [
-                    {
-                        "content": "my text",
-                    }
-                ]
-            },
-        ),
-    ]
-    datasource_1_result_as_repr = repr(result_inputs[0].result)
-    datasource_2_result_as_repr = repr(result_inputs[1].result)
+def test_append_result_to_all_results_appends(tmp_path: Path) -> None:
+    run_dir = _run_dir(tmp_path)
+    run_dir.mkdir(parents=True, exist_ok=True)
 
-    export_build_results(tmp_path, build_start_time, result_inputs)
+    a = _make_result(name="A", full_type="files/txt", payload={"chunks": 1})
+    b = _make_result(name="B", full_type="databases/postgres", payload={"ok": True})
 
-    run_folder = assert_run_folder_exists(tmp_path)
+    append_result_to_all_results(run_dir, a)
+    append_result_to_all_results(run_dir, b)
 
-    all_results_file = run_folder.joinpath("all_results.yaml")
-    assert all_results_file.is_file()
-    with open(all_results_file, "r") as f:
-        all_results_str = f.read()
+    all_file = run_dir / "all_results.yaml"
+    assert all_file.is_file()
+    txt = all_file.read_text()
 
-        # Asserts for the header and one yaml attribute for each data source
-        assert "# ===== databases/my-db - Datasource 1 =====\n\n" in all_results_str
-        assert "name: Datasource 1" in all_results_str
-        assert "# ===== files/txt - My file =====\n\n" in all_results_str
-        assert "name: My file" in all_results_str
-
-    datasource_1_folder = run_folder.joinpath("databases")
-    assert datasource_1_folder.is_dir() and len(list(datasource_1_folder.iterdir())) == 1
-    datasource_1_file = next(datasource_1_folder.iterdir())
-    assert datasource_1_file.name == "Datasource 1.yaml"
-    with open(datasource_1_file, "r") as f:
-        assert yaml.safe_load(f)["result"] == datasource_1_result_as_repr
-
-    datasource_2_folder = run_folder.joinpath("files")
-    assert datasource_2_folder.is_dir() and len(list(datasource_2_folder.iterdir())) == 1
-    datasource_2_file = next(datasource_2_folder.iterdir())
-    assert datasource_2_file.name == "My file.yaml"
-    with open(datasource_2_file, "r") as f:
-        assert yaml.safe_load(f)["result"] == datasource_2_result_as_repr
+    assert "# ===== files/txt - A =====\n" in txt
+    assert "name: A" in txt
+    assert "# ===== databases/postgres - B =====\n" in txt
+    assert "name: B" in txt

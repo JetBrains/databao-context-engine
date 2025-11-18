@@ -63,21 +63,19 @@ class RunRepository:
             return self.get(run_id)
 
         params.append(run_id)
-        row = self._conn.execute(
+        self._conn.execute(
             f"""
-            UPDATE
-                run
-            SET 
-                {", ".join(sets)}
-            WHERE
-                run_id = ?
-            RETURNING
-                *
-            """,
+                    UPDATE
+                        run
+                    SET 
+                        {", ".join(sets)}
+                    WHERE
+                        run_id = ?
+                    """,
             params,
-        ).fetchone()
+        )
 
-        return self._row_to_dto(row) if row else None
+        return self.get(run_id)
 
     def delete(self, run_id: int) -> int:
         row = self._conn.execute(
