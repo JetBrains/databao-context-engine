@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from mcp.server import FastMCP
@@ -7,6 +8,13 @@ from mcp.types import ToolAnnotations
 from nemory.project.layout import ALL_RESULTS_FILE_NAME, ensure_project_dir, get_latest_run_dir, get_run_dir
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def mcp_server_lifespan(server: FastMCP):
+    logger.info(f"Starting MCP server on {server.settings.host}:{server.settings.port}...")
+    yield
+    logger.info("Stopping MCP server")
 
 
 def _read_all_results_file(run_directory: Path) -> str:
@@ -21,7 +29,7 @@ def _create_mcp_server(project_dir: str, run_name: str | None) -> FastMCP:
     else:
         run_directory = get_run_dir(project_path, run_name)
 
-    mcp = FastMCP()
+    mcp = FastMCP(lifespan=mcp_server_lifespan)
 
     @mcp.tool(
         description="Retrieve the contents of the all_results file",
@@ -35,7 +43,5 @@ def _create_mcp_server(project_dir: str, run_name: str | None) -> FastMCP:
 
 def run_mcp_server(project_dir: str, run_name: str | None) -> None:
     server = _create_mcp_server(project_dir=project_dir, run_name=run_name)
-
-    logger.info(f"Starting MCP server on {server.settings.host}:{server.settings.port}...")
 
     server.run(transport="streamable-http")
