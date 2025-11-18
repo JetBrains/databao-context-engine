@@ -7,6 +7,7 @@ import yaml
 
 from nemory.build_sources.internal.export_results import export_build_results
 from nemory.pluginlib.build_plugin import BuildExecutionResult
+from nemory.project.layout import ALL_RESULTS_FILE_NAME
 
 
 @pytest.fixture
@@ -67,7 +68,7 @@ def test_export_build_results(tmp_path: Path, build_start_time: datetime) -> Non
 
     run_folder = assert_run_folder_exists(tmp_path)
 
-    all_results_file = run_folder.joinpath("all_results.yaml")
+    all_results_file = run_folder.joinpath(ALL_RESULTS_FILE_NAME)
     assert all_results_file.is_file()
     with open(all_results_file, "r") as f:
         all_results_str = f.read()

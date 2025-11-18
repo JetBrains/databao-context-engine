@@ -6,7 +6,7 @@ from typing import TextIO
 import yaml
 
 from nemory.pluginlib.build_plugin import BuildExecutionResult
-from nemory.project.layout import get_output_dir
+from nemory.project.layout import ALL_RESULTS_FILE_NAME, get_output_dir, get_run_dir_name
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def export_build_results(project_dir: Path, build_start_time: datetime, results:
 def _create_run_dir(project_dir: Path, build_start_time: datetime) -> Path:
     output_dir = get_output_dir(project_dir)
 
-    run_dir = output_dir.joinpath(f"run-{build_start_time.isoformat(timespec='seconds')}")
+    run_dir = output_dir.joinpath(get_run_dir_name(build_start_time))
     run_dir.mkdir(parents=True, exist_ok=False)
 
     return run_dir
@@ -42,7 +42,7 @@ def _export_to_all_results_file(run_dir: Path, results: list[BuildExecutionResul
     if len(results) == 0:
         return
 
-    with run_dir.joinpath("all_results.yaml").open("w") as all_results_file:
+    with run_dir.joinpath(ALL_RESULTS_FILE_NAME).open("w") as all_results_file:
         for result in results:
             all_results_file.write(f"# ===== {result.type} - {result.name} =====\n\n")
             _write_result_in_file(all_results_file, result)
