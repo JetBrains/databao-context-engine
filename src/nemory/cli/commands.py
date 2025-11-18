@@ -6,6 +6,7 @@ from click import Context
 
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
+from nemory.mcp.mcp_server import run_mcp_server
 from nemory.project.init_project import init_project_dir
 from nemory.project.layout import read_config_file
 from nemory.storage.migrate import migrate
@@ -61,3 +62,18 @@ def init(ctx: Context) -> None:
 @click.pass_context
 def build(ctx: Context) -> None:
     build_all_datasources(project_dir=ctx.obj["project_dir"])
+
+
+@nemory.command()
+@click.option(
+    "-r",
+    "--run-name",
+    type=click.STRING,
+    help="Name of the build run you want to use (aka. the name of the run folder in your project's output). Defaults to the latest one in the project.",
+)
+@click.pass_context
+def mcp(ctx: Context, run_name: str | None) -> None:
+    """
+    Run Nemory's MCP server
+    """
+    run_mcp_server(project_dir=ctx.obj["project_dir"], run_name=run_name)

@@ -12,6 +12,7 @@ dependencies = [
     "requests>=2.32.5",
     "psycopg2-binary>=2.9.11",
     "psycopg[binary]>=3.2.12",
+    "mcp>=1.21.1",
 ]
 
 [build-system]
