@@ -17,14 +17,16 @@ def anyio_backend(request):
 
 
 @asynccontextmanager
-async def run_mcp_server_test(project_dir: str, run_name: str | None = None):
+async def run_mcp_server_test(
+    project_dir: str, run_name: str | None = None, host: str | None = None, port: int | None = None
+):
     """
     Runs a MCP Server integration test by:
     1. Spawning a new process to run the MCP server
     2. Creating a client connecting with the MCP Server (we're retrying 5 times to wait for the server to be up and running)
     3. Yielding the MCP client session for the test to run
     """
-    server_process = Process(target=run_mcp_server, args=(project_dir, run_name))
+    server_process = Process(target=run_mcp_server, args=(project_dir, run_name, host, port))
     server_process.start()
 
     try:
@@ -32,7 +34,7 @@ async def run_mcp_server_test(project_dir: str, run_name: str | None = None):
         attempts_left = 5
         while not server_started:
             try:
-                async with streamablehttp_client("http://localhost:8000/mcp") as (
+                async with streamablehttp_client(f"http://{host or '127.0.0.1'}:{port or 8000}/mcp") as (
                     read_stream,
                     write_stream,
                     _,
@@ -110,4 +112,23 @@ async def test_run_mcp_server__all_results_tool_with_run_name(project_with_runs:
         assert (
             all_results.content[0].text
             == next(run for run in project_with_runs.runs if run.run_dir.name == run_name).all_results_file_content
+        )
+
+
+@pytest.mark.anyio
+async def test_run_mcp_server__with_custom_host_and_port(project_with_runs: ProjectWithRuns):
+    async with run_mcp_server_test(
+        project_dir=str(project_with_runs.project_dir), host="localhost", port=8001
+    ) as session:
+        # List available tools
+        tools = await session.list_tools()
+        assert len(tools.tools) == 1
+        assert tools.tools[0].name == "all_results_tool"
+
+        all_results = await session.call_tool(name="all_results_tool", arguments={})
+        assert (
+            all_results.content[0].text
+            == next(
+                iter(sorted(project_with_runs.runs, key=lambda run: run.run_build_time, reverse=True))
+            ).all_results_file_content
         )

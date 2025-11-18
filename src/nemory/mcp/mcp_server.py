@@ -22,14 +22,16 @@ def _read_all_results_file(run_directory: Path) -> str:
         return file.read()
 
 
-def _create_mcp_server(project_dir: str, run_name: str | None) -> FastMCP:
+def _create_mcp_server(
+    project_dir: str, run_name: str | None, host: str | None = None, port: int | None = None
+) -> FastMCP:
     project_path = ensure_project_dir(project_dir=project_dir)
     if run_name is None:
         run_directory = get_latest_run_dir(project_path)
     else:
         run_directory = get_run_dir(project_path, run_name)
 
-    mcp = FastMCP(lifespan=mcp_server_lifespan)
+    mcp = FastMCP(host=host or "127.0.0.1", port=port or 8000, lifespan=mcp_server_lifespan)
 
     @mcp.tool(
         description="Retrieve the contents of the all_results file",
@@ -41,7 +43,7 @@ def _create_mcp_server(project_dir: str, run_name: str | None) -> FastMCP:
     return mcp
 
 
-def run_mcp_server(project_dir: str, run_name: str | None) -> None:
-    server = _create_mcp_server(project_dir=project_dir, run_name=run_name)
+def run_mcp_server(project_dir: str, run_name: str | None, host: str | None = None, port: int | None = None) -> None:
+    server = _create_mcp_server(project_dir=project_dir, run_name=run_name, host=host, port=port)
 
     server.run(transport="streamable-http")

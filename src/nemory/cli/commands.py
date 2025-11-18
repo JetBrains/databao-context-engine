@@ -71,9 +71,21 @@ def build(ctx: Context) -> None:
     type=click.STRING,
     help="Name of the build run you want to use (aka. the name of the run folder in your project's output). Defaults to the latest one in the project.",
 )
+@click.option(
+    "-H",
+    "--host",
+    type=click.STRING,
+    help="Host to bind to. Defaults to 127.0.0.1",
+)
+@click.option(
+    "-p",
+    "--port",
+    type=click.INT,
+    help="Port to bind to. Defaults to 8000",
+)
 @click.pass_context
-def mcp(ctx: Context, run_name: str | None) -> None:
+def mcp(ctx: Context, run_name: str | None, host: str | None, port: int | None) -> None:
     """
     Run Nemory's MCP server
     """
-    run_mcp_server(project_dir=ctx.obj["project_dir"], run_name=run_name)
+    run_mcp_server(project_dir=ctx.obj["project_dir"], run_name=run_name, host=host, port=port)
