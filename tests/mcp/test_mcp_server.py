@@ -82,13 +82,17 @@ def _is_connection_error(e: Exception) -> bool:
 
 
 @pytest.mark.anyio
-async def test_run_mcp_server__all_results_tool_with_no_run_name(project_with_runs: ProjectWithRuns):
+async def test_run_mcp_server__list_tools(project_with_runs: ProjectWithRuns):
     async with run_mcp_server_test(str(project_with_runs.project_dir)) as session:
         # List available tools
         tools = await session.list_tools()
         assert len(tools.tools) == 1
         assert tools.tools[0].name == "all_results_tool"
 
+
+@pytest.mark.anyio
+async def test_run_mcp_server__all_results_tool_with_no_run_name(project_with_runs: ProjectWithRuns):
+    async with run_mcp_server_test(str(project_with_runs.project_dir)) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (
             all_results.content[0].text
@@ -103,11 +107,6 @@ async def test_run_mcp_server__all_results_tool_with_run_name(project_with_runs:
     run_name = project_with_runs.runs[2].run_dir.name
 
     async with run_mcp_server_test(str(project_with_runs.project_dir), run_name) as session:
-        # List available tools
-        tools = await session.list_tools()
-        assert len(tools.tools) == 1
-        assert tools.tools[0].name == "all_results_tool"
-
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (
             all_results.content[0].text
@@ -120,11 +119,6 @@ async def test_run_mcp_server__with_custom_host_and_port(project_with_runs: Proj
     async with run_mcp_server_test(
         project_dir=str(project_with_runs.project_dir), host="localhost", port=8001
     ) as session:
-        # List available tools
-        tools = await session.list_tools()
-        assert len(tools.tools) == 1
-        assert tools.tools[0].name == "all_results_tool"
-
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (
             all_results.content[0].text
