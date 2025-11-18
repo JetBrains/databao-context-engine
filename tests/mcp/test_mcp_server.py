@@ -1,6 +1,6 @@
 import time
 from contextlib import asynccontextmanager
-from multiprocessing import Process
+from multiprocessing import Process, set_start_method
 
 import httpx
 import pytest
@@ -9,6 +9,8 @@ from mcp.client.streamable_http import streamablehttp_client
 
 from nemory.mcp.mcp_server import run_mcp_server
 from tests.mcp.conftest import ProjectWithRuns
+
+set_start_method("spawn")
 
 
 @pytest.fixture
@@ -31,7 +33,7 @@ async def run_mcp_server_test(
 
     try:
         server_started = False
-        attempts_left = 5
+        attempts_left = 10
         while not server_started:
             try:
                 async with streamablehttp_client(f"http://{host or '127.0.0.1'}:{port or 8000}/mcp") as (
