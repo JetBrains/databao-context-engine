@@ -67,6 +67,38 @@ def get_run_dir_name(build_time: datetime) -> str:
     return f"{RUN_DIR_PREFIX}{build_time.isoformat(timespec='seconds')}"
 
 
+def get_run_dir(project_dir: Path, run_name: str) -> Path:
+    run_dir = get_output_dir(project_dir).joinpath(run_name)
+    if not run_dir.is_dir():
+        raise ValueError(
+            f"The run with name {run_name} doesn't exist in the project. [project_dir: {project_dir.resolve()}]"
+        )
+
+    return run_dir
+
+
+def get_latest_run_dir(project_path: Path) -> Path:
+    output_dir = get_output_dir(project_path)
+
+    if not output_dir.is_dir():
+        raise ValueError(f"No build run exist in the project. [project_dir: {project_path.resolve()}]")
+
+    sorted_output_dirs = sorted(
+        (
+            child_path
+            for child_path in output_dir.iterdir()
+            if child_path.is_dir() and child_path.name.startswith(RUN_DIR_PREFIX)
+        ),
+        reverse=True,
+        key=lambda path: path.name,
+    )
+
+    if len(sorted_output_dirs) == 0:
+        raise ValueError(f"No build run exist in the project. [project_dir: {project_path.resolve()}]")
+
+    return sorted_output_dirs[0]
+
+
 def get_examples_dir(project_path: Path) -> Path:
     return project_path.joinpath(EXAMPLES_FOLDER_NAME)
 
