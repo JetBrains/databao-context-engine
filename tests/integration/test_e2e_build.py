@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
@@ -56,22 +57,15 @@ def db_path(tmp_path: Path) -> Path:
 
 @pytest.fixture(autouse=True)
 def _force_test_db(monkeypatch, db_path: Path):
+    import nemory.build_sources.public.api as api_mod
+    import nemory.build_sources.internal.build_wiring as wiring_mod
     monkeypatch.setattr(
-        "nemory.build_sources.public.api.get_db_path",
+        "nemory.system.properties.get_db_path",
         lambda *a, **k: db_path,
         raising=False,
     )
-    monkeypatch.setattr(
-        "nemory.build_sources.internal.build_wiring.get_db_path",
-        lambda *a, **k: db_path,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "nemory.project.layout.get_db_path",
-        lambda *a, **k: db_path,
-        raising=False,
-    )
-    monkeypatch.setenv("NEMORY_DB_PATH", str(db_path))
+    importlib.reload(api_mod)
+    importlib.reload(wiring_mod)
 
 
 @pytest.fixture
@@ -98,7 +92,7 @@ def fake_provider() -> _FakeProvider:
 @pytest.fixture
 def use_fake_provider(mocker, fake_provider):
     return mocker.patch(
-        "nemory.build_sources.internal.build_wiring.OllamaEmbeddingProvider",
+        "nemory.build_sources.internal.build_wiring.create_ollama_provider",
         return_value=fake_provider,
     )
 

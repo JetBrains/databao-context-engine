@@ -5,11 +5,13 @@ import sys
 from importlib.resources import files, as_file
 from pathlib import Path
 
+from nemory.system.properties import get_db_path
+
 logger = logging.getLogger(__name__)
 
 
 def migrate(db_path: str | Path | None = None) -> None:
-    db = Path(db_path or os.environ.get("NEMORY_DB_PATH", "~/.nemory/nemory.duckdb")).expanduser().resolve()
+    db = Path(db_path or get_db_path()).expanduser().resolve()
     db.parent.mkdir(parents=True, exist_ok=True)
 
     with as_file(files("nemory.storage.migrations")) as migdir:
