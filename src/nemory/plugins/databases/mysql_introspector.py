@@ -32,10 +32,10 @@ class MySQLIntrospector(BaseIntrospector):
         raise UnsupportedOperation("MySQL doesn't support catalogs")
 
     def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple | list]:
-        sql = (
-            "SELECT table_name, column_name, is_nullable, data_type "
-            "FROM information_schema.columns WHERE table_schema = %s"
-        )
+        sql = """
+        SELECT table_name, column_name, is_nullable, data_type
+        FROM information_schema.columns WHERE table_schema = %s
+        """
 
         return sql, (schema,)
 

@@ -20,7 +20,7 @@ class PostgresqlIntrospector(BaseIntrospector):
     def _fetchall_dicts(self, connection: Connection, sql: str, params) -> list[dict]:
         with connection.cursor(row_factory=dict_row) as cur:
             cur.execute(sql, params)
-            return [dict(r) for r in cur.fetchall()]
+            return [r for r in cur.fetchall()]
 
     def _get_catalogs(self, connection: Connection, file_config: Mapping[str, Any]) -> list[str]:
         database = file_config.get("database")
@@ -34,10 +34,11 @@ class PostgresqlIntrospector(BaseIntrospector):
         return [row[0] for row in catalog_results]
 
     def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple | list]:
-        sql = (
-            "SELECT table_name, column_name, is_nullable, udt_name, data_type "
-            "FROM information_schema.columns WHERE table_catalog = %s AND table_schema = %s"
-        )
+        sql = """
+        SELECT table_name, column_name, is_nullable, udt_name, data_type
+        FROM information_schema.columns 
+        WHERE table_catalog = %s AND table_schema = %s
+        """
         return sql, (catalog, schema)
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:

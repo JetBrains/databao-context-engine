@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from abc import abstractmethod, ABC
 from collections import defaultdict
 from typing import Any, Mapping
@@ -11,6 +12,8 @@ from nemory.plugins.databases.databases_types import (
     DatabaseTable,
     DatabaseColumn,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BaseIntrospector(ABC):
@@ -59,6 +62,13 @@ class BaseIntrospector(ABC):
             schema_name = row.get("schema_name")
             if catalog_name and schema_name:
                 schemas_per_catalog[catalog_name].append(schema_name)
+            else:
+                logger.warning(
+                    "Skipping row with missing catalog or schema name: catalog=%s, schema=%s, row=%s",
+                    catalog_name,
+                    schema_name,
+                    row,
+                )
         return schemas_per_catalog
 
     def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, tuple | list | None]:
