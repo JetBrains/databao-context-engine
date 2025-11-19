@@ -9,6 +9,7 @@ from nemory.pluginlib.build_plugin import (
     BuildExecutionResult,
     EmbeddableChunk,
 )
+from nemory.plugins.databases.base_introspector import BaseIntrospector
 from nemory.plugins.databases.database_chunker import build_database_chunks
 
 
@@ -16,7 +17,7 @@ class BaseDatabasePlugin(BuildDatasourcePlugin):
     name: str
     supported: set[str]
 
-    def __init__(self, introspector: Any):
+    def __init__(self, introspector: BaseIntrospector):
         self._introspector = introspector
 
     def supported_types(self) -> set[str]:
