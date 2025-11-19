@@ -15,12 +15,8 @@ class ClickhouseIntrospector(BaseIntrospector):
     supports_catalogs = False
 
     def _connect(self, file_config: Mapping[str, Any]):
-        host = file_config.get("host", "localhost")
-        port = file_config.get("port", 8123)
-        user = file_config.get("user", "default")
-        password = file_config.get("password", "")
-        database = file_config.get("database", "default")
-        return clickhouse_connect.get_client(host=host, port=port, username=user, password=password, database=database)
+        connection = file_config.get("connection")
+        return clickhouse_connect.get_client(**connection)
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
         result = connection.query(sql, parameters=params) if params else connection.query(sql)

@@ -14,7 +14,7 @@ class PostgresqlIntrospector(BaseIntrospector):
     supports_catalogs = True
 
     def _connect(self, file_config: Mapping[str, Any]):
-        connection_string = self._create_connection_string_for_config(file_config)
+        connection_string = self._create_connection_string_for_config(file_config["connection"])
         return psycopg.connect(connection_string)
 
     def _fetchall_dicts(self, connection: Connection, sql: str, params) -> list[dict]:
@@ -48,25 +48,25 @@ class PostgresqlIntrospector(BaseIntrospector):
             nullable=row["is_nullable"].upper() == "YES",
         )
 
-    def _create_connection_string_for_config(self, file_config: Mapping[str, Any]) -> str:
+    def _create_connection_string_for_config(self, connection_config: Mapping[str, Any]) -> str:
         # TODO: For all fields, surround with single quotes and escape backslashes and quotes in the values
-        host = file_config.get("host")
+        host = connection_config.get("host")
         if host is None:
             raise ValueError("A host must be provided to connect to the PostgreSQL database.")
 
-        port = file_config.get("port", 5432)
+        port = connection_config.get("port", 5432)
 
         connection_string = f"host={host} port={port}"
 
-        database = file_config.get("database")
+        database = connection_config.get("database")
         if database is not None:
             connection_string += f" dbname={database}"
 
-        user = file_config.get("user")
+        user = connection_config.get("user")
         if user is not None:
             connection_string += f" user={user}"
 
-        password = file_config.get("password")
+        password = connection_config.get("password")
         if password is not None:
             connection_string += f" password='{password}'"
 

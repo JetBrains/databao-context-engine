@@ -13,12 +13,9 @@ class MySQLIntrospector(BaseIntrospector):
     supports_catalogs = False
 
     def _connect(self, file_config: Mapping[str, Any]):
+        connection = file_config["connection"]
         return pymysql.connect(
-            host=file_config["host"],
-            port=file_config.get("port", 3306),
-            user=file_config["user"],
-            password=file_config.get("password", ""),
-            database=file_config.get("database"),
+            **connection,
             cursorclass=pymysql.cursors.DictCursor,
         )
 
