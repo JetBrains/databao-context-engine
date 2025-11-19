@@ -16,6 +16,9 @@ class ClickhouseIntrospector(BaseIntrospector):
 
     def _connect(self, file_config: Mapping[str, Any]):
         connection = file_config.get("connection")
+        if not isinstance(connection, Mapping):
+            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
+
         return clickhouse_connect.get_client(**connection)
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:

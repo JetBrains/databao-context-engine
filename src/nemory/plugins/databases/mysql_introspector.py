@@ -14,6 +14,9 @@ class MySQLIntrospector(BaseIntrospector):
 
     def _connect(self, file_config: Mapping[str, Any]):
         connection = file_config["connection"]
+        if not isinstance(connection, Mapping):
+            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
+
         return pymysql.connect(
             **connection,
             cursorclass=pymysql.cursors.DictCursor,

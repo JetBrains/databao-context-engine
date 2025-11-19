@@ -14,7 +14,11 @@ class PostgresqlIntrospector(BaseIntrospector):
     supports_catalogs = True
 
     def _connect(self, file_config: Mapping[str, Any]):
-        connection_string = self._create_connection_string_for_config(file_config["connection"])
+        connection = file_config.get("connection")
+        if not isinstance(connection, Mapping):
+            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
+
+        connection_string = self._create_connection_string_for_config(connection)
         return psycopg.connect(connection_string)
 
     def _fetchall_dicts(self, connection: Connection, sql: str, params) -> list[dict]:
