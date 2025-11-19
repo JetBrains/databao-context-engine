@@ -158,9 +158,11 @@ def test_postgres_plugin_divide_into_chunks():
 def _create_config_file_from_container(postgres_container_with_columns: PostgresContainer) -> Mapping[str, Any]:
     return {
         "type": "databases/postgres",
-        "host": postgres_container_with_columns.get_container_host_ip(),
-        "port": postgres_container_with_columns.get_exposed_port(postgres_container_with_columns.port),
-        "database": postgres_container_with_columns.dbname,
-        "user": postgres_container_with_columns.username,
-        "password": postgres_container_with_columns.password,
+        "connection": {
+            "host": postgres_container_with_columns.get_container_host_ip(),
+            "port": postgres_container_with_columns.get_exposed_port(postgres_container_with_columns.port),
+            "database": postgres_container_with_columns.dbname,
+            "user": postgres_container_with_columns.username,
+            "password": postgres_container_with_columns.password,
+        },
     }

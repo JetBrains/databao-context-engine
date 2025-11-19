@@ -27,7 +27,7 @@ class PostgresqlIntrospector(BaseIntrospector):
             return [r for r in cur.fetchall()]
 
     def _get_catalogs(self, connection: Connection, file_config: Mapping[str, Any]) -> list[str]:
-        database = file_config.get("database")
+        database = file_config["connection"].get("database")
         if database is not None:
             return [database]
 
