@@ -1,0 +1,62 @@
+import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Literal
+
+from mcp.server import FastMCP
+from mcp.types import ToolAnnotations
+
+from nemory.project.layout import ALL_RESULTS_FILE_NAME, ensure_project_dir, get_latest_run_dir, get_run_dir
+
+logger = logging.getLogger(__name__)
+
+McpTransport = Literal["stdio", "streamable-http"]
+
+
+@asynccontextmanager
+async def mcp_server_lifespan(server: FastMCP):
+    logger.info(f"Starting MCP server on {server.settings.host}:{server.settings.port}...")
+    yield
+    logger.info("Stopping MCP server")
+
+
+def _read_all_results_file(run_directory: Path) -> str:
+    with open(run_directory.joinpath(ALL_RESULTS_FILE_NAME), "r") as file:
+        return file.read()
+
+
+def _create_mcp_server(
+    project_dir: str, run_name: str | None, host: str | None = None, port: int | None = None
+) -> FastMCP:
+    project_path = ensure_project_dir(project_dir=project_dir)
+    if run_name is None:
+        run_directory = get_latest_run_dir(project_path)
+    else:
+        run_directory = get_run_dir(project_path, run_name)
+
+    mcp = FastMCP(host=host or "127.0.0.1", port=port or 8000, lifespan=mcp_server_lifespan)
+
+    @mcp.tool(
+        description="Retrieve the contents of the all_results file",
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
+    )
+    def all_results_tool():
+        return _read_all_results_file(run_directory)
+
+    @mcp.tool(
+        description="Query the context built from various resources, including databases, dbt tools, plain and structured files, to retrieve relevant information",
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
+    )
+    def query_tool():
+        # TODO
+        raise NotImplementedError("query_tool is not yet implemented")
+
+    return mcp
+
+
+def run_mcp_server(
+    project_dir: str, run_name: str | None, transport: McpTransport, host: str | None = None, port: int | None = None
+) -> None:
+    server = _create_mcp_server(project_dir=project_dir, run_name=run_name, host=host, port=port)
+
+    server.run(transport=transport)
