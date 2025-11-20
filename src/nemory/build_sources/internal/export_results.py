@@ -6,7 +6,7 @@ from typing import TextIO
 import yaml
 
 from nemory.pluginlib.build_plugin import BuildExecutionResult
-from nemory.project.layout import get_output_dir
+from nemory.project.layout import get_output_dir, get_run_dir_name
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def create_run_dir(project_dir: Path, build_start_time: datetime) -> Path:
     output_dir = get_output_dir(project_dir)
 
-    run_dir = output_dir.joinpath(f"run-{build_start_time.isoformat(timespec='seconds')}")
+    run_dir = output_dir.joinpath(get_run_dir_name(build_start_time))
     run_dir.mkdir(parents=True, exist_ok=False)
 
     return run_dir

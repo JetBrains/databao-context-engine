@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from nemory.project.init_project import init_project_dir
-from nemory.project.layout import CONFIG_FILE_NAME, EXAMPLES_FOLDER_NAME, SOURCE_FOLDER_NAME
+from nemory.project.layout import CONFIG_FILE_NAME, EXAMPLES_FOLDER_NAME, SOURCE_FOLDER_NAME, is_project_dir_valid
 from nemory.project.project_config import ProjectConfig
 
 
@@ -13,10 +13,12 @@ def test_init_project_dir(tmp_path: Path):
     project_dir.mkdir()
 
     assert project_dir.is_dir()
+    assert is_project_dir_valid(project_dir) is False
 
     init_project_dir(project_dir=str(project_dir))
 
     assert project_dir.is_dir()
+    assert is_project_dir_valid(project_dir) is True
 
     src_dir = project_dir.joinpath(SOURCE_FOLDER_NAME)
     assert src_dir.is_dir()
