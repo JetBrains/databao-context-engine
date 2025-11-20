@@ -7,6 +7,7 @@ from collections.abc import Sequence
 @dataclass(frozen=True)
 class RunDTO:
     run_id: int
+    run_name: str
     project_id: str
     started_at: datetime
     ended_at: Optional[datetime]

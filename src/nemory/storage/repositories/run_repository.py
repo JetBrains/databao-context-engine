@@ -1,6 +1,9 @@
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any, Optional
+
 import duckdb
+
+from nemory.project.layout import get_run_dir_name
 from nemory.storage.models import RunDTO
 
 
@@ -8,17 +11,24 @@ class RunRepository:
     def __init__(self, conn: duckdb.DuckDBPyConnection):
         self._conn = conn
 
-    def create(self, *, project_id: str, nemory_version: Optional[str] = None) -> RunDTO:
+    def create(
+        self, *, project_id: str, nemory_version: Optional[str] = None, started_at: datetime | None = None
+    ) -> RunDTO:
+        if started_at is None:
+            started_at = datetime.now()
+        # TODO: Internalise this method as run names should only ever be created from this repository
+        run_name = get_run_dir_name(started_at)
+
         row = self._conn.execute(
             """
             INSERT INTO 
-                run (project_id, nemory_version)
+                run (project_id, nemory_version, started_at, run_name)
             VALUES 
-                (?, ?)
+                (?, ?, ?, ?)
             RETURNING 
                 *
             """,
-            [project_id, nemory_version],
+            [project_id, nemory_version, started_at, run_name],
         ).fetchone()
         if row is None:
             raise RuntimeError("Run creation returned no object")
@@ -35,6 +45,36 @@ class RunRepository:
                 run_id = ?
             """,
             [run_id],
+        ).fetchone()
+        return self._row_to_dto(row) if row else None
+
+    def get_by_run_name(self, *, project_id: str, run_name: str) -> RunDTO | None:
+        row = self._conn.execute(
+            """
+            SELECT
+                *
+            FROM
+                run
+            WHERE
+                run.project_id = ? AND run_name = ?
+            """,
+            [project_id, run_name],
+        ).fetchone()
+        return self._row_to_dto(row) if row else None
+
+    def get_latest_run_for_project(self, project_id: str) -> RunDTO | None:
+        row = self._conn.execute(
+            """
+            SELECT
+                *
+            FROM
+                run
+            WHERE
+                run.project_id = ?
+            ORDER BY run.started_at DESC
+            LIMIT 1
+            """,
+            [project_id],
         ).fetchone()
         return self._row_to_dto(row) if row else None
 
@@ -106,9 +146,10 @@ class RunRepository:
 
     @staticmethod
     def _row_to_dto(row: tuple) -> RunDTO:
-        run_id, project_id, started_at, ended_at, nemory_version = row
+        run_id, project_id, started_at, ended_at, nemory_version, run_name = row
         return RunDTO(
             run_id=int(run_id),
+            run_name=run_name,
             project_id=str(project_id),
             started_at=started_at,
             ended_at=ended_at,

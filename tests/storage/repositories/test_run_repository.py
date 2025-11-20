@@ -1,5 +1,6 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
+from nemory.project.layout import get_run_dir_name
 from nemory.storage.models import RunDTO
 
 
@@ -9,11 +10,73 @@ def test_create_and_get(run_repo):
     assert isinstance(created, RunDTO)
     assert created.run_id > 0
     assert created.project_id == "project-id"
+    assert created.started_at is not None
+    assert created.run_name.startswith("run-")
     assert created.ended_at is None
     assert created.nemory_version == "0.1.0"
 
     fetched = run_repo.get(run_id=created.run_id)
     assert created == fetched
+
+
+def test_create__with_started_at(run_repo):
+    started_at = datetime.now() - timedelta(days=1)
+    created = run_repo.create(project_id="project-id", nemory_version="0.1.0", started_at=started_at)
+
+    assert isinstance(created, RunDTO)
+    assert created.run_id > 0
+    assert created.project_id == "project-id"
+    assert created.started_at == started_at
+    assert created.run_name == get_run_dir_name(started_at)
+    assert created.ended_at is None
+    assert created.nemory_version == "0.1.0"
+
+    fetched = run_repo.get(run_id=created.run_id)
+    assert created == fetched
+
+
+def test_get_by_run_name(run_repo):
+    nemory_version = "0.1.0"
+
+    project_id_1 = "project-id-1"
+    project_id_2 = "project-id-2"
+    started_1 = datetime.now() - timedelta(days=1)
+    started_2 = datetime.now() - timedelta(days=3)
+
+    run_repo.create(project_id=project_id_1, nemory_version=nemory_version, started_at=started_1)
+    run_project_1_started_2 = run_repo.create(
+        project_id=project_id_1, nemory_version=nemory_version, started_at=started_2
+    )
+    run_repo.create(project_id=project_id_2, nemory_version=nemory_version, started_at=started_2)
+
+    assert (
+        run_repo.get_by_run_name(project_id=project_id_1, run_name=get_run_dir_name(started_2))
+        == run_project_1_started_2
+    )
+    assert run_repo.get_by_run_name(project_id=project_id_2, run_name=get_run_dir_name(started_1)) is None
+
+
+def test_get_latest_run_for_project(run_repo):
+    nemory_version = "0.1.0"
+
+    project_id_1 = "project-id-1"
+    project_id_2 = "project-id-2"
+    project_id_3 = "project-id-3"
+
+    most_recent_started_at = datetime.now()
+    run_repo.create(project_id=project_id_2, nemory_version=nemory_version, started_at=most_recent_started_at)
+    run_repo.create(
+        project_id=project_id_1, nemory_version=nemory_version, started_at=most_recent_started_at - timedelta(days=1)
+    )
+    expected_latest_run = run_repo.create(
+        project_id=project_id_1, nemory_version=nemory_version, started_at=most_recent_started_at
+    )
+    run_repo.create(
+        project_id=project_id_1, nemory_version=nemory_version, started_at=most_recent_started_at - timedelta(days=5)
+    )
+
+    assert run_repo.get_latest_run_for_project(project_id_1) == expected_latest_run
+    assert run_repo.get_latest_run_for_project(project_id_3) is None
 
 
 def test_get_missing_returns_none(run_repo):
