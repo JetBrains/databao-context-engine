@@ -10,7 +10,12 @@ from nemory.event_journal.writer import get_journal_file, log_event
 
 def write_test_events():
     for i in range(10):
-        log_event(project_id=uuid.uuid1(), nemory_version=version("nemory"), type="test_event", test_name=f"event-{i}")
+        log_event(
+            project_id=uuid.uuid1(),
+            nemory_version=version("nemory"),
+            event_type="test_event",
+            сustom_field=f"event-{i}",
+        )
 
 
 def test_reading_journal_with_duckdb(nemory_path):
@@ -24,9 +29,8 @@ def test_reading_journal_with_duckdb(nemory_path):
                 f"SELECT json FROM read_json_objects('{get_journal_file(nemory_path)}')"
             ).fetchall()
         ]
-        print(json_events)
         json_events.sort(key=lambda e: datetime.fromisoformat(e["timestamp"]))
         assert len(json_events) == 10
         assert json_events[0]["type"] == "test_event"
-        assert json_events[0]["test_name"] == "event-0"
-        assert json_events[9]["test_name"] == "event-9"
+        assert json_events[0]["сustom_field"] == "event-0"
+        assert json_events[9]["сustom_field"] == "event-9"

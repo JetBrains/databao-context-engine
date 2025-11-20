@@ -14,7 +14,7 @@ def get_journal_file(nemory_path: Path) -> Path:
     return nemory_path / "event-journal" / "journal.txt"
 
 
-def log_event(*, project_id: UUID, nemory_version: str, type: str, event_id: UUID = uuid1(), **kwargs):
+def log_event(*, project_id: UUID, nemory_version: str, event_type: str, event_id: UUID = uuid1(), **kwargs):
     current_timestamp = datetime.datetime.now().isoformat()
     journal_file = get_journal_file(get_nemory_path())
     journal_file.parent.mkdir(parents=True, exist_ok=True)
@@ -25,7 +25,7 @@ def log_event(*, project_id: UUID, nemory_version: str, type: str, event_id: UUI
                 "project_id": str(project_id),
                 "nemory_version": nemory_version,
                 "timestamp": current_timestamp,
-                "type": type,
+                "type": event_type,
                 **kwargs,
             }
         )
