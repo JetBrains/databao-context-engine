@@ -32,6 +32,10 @@ def ensure_project_dir(project_dir: str, should_be_initialised: bool = True) -> 
     return project_path
 
 
+def is_project_dir_valid(project_dir: Path) -> bool:
+    return get_config_file(project_dir).is_file() and get_source_dir(project_dir).is_dir()
+
+
 def ensure_can_init_project(project_dir: str) -> bool:
     project_path = Path(project_dir)
 
