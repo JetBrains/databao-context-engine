@@ -1,13 +1,9 @@
 import datetime
 import json
-import os
 from pathlib import Path
 from uuid import UUID, uuid1
 
-
-def get_nemory_path() -> Path:
-    nemory_path = os.getenv("NEMORY_PATH") or "~/.nemory"
-    return Path(nemory_path).expanduser().resolve()
+from nemory.system.properties import get_nemory_path
 
 
 def get_journal_file(nemory_path: Path) -> Path:
