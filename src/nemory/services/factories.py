@@ -54,10 +54,11 @@ def create_chunk_embedding_service(
     persistence = create_persistence_service(conn)
     return ChunkEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=resolver)
 
+
 def create_build_service(
-        conn: DuckDBPyConnection,
-        *,
-        provider: EmbeddingProvider,
+    conn: DuckDBPyConnection,
+    *,
+    provider: EmbeddingProvider,
 ) -> BuildService:
     run_repo = create_run_repository(conn)
     datasource_run_repo = create_datasource_run_repository(conn)

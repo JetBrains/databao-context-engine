@@ -59,6 +59,7 @@ def db_path(tmp_path: Path) -> Path:
 def _force_test_db(monkeypatch, db_path: Path):
     import nemory.build_sources.public.api as api_mod
     import nemory.build_sources.internal.build_wiring as wiring_mod
+
     monkeypatch.setattr(
         "nemory.system.properties.get_db_path",
         lambda *a, **k: db_path,

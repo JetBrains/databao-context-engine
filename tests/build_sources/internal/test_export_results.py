@@ -11,7 +11,6 @@ from nemory.build_sources.internal.export_results import (
     append_result_to_all_results,
 )
 from nemory.pluginlib.build_plugin import BuildExecutionResult
-from nemory.project.layout import ALL_RESULTS_FILE_NAME
 
 
 @pytest.fixture

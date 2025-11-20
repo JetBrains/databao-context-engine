@@ -10,7 +10,11 @@ from nemory.build_sources.internal.export_results import (
     export_build_result,
 )
 from nemory.build_sources.internal.plugin_loader import load_plugins
-from nemory.build_sources.internal.datasource_discovery import DatasourceDescriptor, DatasourceKind, discover_datasources
+from nemory.build_sources.internal.datasource_discovery import (
+    DatasourceDescriptor,
+    DatasourceKind,
+    discover_datasources,
+)
 from nemory.build_sources.internal.types import PreparedConfig, PreparedFile, PreparedDatasource
 
 logger = logging.getLogger(__name__)
@@ -48,7 +52,9 @@ def build(
 
             plugin = plugins.get(prepared_source.full_type)
             if plugin is None:
-                logger.warning("No plugin for '%s' (datasource=%s) — skipping.", prepared_source.full_type, datasource.path)
+                logger.warning(
+                    "No plugin for '%s' (datasource=%s) — skipping.", prepared_source.full_type, datasource.path
+                )
                 continue
 
             result = build_service.process_prepared_source(
@@ -88,4 +94,6 @@ def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource | No
             logger.warning("Config missing 'type' at %s - skipping", datasource.path)
             return None
         full_type = f"{datasource.main_type}/{subtype}"
-        return PreparedConfig(full_type=full_type, path=datasource.path, config=config, datasource_name=datasource.path.stem)
+        return PreparedConfig(
+            full_type=full_type, path=datasource.path, config=config, datasource_name=datasource.path.stem
+        )
