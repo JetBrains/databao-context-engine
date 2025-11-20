@@ -1,79 +1,33 @@
-from collections import defaultdict
 from typing import Any, Mapping
 
 import psycopg
 from psycopg import Connection
 from psycopg.rows import dict_row
 
-from nemory.plugins.databases.databases_types import (
-    DatabaseCatalog,
-    DatabaseColumn,
-    DatabaseIntrospectionResult,
-    DatabaseSchema,
-    DatabaseTable,
-)
+from nemory.plugins.databases.databases_types import DatabaseColumn
+from nemory.plugins.databases.base_introspector import BaseIntrospector
 
 
-class PostgresqlIntrospector:
-    _IGNORED_SCHEMAS = ["information_schema", "pg_catalog", "pg_toast"]
+class PostgresqlIntrospector(BaseIntrospector):
+    _IGNORED_SCHEMAS = {"information_schema", "pg_catalog", "pg_toast"}
 
-    def introspect_database(self, file_config: Mapping[str, Any]) -> DatabaseIntrospectionResult:
-        connection_string = self._create_connection_string_for_config(file_config)
+    supports_catalogs = True
 
-        connection = psycopg.connect(connection_string)
-        catalogs_names = self._get_catalog_to_introspect(file_config, connection)
-        all_schemas_per_catalog = self._collect_schemas(connection, catalogs_names)
+    def _connect(self, file_config: Mapping[str, Any]):
+        connection = file_config.get("connection")
+        if not isinstance(connection, Mapping):
+            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
 
-        introspected_catalogs: list[DatabaseCatalog] = []
-        for catalog in all_schemas_per_catalog:
-            schemas = []
-            for schema in all_schemas_per_catalog[catalog]:
-                columns_per_table = self._collect_columns_for_schema(connection, catalog, schema)
+        connection_string = self._create_connection_string_for_config(connection)
+        return psycopg.connect(connection_string)
 
-                schemas.append(
-                    DatabaseSchema(
-                        name=schema,
-                        tables=[
-                            DatabaseTable(
-                                name=table,
-                                columns=columns_per_table[table],
-                                samples=[],  # TODO: fill samples
-                            )
-                            for table in columns_per_table
-                        ],
-                    )
-                )
-            introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=schemas))
+    def _fetchall_dicts(self, connection: Connection, sql: str, params) -> list[dict]:
+        with connection.cursor(row_factory=dict_row) as cur:
+            cur.execute(sql, params)
+            return [r for r in cur.fetchall()]
 
-        return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
-
-    def _create_connection_string_for_config(self, file_config: Mapping[str, Any]) -> str:
-        # TODO: For all fields, surround with single quotes and escape backslasshes and quotes in the values
-        #  (or use a different connection method)
-        host = file_config.get("host")
-        if host is None:
-            raise ValueError("A host must be provided to connect to the PostgreSQL database.")
-
-        port = file_config.get("port", 5432)
-
-        connection_string = f"host={host} port={port}"
-
-        database = file_config.get("database")
-        if database is not None:
-            connection_string += f" dbname={database}"
-
-        user = file_config.get("user")
-        if user is not None:
-            connection_string += f" user={user}"
-
-        password = file_config.get("password")
-        if password is not None:
-            connection_string += f" password='{password}'"
-
-        return connection_string
-
-    def _get_catalog_to_introspect(self, file_config: Mapping[str, Any], connection: Connection) -> list[str]:
-        database = file_config.get("database")
+    def _get_catalogs(self, connection: Connection, file_config: Mapping[str, Any]) -> list[str]:
+        database = file_config["connection"].get("database")
         if database is not None:
             return [database]
 
@@ -83,51 +37,41 @@ class PostgresqlIntrospector:
 
         return [row[0] for row in catalog_results]
 
-    def _collect_schemas(self, connection: Connection, catalogs: list[str]) -> dict[str, list[str]]:
-        schemas_result = connection.execute(
-            "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(%s) AND schema_name != ALL(%s)",
-            (catalogs, self._IGNORED_SCHEMAS),
-        ).fetchall()
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple | list]:
+        sql = """
+        SELECT table_name, column_name, is_nullable, udt_name, data_type
+        FROM information_schema.columns 
+        WHERE table_catalog = %s AND table_schema = %s
+        """
+        return sql, (catalog, schema)
 
-        schemas_per_catalog = defaultdict(list)
-        for row in schemas_result:
-            schemas_per_catalog[row[0]].append(row[1])
-
-        return schemas_per_catalog
-
-    def _collect_tables(self, connection: Connection, catalogs: list[str]) -> dict[str, dict[str, list[str]]]:
-        tables_result = connection.execute(
-            "SELECT table_catalog, table_schema, table_name FROM information_schema.tables WHERE table_catalog = ANY(%s)",
-            [catalogs],
-        ).fetchall()
-
-        tables_per_schema_per_catalog: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
-        for row in tables_result:
-            tables_per_schema_per_catalog[row[0]][row[1]].append(row[2])
-
-        return tables_per_schema_per_catalog
-
-    def _collect_columns_for_schema(
-        self, connection: Connection, catalog: str, schema: str
-    ) -> dict[str, list[DatabaseColumn]]:
-        columns_result = (
-            connection.cursor(row_factory=dict_row)
-            .execute(
-                "SELECT * FROM information_schema.columns WHERE table_catalog = %s AND table_schema = %s",
-                [catalog, schema],
-            )
-            .fetchall()
-        )
-
-        columns_per_table = defaultdict(list)
-        for row in columns_result:
-            columns_per_table[row["table_name"]].append(self._convert_result_row_to_database_column(row))
-
-        return columns_per_table
-
-    def _convert_result_row_to_database_column(self, row) -> DatabaseColumn:
+    def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(
             name=row["column_name"],
             type=row["udt_name"],
-            nullable=row["is_nullable"] == "YES",
+            nullable=row["is_nullable"].upper() == "YES",
         )
+
+    def _create_connection_string_for_config(self, connection_config: Mapping[str, Any]) -> str:
+        # TODO: For all fields, surround with single quotes and escape backslashes and quotes in the values
+        host = connection_config.get("host")
+        if host is None:
+            raise ValueError("A host must be provided to connect to the PostgreSQL database.")
+
+        port = connection_config.get("port", 5432)
+
+        connection_string = f"host={host} port={port}"
+
+        database = connection_config.get("database")
+        if database is not None:
+            connection_string += f" dbname={database}"
+
+        user = connection_config.get("user")
+        if user is not None:
+            connection_string += f" user={user}"
+
+        password = connection_config.get("password")
+        if password is not None:
+            connection_string += f" password='{password}'"
+
+        return connection_string
