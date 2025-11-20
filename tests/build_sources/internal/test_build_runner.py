@@ -72,7 +72,7 @@ def test_build_skips_source_without_plugin(
     stub_plugins({})
     stub_prepare([PreparedFile(full_type="files/md", path=datasources.path)])
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
     mock_build_service.start_run.assert_called_once()
     mock_build_service.process_prepared_source.assert_not_called()
     mock_build_service.finalize_run.assert_called_once()
@@ -91,7 +91,7 @@ def test_build_processes_file_source_and_exports(
 
     mock_build_service.process_prepared_source.return_value = _result(name="one", typ="files/md")
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
 
     mock_build_service.start_run.assert_called_once()
     mock_build_service.process_prepared_source.assert_called_once()
@@ -114,7 +114,7 @@ def test_build_continues_on_service_exception(
 
     mock_build_service.process_prepared_source.side_effect = [RuntimeError("boom"), _result(name="b")]
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
 
     assert mock_build_service.process_prepared_source.call_count == 2
     mock_build_service.finalize_run.assert_called_once()
