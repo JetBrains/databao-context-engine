@@ -25,7 +25,7 @@ def build(
     *,
     build_service: BuildService,
     project_id: str,
-    nemory_version: str | None = None,
+    nemory_version: str,
 ) -> None:
     """
     Build entrypoint.
@@ -78,8 +78,8 @@ def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource | No
     Convert a discovered datasource into a prepared datasource ready for plugin execution
     """
     if datasource.kind is DatasourceKind.FILE:
-        subtype = datasource.path.suffix.lower().lstrip(".")
-        full_type = f"{datasource.main_type}/{subtype}"
+        file_subtype = datasource.path.suffix.lower().lstrip(".")
+        full_type = f"{datasource.main_type}/{file_subtype}"
         return PreparedFile(full_type=full_type, path=datasource.path)
 
     else:
