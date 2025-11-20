@@ -24,7 +24,11 @@ Not providing the `info` subcommand or using the `--help` flag will show the hel
 
 ## Using the nemory command directly
 
-To be able to use the `nemory` command directly (without using `uv run` or `python`), we need to:
+To be able to use the `nemory` command directly (without using `uv run` or `python`) there are two options.
+
+### Installing nemory locally
+
+For that one needs to:
 
 1. Build the project by running
 
@@ -40,7 +44,24 @@ To be able to use the `nemory` command directly (without using `uv run` or `pyth
 
 This second step will install the `nemory` script on your machine and add it into your path.
 
-You can then directly use:
+### Create nemory alias using nix
+
+This method will simply create a new shell environment with `nemory` alias. For that one needs to install `nix` package
+manager (https://nixos.org/download/). After that one could simply run in the project root
+
+```bash
+$ nix-shell
+```
+
+which is a short version of `$ nix-shell shell.nix`.
+
+Alternatively, one could specify the path to the project repository
+
+```bash
+$ nix-shell {path_to_nemory_repository}
+```
+
+After that, you can then directly use:
 
 ```bash
   nemory --help
