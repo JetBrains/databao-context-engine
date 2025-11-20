@@ -5,12 +5,14 @@ from typing import Any
 
 import yaml
 
+from nemory.project.layout import get_logs_dir
+
 
 def configure_logging(verbose: bool, project_dir: str) -> None:
     with Path(__file__).parent.joinpath("log_config.yaml").open(mode="r") as log_config_file:
         log_config = yaml.safe_load(log_config_file)
 
-        logs_dir_path = Path(project_dir).joinpath("logs")
+        logs_dir_path = get_logs_dir(Path(project_dir))
         if logs_dir_path.exists():
             file_handler_name = "logFile"
             log_config["handlers"][file_handler_name] = _get_logging_file_handler(logs_dir_path)

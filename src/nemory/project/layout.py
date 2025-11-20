@@ -6,6 +6,7 @@ from nemory.project.project_config import ProjectConfig
 SOURCE_FOLDER_NAME = "src"
 OUTPUT_FOLDER_NAME = "output"
 EXAMPLES_FOLDER_NAME = "examples"
+LOGS_FOLDER_NAME = "logs"
 CONFIG_FILE_NAME = "nemory.ini"
 RUN_DIR_PREFIX = "run-"
 ALL_RESULTS_FILE_NAME = "all_results.yaml"
@@ -105,6 +106,10 @@ def get_examples_dir(project_path: Path) -> Path:
 
 def get_config_file(project_dir: Path) -> Path:
     return project_dir.joinpath(CONFIG_FILE_NAME)
+
+
+def get_logs_dir(project_dir: Path) -> Path:
+    return project_dir.joinpath(LOGS_FOLDER_NAME)
 
 
 def read_config_file(project_dir: Path) -> ProjectConfig:
