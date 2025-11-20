@@ -60,7 +60,7 @@ class EmbeddingRepository:
         vec: Sequence[float],
     ) -> Optional[EmbeddingDTO]:
         TableNamePolicy.validate_table_name(table_name=table_name)
-        row = self._conn.execute(
+        self._conn.execute(
             f"""
             UPDATE 
                 {table_name}
@@ -68,12 +68,10 @@ class EmbeddingRepository:
                 vec = ?
             WHERE 
                 chunk_id = ?
-            RETURNING
-                *
             """,
             [list(vec), chunk_id],
-        ).fetchone()
-        return self._row_to_dto(row) if row else None
+        )
+        return self.get(table_name=table_name, chunk_id=chunk_id)
 
     def delete(self, *, table_name: str, chunk_id: int) -> int:
         TableNamePolicy.validate_table_name(table_name=table_name)

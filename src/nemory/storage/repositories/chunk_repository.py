@@ -67,7 +67,7 @@ class ChunkRepository:
             return self.get(chunk_id)
 
         params.append(chunk_id)
-        row = self._conn.execute(
+        self._conn.execute(
             f"""
             UPDATE
                 chunk
@@ -75,13 +75,11 @@ class ChunkRepository:
                 {", ".join(sets)}
             WHERE
                 chunk_id = ?
-            RETURNING
-                *
         """,
             params,
-        ).fetchone()
+        )
 
-        return self._row_to_dto(row) if row else None
+        return self.get(chunk_id)
 
     def delete(self, chunk_id: int) -> int:
         row = self._conn.execute(
