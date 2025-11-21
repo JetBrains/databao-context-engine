@@ -42,7 +42,7 @@ def build(
         return
 
     run = build_service.start_run(project_id=project_id, nemory_version=nemory_version)
-    run_dir = create_run_dir(project_dir, run.started_at)
+    run_dir = create_run_dir(project_dir, run.run_name)
 
     for datasource in datasources:
         try:

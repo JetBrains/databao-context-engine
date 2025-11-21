@@ -8,6 +8,7 @@ import yaml
 from nemory.build_sources.internal import build_runner
 from nemory.build_sources.internal.types import PreparedFile
 from nemory.pluginlib.build_plugin import BuildExecutionResult
+from nemory.storage.repositories.run_repository import RunRepository
 
 
 def _result(name="demo", typ="files/md"):
@@ -25,7 +26,7 @@ def _result(name="demo", typ="files/md"):
 @pytest.fixture
 def mock_build_service(mocker):
     svc = mocker.Mock(name="BuildService")
-    svc.start_run.return_value = SimpleNamespace(run_id=1, started_at=datetime.now())
+    svc.start_run.return_value = SimpleNamespace(run_id=1, run_name=RunRepository.generate_run_dir_name(datetime.now()))
     return svc
 
 

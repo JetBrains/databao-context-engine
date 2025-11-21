@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
-from nemory.project.layout import get_run_dir_name
 from nemory.storage.models import RunDTO
+from nemory.storage.repositories.run_repository import RunRepository
 
 
 def test_create_and_get(run_repo):
@@ -27,7 +27,7 @@ def test_create__with_started_at(run_repo):
     assert created.run_id > 0
     assert created.project_id == "project-id"
     assert created.started_at == started_at
-    assert created.run_name == get_run_dir_name(started_at)
+    assert created.run_name == RunRepository.generate_run_dir_name(started_at)
     assert created.ended_at is None
     assert created.nemory_version == "0.1.0"
 
@@ -50,10 +50,13 @@ def test_get_by_run_name(run_repo):
     run_repo.create(project_id=project_id_2, nemory_version=nemory_version, started_at=started_2)
 
     assert (
-        run_repo.get_by_run_name(project_id=project_id_1, run_name=get_run_dir_name(started_2))
+        run_repo.get_by_run_name(project_id=project_id_1, run_name=RunRepository.generate_run_dir_name(started_2))
         == run_project_1_started_2
     )
-    assert run_repo.get_by_run_name(project_id=project_id_2, run_name=get_run_dir_name(started_1)) is None
+    assert (
+        run_repo.get_by_run_name(project_id=project_id_2, run_name=RunRepository.generate_run_dir_name(started_1))
+        is None
+    )
 
 
 def test_get_latest_run_for_project(run_repo):

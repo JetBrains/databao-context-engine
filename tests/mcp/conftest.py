@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from nemory.project.layout import ALL_RESULTS_FILE_NAME, get_output_dir, get_run_dir_name
+from nemory.project.layout import ALL_RESULTS_FILE_NAME, get_output_dir
+from nemory.storage.repositories.run_repository import RunRepository
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -21,7 +22,8 @@ class ProjectWithRuns:
 
 
 def _create_run_dir(output_path: Path, build_time: datetime) -> Run:
-    run_dir = output_path.joinpath(get_run_dir_name(build_time))
+    # TODO: Add the run in the DB and use the run name from there
+    run_dir = output_path.joinpath(RunRepository.generate_run_dir_name(build_time))
     run_dir.mkdir()
 
     all_results_content = _create_all_results_file(run_dir, build_time)
