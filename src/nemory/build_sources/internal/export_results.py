@@ -1,20 +1,19 @@
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
 import yaml
 
 from nemory.pluginlib.build_plugin import BuildExecutionResult
-from nemory.project.layout import get_output_dir, get_run_dir_name
+from nemory.project.layout import get_output_dir
 
 logger = logging.getLogger(__name__)
 
 
-def create_run_dir(project_dir: Path, build_start_time: datetime) -> Path:
+def create_run_dir(project_dir: Path, run_name: str) -> Path:
     output_dir = get_output_dir(project_dir)
 
-    run_dir = output_dir.joinpath(get_run_dir_name(build_start_time))
+    run_dir = output_dir.joinpath(run_name)
     run_dir.mkdir(parents=True, exist_ok=False)
 
     return run_dir

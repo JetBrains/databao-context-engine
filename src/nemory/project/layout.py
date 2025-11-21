@@ -1,14 +1,13 @@
-from datetime import datetime
 from pathlib import Path
 
 from nemory.project.project_config import ProjectConfig
+from nemory.storage.repositories.run_repository import RunRepository
 
 SOURCE_FOLDER_NAME = "src"
 OUTPUT_FOLDER_NAME = "output"
 EXAMPLES_FOLDER_NAME = "examples"
 LOGS_FOLDER_NAME = "logs"
 CONFIG_FILE_NAME = "nemory.ini"
-RUN_DIR_PREFIX = "run-"
 ALL_RESULTS_FILE_NAME = "all_results.yaml"
 
 
@@ -68,10 +67,6 @@ def get_output_dir(project_dir: Path) -> Path:
     return project_dir.joinpath(OUTPUT_FOLDER_NAME)
 
 
-def get_run_dir_name(build_time: datetime) -> str:
-    return f"{RUN_DIR_PREFIX}{build_time.isoformat(timespec='seconds')}"
-
-
 def get_run_dir(project_dir: Path, run_name: str) -> Path:
     run_dir = get_output_dir(project_dir).joinpath(run_name)
     if not run_dir.is_dir():
@@ -83,6 +78,9 @@ def get_run_dir(project_dir: Path, run_name: str) -> Path:
 
 
 def get_latest_run_name(project_path: Path) -> str:
+    """
+    TODO: This method should be removed in favour of querying the latest run in our DB
+    """
     output_dir = get_output_dir(project_path)
 
     if not output_dir.is_dir():
@@ -92,7 +90,7 @@ def get_latest_run_name(project_path: Path) -> str:
         (
             child_path.name
             for child_path in output_dir.iterdir()
-            if child_path.is_dir() and child_path.name.startswith(RUN_DIR_PREFIX)
+            if child_path.is_dir() and child_path.name.startswith(RunRepository._RUN_DIR_PREFIX)
         ),
         reverse=True,
     )

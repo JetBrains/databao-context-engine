@@ -3,11 +3,12 @@ from typing import Any, Optional
 
 import duckdb
 
-from nemory.project.layout import get_run_dir_name
 from nemory.storage.models import RunDTO
 
 
 class RunRepository:
+    _RUN_DIR_PREFIX = "run-"
+
     def __init__(self, conn: duckdb.DuckDBPyConnection):
         self._conn = conn
 
@@ -16,8 +17,7 @@ class RunRepository:
     ) -> RunDTO:
         if started_at is None:
             started_at = datetime.now()
-        # TODO: Internalise this method as run names should only ever be created from this repository
-        run_name = get_run_dir_name(started_at)
+        run_name = RunRepository.generate_run_dir_name(started_at)
 
         row = self._conn.execute(
             """
@@ -155,3 +155,7 @@ class RunRepository:
             ended_at=ended_at,
             nemory_version=nemory_version,
         )
+
+    @staticmethod
+    def generate_run_dir_name(build_time: datetime) -> str:
+        return f"{RunRepository._RUN_DIR_PREFIX}{build_time.isoformat(timespec='seconds')}"
