@@ -6,7 +6,7 @@ from click import Context
 
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
-from nemory.mcp.mcp_server import McpTransport, run_mcp_server
+from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.init_project import init_project_dir
 from nemory.project.layout import read_config_file
 from nemory.storage.migrate import migrate
