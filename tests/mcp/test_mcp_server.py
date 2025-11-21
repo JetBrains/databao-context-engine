@@ -7,7 +7,7 @@ import pytest
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
-from nemory.mcp.mcp_server import run_mcp_server
+from nemory.mcp.mcp_runner import run_mcp_server
 from tests.mcp.conftest import ProjectWithRuns
 
 set_start_method("spawn")
