@@ -4,13 +4,14 @@ from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.services.table_name_policy import TableNamePolicy
 
 
-def test_resolve_existing_returns_table_name(conn, registry_repo):
+def test_resolve_existing_returns_table_name_and_dimension(conn, registry_repo):
     table_name = "embedding_tests__model_v1__768"
     registry_repo.create(embedder="tests", model_id="model:v1", dim=768, table_name=table_name)
 
     resolver = EmbeddingShardResolver(conn=conn, registry_repo=registry_repo)
-    resolved_table_name = resolver.resolve(embedder="tests", model_id="model:v1")
+    resolved_table_name, dimension = resolver.resolve(embedder="tests", model_id="model:v1")
     assert table_name == resolved_table_name
+    assert dimension == 768
 
 
 def test_resolve_or_create_creates_table_index_and_registry(conn, registry_repo, resolver):

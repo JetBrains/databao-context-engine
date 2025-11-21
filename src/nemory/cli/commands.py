@@ -9,6 +9,7 @@ from nemory.config.logging import configure_logging
 from nemory.mcp.mcp_server import McpTransport, run_mcp_server
 from nemory.project.init_project import init_project_dir
 from nemory.project.layout import read_config_file
+from nemory.query_embeddings.internal.query_wiring import query_embeddings
 from nemory.storage.migrate import migrate
 
 
@@ -62,6 +63,33 @@ def init(ctx: Context) -> None:
 @click.pass_context
 def build(ctx: Context) -> None:
     build_all_datasources(project_dir=ctx.obj["project_dir"])
+
+
+@nemory.command()
+@click.argument(
+    "query-text",
+    nargs=-1,
+    required=True,
+)
+@click.option(
+    "-r",
+    "--run-name",
+    type=click.STRING,
+    help="Build run to use (the run folder name). Defaults to the latest run in the project.",
+)
+@click.option(
+    "-l",
+    "--limit",
+    type=click.INT,
+    help="Maximum number of chunk matches to return.",
+)
+@click.pass_context
+def query(ctx: Context, query_text: tuple[str, ...], run_name: str | None, limit: int | None) -> None:
+    """
+    Search the project's built context for the most relevant chunks.
+    """
+    text = " ".join(query_text)
+    query_embeddings(project_dir=ctx.obj["project_dir"], query_text=text, run_name=run_name, limit=limit or 50)
 
 
 @nemory.command()

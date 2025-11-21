@@ -104,6 +104,23 @@ class RunRepository:
         ).fetchall()
         return [self._row_to_dto(r) for r in rows]
 
+    def get_latest_for_project(self, project_id: str) -> RunDTO | None:
+        row = self._conn.execute(
+            """
+            SELECT
+                *
+            FROM
+                run
+            WHERE
+                project_id = ?
+            ORDER BY
+                started_at DESC
+            LIMIT 1
+            """,
+            [project_id],
+        ).fetchone()
+        return self._row_to_dto(row) if row else None
+
     @staticmethod
     def _row_to_dto(row: tuple) -> RunDTO:
         run_id, project_id, started_at, ended_at, nemory_version = row

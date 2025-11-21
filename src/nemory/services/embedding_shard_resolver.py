@@ -16,11 +16,11 @@ class EmbeddingShardResolver:
         self._registry = registry_repo
         self._policy = table_name_policy or TableNamePolicy()
 
-    def resolve(self, *, embedder: str, model_id: str) -> str:
+    def resolve(self, *, embedder: str, model_id: str) -> tuple[str, int]:
         row = self._registry.get(embedder=embedder, model_id=model_id)
         if not row:
             raise ValueError(f"Model not registered: {embedder}:{model_id}")
-        return row.table_name
+        return row.table_name, row.dim
 
     def resolve_or_create(self, *, embedder: str, model_id: str, dim: int) -> str:
         row = self._registry.get(embedder=embedder, model_id=model_id)

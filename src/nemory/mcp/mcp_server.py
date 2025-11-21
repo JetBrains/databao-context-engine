@@ -6,6 +6,7 @@ from mcp.server import FastMCP
 from mcp.types import ToolAnnotations
 
 from nemory.mcp.all_results_tool import run_all_results_tool
+from nemory.mcp.query_tool import run_query_tool
 from nemory.project.layout import ensure_project_dir, get_latest_run_name
 
 logger = logging.getLogger(__name__)
@@ -42,9 +43,8 @@ def _create_mcp_server(
         description="Query the context built from various resources, including databases, dbt tools, plain and structured files, to retrieve relevant information",
         annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
     )
-    def query_tool():
-        # TODO
-        raise NotImplementedError("query_tool is not yet implemented")
+    def query_tool(text: str, limit: int | None):
+        return run_query_tool(project_path, run_name=run_name, text=text, limit=limit or 50)
 
     return mcp
 
