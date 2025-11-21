@@ -1350,6 +1350,7 @@
     <inspection_tool class="PyBDDParametersInspection" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="PyInitNewSignatureInspection" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="PyPep8NamingInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="PyTestUnpassedFixtureInspection" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="Query_bound_parameters" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="Query_index_required" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="Query_restricted" enabled="false" level="WARNING" enabled_by_default="false" />
