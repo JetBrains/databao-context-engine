@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from nemory.project.project_config import ProjectConfig
-from nemory.storage.repositories.run_repository import RunRepository
 
 SOURCE_FOLDER_NAME = "src"
 OUTPUT_FOLDER_NAME = "output"
@@ -75,30 +74,6 @@ def get_run_dir(project_dir: Path, run_name: str) -> Path:
         )
 
     return run_dir
-
-
-def get_latest_run_name(project_path: Path) -> str:
-    """
-    TODO: This method should be removed in favour of querying the latest run in our DB
-    """
-    output_dir = get_output_dir(project_path)
-
-    if not output_dir.is_dir():
-        raise ValueError(f"No build run exist in the project. [project_dir: {project_path.resolve()}]")
-
-    sorted_output_dirs = sorted(
-        (
-            child_path.name
-            for child_path in output_dir.iterdir()
-            if child_path.is_dir() and child_path.name.startswith(RunRepository._RUN_DIR_PREFIX)
-        ),
-        reverse=True,
-    )
-
-    if len(sorted_output_dirs) == 0:
-        raise ValueError(f"No build run exist in the project. [project_dir: {project_path.resolve()}]")
-
-    return sorted_output_dirs[0]
 
 
 def get_examples_dir(project_path: Path) -> Path:

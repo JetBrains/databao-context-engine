@@ -25,9 +25,17 @@ def _template_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture
-def conn(_template_db: Path, tmp_path: Path):
-    db_path = tmp_path / "nemory_test.duckdb"
+def db_path(tmp_path: Path) -> Path:
+    return tmp_path / "nemory_test.duckdb"
+
+
+@pytest.fixture
+def create_db(_template_db: Path, db_path: Path) -> None:
     shutil.copy(_template_db, db_path)
+
+
+@pytest.fixture
+def conn(db_path, create_db):
     conn = duckdb.connect(str(db_path))
 
     try:
