@@ -1,13 +1,14 @@
 import time
 from contextlib import asynccontextmanager
 from multiprocessing import Process, set_start_method
+from pathlib import Path
 
 import httpx
 import pytest
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
-from nemory.mcp.mcp_server import run_mcp_server
+from nemory.mcp.mcp_runner import run_mcp_server
 from tests.mcp.conftest import ProjectWithRuns
 
 set_start_method("spawn")
@@ -20,7 +21,11 @@ def anyio_backend(request):
 
 @asynccontextmanager
 async def run_mcp_server_test(
-    project_dir: str, run_name: str | None = None, host: str | None = None, port: int | None = None
+    project_dir: str,
+    run_name: str | None = None,
+    host: str | None = None,
+    port: int | None = None,
+    db_path: Path | None = None,
 ):
     """
     Runs a MCP Server integration test by:
@@ -28,7 +33,9 @@ async def run_mcp_server_test(
     2. Creating a client connecting with the MCP Server (we're retrying 5 times to wait for the server to be up and running)
     3. Yielding the MCP client session for the test to run
     """
-    server_process = Process(target=run_mcp_server, args=(project_dir, run_name, "streamable-http", host, port))
+    server_process = Process(
+        target=run_mcp_server, args=(project_dir, run_name, "streamable-http", host, port, db_path)
+    )
     server_process.start()
 
     try:
@@ -84,8 +91,8 @@ def _is_connection_error(e: Exception) -> bool:
 
 
 @pytest.mark.anyio
-async def test_run_mcp_server__list_tools(project_with_runs: ProjectWithRuns):
-    async with run_mcp_server_test(str(project_with_runs.project_dir)) as session:
+async def test_run_mcp_server__list_tools(db_path: Path, project_with_runs: ProjectWithRuns):
+    async with run_mcp_server_test(str(project_with_runs.project_dir), db_path=db_path) as session:
         # List available tools
         tools = await session.list_tools()
         assert len(tools.tools) == 2
@@ -93,13 +100,13 @@ async def test_run_mcp_server__list_tools(project_with_runs: ProjectWithRuns):
 
 
 @pytest.mark.anyio
-async def test_run_mcp_server__all_results_tool_with_no_run_name(project_with_runs: ProjectWithRuns):
-    async with run_mcp_server_test(str(project_with_runs.project_dir)) as session:
+async def test_run_mcp_server__all_results_tool_with_no_run_name(db_path: Path, project_with_runs: ProjectWithRuns):
+    async with run_mcp_server_test(str(project_with_runs.project_dir), db_path=db_path) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (
             all_results.content[0].text
             == next(
-                iter(sorted(project_with_runs.runs, key=lambda run: run.run_build_time, reverse=True))
+                iter(sorted(project_with_runs.runs, key=lambda run: run.run_name, reverse=True))
             ).all_results_file_content
         )
 
@@ -117,14 +124,14 @@ async def test_run_mcp_server__all_results_tool_with_run_name(project_with_runs:
 
 
 @pytest.mark.anyio
-async def test_run_mcp_server__with_custom_host_and_port(project_with_runs: ProjectWithRuns):
+async def test_run_mcp_server__with_custom_host_and_port(db_path: Path, project_with_runs: ProjectWithRuns):
     async with run_mcp_server_test(
-        project_dir=str(project_with_runs.project_dir), host="localhost", port=8001
+        project_dir=str(project_with_runs.project_dir), host="localhost", port=8001, db_path=db_path
     ) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (
             all_results.content[0].text
             == next(
-                iter(sorted(project_with_runs.runs, key=lambda run: run.run_build_time, reverse=True))
+                iter(sorted(project_with_runs.runs, key=lambda run: run.run_name, reverse=True))
             ).all_results_file_content
         )

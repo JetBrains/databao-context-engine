@@ -2,19 +2,21 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+
 import duckdb
 import pytest
 
 from nemory.project.init_project import init_project_dir
+from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
+from nemory.services.persistence_service import PersistenceService
+from nemory.services.run_name_policy import RunNamePolicy
+from nemory.services.table_name_policy import TableNamePolicy
+from nemory.storage.migrate import migrate
+from nemory.storage.repositories.chunk_repository import ChunkRepository
+from nemory.storage.repositories.datasource_run_repository import DatasourceRunRepository
 from nemory.storage.repositories.embedding_model_registry_repository import EmbeddingModelRegistryRepository
 from nemory.storage.repositories.embedding_repository import EmbeddingRepository
-from nemory.storage.repositories.datasource_run_repository import DatasourceRunRepository
-from nemory.storage.migrate import migrate
 from nemory.storage.repositories.run_repository import RunRepository
-from nemory.storage.repositories.chunk_repository import ChunkRepository
-from nemory.services.persistence_service import PersistenceService
-from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
-from nemory.services.table_name_policy import TableNamePolicy
 
 
 @pytest.fixture(scope="session")
@@ -25,9 +27,17 @@ def _template_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture
-def conn(_template_db: Path, tmp_path: Path):
-    db_path = tmp_path / "nemory_test.duckdb"
+def db_path(tmp_path: Path) -> Path:
+    return tmp_path / "nemory_test.duckdb"
+
+
+@pytest.fixture
+def create_db(_template_db: Path, db_path: Path) -> None:
     shutil.copy(_template_db, db_path)
+
+
+@pytest.fixture
+def conn(db_path, create_db):
     conn = duckdb.connect(str(db_path))
 
     try:
@@ -38,7 +48,7 @@ def conn(_template_db: Path, tmp_path: Path):
 
 @pytest.fixture
 def run_repo(conn) -> RunRepository:
-    return RunRepository(conn)
+    return RunRepository(conn, run_name_policy=RunNamePolicy())
 
 
 @pytest.fixture

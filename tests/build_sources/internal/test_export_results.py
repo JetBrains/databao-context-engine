@@ -2,20 +2,14 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-import pytest
 import yaml
 
 from nemory.build_sources.internal.export_results import (
+    append_result_to_all_results,
     create_run_dir,
     export_build_result,
-    append_result_to_all_results,
 )
 from nemory.pluginlib.build_plugin import BuildExecutionResult
-
-
-@pytest.fixture
-def build_start_time() -> datetime:
-    return datetime(2025, 11, 13, 10, 50, 15, 275)
 
 
 def _run_dir(tmp_path: Path) -> Path:
@@ -42,8 +36,8 @@ def assert_run_folder_exists(tmp_path: Path) -> Path:
     return run_folder
 
 
-def test_create_run_dir_creates_folder(tmp_path: Path, build_start_time: datetime) -> None:
-    run_dir = create_run_dir(project_dir=tmp_path, build_start_time=build_start_time)
+def test_create_run_dir_creates_folder(tmp_path: Path) -> None:
+    run_dir = create_run_dir(project_dir=tmp_path, run_name="run-2025-11-13T10:50:15")
     assert run_dir == _run_dir(tmp_path)
     assert run_dir.is_dir()
     assert list(run_dir.iterdir()) == []
