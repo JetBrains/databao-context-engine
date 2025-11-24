@@ -71,12 +71,12 @@ class BaseIntrospector(ABC):
                 )
         return schemas_per_catalog
 
-    def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, tuple | list | None]:
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, dict | tuple | list | None]:
         if self.supports_catalogs:
-            sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(%s) "
+            sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(%s)"
             return sql, (catalogs,)
         else:
-            sql = "SELECT schema_name FROM information_schema.schemata "
+            sql = "SELECT schema_name FROM information_schema.schemata"
             return sql, None
 
     def _filter_schemas(
@@ -120,7 +120,7 @@ class BaseIntrospector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple | list]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
         raise NotImplementedError
 
     @abstractmethod

@@ -28,11 +28,11 @@ class ClickhouseIntrospector(BaseIntrospector):
     def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
         raise UnsupportedOperation("Clickhouse doesnt support catalogs")
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
         sql = """
         SELECT 
             table AS table_name,
-            name AS column_name, 
+            name AS column_name,
             type AS data_type,
             if(startsWith(type, 'Nullable('), 'YES', 'NO') AS is_nullable
         FROM system.columns

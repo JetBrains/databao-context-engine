@@ -37,10 +37,10 @@ class PostgresqlIntrospector(BaseIntrospector):
 
         return [row[0] for row in catalog_results]
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple | list]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
         sql = """
         SELECT table_name, column_name, is_nullable, udt_name, data_type
-        FROM information_schema.columns 
+        FROM information_schema.columns
         WHERE table_catalog = %s AND table_schema = %s
         """
         return sql, (catalog, schema)
@@ -58,20 +58,13 @@ class PostgresqlIntrospector(BaseIntrospector):
         if host is None:
             raise ValueError("A host must be provided to connect to the PostgreSQL database.")
 
-        port = connection_config.get("port", 5432)
+        connection_parts = {
+            "host": host,
+            "port": connection_config.get("port", 5432),
+            "dbname": connection_config.get("database"),
+            "user": connection_config.get("user"),
+            "password": connection_config.get("password"),
+        }
 
-        connection_string = f"host={host} port={port}"
-
-        database = connection_config.get("database")
-        if database is not None:
-            connection_string += f" dbname={database}"
-
-        user = connection_config.get("user")
-        if user is not None:
-            connection_string += f" user={user}"
-
-        password = connection_config.get("password")
-        if password is not None:
-            connection_string += f" password='{password}'"
-
+        connection_string = " ".join(f"{k}={v}" for k, v in connection_parts.items() if v is not None)
         return connection_string

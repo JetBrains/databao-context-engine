@@ -25,11 +25,23 @@ def load_builtin_plugins() -> list[BuildPlugin]:
     """
     Statically register built-in plugins
     """
+    from nemory.plugins.athena_db_plugin import AthenaDbPlugin
+    from nemory.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
+    from nemory.plugins.duckdb_db_plugin import DuckDbPlugin
+    from nemory.plugins.mssql_db_plugin import MSSQLDbPlugin
+    from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
     from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
+    from nemory.plugins.snowflake_db_plugin import SnowflakeDbPlugin
     from nemory.plugins.unstructured_files_plugin import InternalUnstructuredFilesPlugin
 
     builtin_plugins: list[BuildPlugin] = [
+        AthenaDbPlugin(),
+        ClickhouseDbPlugin(),
+        DuckDbPlugin(),
+        MSSQLDbPlugin(),
+        MySQLDbPlugin(),
         PostgresqlDbPlugin(),
+        SnowflakeDbPlugin(),
         InternalUnstructuredFilesPlugin(),
     ]
 
