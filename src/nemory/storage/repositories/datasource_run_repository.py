@@ -16,6 +16,7 @@ class DatasourceRunRepository:
         *,
         run_id: int,
         plugin: str,
+        full_type: str,
         source_id: str,
         storage_directory: str,
     ) -> DatasourceRunDTO:
@@ -23,13 +24,13 @@ class DatasourceRunRepository:
             row = self._conn.execute(
                 """
             INSERT INTO
-                datasource_run(run_id, plugin, source_id, storage_directory)
+                datasource_run(run_id, plugin, full_type, source_id, storage_directory)
             VALUES
-                (?, ?, ?, ?)
+                (?, ?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [run_id, plugin, source_id, storage_directory],
+                [run_id, plugin, full_type, source_id, storage_directory],
             ).fetchone()
             if row is None:
                 raise RuntimeError("datasource_run creation returned no object")
@@ -56,6 +57,7 @@ class DatasourceRunRepository:
         datasource_run_id: int,
         *,
         plugin: Optional[str] = None,
+        full_type: Optional[str] = None,
         source_id: Optional[str] = None,
         storage_directory: Optional[str] = None,
     ) -> Optional[DatasourceRunDTO]:
@@ -65,6 +67,9 @@ class DatasourceRunRepository:
         if plugin is not None:
             sets.append("plugin = ?")
             params.append(plugin)
+        if full_type is not None:
+            sets.append("full_type = ?")
+            params.append(full_type)
         if source_id is not None:
             sets.append("source_id = ?")
             params.append(source_id)
@@ -119,11 +124,12 @@ class DatasourceRunRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> DatasourceRunDTO:
-        datasource_run_id, run_id, plugin, source_id, storage_directory, created_at = row
+        datasource_run_id, run_id, plugin, source_id, storage_directory, created_at, full_type = row
         return DatasourceRunDTO(
             datasource_run_id=int(datasource_run_id),
             run_id=int(run_id),
             plugin=str(plugin),
+            full_type=str(full_type),
             source_id=str(source_id),
             storage_directory=str(storage_directory),
             created_at=created_at,

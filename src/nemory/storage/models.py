@@ -19,6 +19,7 @@ class DatasourceRunDTO:
     datasource_run_id: int
     run_id: int
     plugin: str
+    full_type: str
     source_id: str
     storage_directory: str
     created_at: datetime

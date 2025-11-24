@@ -105,6 +105,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     ds_repo.create.assert_called_once_with(
         run_id=9,
         plugin="pluggy",
+        full_type="files/md",
         source_id="ext-id",
         storage_directory=str(prepared.path.parent),
     )

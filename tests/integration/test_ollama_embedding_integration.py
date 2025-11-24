@@ -45,7 +45,11 @@ def test_ollama_embed_and_persist_e2e(
 
     run = run_repo.create(project_id="project-id")
     datasource_run = datasource_run_repo.create(
-        run_id=run.run_id, plugin="integration-test", source_id="src-ollama", storage_directory="/some/path"
+        run_id=run.run_id,
+        plugin="integration-test",
+        full_type="folder/type",
+        source_id="src-ollama",
+        storage_directory="/some/path",
     )
 
     chunks = [EmbeddableChunk("alpha", "Alpha"), EmbeddableChunk("beta", "Beta")]

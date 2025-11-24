@@ -19,6 +19,7 @@ def make_datasource_run(
     datasource_run_repo: DatasourceRunRepository,
     *,
     plugin: str = "test-plugin",
+    full_type: str = "folder/type",
     source_id: str = "src-id",
     storage_directory: str = "storage/path",
 ) -> DatasourceRunDTO:
@@ -26,6 +27,7 @@ def make_datasource_run(
     return datasource_run_repo.create(
         run_id=run.run_id,
         plugin=plugin,
+        full_type=full_type,
         source_id=source_id,
         storage_directory=storage_directory,
     )

@@ -11,6 +11,7 @@ def test_embed_flow_persists_chunks_and_embeddings(
     datasource_run = datasource_run_repo.create(
         run_id=run.run_id,
         plugin="test-plugin",
+        full_type="folder/type",
         source_id="src-1",
         storage_directory="/path",
     )
@@ -47,6 +48,7 @@ def test_embed_flow_is_idempotent_on_resolver(
     datasource_run = datasource_run_repo.create(
         run_id=run_repo.create(project_id="project-id").run_id,
         plugin="p",
+        full_type="folder/type",
         source_id="s",
         storage_directory="/path",
     )
