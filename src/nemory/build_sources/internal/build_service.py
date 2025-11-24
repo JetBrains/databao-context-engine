@@ -65,6 +65,7 @@ class BuildService:
         datasource_run = self._datasource_run_repo.create(
             run_id=run_id,
             plugin=plugin.name,
+            full_type=prepared_source.full_type,
             source_id=result.id or prepared_source.path.stem,
             storage_directory=str(prepared_source.path.parent),
         )

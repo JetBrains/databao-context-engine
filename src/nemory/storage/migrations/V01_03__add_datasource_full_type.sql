@@ -1,0 +1,1 @@
+ALTER TABLE datasource_run ADD COLUMN IF NOT EXISTS full_type TEXT;
