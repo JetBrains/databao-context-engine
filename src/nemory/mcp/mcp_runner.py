@@ -34,4 +34,7 @@ def _get_latest_run_name(project_dir: Path, db_path: Path | None = None) -> str:
         run_repository = create_run_repository(conn)
         run = run_repository.get_latest_run_for_project(str(project_id))
 
-        return run.run_name if run is not None else None
+        if run is None:
+            raise ValueError(f"No runs found for project {project_id}")
+
+        return run.run_name
