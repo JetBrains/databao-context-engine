@@ -3,21 +3,21 @@ from typing import Any, Optional
 
 import duckdb
 
+from nemory.services.run_name_policy import RunNamePolicy
 from nemory.storage.models import RunDTO
 
 
 class RunRepository:
-    _RUN_DIR_PREFIX = "run-"
-
-    def __init__(self, conn: duckdb.DuckDBPyConnection):
+    def __init__(self, conn: duckdb.DuckDBPyConnection, run_name_policy: RunNamePolicy):
         self._conn = conn
+        self._run_name_policy = run_name_policy
 
     def create(
         self, *, project_id: str, nemory_version: Optional[str] = None, started_at: datetime | None = None
     ) -> RunDTO:
         if started_at is None:
             started_at = datetime.now()
-        run_name = RunRepository.generate_run_dir_name(started_at)
+        run_name = self._run_name_policy.build(run_started_at=started_at)
 
         row = self._conn.execute(
             """
@@ -155,7 +155,3 @@ class RunRepository:
             ended_at=ended_at,
             nemory_version=nemory_version,
         )
-
-    @staticmethod
-    def generate_run_dir_name(build_time: datetime) -> str:
-        return f"{RunRepository._RUN_DIR_PREFIX}{build_time.isoformat(timespec='seconds')}"

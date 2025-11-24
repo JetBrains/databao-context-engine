@@ -5,6 +5,7 @@ from nemory.embeddings.provider import EmbeddingProvider
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.services.persistence_service import PersistenceService
+from nemory.services.run_name_policy import RunNamePolicy
 from nemory.services.table_name_policy import TableNamePolicy
 from nemory.storage.repositories.chunk_repository import ChunkRepository
 from nemory.storage.repositories.datasource_run_repository import DatasourceRunRepository
@@ -14,7 +15,7 @@ from nemory.storage.repositories.run_repository import RunRepository
 
 
 def create_run_repository(conn: DuckDBPyConnection) -> RunRepository:
-    return RunRepository(conn)
+    return RunRepository(conn, run_name_policy=RunNamePolicy())
 
 
 def create_datasource_run_repository(conn: DuckDBPyConnection) -> DatasourceRunRepository:
