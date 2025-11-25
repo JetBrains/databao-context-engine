@@ -53,7 +53,10 @@ class PostgresqlIntrospector(BaseIntrospector):
         )
 
     def _create_connection_string_for_config(self, connection_config: Mapping[str, Any]) -> str:
-        # TODO: For all fields, surround with single quotes and escape backslashes and quotes in the values
+        def _escape_pg_value(value: str) -> str:
+            escaped = value.replace("\\", "\\\\").replace("'", "''")
+            return f"'{escaped}'"
+
         host = connection_config.get("host")
         if host is None:
             raise ValueError("A host must be provided to connect to the PostgreSQL database.")
@@ -66,5 +69,7 @@ class PostgresqlIntrospector(BaseIntrospector):
             "password": connection_config.get("password"),
         }
 
-        connection_string = " ".join(f"{k}={v}" for k, v in connection_parts.items() if v is not None)
+        connection_string = " ".join(
+            f"{k}={_escape_pg_value(str(v))}" for k, v in connection_parts.items() if v is not None
+        )
         return connection_string

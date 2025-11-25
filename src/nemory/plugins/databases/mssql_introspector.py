@@ -80,6 +80,9 @@ class MSSQLIntrospector(BaseIntrospector):
         return " UNION ALL ".join(parts), None
 
     def _create_connection_string_for_config(self, file_config: Mapping[str, Any]) -> str:
+        def _escape_odbc_value(value: str) -> str:
+            return "{" + value.replace("}", "}}").replace("{", "{{") + "}"
+
         driver = file_config.get("driver", "ODBC Driver 17 for SQL Server")
         host = file_config.get("host")
         port = file_config.get("port", 1433)
@@ -91,7 +94,7 @@ class MSSQLIntrospector(BaseIntrospector):
             server_part = f"{host},{port}"
 
         connection_parts = {
-            "driver": f"{{{driver}}}",
+            "driver": driver,
             "server": server_part,
             "database": file_config.get("database"),
             "uid": file_config.get("user"),
@@ -100,5 +103,7 @@ class MSSQLIntrospector(BaseIntrospector):
             "TrustServerCertificate": "yes" if file_config.get("trust_server_certificate") else None,
         }
 
-        connection_string = ";".join(f"{k}={v}" for k, v in connection_parts.items() if v is not None)
+        connection_string = ";".join(
+            f"{k}={_escape_odbc_value(str(v))}" for k, v in connection_parts.items() if v is not None
+        )
         return connection_string
