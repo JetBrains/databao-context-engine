@@ -35,7 +35,7 @@ def nemory_path(mocker, tmp_path: Path):
 
 @pytest.fixture
 def db_path(nemory_path: Path) -> Path:
-    return get_db_path(nemory_path)
+    return get_db_path()
 
 
 @pytest.fixture

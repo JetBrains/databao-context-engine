@@ -9,5 +9,5 @@ def get_nemory_path() -> Path:
     return _nemory_path
 
 
-def get_db_path(nemory_path: Path = get_nemory_path()) -> Path:
-    return nemory_path / "nemory.duckdb"
+def get_db_path() -> Path:
+    return get_nemory_path() / "nemory.duckdb"
