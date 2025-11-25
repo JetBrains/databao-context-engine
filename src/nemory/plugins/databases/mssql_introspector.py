@@ -97,7 +97,7 @@ class MSSQLIntrospector(BaseIntrospector):
             "database": _escape_odbc_value(str(file_config.get("database"))),
             "uid": _escape_odbc_value(str(file_config.get("user"))),
             "pwd": _escape_odbc_value(str(file_config.get("password", ""))),
-            "encrypt": file_config.get("encrypt", "no"),
+            "encrypt": file_config.get("encrypt"),
             "TrustServerCertificate": "yes" if file_config.get("trust_server_certificate") else None,
         }
 
