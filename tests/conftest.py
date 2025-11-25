@@ -17,6 +17,7 @@ from nemory.storage.repositories.datasource_run_repository import DatasourceRunR
 from nemory.storage.repositories.embedding_model_registry_repository import EmbeddingModelRegistryRepository
 from nemory.storage.repositories.embedding_repository import EmbeddingRepository
 from nemory.storage.repositories.run_repository import RunRepository
+from nemory.system.properties import get_db_path
 
 
 @pytest.fixture(scope="session")
@@ -26,9 +27,15 @@ def _template_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return template
 
 
+@pytest.fixture()
+def nemory_path(mocker, tmp_path: Path):
+    mocker.patch("nemory.system.properties._nemory_path", new=tmp_path)
+    yield tmp_path
+
+
 @pytest.fixture
-def db_path(tmp_path: Path) -> Path:
-    return tmp_path / "nemory_test.duckdb"
+def db_path(nemory_path: Path) -> Path:
+    return get_db_path(nemory_path)
 
 
 @pytest.fixture

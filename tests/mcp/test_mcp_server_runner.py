@@ -1,21 +1,12 @@
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 from nemory.mcp.mcp_runner import _get_latest_run_name
 from nemory.project.layout import get_output_dir, read_config_file
 from nemory.storage.repositories.run_repository import RunRepository
 
 
-@pytest.fixture
-def mock_get_db_path(mocker, tmp_path: Path, db_path: Path):
-    mocker.patch("nemory.system.properties._nemory_path", new=tmp_path)
-    mocker.patch("nemory.system.properties._db_file_name", new=db_path.name)
-
-
-@pytest.mark.usefixtures("mock_get_db_path")
-def test_get_latest_run_dir__with_multiple_run_dirs(db_path, tmp_path, project_path: Path, run_repo: RunRepository):
+def test_get_latest_run_dir__with_multiple_run_dirs(db_path, project_path: Path, run_repo: RunRepository):
     output_path = get_output_dir(project_path)
     output_path.mkdir()
 
@@ -27,6 +18,6 @@ def test_get_latest_run_dir__with_multiple_run_dirs(db_path, tmp_path, project_p
         date_for_run_folder = most_recent_date - timedelta(days=i)
         run_repo.create(project_id=str(project_id), nemory_version="1.0", started_at=date_for_run_folder)
 
-    result = _get_latest_run_name(project_path)
+    result = _get_latest_run_name(project_path, db_path)
 
     assert result == most_recent_run.run_name
