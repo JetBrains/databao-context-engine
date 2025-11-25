@@ -135,3 +135,8 @@ def test_list(run_repo):
 
     rows = run_repo.list()
     assert [r.run_id for r in rows] == [r3.run_id, r2.run_id, r1.run_id]
+
+
+def test_get_latest_for_project_returns_none_when_no_runs(run_repo):
+    latest = run_repo.get_latest_run_for_project(project_id="project-id")
+    assert latest is None

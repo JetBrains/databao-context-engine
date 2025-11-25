@@ -2,6 +2,7 @@ from _duckdb import DuckDBPyConnection
 
 from nemory.build_sources.internal.build_service import BuildService
 from nemory.embeddings.provider import EmbeddingProvider
+from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.services.persistence_service import PersistenceService
@@ -12,6 +13,7 @@ from nemory.storage.repositories.datasource_run_repository import DatasourceRunR
 from nemory.storage.repositories.embedding_model_registry_repository import EmbeddingModelRegistryRepository
 from nemory.storage.repositories.embedding_repository import EmbeddingRepository
 from nemory.storage.repositories.run_repository import RunRepository
+from nemory.storage.repositories.vector_search_repository import VectorSearchRepository
 
 
 def create_run_repository(conn: DuckDBPyConnection) -> RunRepository:
@@ -32,6 +34,10 @@ def create_embedding_repository(conn: DuckDBPyConnection) -> EmbeddingRepository
 
 def create_registry_repository(conn: DuckDBPyConnection) -> EmbeddingModelRegistryRepository:
     return EmbeddingModelRegistryRepository(conn)
+
+
+def create_vector_search_repository(conn: DuckDBPyConnection) -> VectorSearchRepository:
+    return VectorSearchRepository(conn)
 
 
 def create_shard_resolver(conn: DuckDBPyConnection, policy: TableNamePolicy | None = None) -> EmbeddingShardResolver:
@@ -69,4 +75,21 @@ def create_build_service(
         run_repo=run_repo,
         datasource_run_repo=datasource_run_repo,
         chunk_embedding_service=chunk_embedding_service,
+    )
+
+
+def create_retrieve_service(
+    conn: DuckDBPyConnection,
+    *,
+    provider: EmbeddingProvider,
+) -> RetrieveService:
+    run_repo = create_run_repository(conn)
+    vector_search_repo = create_vector_search_repository(conn)
+    shard_resolver = create_shard_resolver(conn)
+
+    return RetrieveService(
+        run_repo=run_repo,
+        vector_search_repo=vector_search_repo,
+        shard_resolver=shard_resolver,
+        provider=provider,
     )
