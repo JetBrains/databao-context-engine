@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-import pyodbc  # type: ignore
+from mssql_python import connect  # type: ignore
 
 from nemory.plugins.databases.base_introspector import BaseIntrospector
 from nemory.plugins.databases.databases_types import DatabaseColumn
@@ -36,7 +36,7 @@ class MSSQLIntrospector(BaseIntrospector):
             raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
 
         connection_string = self._create_connection_string_for_config(connection)
-        return pyodbc.connect(connection_string)
+        return connect(connection_string)
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
         with connection.cursor() as cursor:
@@ -83,7 +83,6 @@ class MSSQLIntrospector(BaseIntrospector):
         def _escape_odbc_value(value: str) -> str:
             return "{" + value.replace("}", "}}").replace("{", "{{") + "}"
 
-        driver = file_config.get("driver", "ODBC Driver 17 for SQL Server")
         host = file_config.get("host")
         port = file_config.get("port", 1433)
         instance = file_config.get("instanceName")
@@ -94,16 +93,13 @@ class MSSQLIntrospector(BaseIntrospector):
             server_part = f"{host},{port}"
 
         connection_parts = {
-            "driver": driver,
-            "server": server_part,
-            "database": file_config.get("database"),
-            "uid": file_config.get("user"),
-            "pwd": file_config.get("password", ""),
-            "encrypt": file_config.get("encrypt"),
+            "server": _escape_odbc_value(server_part),
+            "database": _escape_odbc_value(str(file_config.get("database"))),
+            "uid": _escape_odbc_value(str(file_config.get("user"))),
+            "pwd": _escape_odbc_value(str(file_config.get("password", ""))),
+            "encrypt": file_config.get("encrypt", "no"),
             "TrustServerCertificate": "yes" if file_config.get("trust_server_certificate") else None,
         }
 
-        connection_string = ";".join(
-            f"{k}={_escape_odbc_value(str(v))}" for k, v in connection_parts.items() if v is not None
-        )
+        connection_string = ";".join(f"{k}={v}" for k, v in connection_parts.items() if v is not None)
         return connection_string
