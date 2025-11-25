@@ -22,7 +22,7 @@ class ClickhouseIntrospector(BaseIntrospector):
         return clickhouse_connect.get_client(**connection)
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        result = connection.query(sql, parameters=params) if params else connection.query(sql)
+        result = connection.retrieve(sql, parameters=params) if params else connection.retrieve(sql)
         return [dict(zip(result.column_names, row)) for row in result.result_rows]
 
     def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:

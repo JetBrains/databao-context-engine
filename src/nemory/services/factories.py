@@ -2,7 +2,7 @@ from _duckdb import DuckDBPyConnection
 
 from nemory.build_sources.internal.build_service import BuildService
 from nemory.embeddings.provider import EmbeddingProvider
-from nemory.query_embeddings.internal.query_service import QueryService
+from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.services.persistence_service import PersistenceService
@@ -78,16 +78,16 @@ def create_build_service(
     )
 
 
-def create_query_service(
+def create_retrieve_service(
     conn: DuckDBPyConnection,
     *,
     provider: EmbeddingProvider,
-) -> QueryService:
+) -> RetrieveService:
     run_repo = create_run_repository(conn)
     vector_search_repo = create_vector_search_repository(conn)
     shard_resolver = create_shard_resolver(conn)
 
-    return QueryService(
+    return RetrieveService(
         run_repo=run_repo,
         vector_search_repo=vector_search_repo,
         shard_resolver=shard_resolver,

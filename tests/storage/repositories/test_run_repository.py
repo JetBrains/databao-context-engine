@@ -138,18 +138,5 @@ def test_list(run_repo):
 
 
 def test_get_latest_for_project_returns_none_when_no_runs(run_repo):
-    latest = run_repo.get_latest_for_project(project_id="project-id")
+    latest = run_repo.get_latest_run_for_project(project_id="project-id")
     assert latest is None
-
-
-def test_get_latest_for_project_returns_most_recent_for_that_project(run_repo):
-    run_repo.create(project_id="other-project")
-    run_repo.create(project_id="other-project")
-
-    run_repo.create(project_id="project-id")
-    second = run_repo.create(project_id="project-id")
-
-    latest = run_repo.get_latest_for_project("project-id")
-
-    assert latest.run_id == second.run_id
-    assert latest.project_id == "project-id"

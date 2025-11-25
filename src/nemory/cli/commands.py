@@ -9,7 +9,7 @@ from nemory.config.logging import configure_logging
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.init_project import init_project_dir
 from nemory.project.layout import read_config_file
-from nemory.query_embeddings.internal.query_wiring import query_embeddings
+from nemory.retrieve_embeddings.internal.retrieve_wiring import retrieve_embeddings
 from nemory.storage.migrate import migrate
 
 
@@ -67,7 +67,7 @@ def build(ctx: Context) -> None:
 
 @nemory.command()
 @click.argument(
-    "query-text",
+    "retrieve-text",
     nargs=-1,
     required=True,
 )
@@ -83,13 +83,22 @@ def build(ctx: Context) -> None:
     type=click.INT,
     help="Maximum number of chunk matches to return.",
 )
+@click.option("-o", "--output-format", type=click.STRING, help="The output format [file (default), streamed]")
 @click.pass_context
-def query(ctx: Context, query_text: tuple[str, ...], run_name: str | None, limit: int | None) -> None:
+def retrieve(
+    ctx: Context, retrieve_text: tuple[str, ...], run_name: str | None, limit: int | None, output_format: str = "file"
+) -> None:
     """
     Search the project's built context for the most relevant chunks.
     """
-    text = " ".join(query_text)
-    query_embeddings(project_dir=ctx.obj["project_dir"], query_text=text, run_name=run_name, limit=limit or 50)
+    text = " ".join(retrieve_text)
+    retrieve_embeddings(
+        project_dir=ctx.obj["project_dir"],
+        retrieve_text=text,
+        run_name=run_name,
+        limit=limit or 50,
+        output_format=output_format,
+    )
 
 
 @nemory.command()

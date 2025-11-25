@@ -6,7 +6,7 @@ from nemory.storage.repositories.run_repository import RunRepository
 from nemory.storage.repositories.vector_search_repository import VectorSearchRepository
 
 
-class QueryService:
+class RetrieveService:
     def __init__(
         self,
         *,
@@ -20,28 +20,26 @@ class QueryService:
         self._provider = provider
         self._vector_search_repo = vector_search_repo
 
-    def query(self, *, project_id: str, query_text: str, run_name: str | None = None, limit: int = 50) -> list[str]:
+    def retrieve(self, *, project_id: str, text: str, run_name: str | None = None, limit: int = 50) -> list[str]:
         if run_name is None:
-            run = self._run_repo.get_latest_for_project(project_id)
+            run = self._run_repo.get_latest_run_for_project(project_id)
             if run is None:
                 raise LookupError(f"No runs found for project '{project_id}'. Run a build first.")
         else:
-            # TODO: this logic is wrong because we don't have a run_name parameter yet
-            # Once we have a run_name parameter, add the find_by_name method to the run_repo and call it here
-            run = self._run_repo.get_latest_for_project(project_id)
+            run = self._run_repo.get_by_run_name(project_id=project_id, run_name=run_name)
             if run is None:
-                raise LookupError(f"No runs found for project '{project_id}'. Run a build first.")
+                raise LookupError(f"Run '{run_name}' not found for project '{project_id}'.")
 
         table_name, dimension = self._shard_resolver.resolve(
             embedder=self._provider.embedder, model_id=self._provider.model_id
         )
 
-        query_vec: Sequence[float] = self._provider.embed(query_text)
+        retrieve_vec: Sequence[float] = self._provider.embed(text)
 
         display_texts = self._vector_search_repo.get_display_texts_by_similarity(
             table_name=table_name,
             run_id=run.run_id,
-            query_vec=query_vec,
+            retrieve_vec=retrieve_vec,
             dimension=dimension,
             limit=limit,
         )

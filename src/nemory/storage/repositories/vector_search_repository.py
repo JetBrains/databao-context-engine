@@ -8,7 +8,7 @@ class VectorSearchRepository:
         self._conn = conn
 
     def get_display_texts_by_similarity(
-        self, *, table_name: str, run_id: int, query_vec: Sequence[float], dimension: int, limit: int
+        self, *, table_name: str, run_id: int, retrieve_vec: Sequence[float], dimension: int, limit: int
     ) -> list[str]:
         """
         Read only similarity search on a specific embedding shard table.
@@ -28,7 +28,7 @@ class VectorSearchRepository:
                 array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) ASC
             LIMIT ?
             """,
-            [run_id, list(query_vec), limit],
+            [run_id, list(retrieve_vec), limit],
         ).fetchall()
 
         return [r[0] for r in rows]

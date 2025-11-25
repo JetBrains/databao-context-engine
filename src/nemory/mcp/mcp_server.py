@@ -7,7 +7,7 @@ from mcp.server import FastMCP
 from mcp.types import ToolAnnotations
 
 from nemory.mcp.all_results_tool import run_all_results_tool
-from nemory.mcp.query_tool import run_query_tool
+from nemory.mcp.retrieve_tool import run_retrieve_tool
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +45,11 @@ class McpServer:
             return run_all_results_tool(self._project_dir, self._run_name)
 
         @mcp.tool(
-            description="Query the context built from various resources, including databases, dbt tools, plain and structured files, to retrieve relevant information",
+            description="Retrieve the context built from various resources, including databases, dbt tools, plain and structured files, to retrieve relevant information",
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
-        def query_tool(text: str, limit: int | None):
-            return run_query_tool(self._project_dir, run_name=self._run_name, text=text, limit=limit or 50)
+        def retrieve_tool(text: str, limit: int | None):
+            return run_retrieve_tool(self._project_dir, run_name=self._run_name, text=text, limit=limit or 50)
 
         return mcp
 
