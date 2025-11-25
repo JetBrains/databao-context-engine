@@ -8,7 +8,7 @@ from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
 class DuckDBIntrospector(BaseIntrospector):
-    _IGNORED_CATALOGS = {"temp"}
+    _IGNORED_CATALOGS = {"system", "temp"}
     _IGNORED_SCHEMAS = {"information_schema", "pg_catalog"}
     supports_catalogs = True
 
@@ -36,11 +36,8 @@ class DuckDBIntrospector(BaseIntrospector):
     def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, dict | tuple | list | None]:
         if not catalogs:
             return "SELECT schema_name, catalog_name FROM information_schema.schemata", None
-        placeholders = ", ".join("?" for _ in catalogs)
-        sql = (
-            f"SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name IN ({placeholders})"
-        )
-        return sql, catalogs
+        sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(?)"
+        return sql, (catalogs,)
 
     def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
         sql = """
