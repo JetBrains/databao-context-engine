@@ -74,7 +74,7 @@ def test_retrieve_uses_run_name_if_provided():
         provider=provider,
     )
 
-    result = retrieve_service.retrieve(project_id="proj-1", text="hello world", run_name="run-123")
+    retrieve_service.retrieve(project_id="proj-1", text="hello world", run_name="run-123")
 
     run_repo.get_by_run_name.assert_called_once_with(project_id="proj-1", run_name="run-123")
 
