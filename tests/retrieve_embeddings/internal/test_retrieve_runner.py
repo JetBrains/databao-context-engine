@@ -7,6 +7,7 @@ from nemory.retrieve_embeddings.internal.retrieve_runner import retrieve
 def test_retrieve_streamed_prints_and_does_not_export(capsys):
     service = Mock()
     service.retrieve.return_value = ["a", "b", "c"]
+    service.resolve_run_name.return_value = "run-1"
 
     project_dir = Path("/project")
     run_name = "run-1"
@@ -33,6 +34,7 @@ def test_retrieve_streamed_prints_and_does_not_export(capsys):
 def test_retrieve_file_output_calls_export_with_run_dir(tmp_path, capsys):
     service = Mock()
     service.retrieve.return_value = ["x", "y"]
+    service.resolve_run_name.return_value = "run-123"
 
     project_dir = tmp_path
     run_name = "run-123"

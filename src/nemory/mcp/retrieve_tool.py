@@ -17,6 +17,8 @@ def run_retrieve_tool(project_dir: Path, *, run_name: str | None = None, text: s
         provider = create_ollama_provider()
         service = create_retrieve_service(conn, provider=provider)
 
+        run_name = service.resolve_run_name(project_id=str(read_config_file(project_dir).project_id), run_name=run_name)
+
         retrieve_results = service.retrieve(
             project_id=str(read_config_file(project_dir).project_id),
             text=text,
