@@ -1,10 +1,8 @@
-import json
 import logging
-
-from pydantic import TypeAdapter
 
 from nemory.build_sources.internal.plugin_loader import load_plugins
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
+from nemory.pluginlib.plugin_utils import generate_json_schema
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +15,9 @@ def generate_plugins_configs():
         if not isinstance(plugin, BuildDatasourcePlugin):
             continue
 
-        if plugin.config_file_type is None:
-            logger.debug(f"No type provided for plugin {plugin.id}")
-            continue
-
-        results.append(json.dumps(TypeAdapter(plugin.config_file_type).json_schema(mode="serialization"), indent=4))
+        json_schema = generate_json_schema(plugin)
+        if json_schema is not None:
+            results.append(json_schema)
 
     print("\n".join(results))
 
