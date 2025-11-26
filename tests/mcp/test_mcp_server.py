@@ -10,8 +10,8 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 
 from nemory.mcp.mcp_runner import run_mcp_server
-from nemory.system.properties import get_db_path
 from tests.mcp.conftest import ProjectWithRuns
+from tests.utils.environment import env_variable
 
 set_start_method("spawn")
 
@@ -53,6 +53,7 @@ async def run_mcp_server_stdio_test(
 @asynccontextmanager
 async def run_mcp_server_http_test(
     project_dir: str,
+    nemory_path: Path,
     run_name: str | None = None,
     host: str | None = None,
     port: int | None = None,
@@ -63,10 +64,9 @@ async def run_mcp_server_http_test(
     2. Creating a client connecting with the MCP Server (we're retrying 5 times to wait for the server to be up and running)
     3. Yielding the MCP client session for the test to run
     """
-    server_process = Process(
-        target=run_mcp_server, args=(project_dir, run_name, "streamable-http", host, port, get_db_path())
-    )
-    server_process.start()
+    server_process = Process(target=run_mcp_server, args=(project_dir, run_name, "streamable-http", host, port))
+    with env_variable("NEMORY_PATH", str(nemory_path.resolve())):
+        server_process.start()
 
     try:
         server_started = False
@@ -156,9 +156,9 @@ async def test_run_mcp_server__all_results_tool_with_run_name(nemory_path: Path,
 
 
 @pytest.mark.anyio
-async def test_run_mcp_server__with_custom_host_and_port(nemory_path, project_with_runs: ProjectWithRuns):
+async def test_run_mcp_server__with_custom_host_and_port(nemory_path: Path, project_with_runs: ProjectWithRuns):
     async with run_mcp_server_http_test(
-        project_dir=str(project_with_runs.project_dir), host="localhost", port=8001
+        project_dir=str(project_with_runs.project_dir), nemory_path=nemory_path, host="localhost", port=8001
     ) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (
