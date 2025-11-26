@@ -1,4 +1,5 @@
 from .config import OllamaConfig
+from .install import resolve_ollama_bin
 from .runtime import OllamaRuntime
 from .service import OllamaService
 from .provider import OllamaEmbeddingProvider
@@ -12,7 +13,9 @@ def create_ollama_provider(
     dim: int = 768,
     ensure_ready: bool = True,
 ) -> OllamaEmbeddingProvider:
-    config = OllamaConfig(host=host, port=port)
+    bin_path = resolve_ollama_bin()
+
+    config = OllamaConfig(host=host, port=port, bin_path=bin_path)
     service = OllamaService(config)
 
     if ensure_ready:

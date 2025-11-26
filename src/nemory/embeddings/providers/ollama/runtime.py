@@ -1,9 +1,11 @@
+import logging
 import os
 import subprocess
 
 from nemory.embeddings.providers.ollama.config import OllamaConfig
 from nemory.embeddings.providers.ollama.service import OllamaService
 
+logger = logging.getLogger(__name__)
 
 class OllamaRuntime:
     def __init__(self, service: OllamaService, config: OllamaConfig | None = None):
@@ -14,6 +16,7 @@ class OllamaRuntime:
         if self._service.is_healthy():
             return None
 
+        logger.info("Ollama server not running. Starting Ollama server...")
         cmd = [self._config.bin_path, "serve"]
         env = os.environ.copy()
         env["OLLAMA_HOST"] = f"{self._config.host}:{self._config.port}"
@@ -48,6 +51,8 @@ class OllamaRuntime:
 
         ok = self._service.wait_until_healthy(timeout=timeout, poll_interval=poll_interval)
         if ok:
+            if proc is not None:
+                logger.info("Ollama server is running.")
             return proc
 
         if proc is not None:
