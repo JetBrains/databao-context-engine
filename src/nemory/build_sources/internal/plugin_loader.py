@@ -25,12 +25,16 @@ def load_builtin_plugins() -> list[BuildPlugin]:
     """
     Statically register built-in plugins
     """
+    from nemory.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
+    from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
     from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
     from nemory.plugins.unstructured_files_plugin import InternalUnstructuredFilesPlugin
 
     builtin_plugins: list[BuildPlugin] = [
         PostgresqlDbPlugin(),
         InternalUnstructuredFilesPlugin(),
+        ClickhouseDbPlugin(),
+        MySQLDbPlugin(),
     ]
 
     return builtin_plugins
