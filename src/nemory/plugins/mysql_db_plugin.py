@@ -3,6 +3,7 @@ from nemory.plugins.databases.mysql_introspector import MySQLIntrospector
 
 
 class MySQLDbPlugin(BaseDatabasePlugin):
+    id = "jetbrains/mysql"
     name = "MySQL DB Plugin"
     supported = {"databases/mysql"}
 

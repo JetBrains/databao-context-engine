@@ -3,6 +3,7 @@ from nemory.plugins.databases.clickhouse_introspector import ClickhouseIntrospec
 
 
 class ClickhouseDbPlugin(BaseDatabasePlugin):
+    id = "jetbrains/clickhouse"
     name = "Clickhouse DB Plugin"
     supported = {"databases/clickhouse"}
 
