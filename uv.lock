@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -728,6 +728,7 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "psycopg2-binary" },
     { name = "pyathena" },
+    { name = "pydantic" },
     { name = "pymysql" },
     { name = "pyway" },
     { name = "pyyaml" },
@@ -759,6 +760,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.12" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
     { name = "pyathena", specifier = ">=3.22.0" },
+    { name = "pydantic", specifier = ">=2.12.4" },
     { name = "pymysql", specifier = ">=1.1.2" },
     { name = "pyway", specifier = ">=0.3.32" },
     { name = "pyyaml", specifier = ">=6.0.3" },
