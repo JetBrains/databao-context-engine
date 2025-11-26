@@ -7,7 +7,7 @@ from pytest_unordered import unordered
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
 from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk
-from nemory.pluginlib.plugin_execution import execute_datasource_plugin
+from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.databases.database_chunker import DatabaseColumnChunkContent, DatabaseTableChunkContent
 from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
