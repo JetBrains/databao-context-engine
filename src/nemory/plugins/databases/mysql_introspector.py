@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from io import UnsupportedOperation
 from typing import Any, Mapping
 
@@ -5,6 +6,12 @@ import pymysql
 
 from nemory.plugins.databases.base_introspector import BaseIntrospector
 from nemory.plugins.databases.databases_types import DatabaseColumn
+
+
+@dataclass
+class MySQLConfigFile:
+    connection: dict[str, str]
+    type: str = "databases/mysql"
 
 
 class MySQLIntrospector(BaseIntrospector):
