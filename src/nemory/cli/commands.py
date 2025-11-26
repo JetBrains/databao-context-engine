@@ -14,13 +14,7 @@ from nemory.retrieve_embeddings.internal.retrieve_wiring import retrieve_embeddi
 from nemory.storage.migrate import migrate
 
 
-class SubcommandAwareGroup(click.Group):
-    def invoke(self, ctx):
-        ctx.obj["subargs"] = tuple(ctx.args)
-        super(SubcommandAwareGroup, self).invoke(ctx)
-
-
-@click.group(cls=SubcommandAwareGroup)
+@click.group()
 @click.option("-v", "--verbose", is_flag=True, help="Enable debug logging")
 @click.option("-q", "--quiet", is_flag=True, help="Disable all console logging")
 @click.option(
