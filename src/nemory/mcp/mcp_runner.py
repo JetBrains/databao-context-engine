@@ -35,6 +35,8 @@ def _get_latest_run_name(project_dir: Path, db_path: Path | None = None) -> str:
         run = run_repository.get_latest_run_for_project(str(project_id))
 
         if run is None:
-            raise ValueError(f"No runs found for project {project_id}")
+            raise ValueError(
+                f"No runs found for project {project_id} using db path {db_path} and project {project_dir}"
+            )
 
         return run.run_name
