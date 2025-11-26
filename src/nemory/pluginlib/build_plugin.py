@@ -98,6 +98,14 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
     """
 
 
+class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):
+    """
+    Use this as a base class for plugins that don't need a specific config file type.
+    """
+
+    config_file_type: type[dict[str, Any]] = dict[str, Any]
+
+
 @runtime_checkable
 class BuildFilePlugin(BaseBuildPlugin, Protocol):
     def execute(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> BuildExecutionResult: ...
