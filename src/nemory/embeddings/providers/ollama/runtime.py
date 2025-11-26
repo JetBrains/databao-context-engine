@@ -7,6 +7,7 @@ from nemory.embeddings.providers.ollama.service import OllamaService
 
 logger = logging.getLogger(__name__)
 
+
 class OllamaRuntime:
     def __init__(self, service: OllamaService, config: OllamaConfig | None = None):
         self._service = service
