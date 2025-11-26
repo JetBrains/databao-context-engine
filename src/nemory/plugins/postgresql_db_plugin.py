@@ -1,11 +1,12 @@
 from nemory.plugins.base_db_plugin import BaseDatabasePlugin
-from nemory.plugins.databases.postgresql_introspector import PostgresqlIntrospector
+from nemory.plugins.databases.postgresql_introspector import PostgresConfigFile, PostgresqlIntrospector
 
 
 class PostgresqlDbPlugin(BaseDatabasePlugin):
     id = "jetbrains/postgres"
     name = "PostgreSQL DB Plugin"
     supported = {"databases/postgres"}
+    config_file_type = PostgresConfigFile
 
     def __init__(self):
         super().__init__(PostgresqlIntrospector())

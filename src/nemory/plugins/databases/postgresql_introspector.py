@@ -1,11 +1,30 @@
-from typing import Any, Mapping
+from typing import Any, Mapping, TypedDict
 
 import psycopg
 from psycopg import Connection
 from psycopg.rows import dict_row
 
-from nemory.plugins.databases.databases_types import DatabaseColumn
 from nemory.plugins.databases.base_introspector import BaseIntrospector
+from nemory.plugins.databases.databases_types import DatabaseColumn
+
+
+class PostgresqlConnectionConfig(TypedDict, total=False):
+    """
+    Connection parameters for the PostgreSQL database.
+
+    This can contain any of the keys that can be used in a Postgres connection string
+    """
+
+    host: str | None
+    port: int | None
+    database: str | None
+    user: str | None
+    password: str | None
+
+
+class PostgresConfigFile(TypedDict):
+    connection: PostgresqlConnectionConfig
+    type: str
 
 
 class PostgresqlIntrospector(BaseIntrospector):
