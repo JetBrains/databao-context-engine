@@ -4,7 +4,7 @@ from typing import Any
 import yaml
 
 from nemory.pluginlib.build_plugin import DefaultBuildDatasourcePlugin, BuildExecutionResult
-from nemory.pluginlib.plugin_execution import execute_datasource_plugin
+from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 
 
 class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):

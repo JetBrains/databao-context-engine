@@ -7,7 +7,7 @@ from nemory.pluginlib.build_plugin import (
     BuildFilePlugin,
     BuildPlugin,
 )
-from nemory.pluginlib.plugin_execution import execute_datasource_plugin, execute_file_plugin
+from nemory.pluginlib.plugin_utils import execute_datasource_plugin, execute_file_plugin
 
 
 def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuildExecutionResult:
