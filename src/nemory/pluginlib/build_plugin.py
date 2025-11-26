@@ -3,8 +3,6 @@ from datetime import datetime
 from io import BufferedReader
 from typing import Any, Mapping, Protocol, runtime_checkable
 
-StructuredContent = dict[str, Any]
-
 
 @dataclass
 class EmbeddableChunk:
@@ -91,6 +89,8 @@ class BaseBuildPlugin(Protocol):
 
 @runtime_checkable
 class BuildDatasourcePlugin(BaseBuildPlugin, Protocol):
+    config_file_type: type | None = None
+
     def execute(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> BuildExecutionResult: ...
 
     """
