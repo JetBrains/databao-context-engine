@@ -1,23 +1,31 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
-import duckdb
+from typing import Any
 
+import duckdb
+from pydantic import BaseModel, Field
+
+from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
-class DuckDBIntrospector(BaseIntrospector):
+class DuckDBConfigFile(BaseDatabaseConfigFile):
+    type: str = Field(default="databases/duckdb")
+    connection: DuckDBConnectionConfig
+
+
+class DuckDBConnectionConfig(BaseModel):
+    database: str = Field(description="Path to the DuckDB database file")
+
+
+class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     _IGNORED_CATALOGS = {"system", "temp"}
     _IGNORED_SCHEMAS = {"information_schema", "pg_catalog"}
     supports_catalogs = True
 
-    def _connect(self, file_config: Mapping[str, Any]):
-        connection = file_config["connection"]
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
-
-        database_path = str(connection.get("database"))
+    def _connect(self, file_config: DuckDBConfigFile):
+        database_path = str(file_config.connection.database)
         return duckdb.connect(database=database_path)
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
@@ -27,7 +35,7 @@ class DuckDBIntrospector(BaseIntrospector):
         rows = cur.fetchall()
         return [dict(zip(columns, row)) for row in rows]
 
-    def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
+    def _get_catalogs(self, connection, file_config: DuckDBConfigFile) -> list[str]:
         rows = self._fetchall_dicts(connection, "SELECT database_name FROM duckdb_databases();", None)
         catalogs = [r["database_name"] for r in rows if r.get("database_name")]
         catalogs_filtered = [c for c in catalogs if c.lower() not in self._IGNORED_CATALOGS]

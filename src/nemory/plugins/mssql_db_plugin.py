@@ -1,11 +1,12 @@
 from nemory.plugins.base_db_plugin import BaseDatabasePlugin
-from nemory.plugins.databases.mssql_introspector import MSSQLIntrospector
+from nemory.plugins.databases.mssql_introspector import MSSQLConfigFile, MSSQLIntrospector
 
 
-class MSSQLDbPlugin(BaseDatabasePlugin):
+class MSSQLDbPlugin(BaseDatabasePlugin[MSSQLConfigFile]):
     id = "jetbrains/mssql"
     name = "MSSQL DB Plugin"
     supported = {"databases/mssql"}
+    config_file_type = MSSQLConfigFile
 
     def __init__(self):
         super().__init__(MSSQLIntrospector())

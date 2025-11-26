@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from io import BufferedReader
-from typing import Any, Mapping, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass
@@ -88,10 +88,10 @@ class BaseBuildPlugin(Protocol):
 
 
 @runtime_checkable
-class BuildDatasourcePlugin(BaseBuildPlugin, Protocol):
-    config_file_type: type | None = None
+class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
+    config_file_type: type[T]
 
-    def execute(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> BuildExecutionResult: ...
+    def execute(self, full_type: str, datasource_name: str, file_config: T) -> BuildExecutionResult: ...
 
     """
     The method that will be called when a config file has been found for a data source supported by this plugin.

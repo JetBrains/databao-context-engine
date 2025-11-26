@@ -2,19 +2,28 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 import snowflake.connector
+from pydantic import Field
 
+from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
-class SnowflakeIntrospector(BaseIntrospector):
+class SnowflakeConfigFile(BaseDatabaseConfigFile):
+    type: str = Field(default="databases/snowflake")
+    connection: dict[str, Any] = Field(
+        description="Connection parameters for Snowflake. It can contain any of the keys supported by the Snowflake connection library"
+    )
+
+
+class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
     _IGNORED_SCHEMAS = {
         "information_schema",
     }
     supports_catalogs = True
 
-    def _connect(self, file_config: Mapping[str, Any]):
-        connection = file_config["connection"]
+    def _connect(self, file_config: SnowflakeConfigFile):
+        connection = file_config.connection
         if not isinstance(connection, Mapping):
             raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
         snowflake.connector.paramstyle = "qmark"
@@ -28,8 +37,8 @@ class SnowflakeIntrospector(BaseIntrospector):
             rows = cur.fetchall()
             return [{k.lower(): v for k, v in row.items()} for row in rows]
 
-    def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
-        database = file_config["connection"].get("database")
+    def _get_catalogs(self, connection, file_config: SnowflakeConfigFile) -> list[str]:
+        database = file_config.connection.get("database")
         if database:
             return [database]
 

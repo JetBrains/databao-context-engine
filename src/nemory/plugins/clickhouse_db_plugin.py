@@ -2,7 +2,7 @@ from nemory.plugins.base_db_plugin import BaseDatabasePlugin
 from nemory.plugins.databases.clickhouse_introspector import ClickhouseConfigFile, ClickhouseIntrospector
 
 
-class ClickhouseDbPlugin(BaseDatabasePlugin):
+class ClickhouseDbPlugin(BaseDatabasePlugin[ClickhouseConfigFile]):
     id = "jetbrains/clickhouse"
     name = "Clickhouse DB Plugin"
     supported = {"databases/clickhouse"}

@@ -27,7 +27,7 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
     )
 
 
-class DummyBuildDatasourcePlugin(BuildDatasourcePlugin):
+class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[Mapping[str, Any]]):
     id = "jetbrains/dummy"
     name = "Dummy Plugin"
 

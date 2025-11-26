@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Mapping
+from typing import TypeVar
+
+from pydantic import BaseModel, Field
 
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
@@ -13,7 +15,16 @@ from nemory.plugins.databases.base_introspector import BaseIntrospector
 from nemory.plugins.databases.database_chunker import build_database_chunks
 
 
-class BaseDatabasePlugin(BuildDatasourcePlugin):
+class BaseDatabaseConfigFile(BaseModel):
+    id: str | None = Field(default=None)
+    name: str | None = Field(default=None)
+    type: str
+
+
+T = TypeVar("T", bound=BaseDatabaseConfigFile)
+
+
+class BaseDatabasePlugin(BuildDatasourcePlugin[T]):
     name: str
     supported: set[str]
 
@@ -23,12 +34,12 @@ class BaseDatabasePlugin(BuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return self.supported
 
-    def execute(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> BuildExecutionResult:
+    def execute(self, full_type: str, datasource_name: str, file_config: T) -> BuildExecutionResult:
         introspection_result = self._introspector.introspect_database(file_config)
 
         return BuildExecutionResult(
-            id=file_config.get("id", str(uuid.uuid4())),
-            name=file_config.get("name", datasource_name),
+            id=file_config.id or str(uuid.uuid4()),
+            name=file_config.name or datasource_name,
             type=full_type,
             description=None,
             version=None,
