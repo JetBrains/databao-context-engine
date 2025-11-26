@@ -3,18 +3,27 @@ from typing import Any, Mapping
 import psycopg
 from psycopg import Connection
 from psycopg.rows import dict_row
+from pydantic import Field
 
-from nemory.plugins.databases.databases_types import DatabaseColumn
+from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
+from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
-class PostgresqlIntrospector(BaseIntrospector):
+class PostgresConfigFile(BaseDatabaseConfigFile):
+    type: str = Field(default="databases/postgres")
+    connection: dict[str, Any] = Field(
+        description="Connection parameters for the Postgres database. It can contain any of the keys supported by the Postgres connection string"
+    )
+
+
+class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "pg_catalog", "pg_toast"}
 
     supports_catalogs = True
 
-    def _connect(self, file_config: Mapping[str, Any]):
-        connection = file_config.get("connection")
+    def _connect(self, file_config: PostgresConfigFile):
+        connection = file_config.connection
         if not isinstance(connection, Mapping):
             raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
 
@@ -26,8 +35,8 @@ class PostgresqlIntrospector(BaseIntrospector):
             cur.execute(sql, params)
             return [r for r in cur.fetchall()]
 
-    def _get_catalogs(self, connection: Connection, file_config: Mapping[str, Any]) -> list[str]:
-        database = file_config["connection"].get("database")
+    def _get_catalogs(self, connection: Connection, file_config: PostgresConfigFile) -> list[str]:
+        database = file_config.connection.get("database")
         if database is not None:
             return [database]
 

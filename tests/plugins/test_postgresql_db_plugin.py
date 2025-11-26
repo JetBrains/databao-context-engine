@@ -7,6 +7,7 @@ from pytest_unordered import unordered
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
 from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk
+from nemory.pluginlib.plugin_execution import execute_datasource_plugin
 from nemory.plugins.databases.database_chunker import DatabaseColumnChunkContent, DatabaseTableChunkContent
 from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
@@ -45,7 +46,7 @@ def test_postgres_plugin_execute(postgres_container_with_columns: PostgresContai
 
     config_file = _create_config_file_from_container(postgres_container_with_columns)
 
-    execution_result = plugin.execute(config_file["type"], "file_name", config_file)
+    execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
 
     assert execution_result.result == DatabaseIntrospectionResult(
         catalogs=[

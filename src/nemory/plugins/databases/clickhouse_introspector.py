@@ -4,26 +4,27 @@ from io import UnsupportedOperation
 from typing import Any, Mapping
 
 import clickhouse_connect
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
-class ClickhouseConfigFile(BaseModel):
+class ClickhouseConfigFile(BaseDatabaseConfigFile):
     type: str = Field(default="databases/clickhouse")
-    connection: dict[str, str] = Field(
+    connection: dict[str, Any] = Field(
         description="Connection parameters for the Clickhouse database. It can contain any of the keys supported by the Clickhouse connection library (see https://clickhouse.com/docs/integrations/language-clients/python/driver-api#connection-arguments)"
     )
 
 
-class ClickhouseIntrospector(BaseIntrospector):
+class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "system"}
 
     supports_catalogs = False
 
-    def _connect(self, file_config: Mapping[str, Any]):
-        connection = file_config.get("connection")
+    def _connect(self, file_config: ClickhouseConfigFile):
+        connection = file_config.connection
         if not isinstance(connection, Mapping):
             raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
 
@@ -33,7 +34,7 @@ class ClickhouseIntrospector(BaseIntrospector):
         result = connection.query(sql, parameters=params) if params else connection.query(sql)
         return [dict(zip(result.column_names, row)) for row in result.result_rows]
 
-    def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
+    def _get_catalogs(self, connection, file_config: ClickhouseConfigFile) -> list[str]:
         raise UnsupportedOperation("Clickhouse doesnt support catalogs")
 
     def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:

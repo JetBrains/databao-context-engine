@@ -1,27 +1,27 @@
 from __future__ import annotations
 
 import logging
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence, Union
 
 from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
+    DatabaseColumn,
     DatabaseIntrospectionResult,
     DatabaseSchema,
     DatabaseTable,
-    DatabaseColumn,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class BaseIntrospector(ABC):
+class BaseIntrospector[T](ABC):
     supports_catalogs: bool = True
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
 
-    def introspect_database(self, file_config: Mapping[str, Any]) -> DatabaseIntrospectionResult:
+    def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
         connection = self._connect(file_config)
         with connection:
             catalogs = self._get_catalogs_adapted(connection, file_config)
@@ -46,14 +46,12 @@ class BaseIntrospector(ABC):
 
             return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
 
-    def _get_catalogs_adapted(self, connection, file_config: Mapping[str, Any]) -> list[str]:
+    def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
         if self.supports_catalogs:
             return self._get_catalogs(connection, file_config)
         return [self._resolve_pseudo_catalog_name(file_config)]
 
-    def _get_schemas(
-        self, connection: Any, catalogs: list[str], file_config: Mapping[str, Any]
-    ) -> dict[str, list[str]]:
+    def _get_schemas(self, connection: Any, catalogs: list[str], file_config: T) -> dict[str, list[str]]:
         sql_query = self._sql_list_schemas(catalogs if self.supports_catalogs else None)
         rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
 
@@ -83,7 +81,7 @@ class BaseIntrospector(ABC):
     def _filter_schemas(
         self,
         schemas_per_catalog: dict[str, list[str]],
-        file_config: Mapping[str, Any],
+        file_config: T,
     ) -> dict[str, list[str]]:
         ignored = {s.lower() for s in (self._ignored_schemas() or [])}
 
@@ -109,7 +107,7 @@ class BaseIntrospector(ABC):
         return tables
 
     @abstractmethod
-    def _connect(self, file_config: Mapping[str, Any]):
+    def _connect(self, file_config: T):
         raise NotImplementedError
 
     @abstractmethod
@@ -117,7 +115,7 @@ class BaseIntrospector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
+    def _get_catalogs(self, connection, file_config: T) -> list[str]:
         raise NotImplementedError
 
     @abstractmethod
@@ -128,7 +126,7 @@ class BaseIntrospector(ABC):
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         raise NotImplementedError
 
-    def _resolve_pseudo_catalog_name(self, file_config: Mapping[str, Any]) -> str:
+    def _resolve_pseudo_catalog_name(self, file_config: T) -> str:
         return "default"
 
     def _ignored_schemas(self) -> set[str]:

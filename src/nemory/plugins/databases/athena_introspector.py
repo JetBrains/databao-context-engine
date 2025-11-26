@@ -4,19 +4,28 @@ from typing import Any, Mapping
 
 from pyathena import connect
 from pyathena.cursor import DictCursor
+from pydantic import Field
 
+from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
-class AthenaIntrospector(BaseIntrospector):
+class AthenaConfigFile(BaseDatabaseConfigFile):
+    type: str = Field(default="databases/athena")
+    connection: dict[str, Any] = Field(
+        description="Connection parameters for the Athena database. It can contain any of the keys supported by the Athena connection library"
+    )
+
+
+class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
     _IGNORED_SCHEMAS = {
         "information_schema",
     }
     supports_catalogs = True
 
-    def _connect(self, file_config: Mapping[str, Any]):
-        connection = file_config["connection"]
+    def _connect(self, file_config: AthenaConfigFile):
+        connection = file_config.connection
         if not isinstance(connection, Mapping):
             raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
 
@@ -27,8 +36,8 @@ class AthenaIntrospector(BaseIntrospector):
             cur.execute(sql, params or {})
             return cur.fetchall()
 
-    def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
-        catalog = file_config["connection"].get("catalog", self._resolve_pseudo_catalog_name(file_config))
+    def _get_catalogs(self, connection, file_config: AthenaConfigFile) -> list[str]:
+        catalog = file_config.connection.get("catalog", self._resolve_pseudo_catalog_name(file_config))
         return [catalog]
 
     def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
@@ -53,5 +62,5 @@ class AthenaIntrospector(BaseIntrospector):
             nullable=row["is_nullable"] == "YES",
         )
 
-    def _resolve_pseudo_catalog_name(self, file_config: Mapping[str, Any]) -> str:
+    def _resolve_pseudo_catalog_name(self, file_config: AthenaConfigFile) -> str:
         return "awsdatacatalog"

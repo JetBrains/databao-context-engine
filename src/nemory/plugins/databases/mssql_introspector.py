@@ -3,12 +3,21 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from mssql_python import connect  # type: ignore
+from pydantic import Field
 
+from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
-class MSSQLIntrospector(BaseIntrospector):
+class MSSQLConfigFile(BaseDatabaseConfigFile):
+    type: str = Field(default="databases/mssql")
+    connection: dict[str, Any] = Field(
+        description="Connection parameters for the Microsoft Server SQL database. It can contain any of the keys supported by the Microsoft Server connection library"
+    )
+
+
+class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     _IGNORED_SCHEMAS = {
         "sys",
         "information_schema",
@@ -30,8 +39,8 @@ class MSSQLIntrospector(BaseIntrospector):
     )
     supports_catalogs = True
 
-    def _connect(self, file_config: Mapping[str, Any]):
-        connection = file_config.get("connection")
+    def _connect(self, file_config: MSSQLConfigFile):
+        connection = file_config.connection
         if not isinstance(connection, Mapping):
             raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
 
@@ -47,8 +56,8 @@ class MSSQLIntrospector(BaseIntrospector):
             columns = [col[0].lower() for col in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-    def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
-        database = file_config["connection"].get("database")
+    def _get_catalogs(self, connection, file_config: MSSQLConfigFile) -> list[str]:
+        database = file_config.connection.get("database")
         if isinstance(database, str) and database:
             return [database]
 

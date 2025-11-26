@@ -2,18 +2,25 @@ from io import UnsupportedOperation
 from typing import Any, Mapping
 
 import pymysql
+from pydantic import Field
 
+from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
-class MySQLIntrospector(BaseIntrospector):
+class MySQLConfigFile(BaseDatabaseConfigFile):
+    connection: dict[str, Any]
+    type: str = Field(default="databases/mysql")
+
+
+class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "mysql", "performance_schema", "sys"}
 
     supports_catalogs = False
 
-    def _connect(self, file_config: Mapping[str, Any]):
-        connection = file_config["connection"]
+    def _connect(self, file_config: MySQLConfigFile):
+        connection = file_config.connection
         if not isinstance(connection, Mapping):
             raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
 
@@ -28,7 +35,7 @@ class MySQLIntrospector(BaseIntrospector):
             rows = cur.fetchall()
             return [{k.lower(): v for k, v in row.items()} for row in rows]
 
-    def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
+    def _get_catalogs(self, connection, file_config: MySQLConfigFile) -> list[str]:
         raise UnsupportedOperation("MySQL doesn't support catalogs")
 
     def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:

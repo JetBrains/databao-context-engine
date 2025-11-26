@@ -1,11 +1,12 @@
 from nemory.plugins.base_db_plugin import BaseDatabasePlugin
-from nemory.plugins.databases.duckdb_introspector import DuckDBIntrospector
+from nemory.plugins.databases.duckdb_introspector import DuckDBConfigFile, DuckDBIntrospector
 
 
-class DuckDbPlugin(BaseDatabasePlugin):
+class DuckDbPlugin(BaseDatabasePlugin[DuckDBConfigFile]):
     id = "jetbrains/duckdb"
     name = "DuckDB Plugin"
     supported = {"databases/duckdb"}
+    config_file_type = DuckDBConfigFile
 
     def __init__(self):
         super().__init__(DuckDBIntrospector())
