@@ -4,9 +4,17 @@ from io import UnsupportedOperation
 from typing import Any, Mapping
 
 import clickhouse_connect
+from pydantic import BaseModel, Field
 
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
+
+
+class ClickhouseConfigFile(BaseModel):
+    type: str = Field(default="databases/clickhouse")
+    connection: dict[str, str] = Field(
+        description="Connection parameters for the Clickhouse database. It can contain any of the keys supported by the Clickhouse connection library (see https://clickhouse.com/docs/integrations/language-clients/python/driver-api#connection-arguments)"
+    )
 
 
 class ClickhouseIntrospector(BaseIntrospector):
