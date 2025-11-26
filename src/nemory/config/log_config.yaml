@@ -10,4 +10,5 @@ handlers:
 loggers:
   nemory:
     level: INFO
+    propagate: false
     handlers: [ console ]

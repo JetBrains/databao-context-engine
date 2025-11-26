@@ -8,7 +8,7 @@ import yaml
 from nemory.project.layout import get_logs_dir, is_project_dir_valid
 
 
-def configure_logging(verbose: bool, project_dir: str) -> None:
+def configure_logging(verbose: bool, quiet: bool, project_dir: str) -> None:
     with Path(__file__).parent.joinpath("log_config.yaml").open(mode="r") as log_config_file:
         log_config = yaml.safe_load(log_config_file)
 
@@ -21,7 +21,11 @@ def configure_logging(verbose: bool, project_dir: str) -> None:
             log_config["handlers"][file_handler_name] = _get_logging_file_handler(logs_dir_path)
             log_config["loggers"]["nemory"]["handlers"].append(file_handler_name)
 
-        log_config["loggers"]["nemory"]["level"] = "DEBUG" if verbose else "INFO"
+        if quiet:
+            log_config["loggers"]["nemory"]["handlers"].remove("console")
+        if verbose:
+            log_config["loggers"]["nemory"]["level"] = "DEBUG"
+
         dictConfig(log_config)
 
 

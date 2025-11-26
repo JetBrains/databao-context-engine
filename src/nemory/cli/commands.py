@@ -1,3 +1,4 @@
+import sys
 from importlib.metadata import version
 from pathlib import Path
 
@@ -13,8 +14,15 @@ from nemory.retrieve_embeddings.internal.retrieve_wiring import retrieve_embeddi
 from nemory.storage.migrate import migrate
 
 
-@click.group()
+class SubcommandAwareGroup(click.Group):
+    def invoke(self, ctx):
+        ctx.obj["subargs"] = tuple(ctx.args)
+        super(SubcommandAwareGroup, self).invoke(ctx)
+
+
+@click.group(cls=SubcommandAwareGroup)
 @click.option("-v", "--verbose", is_flag=True, help="Enable debug logging")
+@click.option("-q", "--quiet", is_flag=True, help="Disable all console logging")
 @click.option(
     "-d",
     "--project-dir",
@@ -22,14 +30,19 @@ from nemory.storage.migrate import migrate
     help="Location of your Nemory project",
 )
 @click.pass_context
-def nemory(ctx: Context, verbose: bool, project_dir: str | None) -> None:
+def nemory(ctx: Context, verbose: bool, quiet: bool, project_dir: str | None) -> None:
+    if verbose and quiet:
+        print("Arguments --quiet and --verbose can not be used together", file=sys.stderr)
+        exit(1)
+
     if project_dir is None:
         project_dir = str(Path.cwd())
 
-    configure_logging(verbose=verbose, project_dir=project_dir)
+    configure_logging(verbose=verbose, quiet=quiet, project_dir=project_dir)
 
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
     ctx.obj["project_dir"] = project_dir
 
     migrate()
@@ -132,4 +145,6 @@ def mcp(ctx: Context, run_name: str | None, host: str | None, port: int | None, 
     """
     Run Nemory's MCP server
     """
+    if transport == "stdio":
+        configure_logging(verbose=False, quiet=True, project_dir=ctx.obj["project_dir"])
     run_mcp_server(project_dir=ctx.obj["project_dir"], run_name=run_name, transport=transport, host=host, port=port)
