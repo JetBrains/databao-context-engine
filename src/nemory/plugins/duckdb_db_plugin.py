@@ -3,6 +3,7 @@ from nemory.plugins.databases.duckdb_introspector import DuckDBIntrospector
 
 
 class DuckDbPlugin(BaseDatabasePlugin):
+    id = "jetbrains/duckdb"
     name = "DuckDB Plugin"
     supported = {"databases/duckdb"}
 

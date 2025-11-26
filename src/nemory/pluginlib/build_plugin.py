@@ -72,6 +72,7 @@ class BuildExecutionResult:
 
 
 class BaseBuildPlugin(Protocol):
+    id: str
     name: str
 
     def supported_types(self) -> set[str]: ...

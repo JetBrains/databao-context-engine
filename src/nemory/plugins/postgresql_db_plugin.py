@@ -3,6 +3,7 @@ from nemory.plugins.databases.postgresql_introspector import PostgresqlIntrospec
 
 
 class PostgresqlDbPlugin(BaseDatabasePlugin):
+    id = "jetbrains/postgres"
     name = "PostgreSQL DB Plugin"
     supported = {"databases/postgres"}
 

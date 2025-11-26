@@ -3,6 +3,7 @@ from nemory.plugins.databases.mssql_introspector import MSSQLIntrospector
 
 
 class MSSQLDbPlugin(BaseDatabasePlugin):
+    id = "jetbrains/mssql"
     name = "MSSQL DB Plugin"
     supported = {"databases/mssql"}
 
