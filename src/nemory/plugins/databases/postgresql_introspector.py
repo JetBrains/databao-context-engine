@@ -63,7 +63,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
 
     def _create_connection_string_for_config(self, connection_config: Mapping[str, Any]) -> str:
         def _escape_pg_value(value: str) -> str:
-            escaped = value.replace("\\", "\\\\").replace("'", "''")
+            escaped = value.replace("\\", "\\\\").replace("'", "\\'")
             return f"'{escaped}'"
 
         host = connection_config.get("host")
