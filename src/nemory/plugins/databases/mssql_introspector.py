@@ -4,7 +4,7 @@ from typing import Any, Mapping
 
 from mssql_python import connect  # type: ignore
 
-from nemory.plugins.databases.base_introspector import BaseIntrospector
+from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
@@ -56,12 +56,12 @@ class MSSQLIntrospector(BaseIntrospector):
         all_catalogs = [row["name"] for row in rows]
         return [catalog for catalog in all_catalogs if catalog not in self._IGNORED_CATALOGS]
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = f"""
         SELECT table_name, column_name, is_nullable, data_type
         FROM [{catalog}].information_schema.columns WHERE table_schema = ?
         """
-        return sql, [schema]
+        return SQLQuery(sql, [schema])
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(
@@ -70,14 +70,14 @@ class MSSQLIntrospector(BaseIntrospector):
             nullable=str(row.get("is_nullable", "NO")).upper() == "YES",
         )
 
-    def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, dict | tuple | list | None]:
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
         if not catalogs:
-            return "SELECT schema_name, catalog_name FROM information_schema.schemata", None
+            return SQLQuery("SELECT schema_name, catalog_name FROM information_schema.schemata", None)
 
         parts = []
         for catalog in catalogs:
             parts.append(f"SELECT schema_name, catalog_name FROM {catalog}.information_schema.schemata")
-        return " UNION ALL ".join(parts), None
+        return SQLQuery(" UNION ALL ".join(parts), None)
 
     def _create_connection_string_for_config(self, file_config: Mapping[str, Any]) -> str:
         def _escape_odbc_value(value: str) -> str:

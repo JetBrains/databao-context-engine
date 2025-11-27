@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 import duckdb
 
-from nemory.plugins.databases.base_introspector import BaseIntrospector
+from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
@@ -33,19 +33,19 @@ class DuckDBIntrospector(BaseIntrospector):
         catalogs_filtered = [c for c in catalogs if c.lower() not in self._IGNORED_CATALOGS]
         return catalogs_filtered or [self._resolve_pseudo_catalog_name(file_config)]
 
-    def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, dict | tuple | list | None]:
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
         if not catalogs:
-            return "SELECT schema_name, catalog_name FROM information_schema.schemata", None
+            return SQLQuery("SELECT schema_name, catalog_name FROM information_schema.schemata", None)
         sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(?)"
-        return sql, (catalogs,)
+        return SQLQuery(sql, (catalogs,))
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = """
         SELECT table_name, column_name, is_nullable, data_type
         FROM information_schema.columns
         WHERE table_schema = ?
         """
-        return sql, (schema,)
+        return SQLQuery(sql, (schema,))
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(

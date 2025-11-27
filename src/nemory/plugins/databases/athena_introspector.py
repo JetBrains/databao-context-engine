@@ -5,7 +5,7 @@ from typing import Any, Mapping
 from pyathena import connect
 from pyathena.cursor import DictCursor
 
-from nemory.plugins.databases.base_introspector import BaseIntrospector
+from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
@@ -31,20 +31,20 @@ class AthenaIntrospector(BaseIntrospector):
         catalog = file_config["connection"].get("catalog", self._resolve_pseudo_catalog_name(file_config))
         return [catalog]
 
-    def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, dict | tuple | list | None]:
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
         if not catalogs:
-            return "SELECT schema_name, catalog_name FROM information_schema.schemata", None
+            return SQLQuery("SELECT schema_name, catalog_name FROM information_schema.schemata", None)
         catalog = catalogs[0]
         sql = "SELECT schema_name, catalog_name FROM information_schema.schemata WHERE catalog_name = %(catalog)s"
-        return sql, {"catalog": catalog}
+        return SQLQuery(sql, {"catalog": catalog})
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = f"""
         SELECT table_name, column_name, is_nullable, data_type
         FROM {catalog}.information_schema.columns
         WHERE table_schema = %(schema)s
         """
-        return sql, {"schema": schema}
+        return SQLQuery(sql, {"schema": schema})
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(

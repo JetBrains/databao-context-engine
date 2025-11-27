@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 import snowflake.connector
 
-from nemory.plugins.databases.base_introspector import BaseIntrospector
+from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
@@ -36,13 +36,13 @@ class SnowflakeIntrospector(BaseIntrospector):
         rows = self._fetchall_dicts(connection, "SHOW DATABASES", None)
         return [r["name"] for r in rows if r["name"]]
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = f"""
         SELECT table_name, column_name, is_nullable, data_type
         FROM {catalog}.information_schema.columns
         WHERE table_schema = ?
         """
-        return sql, (schema,)
+        return SQLQuery(sql, (schema,))
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(
@@ -51,13 +51,13 @@ class SnowflakeIntrospector(BaseIntrospector):
             nullable=row["is_nullable"].upper() == "YES",
         )
 
-    def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, dict | tuple | list | None]:
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
         # This way if one of the select clauses fails (which happens now for a few test databases), the whole query fails.
         # In the future, we can change the whole logic and call _sql_list_schemas() for each catalog separately.
         # Or maybe we can use 'show schemas' query.
         if not catalogs:
-            return "SELECT schema_name, catalog_name FROM information_schema.schemata", None
+            return SQLQuery("SELECT schema_name, catalog_name FROM information_schema.schemata", None)
         parts = []
         for catalog in catalogs:
             parts.append(f"SELECT schema_name, catalog_name FROM {catalog}.information_schema.schemata")
-        return " UNION ALL ".join(parts), None
+        return SQLQuery(" UNION ALL ".join(parts), None)

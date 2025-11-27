@@ -5,7 +5,7 @@ from psycopg import Connection
 from psycopg.rows import dict_row
 
 from nemory.plugins.databases.databases_types import DatabaseColumn
-from nemory.plugins.databases.base_introspector import BaseIntrospector
+from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 
 
 class PostgresqlIntrospector(BaseIntrospector):
@@ -37,13 +37,13 @@ class PostgresqlIntrospector(BaseIntrospector):
 
         return [row[0] for row in catalog_results]
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, dict | tuple | list | None]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = """
         SELECT table_name, column_name, is_nullable, udt_name, data_type
         FROM information_schema.columns
         WHERE table_catalog = %s AND table_schema = %s
         """
-        return sql, (catalog, schema)
+        return SQLQuery(sql, (catalog, schema))
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(
