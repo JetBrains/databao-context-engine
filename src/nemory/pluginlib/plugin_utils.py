@@ -1,11 +1,12 @@
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Mapping
 
 from pydantic import TypeAdapter
 
-from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildFilePlugin, BuildExecutionResult
+from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildExecutionResult, BuildFilePlugin
 
 logger = logging.getLogger(__name__)
 
@@ -39,3 +40,7 @@ def generate_json_schema(plugin: BuildDatasourcePlugin, pretty_print: bool = Tru
     json_schema = TypeAdapter(plugin.config_file_type).json_schema(mode="serialization")
 
     return json.dumps(json_schema, indent=4 if pretty_print else None)
+
+
+def format_json_schema_for_output(plugin: BuildDatasourcePlugin, json_schema: str) -> str:
+    return os.linesep.join([f"JSON Schema for plugin {plugin.id}:", json_schema])
