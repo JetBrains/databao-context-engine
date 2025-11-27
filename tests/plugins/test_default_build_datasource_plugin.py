@@ -1,23 +1,7 @@
-from datetime import datetime
-from typing import Any
-
 import yaml
 
-from nemory.pluginlib.build_plugin import DefaultBuildDatasourcePlugin, BuildExecutionResult
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-
-
-class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
-    def execute(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> BuildExecutionResult:
-        return BuildExecutionResult(
-            id="dummy",
-            name=datasource_name,
-            type=full_type,
-            result={"ok": True},
-            version="1.0",
-            executed_at=datetime.now(),
-            description=None,
-        )
+from tests.utils.dummy_build_plugin import DummyDefaultDatasourcePlugin
 
 
 def test_default_build_datasource_plugin():

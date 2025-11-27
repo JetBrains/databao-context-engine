@@ -6,6 +6,7 @@ from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,
     EmbeddableChunk,
+    DefaultBuildDatasourcePlugin,
 )
 
 
@@ -28,8 +29,9 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
 
 
 class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[Mapping[str, Any]]):
-    id = "jetbrains/dummy"
-    name = "Dummy Plugin"
+    id = "jetbrains/dummy_db"
+    name = "Dummy DB Plugin"
+    config_file_type: Mapping[str, Any] = Mapping[str, Any]
 
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
@@ -77,3 +79,25 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[Mapping[str, Any]]):
             for schema in catalog.get("schemas", list())
             for table in schema.get("tables", list())
         ]
+
+
+class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
+    id = "jetbrains/dummy_default"
+    name = "Dummy Plugin with a default type"
+
+    def supported_types(self) -> set[str]:
+        return {"dummy/dummy_default"}
+
+    def execute(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> BuildExecutionResult:
+        return BuildExecutionResult(
+            id="dummy",
+            name=datasource_name,
+            type=full_type,
+            result={"ok": True},
+            version="1.0",
+            executed_at=datetime.now(),
+            description=None,
+        )
+
+    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+        return []
