@@ -1,8 +1,8 @@
 from .config import OllamaConfig
 from .install import resolve_ollama_bin
+from .provider import OllamaEmbeddingProvider
 from .runtime import OllamaRuntime
 from .service import OllamaService
-from .provider import OllamaEmbeddingProvider
 
 
 def create_ollama_provider(
@@ -21,6 +21,6 @@ def create_ollama_provider(
     if ensure_ready:
         runtime = OllamaRuntime(config=config, service=service)
         runtime.start_and_await(timeout=120)
-        service.pull_model(model=model_id, timeout=900)
+        service.pull_model_if_needed(model=model_id, timeout=900)
 
     return OllamaEmbeddingProvider(service=service, model_id=model_id, dim=dim)

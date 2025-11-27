@@ -1,9 +1,12 @@
+import logging
 import time
 from typing import Any
 
 import requests
 
 from .config import OllamaConfig
+
+logger = logging.getLogger(__name__)
 
 
 class OllamaService:
@@ -46,6 +49,15 @@ class OllamaService:
 
         return [float(x) for x in vec]
 
+    def pull_model_if_needed(self, *, model: str, timeout: float = 900.0) -> None:
+        if self._is_model_available(model_name=model):
+            logger.debug(f"Ollama model {model} was already available, skipping pull")
+            return
+
+        self.pull_model(model=model, timeout=timeout)
+
+        logger.debug(f"Ollama model {model} was pulled")
+
     def pull_model(self, *, model: str, timeout: float = 900.0) -> None:
         url = f"{self._base}/api/pull"
 
@@ -79,3 +91,18 @@ class OllamaService:
                 return True
             time.sleep(poll_interval)
         return self.is_healthy(timeout=min(poll_interval, timeout))
+
+    def _is_model_available(self, *, model_name, timeout: float = 5.0) -> bool:
+        url = f"{self._base}/api/tags"
+        try:
+            r = self._session.get(url, headers=self._headers, timeout=timeout)
+
+            if 200 <= r.status_code < 300:
+                models = r.json().get("models")
+                if models and isinstance(models, list):
+                    local_model = next((model for model in models if model.get("name") == model_name), None)
+                    return local_model is not None
+
+            return False
+        except requests.RequestException:
+            return False
