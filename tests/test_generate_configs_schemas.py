@@ -14,10 +14,10 @@ def _patch_load_plugins(mocker, return_value: PluginList | None = None):
     if return_value is None:
         return_value = load_dummy_plugins()
 
-    mocker.patch("nemory.generate_plugins_configs.load_plugins", return_value=return_value)
+    mocker.patch("nemory.generate_configs_schemas.load_plugins", return_value=return_value)
 
 
-def test_generate_plugins_configs__all(mocker):
+def test_generate_configs_schemas__all(mocker):
     _patch_load_plugins(mocker)
 
     results = _generate_json_schema_output_for_plugins(tuple(), None)
@@ -27,7 +27,7 @@ def test_generate_plugins_configs__all(mocker):
     assert next((result for result in results if AdditionalDummyPlugin.id in result), None) is not None
 
 
-def test_generate_plugins_configs__with_both_include_and_exclude(mocker):
+def test_generate_configs_schemas__with_both_include_and_exclude(mocker):
     _patch_load_plugins(mocker)
 
     with pytest.raises(ValueError) as e:
@@ -36,7 +36,7 @@ def test_generate_plugins_configs__with_both_include_and_exclude(mocker):
     assert str(e.value) == "Can't use --include-plugins and --exclude-plugins together"
 
 
-def test_generate_plugins_configs__with_include(mocker):
+def test_generate_configs_schemas__with_include(mocker):
     _patch_load_plugins(mocker)
 
     results = _generate_json_schema_output_for_plugins((DummyBuildDatasourcePlugin.id,), tuple())
@@ -45,7 +45,7 @@ def test_generate_plugins_configs__with_include(mocker):
     assert next((result for result in results if DummyBuildDatasourcePlugin.id in result), None) is not None
 
 
-def test_generate_plugins_configs__with_all_inluded(mocker):
+def test_generate_configs_schemas__with_all_inluded(mocker):
     _patch_load_plugins(mocker)
 
     results = _generate_json_schema_output_for_plugins(
@@ -57,7 +57,7 @@ def test_generate_plugins_configs__with_all_inluded(mocker):
     assert next((result for result in results if AdditionalDummyPlugin.id in result), None) is not None
 
 
-def test_generate_plugins_configs__with_unknown_include(mocker):
+def test_generate_configs_schemas__with_unknown_include(mocker):
     _patch_load_plugins(mocker)
 
     with pytest.raises(ValueError) as e:
@@ -66,7 +66,7 @@ def test_generate_plugins_configs__with_unknown_include(mocker):
     assert "No plugin found with id in" in str(e.value)
 
 
-def test_generate_plugins_configs__with_exclude(mocker):
+def test_generate_configs_schemas__with_exclude(mocker):
     _patch_load_plugins(mocker)
 
     results = _generate_json_schema_output_for_plugins(tuple(), (DummyBuildDatasourcePlugin.id,))
@@ -75,7 +75,7 @@ def test_generate_plugins_configs__with_exclude(mocker):
     assert next((result for result in results if AdditionalDummyPlugin.id in result), None) is not None
 
 
-def test_generate_plugins_configs__with_all_excluded(mocker):
+def test_generate_configs_schemas__with_all_excluded(mocker):
     _patch_load_plugins(mocker)
 
     with pytest.raises(ValueError) as e:

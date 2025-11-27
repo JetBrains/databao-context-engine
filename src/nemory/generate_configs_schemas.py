@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
     This can't be used in conjunction with --include-plugins  
     """,
 )
-def generate_plugins_configs(
+def generate_configs_schemas(
     include_plugins: tuple[str, ...] | None = None, exclude_plugins: tuple[str, ...] | None = None
 ):
     try:
@@ -85,4 +85,4 @@ def _get_plugins_for_schema_generation(
 
 
 if __name__ == "__main__":
-    generate_plugins_configs()
+    generate_configs_schemas()
