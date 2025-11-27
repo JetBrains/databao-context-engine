@@ -1,12 +1,15 @@
 import uuid
 from datetime import datetime
-from typing import TypedDict, Mapping, Any
+from io import BufferedReader
+from typing import Any, Mapping, TypedDict
 
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,
-    EmbeddableChunk,
+    BuildFilePlugin,
+    BuildPlugin,
     DefaultBuildDatasourcePlugin,
+    EmbeddableChunk,
 )
 
 
@@ -28,10 +31,15 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
     )
 
 
-class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[Mapping[str, Any]]):
+class DummyConfigFileType(TypedDict):
+    type: str
+    displayName: str
+
+
+class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
     id = "jetbrains/dummy_db"
     name = "Dummy DB Plugin"
-    config_file_type: Mapping[str, Any] = Mapping[str, Any]
+    config_file_type = DummyConfigFileType
 
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
@@ -101,3 +109,64 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
 
     def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
         return []
+
+
+class DummyFilePlugin(BuildFilePlugin):
+    id = "jetbrains/dummy_file"
+    name = "Dummy Plugin with a default type"
+
+    def supported_types(self) -> set[str]:
+        return {"files/dummy"}
+
+    def execute(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> BuildExecutionResult:
+        return BuildExecutionResult(
+            id="dummy",
+            name=file_name,
+            type=full_type,
+            result={"file_ok": True},
+            version="1.0",
+            executed_at=datetime.now(),
+            description=None,
+        )
+
+    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+        return []
+
+
+class AdditionalDummyConfigFile(TypedDict):
+    type: str
+    other_field: str
+
+
+class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
+    id = "additional/dummy"
+    name = "Additional Dummy Plugin"
+    config_file_type = AdditionalDummyConfigFile
+
+    def supported_types(self) -> set[str]:
+        return {"additional/dummy_type"}
+
+    def execute(
+        self, full_type: str, datasource_name: str, file_config: AdditionalDummyConfigFile
+    ) -> BuildExecutionResult:
+        return BuildExecutionResult(
+            id="dummy",
+            name=datasource_name,
+            type=full_type,
+            result={"additional_ok": True},
+            version="1.0",
+            executed_at=datetime.now(),
+            description=None,
+        )
+
+    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+        return []
+
+
+def load_dummy_plugins() -> dict[str, BuildPlugin]:
+    return {
+        "files/dummy": DummyFilePlugin(),
+        "databases/dummy_db": DummyBuildDatasourcePlugin(),
+        "dummy/dummy_default": DummyDefaultDatasourcePlugin(),
+        "additional/dummy_type": AdditionalDummyPlugin(),
+    }
