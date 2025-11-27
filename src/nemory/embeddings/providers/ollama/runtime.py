@@ -53,7 +53,9 @@ class OllamaRuntime:
         ok = self._service.wait_until_healthy(timeout=timeout, poll_interval=poll_interval)
         if ok:
             if proc is not None:
-                logger.info("Ollama server is running.")
+                logger.info("Started Ollama server")
+            else:
+                logger.debug("Ollama server was already running")
             return proc
 
         if proc is not None:
