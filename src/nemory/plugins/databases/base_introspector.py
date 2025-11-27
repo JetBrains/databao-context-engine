@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 from abc import abstractmethod, ABC
 from collections import defaultdict
-from typing import Any, Mapping
+from dataclasses import dataclass
+from typing import Any, Mapping, Sequence, Union
 
 from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
@@ -53,8 +54,8 @@ class BaseIntrospector(ABC):
     def _get_schemas(
         self, connection: Any, catalogs: list[str], file_config: Mapping[str, Any]
     ) -> dict[str, list[str]]:
-        sql, params = self._sql_list_schemas(catalogs if self.supports_catalogs else None)
-        rows = self._fetchall_dicts(connection, sql, params)
+        sql_query = self._sql_list_schemas(catalogs if self.supports_catalogs else None)
+        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
 
         schemas_per_catalog: dict[str, list[str]] = defaultdict(list)
         for row in rows:
@@ -71,13 +72,13 @@ class BaseIntrospector(ABC):
                 )
         return schemas_per_catalog
 
-    def _sql_list_schemas(self, catalogs: list[str] | None) -> tuple[str, tuple | list | None]:
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
         if self.supports_catalogs:
-            sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(%s) "
-            return sql, (catalogs,)
+            sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(%s)"
+            return SQLQuery(sql, (catalogs,))
         else:
-            sql = "SELECT schema_name FROM information_schema.schemata "
-            return sql, None
+            sql = "SELECT schema_name FROM information_schema.schemata"
+            return SQLQuery(sql, None)
 
     def _filter_schemas(
         self,
@@ -93,8 +94,8 @@ class BaseIntrospector(ABC):
         }
 
     def _collect_columns_for_schema(self, connection, catalog: str, schema: str):
-        sql, params = self._sql_columns_for_schema(catalog, schema)
-        rows = self._fetchall_dicts(connection, sql, params)
+        sql_query = self._sql_columns_for_schema(catalog, schema)
+        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
 
         tables: dict[str, list] = {}
 
@@ -120,7 +121,7 @@ class BaseIntrospector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple | list]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         raise NotImplementedError
 
     @abstractmethod
@@ -132,3 +133,12 @@ class BaseIntrospector(ABC):
 
     def _ignored_schemas(self) -> set[str]:
         return self._IGNORED_SCHEMAS
+
+
+@dataclass
+class SQLQuery:
+    sql: str
+    params: ParamsType = None
+
+
+ParamsType = Union[Mapping[str, Any], Sequence[Any], None]

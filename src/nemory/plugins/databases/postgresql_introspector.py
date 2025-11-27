@@ -5,7 +5,7 @@ from psycopg import Connection
 from psycopg.rows import dict_row
 
 from nemory.plugins.databases.databases_types import DatabaseColumn
-from nemory.plugins.databases.base_introspector import BaseIntrospector
+from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 
 
 class PostgresqlIntrospector(BaseIntrospector):
@@ -37,13 +37,13 @@ class PostgresqlIntrospector(BaseIntrospector):
 
         return [row[0] for row in catalog_results]
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple | list]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = """
         SELECT table_name, column_name, is_nullable, udt_name, data_type
-        FROM information_schema.columns 
+        FROM information_schema.columns
         WHERE table_catalog = %s AND table_schema = %s
         """
-        return sql, (catalog, schema)
+        return SQLQuery(sql, (catalog, schema))
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(
@@ -53,25 +53,23 @@ class PostgresqlIntrospector(BaseIntrospector):
         )
 
     def _create_connection_string_for_config(self, connection_config: Mapping[str, Any]) -> str:
-        # TODO: For all fields, surround with single quotes and escape backslashes and quotes in the values
+        def _escape_pg_value(value: str) -> str:
+            escaped = value.replace("\\", "\\\\").replace("'", "''")
+            return f"'{escaped}'"
+
         host = connection_config.get("host")
         if host is None:
             raise ValueError("A host must be provided to connect to the PostgreSQL database.")
 
-        port = connection_config.get("port", 5432)
+        connection_parts = {
+            "host": host,
+            "port": connection_config.get("port", 5432),
+            "dbname": connection_config.get("database"),
+            "user": connection_config.get("user"),
+            "password": connection_config.get("password"),
+        }
 
-        connection_string = f"host={host} port={port}"
-
-        database = connection_config.get("database")
-        if database is not None:
-            connection_string += f" dbname={database}"
-
-        user = connection_config.get("user")
-        if user is not None:
-            connection_string += f" user={user}"
-
-        password = connection_config.get("password")
-        if password is not None:
-            connection_string += f" password='{password}'"
-
+        connection_string = " ".join(
+            f"{k}={_escape_pg_value(str(v))}" for k, v in connection_parts.items() if v is not None
+        )
         return connection_string

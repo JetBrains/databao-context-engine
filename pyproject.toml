@@ -15,6 +15,10 @@ dependencies = [
     "pymysql>=1.1.2",
     "clickhouse-connect>=0.10.0",
     "mcp>=1.21.1",
+#    "pyodbc>=5.3.0",
+    "pyathena>=3.22.0",
+    "snowflake-connector-python>=4.1.0",
+    "mssql-python>=1.0.0",
 ]
 
 [build-system]

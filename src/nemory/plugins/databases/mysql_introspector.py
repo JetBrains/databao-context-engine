@@ -3,7 +3,7 @@ from typing import Any, Mapping
 
 import pymysql
 
-from nemory.plugins.databases.base_introspector import BaseIntrospector
+from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
@@ -31,13 +31,13 @@ class MySQLIntrospector(BaseIntrospector):
     def _get_catalogs(self, connection, file_config: Mapping[str, Any]) -> list[str]:
         raise UnsupportedOperation("MySQL doesn't support catalogs")
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> tuple[str, tuple | list]:
+    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = """
         SELECT table_name, column_name, is_nullable, data_type
         FROM information_schema.columns WHERE table_schema = %s
         """
 
-        return sql, (schema,)
+        return SQLQuery(sql, (schema,))
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(
