@@ -2,10 +2,12 @@ version: 1
 formatters:
   main:
     format: '%(asctime)s %(levelname)s %(name)s: %(message)s'
+  console:
+    format: '%(asctime)s %(levelname)s: %(message)s'
 handlers:
   console:
     class: logging.StreamHandler
-    formatter: main
+    formatter: console
     stream: ext://sys.stdout
 loggers:
   nemory:
