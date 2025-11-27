@@ -94,6 +94,45 @@ def test_pull_model_http_error_raises_with_body_snippet():
     assert "internal boom" in str(ei.value)
 
 
+def test_pull_model_if_needed_returns_if_model_is_available():
+    sess = _StubSession()
+    sess.set_next_get(_StubResponse(status=200, json_obj=_LIST_MODELS_JSON_RESPONSE_WITH_NOMIC_MODEL))
+    service = OllamaService(OllamaConfig(host="x"), session=sess)
+
+    service.pull_model_if_needed(model="nomic-embed-text:v1.5")
+
+    assert len(sess.calls) == 1
+    call = sess.calls[0]
+    assert call["method"] != "POST"
+    assert "api/pull" not in call["url"]
+
+
+def test_pull_model_if_needed_calls_pull_if_model_is_not_available():
+    sess = _StubSession()
+    sess.set_next_get(_StubResponse(status=200, json_obj=_LIST_MODELS_JSON_RESPONSE_WITH_NOMIC_MODEL))
+    service = OllamaService(OllamaConfig(host="x"), session=sess)
+
+    service.pull_model_if_needed(model="other-model")
+
+    assert len(sess.calls) == 2
+    call = sess.calls[1]
+    assert call["method"] == "POST"
+    assert call["url"] == "http://x:11434/api/pull"
+
+
+def test_pull_model_if_needed_calls_pull_if_model_list_fails():
+    sess = _StubSession()
+    sess.set_next_get(_StubResponse(status=500, json_obj=None, text='{"error": "Failed to list models"}'))
+    service = OllamaService(OllamaConfig(host="x"), session=sess)
+
+    service.pull_model_if_needed(model="nomic-embed-text:v1.5")
+
+    assert len(sess.calls) == 2
+    call = sess.calls[1]
+    assert call["method"] == "POST"
+    assert call["url"] == "http://x:11434/api/pull"
+
+
 def test_pull_model_timeout_raises_timeouterror():
     session = _StubSession()
     session.set_next_post(requests.Timeout("slow"))
@@ -195,3 +234,39 @@ class _StubSession:
         if isinstance(tgt, Exception):
             raise tgt
         return tgt
+
+
+_LIST_MODELS_JSON_RESPONSE_WITH_NOMIC_MODEL = {
+    "models": [
+        {
+            "name": "nomic-embed-text:v1.5",
+            "model": "nomic-embed-text:v1.5",
+            "modified_at": "2025-11-27T16:06:20.004365257+01:00",
+            "size": 274302450,
+            "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+            "details": {
+                "parent_model": "",
+                "format": "gguf",
+                "family": "nomic-bert",
+                "families": ["nomic-bert"],
+                "parameter_size": "137M",
+                "quantization_level": "F16",
+            },
+        },
+        {
+            "name": "other-model:v1.0",
+            "model": "other-model:v1.0",
+            "modified_at": "2025-11-14T16:04:00.708317462+01:00",
+            "size": 274302450,
+            "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+            "details": {
+                "parent_model": "",
+                "format": "gguf",
+                "family": "nomic-bert",
+                "families": ["nomic-bert"],
+                "parameter_size": "137M",
+                "quantization_level": "F16",
+            },
+        },
+    ]
+}

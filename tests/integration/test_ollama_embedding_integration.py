@@ -1,12 +1,12 @@
 import os
 
-from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.embeddings.providers.ollama.config import OllamaConfig
 from nemory.embeddings.providers.ollama.provider import OllamaEmbeddingProvider
-from nemory.services.persistence_service import PersistenceService
 from nemory.embeddings.providers.ollama.runtime import OllamaRuntime
 from nemory.embeddings.providers.ollama.service import OllamaService
+from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
+from nemory.services.persistence_service import PersistenceService
 from nemory.services.table_name_policy import TableNamePolicy
 
 MODEL = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
@@ -18,7 +18,7 @@ def test_service_embed_returns_vector():
     cfg = OllamaConfig(host=HOST, port=PORT)
     service = OllamaService(cfg)
 
-    service.pull_model(model=MODEL, timeout=120)
+    service.pull_model_if_needed(model=MODEL, timeout=120)
 
     vec = service.embed(model=MODEL, text="hello world")
     assert isinstance(vec, list)
@@ -34,7 +34,7 @@ def test_ollama_embed_and_persist_e2e(
     rt = OllamaRuntime(service=service, config=config)
 
     rt.start_and_await(timeout=60, poll_interval=0.5)
-    service.pull_model(model=MODEL, timeout=180)
+    service.pull_model_if_needed(model=MODEL, timeout=180)
 
     provider = OllamaEmbeddingProvider(service=service, model_id=MODEL, dim=768)
 
