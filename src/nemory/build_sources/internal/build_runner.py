@@ -50,6 +50,8 @@ def build(
             if prepared_source is None:
                 continue
 
+            logger.info(f'Found datasource of type "{prepared_source.full_type}" with name {prepared_source.path.stem}')
+
             plugin = plugins.get(prepared_source.full_type)
             if plugin is None:
                 logger.warning(

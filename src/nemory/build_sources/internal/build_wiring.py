@@ -1,3 +1,4 @@
+import logging
 from importlib.metadata import version
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from nemory.storage.connection import open_duckdb_connection
 from nemory.system.properties import get_db_path
 
 
+logger = logging.getLogger(__name__)
+
+
 def build_all_datasources(project_dir: str | Path):
     """
     Public build entrypoint
@@ -19,6 +23,8 @@ def build_all_datasources(project_dir: str | Path):
     """
     project_dir = Path(project_dir)
     ensure_project_dir(str(project_dir))
+
+    logger.debug(f"Starting to build datasources in project {project_dir.resolve()}")
 
     with open_duckdb_connection(get_db_path()) as conn:
         provider = create_ollama_provider(host="127.0.0.1", port=11434, model_id="nomic-embed-text:latest", dim=768)
