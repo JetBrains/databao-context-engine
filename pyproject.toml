@@ -42,6 +42,7 @@ dev = [
 
 [project.scripts]
 nemory = "nemory.main:main"
+generate_configs_schemas = "nemory.generate_configs_schemas:main"
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]

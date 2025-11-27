@@ -84,5 +84,9 @@ def _get_plugins_for_schema_generation(
     ]
 
 
-if __name__ == "__main__":
+def main():
     generate_configs_schemas()
+
+
+if __name__ == "__main__":
+    main()
