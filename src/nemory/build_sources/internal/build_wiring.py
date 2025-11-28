@@ -1,16 +1,15 @@
 import logging
-from importlib.metadata import version
 from pathlib import Path
 
 from nemory.build_sources.internal.build_runner import build
 from nemory.embeddings.providers.ollama.factory import create_ollama_provider
-from nemory.project.layout import read_config_file, ensure_project_dir
+from nemory.project.info import get_nemory_version
+from nemory.project.layout import ensure_project_dir, read_config_file
 from nemory.services.factories import (
     create_build_service,
 )
 from nemory.storage.connection import open_duckdb_connection
 from nemory.system.properties import get_db_path
-
 
 logger = logging.getLogger(__name__)
 
@@ -34,5 +33,5 @@ def build_all_datasources(project_dir: str | Path):
             project_dir=project_dir,
             build_service=build_service,
             project_id=str(nemory_config.project_id),
-            nemory_version=version("nemory"),
+            nemory_version=get_nemory_version(),
         )

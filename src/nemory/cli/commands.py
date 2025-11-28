@@ -1,5 +1,4 @@
 import sys
-from importlib.metadata import version
 from pathlib import Path
 
 import click
@@ -8,8 +7,8 @@ from click import Context
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
+from nemory.project.info import get_command_info
 from nemory.project.init_project import init_project_dir
-from nemory.project.layout import read_config_file
 from nemory.retrieve_embeddings.internal.retrieve_wiring import retrieve_embeddings
 from nemory.storage.migrate import migrate
 
@@ -49,12 +48,7 @@ def info(ctx: Context) -> None:
     Display system-wide information
     """
 
-    project_dir = ctx.obj["project_dir"]
-
-    click.echo(f"Nemory version: {version('nemory')}")
-    click.echo(f"Is verbose? {ctx.obj['verbose']}")
-    click.echo(f"Project dir: {project_dir}")
-    click.echo(f"Project ID: {read_config_file(Path(project_dir)).project_id}")
+    click.echo(get_command_info(project_dir=ctx.obj["project_dir"]))
 
 
 @nemory.command()
