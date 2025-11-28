@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import NamedTuple
 from zipfile import ZipFile
 
-MANAGED_OLLAMA_BIN = Path("~/.nemory/ollama/bin/ollama").expanduser()
+from nemory.system.properties import get_nemory_path
+
+MANAGED_OLLAMA_BIN = Path(get_nemory_path() / "ollama/bin/ollama").expanduser()
 
 logger = logging.getLogger(__name__)
 
