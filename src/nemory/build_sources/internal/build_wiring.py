@@ -26,7 +26,7 @@ def build_all_datasources(project_dir: str | Path):
     logger.debug(f"Starting to build datasources in project {project_dir.resolve()}")
 
     with open_duckdb_connection(get_db_path()) as conn:
-        provider = create_ollama_provider(host="127.0.0.1", port=11434, model_id="nomic-embed-text:latest", dim=768)
+        provider = create_ollama_provider()
         build_service = create_build_service(conn, provider=provider)
         nemory_config = read_config_file(project_dir)
         build(

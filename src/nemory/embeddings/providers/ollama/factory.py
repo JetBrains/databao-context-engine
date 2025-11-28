@@ -9,7 +9,7 @@ def create_ollama_provider(
     *,
     host: str = "127.0.0.1",
     port: int = 11434,
-    model_id: str = "nomic-embed-text:latest",
+    model_id: str = "nomic-embed-text:v1.5",
     dim: int = 768,
     ensure_ready: bool = True,
 ) -> OllamaEmbeddingProvider:
