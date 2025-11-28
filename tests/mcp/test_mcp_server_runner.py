@@ -6,7 +6,7 @@ from nemory.project.layout import get_output_dir, read_config_file
 from nemory.storage.repositories.run_repository import RunRepository
 
 
-def test_get_latest_run_dir__with_multiple_run_dirs(db_path, project_path: Path, run_repo: RunRepository):
+def test_get_latest_run_dir__with_multiple_run_dirs(project_path: Path, run_repo: RunRepository):
     output_path = get_output_dir(project_path)
     output_path.mkdir()
 
@@ -18,6 +18,6 @@ def test_get_latest_run_dir__with_multiple_run_dirs(db_path, project_path: Path,
         date_for_run_folder = most_recent_date - timedelta(days=i)
         run_repo.create(project_id=str(project_id), nemory_version="1.0", started_at=date_for_run_folder)
 
-    result = _get_latest_run_name(project_path, db_path)
+    result = _get_latest_run_name(project_path)
 
     assert result == most_recent_run.run_name
