@@ -93,21 +93,27 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             return "{" + value.replace("}", "}}").replace("{", "{{") + "}"
 
         host = file_config.get("host")
+        if not host:
+            raise ValueError("A host must be provided to connect to the MSSQL database.")
+
         port = file_config.get("port", 1433)
         instance = file_config.get("instanceName")
-
         if instance:
             server_part = f"{host}\\{instance}"
         else:
             server_part = f"{host},{port}"
 
+        database = file_config.get("database")
+        user = file_config.get("user")
+        password = file_config.get("password")
+
         connection_parts = {
             "server": _escape_odbc_value(server_part),
-            "database": _escape_odbc_value(str(file_config.get("database"))),
-            "uid": _escape_odbc_value(str(file_config.get("user"))),
-            "pwd": _escape_odbc_value(str(file_config.get("password", ""))),
+            "database": _escape_odbc_value(str(database)) if database is not None else None,
+            "uid": _escape_odbc_value(str(user)) if user is not None else None,
+            "pwd": _escape_odbc_value(str(password)) if password is not None else None,
             "encrypt": file_config.get("encrypt"),
-            "TrustServerCertificate": "yes" if file_config.get("trust_server_certificate") else None,
+            "trust_server_certificate": "yes" if file_config.get("trust_server_certificate") else None,
         }
 
         connection_string = ";".join(f"{k}={v}" for k, v in connection_parts.items() if v is not None)
