@@ -6,6 +6,7 @@ from click import Context
 
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
+from nemory.embeddings.providers.ollama.install import resolve_ollama_bin
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.info import get_command_info
 from nemory.project.init_project import init_project_dir
@@ -58,6 +59,11 @@ def init(ctx: Context) -> None:
     Create an empty Nemory project
     """
     init_project_dir(project_dir=ctx.obj["project_dir"])
+
+    try:
+        resolve_ollama_bin()
+    except RuntimeError as e:
+        click.echo(str(e), err=True)
 
 
 @nemory.command()
