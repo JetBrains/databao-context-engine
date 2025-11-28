@@ -20,35 +20,35 @@ class ArtifactInfo(NamedTuple):
     sha256: str
 
 
-DEFAULT_VERSION = "v0.11.8"
+DEFAULT_VERSION = "v0.13.0"
 
 ARTIFACTS: dict[str, ArtifactInfo] = {
     "darwin": ArtifactInfo(
         "ollama-darwin.tgz",
-        "779ac8ca1ac9f0081471b04b7085392d3efd70cefb840eb739924cb70367de08",
+        "fa4ca04c48453c5ff81447d0630e996ee3e6b6af76a9eba52c69c0732f748161",
     ),
     "linux-amd64": ArtifactInfo(
         "ollama-linux-amd64.tgz",
-        "73b7bff63cb792b7020fee9b918cb53fd9a7cc012ef188ad5cdc48b31ed52198",
+        "c5e5b4840008d9c9bf955ec32c32b03afc57c986ac1c382d44c89c9f7dd2cc30",
     ),
     "linux-arm64": ArtifactInfo(
         "ollama-linux-arm64.tgz",
-        "238616870881c44ccdcb0d893aa2da1bd81a1806e68ef697bc6880a93db6baa7",
+        "05eb97b87c690fa82626c6f4c7d656ae46ad5f2b7ee6aa324cc19dd88b89982b",
     ),
     "windows-amd64": ArtifactInfo(
         "ollama-windows-amd64.zip",
-        "ba05ed4b40e03d39d8a2b7d218eb584eeb197375df7443f261cd038da6141092",
+        "0fc913fc3763b8d2a490f2be90a51d474491ee22ea5a43ff31f1c58301a89656",
     ),
     "windows-arm64": ArtifactInfo(
         "ollama-windows-arm64.zip",
-        "f05cf14d764318b274458e7bc2e850961a77670bc0a050ac7e41f081f5d9e946",
+        "84c395e4187bd560cfc7c26b0142d970bcbdf0e0214b007bc527b7954430ea21",
     ),
 }
 
 
 def resolve_ollama_bin() -> str:
     """
-    Decide while `ollama` binary to use, in this order:
+    Decide which `ollama` binary to use, in this order:
 
     1. NEMORY_OLLAMA_BIN env var, if set and exists
     2. `ollama` found on PATH
