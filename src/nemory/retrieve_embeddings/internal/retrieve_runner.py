@@ -12,7 +12,7 @@ def retrieve(
     project_id: str,
     text: str,
     run_name: str | None,
-    limit: int,
+    limit: int | None,
     output_format: str,
 ):
     resolved_run_name = retrieve_service.resolve_run_name(project_id=project_id, run_name=run_name)
