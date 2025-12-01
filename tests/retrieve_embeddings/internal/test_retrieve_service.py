@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
+from nemory.storage.repositories.vector_search_repository import VectorSearchResult
 
 
 def test_retrieve_returns_display_texts():
@@ -20,7 +21,10 @@ def test_retrieve_returns_display_texts():
     provider.model_id = "nomic-embed-text"
     provider.embed.return_value = [0.1, 0.2]
 
-    vector_search_repo.get_display_texts_by_similarity.return_value = ["a", "b"]
+    vector_search_repo.get_display_texts_by_similarity.return_value = [
+        VectorSearchResult(display_text="a", embeddable_text="a", cosine_distance=0.5),
+        VectorSearchResult(display_text="b", embeddable_text="b", cosine_distance=0.51),
+    ]
 
     retrieve_service = RetrieveService(
         run_repo=run_repo,
@@ -64,7 +68,10 @@ def test_retrieve_uses_run_name_if_provided():
     provider.model_id = "nomic-embed-text"
     provider.embed.return_value = [0.1, 0.2]
 
-    vector_search_repo.get_display_texts_by_similarity.return_value = ["a", "b"]
+    vector_search_repo.get_display_texts_by_similarity.return_value = [
+        VectorSearchResult(display_text="a", embeddable_text="a", cosine_distance=0.5),
+        VectorSearchResult(display_text="b", embeddable_text="b", cosine_distance=0.51),
+    ]
 
     retrieve_service = RetrieveService(
         run_repo=run_repo,
@@ -93,7 +100,9 @@ def test_retrieve_honors_limit():
     provider.model_id = "nomic-embed-text"
     provider.embed.return_value = [0.5] * 768
 
-    vector_search_repo.get_display_texts_by_similarity.return_value = ["x"]
+    vector_search_repo.get_display_texts_by_similarity.return_value = [
+        VectorSearchResult(display_text="x", embeddable_text="x", cosine_distance=0.5),
+    ]
 
     retrieve_service = RetrieveService(
         run_repo=run_repo,

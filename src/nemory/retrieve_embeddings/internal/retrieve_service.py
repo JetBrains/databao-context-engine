@@ -1,9 +1,12 @@
+import logging
 from collections.abc import Sequence
 
 from nemory.embeddings.provider import EmbeddingProvider
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.storage.repositories.run_repository import RunRepository
 from nemory.storage.repositories.vector_search_repository import VectorSearchRepository
+
+logger = logging.getLogger(__name__)
 
 
 class RetrieveService:
@@ -34,7 +37,9 @@ class RetrieveService:
 
         retrieve_vec: Sequence[float] = self._provider.embed(text)
 
-        display_texts = self._vector_search_repo.get_display_texts_by_similarity(
+        logger.debug(f"Retrieving display texts for run {run.run_id} in table {table_name}")
+
+        search_results = self._vector_search_repo.get_display_texts_by_similarity(
             table_name=table_name,
             run_id=run.run_id,
             retrieve_vec=retrieve_vec,
@@ -42,7 +47,16 @@ class RetrieveService:
             limit=limit,
         )
 
-        return display_texts
+        logger.debug(f"Retrieved {len(search_results)} display texts for run {run.run_id} in table {table_name}")
+
+        if logger.isEnabledFor(logging.DEBUG):
+            closest_result = min(search_results, key=lambda result: result.cosine_distance)
+            logger.debug(f"Best result: ({closest_result.cosine_distance}, {closest_result.embeddable_text})")
+
+            farthest_result = max(search_results, key=lambda result: result.cosine_distance)
+            logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
+
+        return [result.display_text for result in search_results]
 
     def resolve_run_name(self, *, project_id: str, run_name: str | None) -> str:
         if run_name is None:
