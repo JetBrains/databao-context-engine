@@ -32,7 +32,7 @@ class _FakeOllamaService:
         self._fail_at = set(fail_at or [])
         self.calls: list[tuple[str, str]] = []
 
-    def describe(self, *, model: str, text: str, context: str) -> str:
+    def describe(self, *, text: str, context: str) -> str:
         i = len(self.calls)
         self.calls.append((text, context))
 

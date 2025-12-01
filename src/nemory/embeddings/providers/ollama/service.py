@@ -50,7 +50,7 @@ class OllamaService:
 
         return [float(x) for x in vec]
 
-    def describe(self, *, model: str = "llama3.2:1b", text: str, context: str) -> str:
+    def describe(self, *, model: str | None = "llama3.2:1b", text: str, context: str) -> str:
         """
         Ask Ollama to generate a short description for `text`
         """
