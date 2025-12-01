@@ -103,7 +103,7 @@ def retrieve(
         project_dir=ctx.obj["project_dir"],
         retrieve_text=text,
         run_name=run_name,
-        limit=limit or 50,
+        limit=limit,
         output_format=output_format,
     )
 

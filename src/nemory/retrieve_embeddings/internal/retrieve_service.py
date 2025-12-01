@@ -20,7 +20,10 @@ class RetrieveService:
         self._provider = provider
         self._vector_search_repo = vector_search_repo
 
-    def retrieve(self, *, project_id: str, text: str, run_name: str, limit: int = 50) -> list[str]:
+    def retrieve(self, *, project_id: str, text: str, run_name: str, limit: int | None = None) -> list[str]:
+        if limit is None:
+            limit = 50
+
         run = self._run_repo.get_by_run_name(project_id=project_id, run_name=run_name)
         if run is None:
             raise LookupError(f"Run '{run_name}' not found for project '{project_id}'.")
