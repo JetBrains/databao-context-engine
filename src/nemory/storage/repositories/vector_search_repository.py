@@ -12,6 +12,8 @@ class VectorSearchResult:
 
 
 class VectorSearchRepository:
+    _DEFAULT_DISTANCE_THRESHOLD = 0.75
+
     def __init__(self, conn: duckdb.DuckDBPyConnection):
         self._conn = conn
 
@@ -34,11 +36,12 @@ class VectorSearchRepository:
                 JOIN datasource_run dr ON c.datasource_run_id = dr.datasource_run_id
             WHERE
                 dr.run_id = ?
+                AND cosine_distance < ?
             ORDER BY
                 array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) ASC
             LIMIT ?
             """,
-            [list(retrieve_vec), run_id, list(retrieve_vec), limit],
+            [list(retrieve_vec), run_id, list(retrieve_vec), limit, self._DEFAULT_DISTANCE_THRESHOLD],
         ).fetchall()
 
         return [VectorSearchResult(display_text=row[0], embeddable_text=row[1], cosine_distance=row[2]) for row in rows]
