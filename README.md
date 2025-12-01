@@ -92,3 +92,22 @@ You can run the tests with:
 
 (there is currently one test succeeding and one test failing in the project)
 
+
+# Generating JSON Schemas for our plugin's config files
+
+To be able to build a datasource, each plugin requires a yaml config file that describes how to connect to the datasource, 
+as well as other information needed to customise the plugin.
+
+To document what each config file should look like, we can generate a JSON schema describing the fields allowed in that file.
+
+You can generate all JSON schemas for all plugins by running:
+```bash
+  uv run generate_configs_schemas
+```
+
+Some options can be provided to the command to choose which plugins to include or exclude from the generation.
+To see the options available, you can refer to the help:
+```bash
+  uv run generate_configs_schemas --help
+```
+
