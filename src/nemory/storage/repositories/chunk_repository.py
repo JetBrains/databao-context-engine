@@ -17,18 +17,19 @@ class ChunkRepository:
         datasource_run_id: int,
         embeddable_text: str,
         display_text: Optional[str],
+        generated_description: str,
     ) -> ChunkDTO:
         try:
             row = self._conn.execute(
                 """
             INSERT INTO
-                chunk(datasource_run_id, embeddable_text, display_text)
+                chunk(datasource_run_id, embeddable_text, display_text, generated_description)
             VALUES
-                (?, ?, ?)
+                (?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [datasource_run_id, embeddable_text, display_text],
+                [datasource_run_id, embeddable_text, display_text, generated_description],
             ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
@@ -51,7 +52,12 @@ class ChunkRepository:
         return self._row_to_dto(row) if row else None
 
     def update(
-        self, chunk_id: int, *, embeddable_text: Optional[str], display_text: Optional[str]
+        self,
+        chunk_id: int,
+        *,
+        embeddable_text: Optional[str] = None,
+        display_text: Optional[str] = None,
+        generated_description: Optional[str] = None,
     ) -> Optional[ChunkDTO]:
         sets: list[Any] = []
         params: list[Any] = []
@@ -62,6 +68,9 @@ class ChunkRepository:
         if display_text is not None:
             sets.append("display_text = ?")
             params.append(display_text)
+        if generated_description is not None:
+            sets.append("generated_description = ?")
+            params.append(generated_description)
 
         if not sets:
             return self.get(chunk_id)
@@ -110,11 +119,12 @@ class ChunkRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> ChunkDTO:
-        chunk_id, datasource_run_id, embeddable_text, display_text, created_at = row
+        chunk_id, datasource_run_id, embeddable_text, display_text, created_at, generated_description = row
         return ChunkDTO(
             chunk_id=int(chunk_id),
             datasource_run_id=int(datasource_run_id),
             embeddable_text=str(embeddable_text),
             display_text=display_text,
+            generated_description=str(generated_description),
             created_at=created_at,
         )

@@ -27,15 +27,33 @@ class _FakeProvider:
         return [float(i)] * self.dim
 
 
+class _FakeOllamaService:
+    def __init__(self, *, fail_at=None):
+        self._fail_at = set(fail_at or [])
+        self.calls: list[tuple[str, str]] = []
+
+    def describe(self, *, model: str, text: str, context: str) -> str:
+        i = len(self.calls)
+        self.calls.append((text, context))
+
+        if i in self._fail_at:
+            raise RuntimeError("fake describe failure")
+
+        return f"desc-{i}-{text}"
+
+
 def _expected_table(provider: _FakeProvider) -> str:
     return TableNamePolicy().build(embedder=provider.embedder, model_id=provider.model_id, dim=provider.dim)
 
 
 def test_noop_on_empty_chunks(persistence, resolver, chunk_repo, embedding_repo, registry_repo):
     provider = _FakeProvider()
-    service = ChunkEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=resolver)
+    ollama_service = _FakeOllamaService()
+    service = ChunkEmbeddingService(
+        persistence_service=persistence, provider=provider, shard_resolver=resolver, ollama_service=ollama_service
+    )
 
-    service.embed_chunks(datasource_run_id=123, chunks=[])
+    service.embed_chunks(datasource_run_id=123, chunks=[], result="")
 
     assert chunk_repo.list() == []
     assert registry_repo.get(embedder=provider.embedder, model_id=provider.model_id) is None
@@ -45,7 +63,10 @@ def test_embeds_resolves_and_persists(
     persistence, resolver, run_repo, datasource_run_repo, chunk_repo, embedding_repo, registry_repo
 ):
     provider = _FakeProvider(embedder="ollama", model_id="nomic-embed-text:v1.5", dim=768)
-    service = ChunkEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=resolver)
+    ollama_service = _FakeOllamaService()
+    service = ChunkEmbeddingService(
+        persistence_service=persistence, provider=provider, shard_resolver=resolver, ollama_service=ollama_service
+    )
 
     datasource_run = make_datasource_run(
         run_repo, datasource_run_repo, plugin="p", source_id="s", storage_directory="/tmp"
@@ -53,7 +74,7 @@ def test_embeds_resolves_and_persists(
 
     chunks = [EmbeddableChunk("A", "a"), EmbeddableChunk("B", "b"), EmbeddableChunk("C", "c")]
 
-    service.embed_chunks(datasource_run_id=datasource_run.datasource_run_id, chunks=chunks)
+    service.embed_chunks(datasource_run_id=datasource_run.datasource_run_id, chunks=chunks, result="")
 
     expected_table = _expected_table(provider)
     reg = registry_repo.get(embedder=provider.embedder, model_id=provider.model_id)
@@ -70,7 +91,10 @@ def test_provider_failure_writes_nothing(
     persistence, resolver, run_repo, datasource_run_repo, chunk_repo, embedding_repo, registry_repo
 ):
     provider = _FakeProvider(fail_at={1})
-    service = ChunkEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=resolver)
+    ollama_service = _FakeOllamaService()
+    service = ChunkEmbeddingService(
+        persistence_service=persistence, provider=provider, shard_resolver=resolver, ollama_service=ollama_service
+    )
 
     datasource_run = make_datasource_run(
         run_repo, datasource_run_repo, plugin="p", source_id="s", storage_directory="/tmp"
@@ -80,6 +104,7 @@ def test_provider_failure_writes_nothing(
         service.embed_chunks(
             datasource_run_id=datasource_run.datasource_run_id,
             chunks=[EmbeddableChunk("X", "x"), EmbeddableChunk("Y", "y")],
+            result="",
         )
 
     assert registry_repo.get(embedder=provider.embedder, model_id=provider.model_id) is None

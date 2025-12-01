@@ -112,6 +112,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     chunk_embed_svc.embed_chunks.assert_called_once_with(
         datasource_run_id=555,
         chunks=chunks,
+        result=repr(result),
     )
     assert out is result
 

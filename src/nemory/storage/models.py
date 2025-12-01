@@ -31,6 +31,7 @@ class ChunkDTO:
     datasource_run_id: int
     embeddable_text: str
     display_text: Optional[str]
+    generated_description: str
     created_at: datetime
 
 

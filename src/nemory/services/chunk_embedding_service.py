@@ -1,3 +1,4 @@
+from nemory.embeddings.providers.ollama.service import OllamaService
 from nemory.pluginlib.build_plugin import EmbeddableChunk
 from nemory.services.models import ChunkEmbedding
 from nemory.services.persistence_service import PersistenceService
@@ -12,12 +13,14 @@ class ChunkEmbeddingService:
         persistence_service: PersistenceService,
         provider: EmbeddingProvider,
         shard_resolver: EmbeddingShardResolver,
+        ollama_service: OllamaService,
     ):
         self._persistence_service = persistence_service
         self._provider = provider
         self._shard_resolver = shard_resolver
+        self._ollama_service = ollama_service
 
-    def embed_chunks(self, *, datasource_run_id: int, chunks: list[EmbeddableChunk]) -> None:
+    def embed_chunks(self, *, datasource_run_id: int, chunks: list[EmbeddableChunk], result: str) -> None:
         """
         Turn plugin chunks into persisted chunks and embeddings
 
@@ -30,9 +33,21 @@ class ChunkEmbeddingService:
         if not chunks:
             return
 
-        chunk_embeddings: list[ChunkEmbedding] = [
-            ChunkEmbedding(chunk=chunk, vec=self._provider.embed(chunk.embeddable_text)) for chunk in chunks
-        ]
+        enriched_embeddings: list[ChunkEmbedding] = []
+        for chunk in chunks:
+            generated_description = self._ollama_service.describe(text=repr(chunk.content), context=result)
+
+            embedding_text = generated_description + "\n" + chunk.embeddable_text
+
+            vec = self._provider.embed(embedding_text)
+
+            enriched_embeddings.append(
+                ChunkEmbedding(
+                    chunk=chunk,
+                    vec=vec,
+                    generated_description=generated_description,
+                )
+            )
 
         table_name = self._shard_resolver.resolve_or_create(
             embedder=self._provider.embedder,
@@ -42,6 +57,6 @@ class ChunkEmbeddingService:
 
         self._persistence_service.write_chunks_and_embeddings(
             datasource_run_id=datasource_run_id,
-            chunk_embeddings=chunk_embeddings,
+            chunk_embeddings=enriched_embeddings,
             table_name=table_name,
         )

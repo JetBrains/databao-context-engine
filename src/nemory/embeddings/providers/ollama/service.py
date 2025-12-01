@@ -1,4 +1,5 @@
 import logging
+import textwrap
 import time
 from typing import Any
 
@@ -49,12 +50,42 @@ class OllamaService:
 
         return [float(x) for x in vec]
 
+    def describe(self, *, model: str = "llama3.2:1b", text: str, context: str) -> str:
+        """
+        Ask Ollama to generate a short description for `text`
+        """
+        url = f"{self._base}/api/generate"
+
+        prompt = self._build_description_prompt(text=text, context=context)
+
+        payload: dict[str, Any] = {"model": model, "prompt": prompt, "stream": False, "options": {"temperature": 0.1}}
+
+        try:
+            response = self._session.post(url, json=payload, headers=self._headers, timeout=self._timeout)
+        except requests.Timeout as e:
+            raise TimeoutError(f"Ollama generate timed out after {self._timeout}s") from e
+
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            message = response.text.strip()
+            raise requests.HTTPError(f"{e} — body: {message[:500]}") from e
+
+        data = response.json()
+
+        response_text = data.get("response")
+        if not isinstance(response_text, str):
+            raise ValueError("Unexpected Ollama generate response schema (missing 'response' string)")
+        return response_text.strip()
+
     def pull_model_if_needed(self, *, model: str, timeout: float = 900.0) -> None:
         if self._is_model_available(model_name=model):
             logger.debug(f"Ollama model {model} was already available, skipping pull")
             return
 
+        logger.info("Ollama model %s not found locally. Pulling it (this may take several minutes)...", model)
         self.pull_model(model=model, timeout=timeout)
+        logger.info("Ollama model %s pulled successfully", model)
 
         logger.debug(f"Ollama model {model} was pulled")
 
@@ -106,3 +137,25 @@ class OllamaService:
             return False
         except requests.RequestException:
             return False
+
+    @staticmethod
+    def _build_description_prompt(text: str, context: str) -> str:
+        base = """
+        You are a helpful assistant.
+        
+        I will give you some TEXT and CONTEXT.
+        Write a concise, human-readable description of the TEXT suitable for displaying in a UI.
+        - 1-2 sentences
+        - Be factual and avoid speculation
+        - No markdown
+        - No preambles or labels, just the description itself.
+        - Your entire reply MUST be only the description itself. No extra commentary.
+        
+        CONTEXT:
+        {context}
+        
+        TEXT:
+        {text}
+        """
+
+        return textwrap.dedent(base).format(context=context, text=text).strip()

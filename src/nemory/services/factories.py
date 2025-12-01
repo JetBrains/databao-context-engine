@@ -2,6 +2,7 @@ from _duckdb import DuckDBPyConnection
 
 from nemory.build_sources.internal.build_service import BuildService
 from nemory.embeddings.provider import EmbeddingProvider
+from nemory.embeddings.providers.ollama.factory import create_ollama_service
 from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
@@ -59,7 +60,10 @@ def create_chunk_embedding_service(
 ) -> ChunkEmbeddingService:
     resolver = create_shard_resolver(conn)
     persistence = create_persistence_service(conn)
-    return ChunkEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=resolver)
+    ollama_service = create_ollama_service()
+    return ChunkEmbeddingService(
+        persistence_service=persistence, provider=provider, shard_resolver=resolver, ollama_service=ollama_service
+    )
 
 
 def create_build_service(

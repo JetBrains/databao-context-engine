@@ -10,6 +10,7 @@ from nemory.services.persistence_service import PersistenceService
 from nemory.services.table_name_policy import TableNamePolicy
 
 MODEL = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
+CHAT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.2:1b")
 HOST = os.getenv("OLLAMA_HOST", "127.0.0.1")
 PORT = int(os.getenv("OLLAMA_PORT", "11434"))
 
@@ -35,12 +36,13 @@ def test_ollama_embed_and_persist_e2e(
 
     rt.start_and_await(timeout=60, poll_interval=0.5)
     service.pull_model_if_needed(model=MODEL, timeout=180)
+    service.pull_model_if_needed(model=CHAT_MODEL, timeout=300)
 
     provider = OllamaEmbeddingProvider(service=service, model_id=MODEL, dim=768)
 
     persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
     chunk_embedding_service = ChunkEmbeddingService(
-        persistence_service=persistence, shard_resolver=resolver, provider=provider
+        persistence_service=persistence, shard_resolver=resolver, provider=provider, ollama_service=service
     )
 
     run = run_repo.create(project_id="project-id")
@@ -53,7 +55,7 @@ def test_ollama_embed_and_persist_e2e(
     )
 
     chunks = [EmbeddableChunk("alpha", "Alpha"), EmbeddableChunk("beta", "Beta")]
-    chunk_embedding_service.embed_chunks(datasource_run_id=datasource_run.datasource_run_id, chunks=chunks)
+    chunk_embedding_service.embed_chunks(datasource_run_id=datasource_run.datasource_run_id, chunks=chunks, result="")
 
     chunk_rows = conn.execute(
         "SELECT chunk_id FROM chunk WHERE datasource_run_id = ? ORDER BY chunk_id", [datasource_run.datasource_run_id]
