@@ -22,7 +22,7 @@ class RetrieveService:
 
     def retrieve(self, *, project_id: str, text: str, run_name: str, limit: int | None = None) -> list[str]:
         if limit is None:
-            limit = 50
+            limit = 10
 
         run = self._run_repo.get_by_run_name(project_id=project_id, run_name=run_name)
         if run is None:

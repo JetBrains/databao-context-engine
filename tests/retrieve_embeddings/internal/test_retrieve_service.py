@@ -43,7 +43,7 @@ def test_retrieve_returns_display_texts():
         run_id=42,
         retrieve_vec=[0.1, 0.2],
         dimension=768,
-        limit=50,
+        limit=10,
     )
 
     assert result == ["a", "b"]
