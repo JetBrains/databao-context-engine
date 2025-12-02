@@ -111,7 +111,6 @@ def test_provider_failure_writes_nothing(
     embedding_provider.model_id = "model:v1"
     embedding_provider.dim = 768
 
-
     embedding_provider.embed.side_effect = [
         _vec(2.0, embedding_provider.dim),
         RuntimeError("provider embed failed"),

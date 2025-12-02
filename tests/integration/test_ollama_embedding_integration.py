@@ -44,7 +44,10 @@ def test_ollama_embed_and_persist_e2e(
 
     persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
     chunk_embedding_service = ChunkEmbeddingService(
-        persistence_service=persistence, shard_resolver=resolver, embedding_provider=embedding_provider, description_provider=description_provider
+        persistence_service=persistence,
+        shard_resolver=resolver,
+        embedding_provider=embedding_provider,
+        description_provider=description_provider,
     )
 
     run = run_repo.create(project_id="project-id")
@@ -65,7 +68,9 @@ def test_ollama_embed_and_persist_e2e(
     assert len(chunk_rows) == 2
     chunk_ids = [r[0] for r in chunk_rows]
 
-    expected_table = TableNamePolicy().build(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id, dim=embedding_provider.dim)
+    expected_table = TableNamePolicy().build(
+        embedder=embedding_provider.embedder, model_id=embedding_provider.model_id, dim=embedding_provider.dim
+    )
     reg = registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id)
     assert reg and reg.table_name == expected_table and reg.dim == 768
 

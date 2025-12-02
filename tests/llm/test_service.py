@@ -208,7 +208,6 @@ def test_describe_happy_path():
     assert body["options"] == {"temperature": 0.1}
 
 
-
 def test_describe_missing_response_raises_valueerror():
     session = _StubSession()
     session.set_next_post(_StubResponse(status=200, json_obj={"not_response": "x"}))
@@ -253,6 +252,7 @@ def test_describe_malformed_json_raises_permanent_error():
 
     with pytest.raises(OllamaPermanentError):
         service.describe(model="m", text="t", context="c")
+
 
 class _StubResponse:
     def __init__(self, status: int = 200, json_obj: Any = None, text: str = ""):

@@ -3,7 +3,6 @@ from _duckdb import DuckDBPyConnection
 from nemory.build_sources.internal.build_service import BuildService
 from nemory.llm.descriptions.provider import DescriptionProvider
 from nemory.llm.embeddings.provider import EmbeddingProvider
-from nemory.llm.factory import create_ollama_service
 from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver

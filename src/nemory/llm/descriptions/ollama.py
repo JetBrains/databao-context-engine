@@ -8,7 +8,7 @@ class OllamaDescriptionProvider(DescriptionProvider):
         self._model_id = model_id
 
     @property
-    def description(self) -> str:
+    def describer(self) -> str:
         return "ollama"
 
     @property
