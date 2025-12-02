@@ -1,6 +1,7 @@
+from nemory.llm.descriptions.provider import DescriptionProvider
 from nemory.pluginlib.build_plugin import EmbeddableChunk
-from nemory.services.persistence_service import PersistenceService
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
+from nemory.services.persistence_service import PersistenceService
 from nemory.services.table_name_policy import TableNamePolicy
 
 
@@ -17,10 +18,14 @@ def test_embed_flow_persists_chunks_and_embeddings(
     )
 
     persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
-    provider = _StubProvider(dim=768, model_id="dummy:v1", embedder="tests")
-    ollama_service = _StubOllamaService()
+    embedding_provider = _StubProvider(dim=768, model_id="dummy:v1", embedder="tests")
+    description_provider = _StubDescriptionProvider()
+
     chunk_embedding_service = ChunkEmbeddingService(
-        persistence_service=persistence, provider=provider, shard_resolver=resolver, ollama_service=ollama_service
+        persistence_service=persistence,
+        embedding_provider=embedding_provider,
+        shard_resolver=resolver,
+        description_provider=description_provider,
     )
 
     chunks = [
@@ -57,14 +62,14 @@ def test_embed_flow_is_idempotent_on_resolver(
         source_id="s",
         storage_directory="/path",
     )
-    provider = _StubProvider(embedder="tests", model_id="idempotent:v1", dim=768)
-    ollama_service = _StubOllamaService()
+    embedding_provider = _StubProvider(embedder="tests", model_id="idempotent:v1", dim=768)
+    description_provider = _StubDescriptionProvider()
     persistence = PersistenceService(conn, chunk_repo, embedding_repo)
     service = ChunkEmbeddingService(
         persistence_service=persistence,
-        provider=provider,
+        embedding_provider=embedding_provider,
         shard_resolver=resolver,
-        ollama_service=ollama_service,
+        description_provider=description_provider,
     )
 
     service.embed_chunks(
@@ -93,12 +98,12 @@ class _StubProvider:
         return [float(self._calls)] * self.dim
 
 
-class _StubOllamaService:
-    def __init__(self, *, fail_at=None):
+class _StubDescriptionProvider(DescriptionProvider):
+    def __init__(self, *, fail_at: set[int] | None = None):
         self._fail_at = set(fail_at or [])
-        self.calls: list[tuple[str, str]] = []
+        self.calls: list[tuple[str, str]] = []  # (text, context)
 
-    def describe(self, *, text: str, context: str) -> str:
+    def describe(self, text: str, context: str) -> str:
         i = len(self.calls)
         self.calls.append((text, context))
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from nemory.embeddings.providers.ollama import install
+from nemory.llm import install
 
 
 def test_resolve_ollama_bin_uses_env_when_executable(tmp_path, monkeypatch):

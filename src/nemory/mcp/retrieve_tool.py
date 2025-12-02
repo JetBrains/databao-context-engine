@@ -1,7 +1,7 @@
 import datetime
 from pathlib import Path
 
-from nemory.embeddings.providers.ollama.factory import create_ollama_provider
+from nemory.llm.factory import create_ollama_embedding_provider, create_ollama_service
 from nemory.project.layout import read_config_file
 from nemory.services.factories import create_retrieve_service
 from nemory.storage.connection import open_duckdb_connection
@@ -14,8 +14,9 @@ def run_retrieve_tool(project_dir: Path, *, run_name: str | None = None, text: s
     Adds the current date to the end
     """
     with open_duckdb_connection(get_db_path()) as conn:
-        provider = create_ollama_provider()
-        service = create_retrieve_service(conn, provider=provider)
+        ollama_service = create_ollama_service()
+        embedding_provider = create_ollama_embedding_provider(ollama_service)
+        service = create_retrieve_service(conn, embedding_provider=embedding_provider)
 
         run_name = service.resolve_run_name(project_id=str(read_config_file(project_dir).project_id), run_name=run_name)
 

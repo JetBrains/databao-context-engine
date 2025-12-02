@@ -1,8 +1,8 @@
 import os
 import pytest
 
-from nemory.embeddings.providers.ollama.config import OllamaConfig
-from nemory.embeddings.providers.ollama.runtime import (
+from nemory.llm.config import OllamaConfig
+from nemory.llm.runtime import (
     OllamaRuntime,
 )
 

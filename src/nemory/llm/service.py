@@ -5,7 +5,8 @@ from typing import Any
 
 import requests
 
-from .config import OllamaConfig
+from nemory.llm.config import OllamaConfig
+from nemory.llm.errors import OllamaPermanentError, OllamaTransientError
 
 logger = logging.getLogger(__name__)
 
@@ -18,27 +19,11 @@ class OllamaService:
         self._session = session or requests.Session()
 
     def embed(self, *, model: str, text: str) -> list[float]:
-        url = f"{self._base}/api/embeddings"
-
         payload: dict[str, Any] = {
             "model": model,
             "prompt": text,
         }
-
-        try:
-            response = self._session.post(url, json=payload, headers=self._headers, timeout=self._timeout)
-        except requests.Timeout as e:
-            raise TimeoutError(f"Ollama embeddings timed out after {self._timeout}s") from e
-        except requests.RequestException:
-            raise
-
-        try:
-            response.raise_for_status()
-        except requests.HTTPError as e:
-            message = response.text.strip()
-            raise requests.HTTPError(f"{e} — body: {message[:500]}") from e
-
-        data = response.json()
+        data = self._request_json(method="POST", path="/api/embeddings", json=payload)
 
         vec = data.get("embedding")
         if not isinstance(vec, list) or not all(isinstance(x, (int, float)) for x in vec):
@@ -50,28 +35,14 @@ class OllamaService:
 
         return [float(x) for x in vec]
 
-    def describe(self, *, model: str | None = "llama3.2:1b", text: str, context: str) -> str:
+    def describe(self, *, model: str, text: str, context: str) -> str:
         """
         Ask Ollama to generate a short description for `text`
         """
-        url = f"{self._base}/api/generate"
-
         prompt = self._build_description_prompt(text=text, context=context)
 
         payload: dict[str, Any] = {"model": model, "prompt": prompt, "stream": False, "options": {"temperature": 0.1}}
-
-        try:
-            response = self._session.post(url, json=payload, headers=self._headers, timeout=self._timeout)
-        except requests.Timeout as e:
-            raise TimeoutError(f"Ollama generate timed out after {self._timeout}s") from e
-
-        try:
-            response.raise_for_status()
-        except requests.HTTPError as e:
-            message = response.text.strip()
-            raise requests.HTTPError(f"{e} — body: {message[:500]}") from e
-
-        data = response.json()
+        data = self._request_json(method="POST", path="/api/generate", json=payload)
 
         response_text = data.get("response")
         if not isinstance(response_text, str):
@@ -87,25 +58,9 @@ class OllamaService:
         self.pull_model(model=model, timeout=timeout)
         logger.info("Ollama model %s pulled successfully", model)
 
-        logger.debug(f"Ollama model {model} was pulled")
-
     def pull_model(self, *, model: str, timeout: float = 900.0) -> None:
-        url = f"{self._base}/api/pull"
-
         payload: dict[str, Any] = {"name": model}
-
-        try:
-            resp = self._session.post(url, json=payload, headers=self._headers, timeout=timeout)
-        except requests.Timeout as e:
-            raise TimeoutError(f"Ollama pull timed out after {timeout}s") from e
-        except requests.RequestException:
-            raise
-
-        try:
-            resp.raise_for_status()
-        except requests.HTTPError as e:
-            message = (resp.text or "").strip()
-            raise requests.HTTPError(f"{e} — body: {message[:500]}") from e
+        self._request(method="POST", path="/api/pull", json=payload, timeout=timeout)
 
     def is_healthy(self, *, timeout: float = 3.0) -> bool:
         url = f"{self._base}/api/tags"
@@ -137,6 +92,49 @@ class OllamaService:
             return False
         except requests.RequestException:
             return False
+
+    def _request(
+        self,
+        *,
+        method: str,
+        path: str,
+        timeout: float | None = None,
+        **kwargs,
+    ) -> requests.Response:
+        url = f"{self._base}{path}"
+        try:
+            resp = self._session.request(
+                method,
+                url,
+                headers=self._headers,
+                timeout=timeout or self._timeout,
+                **kwargs,
+            )
+        except requests.Timeout as e:
+            raise OllamaTransientError(f"Ollama request to {path} timed out after {timeout}s") from e
+        except requests.RequestException as e:
+            raise OllamaTransientError(f"Ollama request to {path} failed: {e}") from e
+
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as e:
+            raise OllamaPermanentError(f"Ollama error {resp.status_code} for {path}: {resp.text}") from e
+
+        return resp
+
+    def _request_json(
+        self,
+        *,
+        method: str,
+        path: str,
+        timeout: float | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
+        resp = self._request(method=method, path=path, timeout=timeout, **kwargs)
+        try:
+            return resp.json()
+        except ValueError as e:
+            raise OllamaPermanentError(f"Invalid JSON from Ollama for {path}") from e
 
     @staticmethod
     def _build_description_prompt(text: str, context: str) -> str:

@@ -1,9 +1,9 @@
-from nemory.embeddings.providers.ollama.service import OllamaService
+from nemory.llm.descriptions.provider import DescriptionProvider
+from nemory.llm.embeddings.provider import EmbeddingProvider
 from nemory.pluginlib.build_plugin import EmbeddableChunk
+from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.services.models import ChunkEmbedding
 from nemory.services.persistence_service import PersistenceService
-from nemory.embeddings.provider import EmbeddingProvider
-from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 
 
 class ChunkEmbeddingService:
@@ -11,14 +11,14 @@ class ChunkEmbeddingService:
         self,
         *,
         persistence_service: PersistenceService,
-        provider: EmbeddingProvider,
+        embedding_provider: EmbeddingProvider,
+        description_provider: DescriptionProvider,
         shard_resolver: EmbeddingShardResolver,
-        ollama_service: OllamaService,
     ):
         self._persistence_service = persistence_service
-        self._provider = provider
+        self._embedding_provider = embedding_provider
+        self._description_provider = description_provider
         self._shard_resolver = shard_resolver
-        self._ollama_service = ollama_service
 
     def embed_chunks(self, *, datasource_run_id: int, chunks: list[EmbeddableChunk], result: str) -> None:
         """
@@ -35,11 +35,11 @@ class ChunkEmbeddingService:
 
         enriched_embeddings: list[ChunkEmbedding] = []
         for chunk in chunks:
-            generated_description = self._ollama_service.describe(text=repr(chunk.content), context=result)
+            generated_description = self._description_provider.describe(text=repr(chunk.content), context=result)
 
             embedding_text = generated_description + "\n" + chunk.embeddable_text
 
-            vec = self._provider.embed(embedding_text)
+            vec = self._embedding_provider.embed(embedding_text)
 
             enriched_embeddings.append(
                 ChunkEmbedding(
@@ -50,9 +50,9 @@ class ChunkEmbeddingService:
             )
 
         table_name = self._shard_resolver.resolve_or_create(
-            embedder=self._provider.embedder,
-            model_id=self._provider.model_id,
-            dim=self._provider.dim,
+            embedder=self._embedding_provider.embedder,
+            model_id=self._embedding_provider.model_id,
+            dim=self._embedding_provider.dim,
         )
 
         self._persistence_service.write_chunks_and_embeddings(
