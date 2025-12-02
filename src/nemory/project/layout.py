@@ -90,3 +90,21 @@ def get_logs_dir(project_dir: Path) -> Path:
 
 def read_config_file(project_dir: Path) -> ProjectConfig:
     return ProjectConfig.from_file(get_config_file(project_dir))
+
+
+def create_datasource_config_file(
+    project_dir: Path, config_folder_name: str, datasource_name: str, config_content: str
+) -> Path:
+    src_dir = get_source_dir(project_dir)
+
+    type_dir = src_dir.joinpath(config_folder_name)
+    type_dir.mkdir(parents=True, exist_ok=True)
+
+    config_file = type_dir.joinpath(f"{datasource_name}.yaml")
+    if config_file.is_file():
+        raise ValueError(f"A config file already exists for {datasource_name} in {config_folder_name}")
+
+    config_file.touch()
+    config_file.write_text(config_content)
+
+    return config_file
