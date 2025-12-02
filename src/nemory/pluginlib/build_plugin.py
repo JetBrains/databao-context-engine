@@ -87,6 +87,14 @@ class BaseBuildPlugin(Protocol):
     """
 
 
+@dataclass(kw_only=True)
+class ConfigPropertyDefinition:
+    property_key: str
+    required: bool
+    default_value: str | None = None
+    nested_in: str | None = None
+
+
 @runtime_checkable
 class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
     config_file_type: type[T]
@@ -96,6 +104,9 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
     """
     The method that will be called when a config file has been found for a data source supported by this plugin.
     """
+
+    def get_mandatory_config_file_structure(self) -> list[ConfigPropertyDefinition]:
+        return []
 
 
 class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):
