@@ -12,7 +12,7 @@ from tests.utils.dummy_build_plugin import (
 
 def _patch_load_plugins(mocker, return_value: PluginList | None = None):
     if return_value is None:
-        return_value = load_dummy_plugins()
+        return_value = load_dummy_plugins(exclude_file_plugins=True)
 
     mocker.patch("nemory.generate_configs_schemas.load_plugins", return_value=return_value)
 

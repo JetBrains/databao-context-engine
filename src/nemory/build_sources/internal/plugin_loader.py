@@ -1,7 +1,7 @@
 import logging
 
 from nemory.build_sources.internal.types import PluginList
-from nemory.pluginlib.build_plugin import BuildPlugin
+from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildFilePlugin, BuildPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -10,18 +10,37 @@ class DuplicatePluginTypeError(RuntimeError):
     """Raised when two plugins register the same <main>/<sub> plugin key."""
 
 
-def load_plugins() -> PluginList:
+def load_plugins(exclude_file_plugins: bool = False) -> PluginList:
     """
     Loads both builtin and external plugins and merges them into one list
     """
-    builtin_plugins = load_builtin_plugins()
-    external_plugins = load_external_plugins()
+    builtin_plugins = load_builtin_plugins(exclude_file_plugins)
+    external_plugins = load_external_plugins(exclude_file_plugins)
     plugins = merge_plugins(builtin_plugins, external_plugins)
 
     return plugins
 
 
-def load_builtin_plugins() -> list[BuildPlugin]:
+def load_builtin_plugins(exclude_file_plugins: bool = False) -> list[BuildPlugin]:
+    all_builtin_plugins: list[BuildPlugin] = []
+
+    all_builtin_plugins += load_builtin_datasource_plugins()
+
+    if not exclude_file_plugins:
+        all_builtin_plugins += load_builtin_file_plugins()
+
+    return all_builtin_plugins
+
+
+def load_builtin_file_plugins() -> list[BuildFilePlugin]:
+    from nemory.plugins.unstructured_files_plugin import InternalUnstructuredFilesPlugin
+
+    return [
+        InternalUnstructuredFilesPlugin(),
+    ]
+
+
+def load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     """
     Statically register built-in plugins
     """
@@ -32,9 +51,8 @@ def load_builtin_plugins() -> list[BuildPlugin]:
     from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
     from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
     from nemory.plugins.snowflake_db_plugin import SnowflakeDbPlugin
-    from nemory.plugins.unstructured_files_plugin import InternalUnstructuredFilesPlugin
 
-    builtin_plugins: list[BuildPlugin] = [
+    return [
         AthenaDbPlugin(),
         ClickhouseDbPlugin(),
         DuckDbPlugin(),
@@ -42,13 +60,10 @@ def load_builtin_plugins() -> list[BuildPlugin]:
         MySQLDbPlugin(),
         PostgresqlDbPlugin(),
         SnowflakeDbPlugin(),
-        InternalUnstructuredFilesPlugin(),
     ]
 
-    return builtin_plugins
 
-
-def load_external_plugins() -> list[BuildPlugin]:
+def load_external_plugins(exclude_file_plugins: bool = False) -> list[BuildPlugin]:
     """
     Discover external plugins via entry points
     """

@@ -163,10 +163,14 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
         return []
 
 
-def load_dummy_plugins() -> dict[str, BuildPlugin]:
-    return {
-        "files/dummy": DummyFilePlugin(),
+def load_dummy_plugins(exclude_file_plugins: bool = False) -> dict[str, BuildPlugin]:
+    result: dict[str, BuildPlugin] = {
         "databases/dummy_db": DummyBuildDatasourcePlugin(),
         "dummy/dummy_default": DummyDefaultDatasourcePlugin(),
         "additional/dummy_type": AdditionalDummyPlugin(),
     }
+
+    if not exclude_file_plugins:
+        result.update({"files/dummy": DummyFilePlugin()})
+
+    return result
