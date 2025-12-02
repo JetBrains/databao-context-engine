@@ -66,6 +66,9 @@ def init(ctx: Context) -> None:
     except RuntimeError as e:
         click.echo(str(e), err=True)
 
+    if click.confirm("Do you want to configure a datasource now?"):
+        add_datasource_config(ctx.obj["project_dir"])
+
 
 @nemory.group()
 def config() -> None:
