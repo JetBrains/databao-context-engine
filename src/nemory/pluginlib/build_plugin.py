@@ -91,8 +91,13 @@ class BaseBuildPlugin(Protocol):
 class ConfigPropertyDefinition:
     property_key: str
     required: bool
+    property_type: type = str
     default_value: str | None = None
     nested_in: str | None = None
+
+    def __post_init__(self):
+        if not self.required and not self.default_value and self.property_type is not str:
+            raise ValueError("Optional properties without a default value can only be of type `str`")
 
 
 @runtime_checkable

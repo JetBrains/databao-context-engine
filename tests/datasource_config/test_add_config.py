@@ -37,11 +37,11 @@ def test_add_datasource_config__with_all_values_filled(project_path: Path):
     inputs = [
         "databases/dummy_db",
         "my datasource name",
-        "other_property",
+        "15.356",
         "property_with_default",
         "nested_field",
         "other_nested_property",
-        "optional_with_default",
+        "87654",
     ]
 
     with cli_runner.isolation(input=os.linesep.join(inputs)):
@@ -53,12 +53,12 @@ def test_add_datasource_config__with_all_values_filled(project_path: Path):
         {
             "type": "dummy_db",
             "name": "my datasource name",
-            "other_property": "other_property",
+            "other_property": 15.356,
             "property_with_default": "property_with_default",
             "nested_dict": {
                 "nested_field": "nested_field",
                 "other_nested_property": "other_nested_property",
-                "optional_with_default": "optional_with_default",
+                "optional_with_default": 87654,
             },
         }
     )
@@ -70,7 +70,7 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
     inputs = [
         "databases/dummy_db",
         "my datasource name",
-        "other_property",
+        "3.14",
         "",
         "nested_field",
         "",
@@ -86,11 +86,11 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
         {
             "type": "dummy_db",
             "name": "my datasource name",
-            "other_property": "other_property",
+            "other_property": 3.14,
             "property_with_default": "default_value",
             "nested_dict": {
                 "nested_field": "nested_field",
-                "optional_with_default": "optional_default",
+                "optional_with_default": 1111,
             },
         }
     )

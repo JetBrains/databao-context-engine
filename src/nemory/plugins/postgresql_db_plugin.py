@@ -17,7 +17,7 @@ class PostgresqlDbPlugin(BaseDatabasePlugin[PostgresConfigFile]):
             ConfigPropertyDefinition(
                 property_key="host", required=True, nested_in="connection", default_value="localhost"
             ),
-            ConfigPropertyDefinition(property_key="port", required=False, nested_in="connection"),
+            ConfigPropertyDefinition(property_key="port", required=False, property_type=int, nested_in="connection"),
             ConfigPropertyDefinition(property_key="database", required=False, nested_in="connection"),
             ConfigPropertyDefinition(property_key="user", required=False, nested_in="connection"),
             ConfigPropertyDefinition(property_key="password", required=False, nested_in="connection"),

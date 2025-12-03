@@ -58,13 +58,22 @@ def _create_config_for_plugin(plugin: BuildDatasourcePlugin) -> dict[str, Any]:
             # We need to add an empty string default value for non-required fields
             default_value = None if config_file_property.required else ""
 
+        if (
+            config_file_property.property_type is not str
+            and not config_file_property.required
+            and config_file_property.default_value is None
+        ):
+            raise ValueError(
+                f"Optional properties without a default value can only be of type `str` (property key: {config_file_property.property_key})"
+            )
+
         property_value = click.prompt(
             f"{config_file_property.property_key}? {'(Optional)' if not config_file_property.required else ''}",
-            type=str,
+            type=config_file_property.property_type,
             default=default_value,
             show_default=default_value is not None and default_value != "",
         )
-        if property_value.strip():
+        if property_value:
             if config_file_property.nested_in:
                 config_content.setdefault(config_file_property.nested_in, dict())[config_file_property.property_key] = (
                     property_value
