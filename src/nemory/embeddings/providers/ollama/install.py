@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import stat
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -25,10 +26,6 @@ class ArtifactInfo(NamedTuple):
 DEFAULT_VERSION = "v0.13.0"
 
 ARTIFACTS: dict[str, ArtifactInfo] = {
-    "darwin": ArtifactInfo(
-        "ollama-darwin.tgz",
-        "fa4ca04c48453c5ff81447d0630e996ee3e6b6af76a9eba52c69c0732f748161",
-    ),
     "linux-amd64": ArtifactInfo(
         "ollama-linux-amd64.tgz",
         "c5e5b4840008d9c9bf955ec32c32b03afc57c986ac1c382d44c89c9f7dd2cc30",
@@ -70,6 +67,14 @@ def resolve_ollama_bin() -> str:
 
     if not MANAGED_OLLAMA_BIN.exists():
         logger.info("No existing Ollama installation detected. Nemory will download and install Ollama.")
+
+        if _detect_platform() == "darwin":
+            _install_ollama_macos()
+            system_ollama = shutil.which("ollama")
+            if not system_ollama:
+                raise RuntimeError("Ollama installation on macOS appears to have failed.")
+            return system_ollama
+
         install_ollama_to(MANAGED_OLLAMA_BIN)
 
     return str(MANAGED_OLLAMA_BIN)
@@ -153,6 +158,23 @@ def _ensure_executable(path: Path) -> None:
     except Exception:
         pass
 
+def _install_ollama_macos() -> None:
+    import shutil
+
+    if not shutil.which("brew"):
+        raise RuntimeError(
+            "Homebrew is not installed, and Ollama can only be installed "
+            "programmatically via Homebrew on macOS. "
+            "Please install Homebrew from https://brew.sh/ "
+            "or install Ollama manually from https://ollama.com/download."
+        )
+
+    logger.info("Running `brew install --cask ollama` to install Ollama on macOS...")
+    cmd = ["brew", "install", "--cask", "ollama"]
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("Failed to install Ollama on macOS via Homebrew") from exc
 
 def install_ollama_to(target: Path) -> None:
     """
