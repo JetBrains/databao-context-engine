@@ -28,10 +28,14 @@ def add_datasource_config(project_dir: str) -> None:
 
     config_for_plugin = _create_config_for_plugin(cast(BuildDatasourcePlugin, all_datasource_plugins[config_full_type]))
 
-    config_content = yaml.safe_dump(basic_config | config_for_plugin, sort_keys=False, default_flow_style=False)
+    config_content = config_content_to_yaml_string(basic_config | config_for_plugin)
     config_file_path = create_datasource_config_file(project_path, config_folder, datasource_name, config_content)
 
     click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file_path}")
+
+
+def config_content_to_yaml_string(config_content: dict[str, Any]) -> str:
+    return yaml.safe_dump(config_content, sort_keys=False, default_flow_style=False)
 
 
 def _create_config_for_plugin(plugin: BuildDatasourcePlugin) -> dict[str, Any]:

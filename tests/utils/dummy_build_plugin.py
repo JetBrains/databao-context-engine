@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from io import BufferedReader
 from typing import Any, Mapping, TypedDict
@@ -10,6 +11,7 @@ from nemory.pluginlib.build_plugin import (
     BuildPlugin,
     DefaultBuildDatasourcePlugin,
     EmbeddableChunk,
+    ConfigPropertyDefinition,
 )
 
 
@@ -31,9 +33,19 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
     )
 
 
+@dataclass
+class DummyConfigNested:
+    nested_field: str
+    other_nested_property: str
+    optional_with_default: str = "optional_default"
+
+
 class DummyConfigFileType(TypedDict):
     type: str
-    displayName: str
+    name: str
+    other_property: str
+    property_with_default: str
+    nested_dict: DummyConfigNested
 
 
 class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
@@ -86,6 +98,22 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
             for catalog in build_result.result.get("catalogs", list())
             for schema in catalog.get("schemas", list())
             for table in schema.get("tables", list())
+        ]
+
+    def get_mandatory_config_file_structure(self) -> list[ConfigPropertyDefinition]:
+        return [
+            ConfigPropertyDefinition(property_key="other_property", required=True),
+            ConfigPropertyDefinition(
+                property_key="property_with_default", required=True, default_value="default_value"
+            ),
+            ConfigPropertyDefinition(property_key="nested_field", required=True, nested_in="nested_dict"),
+            ConfigPropertyDefinition(property_key="other_nested_property", required=False, nested_in="nested_dict"),
+            ConfigPropertyDefinition(
+                property_key="optional_with_default",
+                required=False,
+                nested_in="nested_dict",
+                default_value="optional_default",
+            ),
         ]
 
 
