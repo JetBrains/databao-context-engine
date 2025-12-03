@@ -41,7 +41,7 @@ class VectorSearchRepository:
                 array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) ASC
             LIMIT ?
             """,
-            [list(retrieve_vec), run_id, list(retrieve_vec), limit, self._DEFAULT_DISTANCE_THRESHOLD],
+            [list(retrieve_vec), run_id, self._DEFAULT_DISTANCE_THRESHOLD, list(retrieve_vec), limit],
         ).fetchall()
 
         return [VectorSearchResult(display_text=row[0], embeddable_text=row[1], cosine_distance=row[2]) for row in rows]
