@@ -1,8 +1,8 @@
 import types
 from dataclasses import MISSING, fields, is_dataclass
-from typing import Annotated, Any, Union, get_origin, get_type_hints
+from typing import Annotated, Any, Union, get_origin, get_type_hints, ForwardRef
 
-from pydantic import BaseModel
+from pydantic import BaseModel, _internal
 from pydantic_core import PydanticUndefinedType
 
 from nemory.pluginlib.config_properties import ConfigPropertyAnnotation, ConfigPropertyDefinition
@@ -59,8 +59,16 @@ def _get_property_list_from_dataclass(parent_type: type) -> list[ConfigPropertyD
     for field in dataclass_fields:
         has_field_default = field.default is not None and field.default != MISSING
 
+        if isinstance(field.type, str):
+            try:
+                property_type = _evaluate_type_string(field.type)
+            except Exception:
+                continue
+        else:
+            property_type = field.type
+
         property_for_field = _create_property(
-            property_type=field.type,
+            property_type=property_type,
             property_name=field.name,
             property_default=field.default if has_field_default else None,
             is_property_required=not has_field_default,
@@ -177,3 +185,18 @@ def compute_default_value(
         return str(property_default)
 
     return None
+
+
+def _evaluate_type_string(property_type: str) -> type:
+    try:
+        # Using a pydantic internal function for this, to avoid having to implement type evaluation manually...
+        return _internal._typing_extra.eval_type(property_type)
+    except Exception as initial_error:
+        try:
+            # Try to convert it ourselves if Pydantic didn't work
+            return ForwardRef(property_type)._evaluate(  # type: ignore[return-value]
+                globalns=globals(), localns=locals(), recursive_guard=frozenset()
+            )
+        except Exception as e:
+            # Ignore if we didn't manage to convert the str to a type
+            raise e from initial_error
