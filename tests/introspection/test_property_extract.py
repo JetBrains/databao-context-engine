@@ -3,6 +3,7 @@ from datetime import date, datetime
 from typing import Annotated, Optional, TypedDict
 from uuid import UUID
 
+from pydantic import BaseModel, Field
 from pytest_unordered import unordered
 
 from nemory.introspection.property_extract import get_property_list_from_type
@@ -24,11 +25,22 @@ class NestedSubclass:
     ignored_dict: dict[str, int]
 
 
+class TestPydanticBaseModel(BaseModel):
+    regular_property: str
+    bool_with_default: bool = False
+    property_with_field_info: int = Field(description="This is a description")
+    property_with_default_in_field_info: str = Field(default="My default value")
+    custom_annotation: Annotated[float, ConfigPropertyAnnotation(default_value="1.234", required=True)] = Field(
+        default=2.345
+    )
+
+
 class SecondSubclass(TypedDict):
     nested_subclass: NestedSubclass | None
     other_property: float
     uuid: UUID
     ignored_list: list[UUID]
+    nested_pydantic_model: TestPydanticBaseModel
 
 
 @dataclass
@@ -84,6 +96,32 @@ def test_get_property_list_from_type__with_dataclass():
                 ),
                 ConfigPropertyDefinition(property_key="other_property", required=False, property_type=float),
                 ConfigPropertyDefinition(property_key="uuid", required=False, property_type=UUID),
+                ConfigPropertyDefinition(
+                    property_key="nested_pydantic_model",
+                    required=False,
+                    property_type=None,
+                    nested_properties=[
+                        ConfigPropertyDefinition(property_key="regular_property", required=True, property_type=str),
+                        ConfigPropertyDefinition(
+                            property_key="bool_with_default", required=False, property_type=bool, default_value="False"
+                        ),
+                        ConfigPropertyDefinition(
+                            property_key="property_with_field_info", required=True, property_type=int
+                        ),
+                        ConfigPropertyDefinition(
+                            property_key="property_with_default_in_field_info",
+                            required=False,
+                            property_type=str,
+                            default_value="My default value",
+                        ),
+                        ConfigPropertyDefinition(
+                            property_key="custom_annotation",
+                            required=True,
+                            property_type=float,
+                            default_value="1.234",
+                        ),
+                    ],
+                ),
             ],
         ),
     )
