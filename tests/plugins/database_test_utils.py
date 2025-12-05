@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+
 from nemory.plugins.databases.databases_types import DatabaseIntrospectionResult, DatabaseColumn
 
 TableSpec = dict[str, list[DatabaseColumn]]  # table_name -> list of DatabaseColumn
@@ -10,7 +12,7 @@ def assert_database_structure(result: DatabaseIntrospectionResult, expected_cata
         full = ".".join(path)
         raise AssertionError(f"{msg} at {full}" if full else msg)
 
-    def assert_keys(actual_dict: dict[str, object], expected_dict: dict[str, object], path: list[str], level: str):
+    def assert_keys(actual_dict: Mapping[str, Any], expected_dict: Mapping[str, Any], path: list[str], level: str):
         actual_keys = set(actual_dict)
         expected_keys = set(expected_dict)
         missing = expected_keys - actual_keys
@@ -41,6 +43,6 @@ def assert_database_structure(result: DatabaseIntrospectionResult, expected_cata
 
             assert_keys(actual_tables, expected_tables, [catalog_name, schema_name], "tables")
 
-            for table_name, expected_columns in expected_tables.items():
+            for table_name, expected_table_columns in expected_tables.items():
                 table = actual_tables[table_name]
-                assert_columns(table.columns, expected_columns, [catalog_name, schema_name, table_name])
+                assert_columns(table.columns, expected_table_columns, [catalog_name, schema_name, table_name])
