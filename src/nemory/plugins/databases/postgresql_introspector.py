@@ -1,17 +1,18 @@
-from typing import Any
+from typing import Any, Annotated
 
 import psycopg
 from psycopg import Connection
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 
+from nemory.pluginlib.config_properties import ConfigPropertyAnnotation
 from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseColumn
 
 
 class PostgresConnectionProperties(BaseModel):
-    host: str
+    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
     port: int | None = None
     database: str | None = None
     user: str | None = None
