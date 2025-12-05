@@ -6,7 +6,7 @@ import yaml
 
 from nemory.build_sources.internal.plugin_loader import load_plugins
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
-from nemory.pluginlib.config_properties import ConfigPropertyDefinition
+from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
 from nemory.project.layout import create_datasource_config_file, ensure_project_dir
 
 
@@ -40,7 +40,10 @@ def config_content_to_yaml_string(config_content: dict[str, Any]) -> str:
 
 
 def _create_config_for_plugin(plugin: BuildDatasourcePlugin) -> dict[str, Any]:
-    config_file_structure = plugin.get_mandatory_config_file_structure()
+    if isinstance(plugin, CustomiseConfigProperties):
+        config_file_structure = plugin.get_config_file_properties()
+    else:
+        config_file_structure = []
 
     # Adds a new line before asking for the config values specific to the plugin
     click.echo("")

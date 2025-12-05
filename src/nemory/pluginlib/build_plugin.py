@@ -3,8 +3,6 @@ from datetime import datetime
 from io import BufferedReader
 from typing import Any, Protocol, runtime_checkable
 
-from nemory.pluginlib.config_properties import ConfigPropertyDefinition
-
 
 @dataclass
 class EmbeddableChunk:
@@ -98,9 +96,6 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
     """
     The method that will be called when a config file has been found for a data source supported by this plugin.
     """
-
-    def get_mandatory_config_file_structure(self) -> list[ConfigPropertyDefinition]:
-        return []
 
 
 class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):

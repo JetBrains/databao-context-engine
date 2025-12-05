@@ -12,7 +12,7 @@ class PostgresqlDbPlugin(BaseDatabasePlugin[PostgresConfigFile]):
     def __init__(self):
         super().__init__(PostgresqlIntrospector())
 
-    def get_mandatory_config_file_structure(self) -> list[ConfigPropertyDefinition]:
+    def get_config_file_properties(self) -> list[ConfigPropertyDefinition]:
         return [
             ConfigPropertyDefinition(
                 property_key="connection",

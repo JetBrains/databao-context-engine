@@ -12,7 +12,7 @@ from nemory.pluginlib.build_plugin import (
     DefaultBuildDatasourcePlugin,
     EmbeddableChunk,
 )
-from nemory.pluginlib.config_properties import ConfigPropertyDefinition
+from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
 
 
 class DbTable(TypedDict):
@@ -48,7 +48,7 @@ class DummyConfigFileType(TypedDict):
     nested_dict: DummyConfigNested
 
 
-class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
+class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType], CustomiseConfigProperties):
     id = "jetbrains/dummy_db"
     name = "Dummy DB Plugin"
     config_file_type = DummyConfigFileType
@@ -100,7 +100,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
             for table in schema.get("tables", list())
         ]
 
-    def get_mandatory_config_file_structure(self) -> list[ConfigPropertyDefinition]:
+    def get_config_file_properties(self) -> list[ConfigPropertyDefinition]:
         return [
             ConfigPropertyDefinition(property_key="other_property", required=True, property_type=float),
             ConfigPropertyDefinition(
