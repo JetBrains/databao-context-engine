@@ -73,7 +73,7 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
         "3.14",
         "",
         "nested_field",
-        "",
+        "5",
         "\n",  # TextIOWrapper hack: For some reason, having two \n at the end of the input is considered the end of the file. Adding a third one make sure that the last property will actually be read as an empty string
     ]
 
@@ -90,6 +90,7 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
             "property_with_default": "default_value",
             "nested_dict": {
                 "nested_field": "nested_field",
+                "other_nested_property": "5",
                 "optional_with_default": "1111",
             },
         }
