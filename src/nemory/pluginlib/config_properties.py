@@ -11,6 +11,13 @@ class ConfigPropertyDefinition:
     nested_properties: list["ConfigPropertyDefinition"] | None = None
 
 
+@dataclass(kw_only=True)
+class ConfigPropertyAnnotation:
+    required: bool = False
+    default_value: str | None = None
+    ignored_for_config_wizard: bool = False
+
+
 @runtime_checkable
 class CustomiseConfigProperties(Protocol):
     def get_config_file_properties(self) -> list[ConfigPropertyDefinition]: ...
