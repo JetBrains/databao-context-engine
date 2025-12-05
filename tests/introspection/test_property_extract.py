@@ -12,7 +12,7 @@ from nemory.pluginlib.config_properties import ConfigPropertyAnnotation, ConfigP
 
 class TestSubclass:
     union_type: str | None
-    other_property: float
+    other_property: "float"
     uuid: UUID
 
     def add_callable(self, param_1: int) -> int:  # type: ignore[empty-body]
@@ -35,7 +35,7 @@ class TestPydanticBaseModel(BaseModel):
 
 
 class SecondSubclass(TypedDict):
-    nested_subclass: NestedSubclass | None
+    nested_subclass: "NestedSubclass | None"
     other_property: float
     uuid: UUID
     ignored_list: list[UUID]
@@ -142,6 +142,8 @@ class DataclassWithAllCases:
     property_with_annotated_default_and_field_default: Annotated[
         bool, ConfigPropertyAnnotation(default_value="True")
     ] = field(default=False)
+    property_with_string_type: "str"
+    property_with_union_type_as_string: "int | None"
 
 
 def test_get_property_list__from_dataclass():
@@ -169,6 +171,16 @@ def test_get_property_list__from_dataclass():
                 property_type=bool,
                 default_value="True",
             ),
+            ConfigPropertyDefinition(
+                property_key="property_with_string_type",
+                required=True,
+                property_type=str,
+            ),
+            ConfigPropertyDefinition(
+                property_key="property_with_union_type_as_string",
+                required=True,
+                property_type=int,
+            ),
         ]
     )
 
@@ -183,6 +195,8 @@ class BaseModelWithAllCases(BaseModel):
     property_with_annotated_default_and_field_default: Annotated[int, ConfigPropertyAnnotation(default_value="1")] = (
         Field(default=2)
     )
+    property_with_string_type: "str"
+    property_with_union_type_as_string: "float | None"
 
 
 def test_get_property_list__from_pydantic_base_model():
@@ -216,6 +230,16 @@ def test_get_property_list__from_pydantic_base_model():
                 required=False,
                 property_type=int,
                 default_value="1",
+            ),
+            ConfigPropertyDefinition(
+                property_key="property_with_string_type",
+                required=True,
+                property_type=str,
+            ),
+            ConfigPropertyDefinition(
+                property_key="property_with_union_type_as_string",
+                required=True,
+                property_type=float,
             ),
         ]
     )
