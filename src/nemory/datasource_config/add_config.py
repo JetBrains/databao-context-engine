@@ -5,6 +5,7 @@ import click
 import yaml
 
 from nemory.build_sources.internal.plugin_loader import load_plugins
+from nemory.introspection.property_extract import get_property_list_from_type
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
 from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
 from nemory.project.layout import (
@@ -48,7 +49,7 @@ def _create_config_for_plugin(plugin: BuildDatasourcePlugin) -> dict[str, Any]:
     if isinstance(plugin, CustomiseConfigProperties):
         config_file_structure = plugin.get_config_file_properties()
     else:
-        config_file_structure = []
+        config_file_structure = get_property_list_from_type(plugin.config_file_type)
 
     # Adds a new line before asking for the config values specific to the plugin
     click.echo("")
@@ -64,6 +65,10 @@ def _create_config_for_plugin(plugin: BuildDatasourcePlugin) -> dict[str, Any]:
 def _create_config_for_properties(properties: list[ConfigPropertyDefinition], properties_prefix: str) -> dict[str, Any]:
     config_content: dict[str, Any] = {}
     for config_file_property in properties:
+        if config_file_property.property_key in ["type", "name"] and len(properties_prefix) == 0:
+            # We ignore type and name properties as they've already been filled
+            continue
+
         if config_file_property.nested_properties is not None and len(config_file_property.nested_properties) > 0:
             nested_content = _create_config_for_properties(
                 config_file_property.nested_properties,
