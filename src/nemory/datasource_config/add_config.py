@@ -6,6 +6,7 @@ import yaml
 
 from nemory.build_sources.internal.plugin_loader import load_plugins
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
+from nemory.pluginlib.config_properties import ConfigPropertyDefinition
 from nemory.project.layout import create_datasource_config_file, ensure_project_dir
 
 
@@ -49,27 +50,37 @@ def _create_config_for_plugin(plugin: BuildDatasourcePlugin) -> dict[str, Any]:
             "The plugin for this datasource doesn't declare its configuration. Please check the documentation and fill the config file manually."
         )
 
-    config_content: dict[str, Any] = {}
-    for config_file_property in config_file_structure:
-        default_value: str | None
-        if config_file_property.default_value:
-            default_value = config_file_property.default_value
-        else:
-            # We need to add an empty string default value for non-required fields
-            default_value = None if config_file_property.required else ""
+    return _create_config_for_properties(config_file_structure, properties_prefix="")
 
-        property_value = click.prompt(
-            f"{config_file_property.property_key}? {'(Optional)' if not config_file_property.required else ''}",
-            type=str,
-            default=default_value,
-            show_default=default_value is not None and default_value != "",
-        )
-        if property_value.strip():
-            if config_file_property.nested_in:
-                config_content.setdefault(config_file_property.nested_in, dict())[config_file_property.property_key] = (
-                    property_value
-                )
+
+def _create_config_for_properties(properties: list[ConfigPropertyDefinition], properties_prefix: str) -> dict[str, Any]:
+    config_content: dict[str, Any] = {}
+    for config_file_property in properties:
+        if config_file_property.nested_properties is not None and len(config_file_property.nested_properties) > 0:
+            nested_content = _create_config_for_properties(
+                config_file_property.nested_properties,
+                properties_prefix=f"{properties_prefix}.{config_file_property.property_key}."
+                if properties_prefix
+                else f"{config_file_property.property_key}.",
+            )
+            if len(nested_content.keys()) > 0:
+                config_content[config_file_property.property_key] = nested_content
+        else:
+            default_value: str | None
+            if config_file_property.default_value:
+                default_value = config_file_property.default_value
             else:
+                # We need to add an empty string default value for non-required fields
+                default_value = None if config_file_property.required else ""
+
+            property_value = click.prompt(
+                f"{properties_prefix}{config_file_property.property_key}? {'(Optional)' if not config_file_property.required else ''}",
+                type=str,
+                default=default_value,
+                show_default=default_value is not None and default_value != "",
+            )
+
+            if property_value.strip():
                 config_content[config_file_property.property_key] = property_value
 
     return config_content

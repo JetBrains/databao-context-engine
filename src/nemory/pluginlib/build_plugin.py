@@ -3,6 +3,8 @@ from datetime import datetime
 from io import BufferedReader
 from typing import Any, Protocol, runtime_checkable
 
+from nemory.pluginlib.config_properties import ConfigPropertyDefinition
+
 
 @dataclass
 class EmbeddableChunk:
@@ -85,14 +87,6 @@ class BaseBuildPlugin(Protocol):
     """
     A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
     """
-
-
-@dataclass(kw_only=True)
-class ConfigPropertyDefinition:
-    property_key: str
-    required: bool
-    default_value: str | None = None
-    nested_in: str | None = None
 
 
 @runtime_checkable

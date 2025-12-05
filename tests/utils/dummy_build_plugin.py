@@ -11,8 +11,8 @@ from nemory.pluginlib.build_plugin import (
     BuildPlugin,
     DefaultBuildDatasourcePlugin,
     EmbeddableChunk,
-    ConfigPropertyDefinition,
 )
+from nemory.pluginlib.config_properties import ConfigPropertyDefinition
 
 
 class DbTable(TypedDict):
@@ -36,14 +36,14 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
 @dataclass
 class DummyConfigNested:
     nested_field: str
-    other_nested_property: str
+    other_nested_property: int
     optional_with_default: str = "optional_default"
 
 
 class DummyConfigFileType(TypedDict):
     type: str
     name: str
-    other_property: str
+    other_property: float
     property_with_default: str
     nested_dict: DummyConfigNested
 
@@ -102,17 +102,23 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
 
     def get_mandatory_config_file_structure(self) -> list[ConfigPropertyDefinition]:
         return [
-            ConfigPropertyDefinition(property_key="other_property", required=True),
+            ConfigPropertyDefinition(property_key="other_property", required=True, property_type=float),
             ConfigPropertyDefinition(
                 property_key="property_with_default", required=True, default_value="default_value"
             ),
-            ConfigPropertyDefinition(property_key="nested_field", required=True, nested_in="nested_dict"),
-            ConfigPropertyDefinition(property_key="other_nested_property", required=False, nested_in="nested_dict"),
             ConfigPropertyDefinition(
-                property_key="optional_with_default",
-                required=False,
-                nested_in="nested_dict",
-                default_value="optional_default",
+                property_key="nested_dict",
+                required=True,
+                nested_properties=[
+                    ConfigPropertyDefinition(property_key="nested_field", required=True),
+                    ConfigPropertyDefinition(property_key="other_nested_property", required=False),
+                    ConfigPropertyDefinition(
+                        property_key="optional_with_default",
+                        required=False,
+                        property_type=int,
+                        default_value="1111",
+                    ),
+                ],
             ),
         ]
 
