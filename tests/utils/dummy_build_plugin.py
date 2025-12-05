@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from io import BufferedReader
 from typing import Any, Mapping, TypedDict
@@ -11,6 +12,7 @@ from nemory.pluginlib.build_plugin import (
     DefaultBuildDatasourcePlugin,
     EmbeddableChunk,
 )
+from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
 
 
 class DbTable(TypedDict):
@@ -31,12 +33,22 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
     )
 
 
+@dataclass
+class DummyConfigNested:
+    nested_field: str
+    other_nested_property: int
+    optional_with_default: str = "optional_default"
+
+
 class DummyConfigFileType(TypedDict):
     type: str
-    displayName: str
+    name: str
+    other_property: float
+    property_with_default: str
+    nested_dict: DummyConfigNested
 
 
-class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
+class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType], CustomiseConfigProperties):
     id = "jetbrains/dummy_db"
     name = "Dummy DB Plugin"
     config_file_type = DummyConfigFileType
@@ -86,6 +98,28 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
             for catalog in build_result.result.get("catalogs", list())
             for schema in catalog.get("schemas", list())
             for table in schema.get("tables", list())
+        ]
+
+    def get_config_file_properties(self) -> list[ConfigPropertyDefinition]:
+        return [
+            ConfigPropertyDefinition(property_key="other_property", required=True, property_type=float),
+            ConfigPropertyDefinition(
+                property_key="property_with_default", required=True, default_value="default_value"
+            ),
+            ConfigPropertyDefinition(
+                property_key="nested_dict",
+                required=True,
+                nested_properties=[
+                    ConfigPropertyDefinition(property_key="nested_field", required=True),
+                    ConfigPropertyDefinition(property_key="other_nested_property", required=False),
+                    ConfigPropertyDefinition(
+                        property_key="optional_with_default",
+                        required=False,
+                        property_type=int,
+                        default_value="1111",
+                    ),
+                ],
+            ),
         ]
 
 

@@ -6,6 +6,7 @@ from click import Context
 
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
+from nemory.datasource_config.add_config import add_datasource_config
 from nemory.embeddings.providers.ollama.install import resolve_ollama_bin
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.info import get_command_info
@@ -64,6 +65,20 @@ def init(ctx: Context) -> None:
         resolve_ollama_bin()
     except RuntimeError as e:
         click.echo(str(e), err=True)
+
+    if click.confirm("Do you want to configure a datasource now?"):
+        add_datasource_config(ctx.obj["project_dir"])
+
+
+@nemory.group()
+def config() -> None:
+    pass
+
+
+@config.command(name="add")
+@click.pass_context
+def config_add(ctx: Context) -> None:
+    add_datasource_config(ctx.obj["project_dir"])
 
 
 @nemory.command()
