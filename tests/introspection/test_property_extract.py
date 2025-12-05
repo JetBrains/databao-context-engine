@@ -53,11 +53,11 @@ def test_get_property_list_from_type__with_dataclass():
     property_list = get_property_list_from_type(TestDataclass)
 
     assert property_list == unordered(
-        ConfigPropertyDefinition(property_key="a", required=False, property_type=int),
-        ConfigPropertyDefinition(property_key="b", required=False, property_type=float),
+        ConfigPropertyDefinition(property_key="a", required=False, property_type=int, default_value="1"),
+        ConfigPropertyDefinition(property_key="b", required=False, property_type=float, default_value="3.14"),
         ConfigPropertyDefinition(
             property_key="complex",
-            required=False,
+            required=True,
             property_type=None,
             nested_properties=[
                 ConfigPropertyDefinition(property_key="union_type", required=False, property_type=str),
@@ -71,7 +71,7 @@ def test_get_property_list_from_type__with_dataclass():
         ),
         ConfigPropertyDefinition(
             property_key="optional_subclass",
-            required=False,
+            required=True,
             property_type=None,
             nested_properties=[
                 ConfigPropertyDefinition(
@@ -79,7 +79,7 @@ def test_get_property_list_from_type__with_dataclass():
                     required=False,
                     property_type=None,
                     nested_properties=[
-                        ConfigPropertyDefinition(property_key="some_property", required=False, property_type=bool)
+                        ConfigPropertyDefinition(property_key="some_property", required=True, property_type=bool)
                     ],
                 ),
                 ConfigPropertyDefinition(property_key="other_property", required=False, property_type=float),
