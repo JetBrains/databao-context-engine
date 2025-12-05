@@ -7,7 +7,11 @@ import yaml
 from nemory.build_sources.internal.plugin_loader import load_plugins
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
 from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
-from nemory.project.layout import create_datasource_config_file, ensure_project_dir
+from nemory.project.layout import (
+    create_datasource_config_file,
+    ensure_datasource_config_file_doesnt_exist,
+    ensure_project_dir,
+)
 
 
 def add_datasource_config(project_dir: str) -> None:
@@ -25,6 +29,7 @@ def add_datasource_config(project_dir: str) -> None:
     datasource_name = click.prompt("Datasource name?", type=str)
 
     config_folder, config_type = config_full_type.split("/")
+    ensure_datasource_config_file_doesnt_exist(project_path, config_folder, datasource_name)
     basic_config = {"type": config_type, "name": datasource_name}
 
     config_for_plugin = _create_config_for_plugin(cast(BuildDatasourcePlugin, all_datasource_plugins[config_full_type]))
