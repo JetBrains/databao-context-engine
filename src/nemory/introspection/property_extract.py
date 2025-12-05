@@ -1,6 +1,9 @@
 import types
-from dataclasses import fields, is_dataclass, MISSING
-from typing import Annotated, Union, get_origin, get_type_hints, Any
+from dataclasses import MISSING, fields, is_dataclass
+from typing import Annotated, Any, Union, get_origin, get_type_hints
+
+from pydantic import BaseModel
+from pydantic_core import PydanticUndefinedType
 
 from nemory.pluginlib.config_properties import ConfigPropertyAnnotation, ConfigPropertyDefinition
 
@@ -12,6 +15,14 @@ def get_property_list_from_type(root_type: type) -> list[ConfigPropertyDefinitio
 def _get_property_list_from_type(*, parent_type: type, is_root_type: bool) -> list[ConfigPropertyDefinition]:
     if is_dataclass(parent_type):
         return _get_property_list_from_dataclass(parent_type=parent_type)
+
+    try:
+        if issubclass(parent_type, BaseModel):
+            return _get_property_list_from_pydantic_base_model(parent_type=parent_type)
+    except TypeError:
+        # when trying to compare ABC Metadata classes to BaseModel, e.g: issubclass(Mapping[str, str], BaseModel)
+        # issubclass is raising a TypeError: issubclass() arg 1 must be a class
+        pass
 
     return _get_property_list_from_type_hints(parent_type=parent_type, is_root_type=is_root_type)
 
@@ -61,14 +72,45 @@ def _get_property_list_from_dataclass(parent_type: type) -> list[ConfigPropertyD
     return result
 
 
+def _get_property_list_from_pydantic_base_model(parent_type: type):
+    if not issubclass(parent_type, BaseModel):
+        raise ValueError(f"{parent_type} is not a Pydantic BaseModel")
+
+    pydantic_fields = parent_type.model_fields
+    result = []
+
+    for field_name, field_info in pydantic_fields.items():
+        has_field_default = type(field_info.default) is not PydanticUndefinedType
+
+        if field_info.annotation is None:
+            # No type: ignore the field
+            continue
+
+        property_for_field = _create_property(
+            property_type=field_info.annotation,
+            property_name=field_name,
+            property_default=field_info.default if has_field_default else None,
+            is_property_required=not has_field_default,
+            annotation=next(
+                (metadata for metadata in field_info.metadata if isinstance(metadata, ConfigPropertyAnnotation)), None
+            ),
+        )
+
+        if property_for_field is not None:
+            result.append(property_for_field)
+
+    return result
+
+
 def _create_property(
     *,
     property_type: type,
     property_name: str,
     property_default: Any | None = None,
     is_property_required: bool = False,
+    annotation: ConfigPropertyAnnotation | None = None,
 ) -> ConfigPropertyDefinition | None:
-    annotation = _get_config_property_annotation(property_type)
+    annotation = annotation or _get_config_property_annotation(property_type)
 
     if annotation is not None and annotation.ignored_for_config_wizard:
         return None
