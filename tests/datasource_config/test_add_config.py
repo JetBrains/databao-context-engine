@@ -94,3 +94,68 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
             },
         }
     )
+
+
+def test_add_datasource_config__with_custom_property_list(project_path: Path):
+    cli_runner = CliRunner()
+
+    inputs = [
+        "dummy/no_config_type",
+        "my datasource name",
+        "3.14",
+        "value",
+        "nested_field",
+        "other_nested_property",
+        "\n",  # TextIOWrapper hack: For some reason, having two \n at the end of the input is considered the end of the file. Adding a third one make sure that the last property will actually be read as an empty string
+    ]
+
+    with cli_runner.isolation(input="\n".join(inputs)):
+        add_datasource_config(str(project_path))
+
+    result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
+    assert result_config_file.is_file()
+    assert result_config_file.read_text() == config_content_to_yaml_string(
+        {
+            "type": "no_config_type",
+            "name": "my datasource name",
+            "float_property": "3.14",
+            "nested_with_only_optionals": {
+                "optional_field": "value",
+                "nested_field": "nested_field",
+            },
+            "nested_dict": {
+                "other_nested_property": "other_nested_property",
+                "optional_with_default": "1111",
+            },
+        }
+    )
+
+
+def test_add_datasource_config__with_custom_property_list_and_optionals(project_path: Path):
+    cli_runner = CliRunner()
+
+    inputs = [
+        "dummy/no_config_type",
+        "my datasource name",
+        "3.14",
+        "",
+        "",
+        "",
+        "\n",  # TextIOWrapper hack: For some reason, having two \n at the end of the input is considered the end of the file. Adding a third one make sure that the last property will actually be read as an empty string
+    ]
+
+    with cli_runner.isolation(input="\n".join(inputs)):
+        add_datasource_config(str(project_path))
+
+    result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
+    assert result_config_file.is_file()
+    assert result_config_file.read_text() == config_content_to_yaml_string(
+        {
+            "type": "no_config_type",
+            "name": "my datasource name",
+            "float_property": "3.14",
+            "nested_dict": {
+                "optional_with_default": "1111",
+            },
+        }
+    )
