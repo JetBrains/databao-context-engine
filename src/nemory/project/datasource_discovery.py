@@ -28,7 +28,8 @@ def traverse_datasources(
 
             yield prepared_source
         except Exception as e:
-            logger.exception("Source failed (%s): %s", datasource.path, e)
+            logger.debug(str(e), exc_info=True, stack_info=True)
+            logger.info("Failed to prepare source at (%s): %s", datasource.path, str(e))
             continue
 
     return
@@ -94,7 +95,7 @@ def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource | No
             with datasource.path.open("r", encoding="utf-8") as fh:
                 config = yaml.safe_load(fh) or {}
         except Exception as e:
-            logger.warning("Skipping invalid YAML %s: %s", datasource.path, e)
+            logger.warning("Skipping invalid YAML %s: %s", datasource.path, str(e))
             return None
         subtype = config.get("type")
         if not subtype or not isinstance(subtype, str):

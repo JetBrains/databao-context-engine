@@ -59,7 +59,8 @@ def build(
 
             number_processed_datasources += 1
         except Exception as e:
-            logger.exception("Source failed (%s): %s", prepared_source.path, e)
+            logger.debug(str(e), exc_info=True, stack_info=True)
+            logger.info(f"Failed to build source at ({prepared_source.path}): {str(e)}")
 
     if run is not None:
         build_service.finalize_run(run_id=run.run_id)
