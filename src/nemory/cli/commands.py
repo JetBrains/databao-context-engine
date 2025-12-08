@@ -59,14 +59,16 @@ def init(ctx: Context) -> None:
     """
     Create an empty Nemory project
     """
-    init_project_dir(project_dir=ctx.obj["project_dir"])
+    project_path = init_project_dir(project_dir=ctx.obj["project_dir"])
+
+    click.echo(f"Project initialized successfully at {project_path.resolve()}")
 
     try:
         resolve_ollama_bin()
     except RuntimeError as e:
         click.echo(str(e), err=True)
 
-    if click.confirm("Do you want to configure a datasource now?"):
+    if click.confirm("\nDo you want to configure a datasource now?"):
         add_datasource_config(ctx.obj["project_dir"])
 
 
