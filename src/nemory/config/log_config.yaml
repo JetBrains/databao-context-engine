@@ -9,8 +9,10 @@ handlers:
     class: logging.StreamHandler
     formatter: console
     stream: ext://sys.stdout
+    level: INFO
 loggers:
   nemory:
-    level: INFO
+    # Logger itself is set at DEBUG level, but the default console handler is set to INFO
+    level: DEBUG
     propagate: false
     handlers: [ console ]

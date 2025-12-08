@@ -9,10 +9,9 @@ def main() -> None:
     try:
         nemory(obj={})
     except Exception as e:
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.exception(e)
-        else:
-            logger.error(str(e))
+        # Logs the full stack trace to any logger set at debug level
+        logger.debug(str(e), exc_info=True, stack_info=True)
+        logger.error(str(e))
 
 
 if __name__ == "__main__":

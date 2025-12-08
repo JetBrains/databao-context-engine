@@ -24,7 +24,7 @@ def configure_logging(verbose: bool, quiet: bool, project_dir: str) -> None:
         if quiet:
             log_config["loggers"]["nemory"]["handlers"].remove("console")
         if verbose:
-            log_config["loggers"]["nemory"]["level"] = "DEBUG"
+            log_config["loggers"]["nemory"]["handlers"]["console"]["level"] = "DEBUG"
 
         dictConfig(log_config)
 
@@ -36,6 +36,7 @@ def _get_logging_file_handler(logs_dir_path: Path) -> dict[str, Any]:
         "formatter": "main",
         "maxBytes": 100000000,  # 100MB
         "backupCount": 12,
+        "level": "DEBUG",
     }
 
 
