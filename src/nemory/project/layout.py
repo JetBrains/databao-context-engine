@@ -37,9 +37,6 @@ def is_project_dir_valid(project_dir: Path) -> bool:
 def ensure_can_init_project(project_dir: str) -> bool:
     project_path = Path(project_dir)
 
-    if not project_path.is_dir():
-        raise ValueError(f"{project_path.resolve()} does not exist or is not a directory")
-
     if get_source_dir(project_path).is_dir():
         raise ValueError(
             f"Can't initialise a Nemory project in a folder that already contains a src directory. [project_dir: {project_path.resolve()}]"

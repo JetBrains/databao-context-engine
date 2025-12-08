@@ -9,6 +9,10 @@ def init_project_dir(project_dir: str) -> None:
     ensure_can_init_project(project_dir=project_dir)
 
     project_path = Path(project_dir)
+
+    if not project_path.is_dir():
+        project_path.mkdir(parents=True)
+
     _create_default_src_dir(project_dir=project_path)
     _create_logs_dir(project_dir=project_path)
     _create_examples_dir(project_dir=project_path)
