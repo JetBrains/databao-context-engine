@@ -68,7 +68,8 @@ def build(
             export_build_result(run_dir, result)
             append_result_to_all_results(run_dir, result)
         except Exception as e:
-            logger.exception("Source failed (%s): %s", datasource.path, e)
+            logger.debug(str(e), exc_info=True, stack_info=True)
+            logger.info(f"Source failed ({datasource.path}): {str(e)}")
 
     build_service.finalize_run(run_id=run.run_id)
 
