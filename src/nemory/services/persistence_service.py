@@ -3,6 +3,7 @@ from collections.abc import Sequence
 import duckdb
 
 from nemory.pluginlib.build_plugin import EmbeddableChunk
+from nemory.serialisation.yaml import to_yaml_string
 from nemory.storage.models import ChunkDTO
 from nemory.storage.repositories.embedding_repository import EmbeddingRepository
 from nemory.storage.repositories.chunk_repository import ChunkRepository
@@ -47,7 +48,7 @@ class PersistenceService:
         return self._chunk_repo.create(
             datasource_run_id=datasource_run_id,
             embeddable_text=chunk.embeddable_text,
-            display_text=repr(chunk.content),
+            display_text=to_yaml_string(chunk.content),
             generated_description=generated_description,
         )
 
