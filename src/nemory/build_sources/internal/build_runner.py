@@ -7,7 +7,7 @@ from nemory.build_sources.internal.export_results import (
     create_run_dir,
     export_build_result,
 )
-from nemory.build_sources.internal.plugin_loader import load_plugins
+from nemory.plugins.plugin_loader import load_plugins
 from nemory.project.datasource_discovery import traverse_datasources
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ from typing import cast
 
 import click
 
-from nemory.build_sources.internal.plugin_loader import load_plugins
+from nemory.plugins.plugin_loader import load_plugins
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
 from nemory.pluginlib.plugin_utils import format_json_schema_for_output, generate_json_schema
 

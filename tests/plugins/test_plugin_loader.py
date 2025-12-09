@@ -1,6 +1,6 @@
 import pytest
 
-from nemory.build_sources.internal.plugin_loader import (
+from nemory.plugins.plugin_loader import (
     DuplicatePluginTypeError,
     merge_plugins,
 )

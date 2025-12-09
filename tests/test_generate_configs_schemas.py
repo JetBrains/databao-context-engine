@@ -1,6 +1,6 @@
 import pytest
 
-from nemory.build_sources.internal.plugin_loader import PluginList
+from nemory.plugins.plugin_loader import PluginList
 from nemory.generate_configs_schemas import _generate_json_schema_output_for_plugins
 from tests.utils.dummy_build_plugin import (
     AdditionalDummyPlugin,

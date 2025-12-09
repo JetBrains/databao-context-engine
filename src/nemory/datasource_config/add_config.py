@@ -5,7 +5,7 @@ from typing import Any, cast
 import click
 import yaml
 
-from nemory.build_sources.internal.plugin_loader import load_plugins
+from nemory.plugins.plugin_loader import load_plugins
 from nemory.introspection.property_extract import get_property_list_from_type
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
 from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
