@@ -8,7 +8,7 @@ from nemory.storage.connection import open_duckdb_connection
 from nemory.system.properties import get_db_path
 
 
-def run_retrieve_tool(project_dir: Path, *, run_name: str | None = None, text: str, limit: int) -> str:
+def run_retrieve_tool(project_dir: Path, *, run_name: str | None = None, text: str, limit: int | None = None) -> str:
     """
     Execute the retrieve flow for MCP and return the matching display texts
     Adds the current date to the end

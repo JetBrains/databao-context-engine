@@ -21,8 +21,6 @@ def write_test_events():
 def test_reading_journal_with_duckdb(nemory_path):
     write_test_events()
     with duckdb.connect() as conn:
-        with open(get_journal_file(nemory_path)) as f:
-            print(f.readlines())
         json_events: list = [
             json.loads(e)
             for (e,) in conn.execute(

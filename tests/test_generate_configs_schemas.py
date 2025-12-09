@@ -7,12 +7,13 @@ from tests.utils.dummy_build_plugin import (
     DummyBuildDatasourcePlugin,
     DummyDefaultDatasourcePlugin,
     load_dummy_plugins,
+    DummyPluginWithNoConfigType,
 )
 
 
 def _patch_load_plugins(mocker, return_value: PluginList | None = None):
     if return_value is None:
-        return_value = load_dummy_plugins()
+        return_value = load_dummy_plugins(exclude_file_plugins=True)
 
     mocker.patch("nemory.generate_configs_schemas.load_plugins", return_value=return_value)
 
@@ -80,7 +81,13 @@ def test_generate_configs_schemas__with_all_excluded(mocker):
 
     with pytest.raises(ValueError) as e:
         _generate_json_schema_output_for_plugins(
-            tuple(), (DummyBuildDatasourcePlugin.id, AdditionalDummyPlugin.id, DummyDefaultDatasourcePlugin.id)
+            tuple(),
+            (
+                DummyBuildDatasourcePlugin.id,
+                AdditionalDummyPlugin.id,
+                DummyDefaultDatasourcePlugin.id,
+                DummyPluginWithNoConfigType.id,
+            ),
         )
 
     assert "No plugin found when excluding" in str(e.value)

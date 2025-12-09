@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import cast
 
 import click
 
@@ -73,13 +74,12 @@ def _generate_json_schema_output_for_plugins(
 def _get_plugins_for_schema_generation(
     include_plugins: tuple[str, ...] | None = None, exclude_plugins: tuple[str, ...] | None = None
 ) -> list[BuildDatasourcePlugin]:
-    all_plugins = load_plugins().values()
+    all_plugins = load_plugins(exclude_file_plugins=True).values()
 
     return [
-        plugin
+        cast(BuildDatasourcePlugin, plugin)
         for plugin in all_plugins
-        if isinstance(plugin, BuildDatasourcePlugin)
-        and (plugin.id in include_plugins if include_plugins else True)
+        if (plugin.id in include_plugins if include_plugins else True)
         and (plugin.id not in exclude_plugins if exclude_plugins else True)
     ]
 

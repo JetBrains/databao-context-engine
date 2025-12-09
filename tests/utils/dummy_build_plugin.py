@@ -1,7 +1,8 @@
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from io import BufferedReader
-from typing import Any, Mapping, TypedDict
+from typing import Annotated, Any, Mapping, TypedDict
 
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
@@ -10,6 +11,11 @@ from nemory.pluginlib.build_plugin import (
     BuildPlugin,
     DefaultBuildDatasourcePlugin,
     EmbeddableChunk,
+)
+from nemory.pluginlib.config_properties import (
+    ConfigPropertyAnnotation,
+    ConfigPropertyDefinition,
+    CustomiseConfigProperties,
 )
 
 
@@ -31,9 +37,20 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
     )
 
 
+@dataclass
+class DummyConfigNested:
+    nested_field: str
+    other_nested_property: int
+    optional_with_default: Annotated[int, ConfigPropertyAnnotation(default_value="1111", required=False)] = 1111
+
+
 class DummyConfigFileType(TypedDict):
     type: str
-    displayName: str
+    name: str
+    other_property: float
+    property_with_default: Annotated[str, ConfigPropertyAnnotation(default_value="default_value", required=True)]
+    nested_dict: DummyConfigNested
+    ignored_dict: dict[str, str]
 
 
 class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
@@ -163,10 +180,64 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
         return []
 
 
-def load_dummy_plugins() -> dict[str, BuildPlugin]:
-    return {
-        "files/dummy": DummyFilePlugin(),
+class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigProperties):
+    id = "dummy/no_config_type"
+    name = "Dummy Plugin With No Config Type"
+
+    def supported_types(self) -> set[str]:
+        return {"dummy/no_config_type"}
+
+    def execute(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> BuildExecutionResult:
+        return BuildExecutionResult(
+            id="dummy",
+            name=datasource_name,
+            type=full_type,
+            result={"no_config_ok": True},
+            version="1.0",
+            executed_at=datetime.now(),
+            description=None,
+        )
+
+    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+        return []
+
+    def get_config_file_properties(self) -> list[ConfigPropertyDefinition]:
+        return [
+            ConfigPropertyDefinition(property_key="float_property", required=True, property_type=float),
+            ConfigPropertyDefinition(
+                property_key="nested_with_only_optionals",
+                required=False,
+                property_type=None,
+                nested_properties=[
+                    ConfigPropertyDefinition(property_key="optional_field", required=False, property_type=uuid.UUID),
+                    ConfigPropertyDefinition(property_key="nested_field", required=False),
+                ],
+            ),
+            ConfigPropertyDefinition(
+                property_key="nested_dict",
+                required=True,
+                nested_properties=[
+                    ConfigPropertyDefinition(property_key="other_nested_property", required=False),
+                    ConfigPropertyDefinition(
+                        property_key="optional_with_default",
+                        required=False,
+                        property_type=int,
+                        default_value="1111",
+                    ),
+                ],
+            ),
+        ]
+
+
+def load_dummy_plugins(exclude_file_plugins: bool = False) -> dict[str, BuildPlugin]:
+    result: dict[str, BuildPlugin] = {
         "databases/dummy_db": DummyBuildDatasourcePlugin(),
         "dummy/dummy_default": DummyDefaultDatasourcePlugin(),
         "additional/dummy_type": AdditionalDummyPlugin(),
+        "dummy/no_config_type": DummyPluginWithNoConfigType(),
     }
+
+    if not exclude_file_plugins:
+        result.update({"files/dummy": DummyFilePlugin()})
+
+    return result

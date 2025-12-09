@@ -7,6 +7,7 @@ from click import Context
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
 from nemory.llm.install import resolve_ollama_bin
+from nemory.datasource_config.add_config import add_datasource_config as add_datasource_config_internal
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.info import get_command_info
 from nemory.project.init_project import init_project_dir
@@ -58,12 +59,31 @@ def init(ctx: Context) -> None:
     """
     Create an empty Nemory project
     """
-    init_project_dir(project_dir=ctx.obj["project_dir"])
+    project_path = init_project_dir(project_dir=ctx.obj["project_dir"])
+
+    click.echo(f"Project initialized successfully at {project_path.resolve()}")
 
     try:
         resolve_ollama_bin()
     except RuntimeError as e:
         click.echo(str(e), err=True)
+
+    if click.confirm("\nDo you want to configure a datasource now?"):
+        add_datasource_config(ctx.obj["project_dir"])
+
+
+@nemory.group()
+def datasource() -> None:
+    pass
+
+
+@datasource.command(name="add")
+@click.pass_context
+def add_datasource_config(ctx: Context) -> None:
+    """
+    Add a new datasource configuration, asking all relevant information for that datasource and saving it in your Nemory project.
+    """
+    add_datasource_config_internal(ctx.obj["project_dir"])
 
 
 @nemory.command()
@@ -103,7 +123,7 @@ def retrieve(
         project_dir=ctx.obj["project_dir"],
         retrieve_text=text,
         run_name=run_name,
-        limit=limit or 50,
+        limit=limit,
         output_format=output_format,
     )
 

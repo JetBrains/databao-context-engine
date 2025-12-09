@@ -9,7 +9,7 @@ from nemory.system.properties import get_db_path
 
 
 def retrieve_embeddings(
-    project_dir: str | Path, retrieve_text: str, run_name: str | None, limit: int, output_format: str
+    project_dir: str | Path, retrieve_text: str, run_name: str | None, limit: int | None, output_format: str
 ) -> None:
     project_dir = Path(project_dir)
     ensure_project_dir(str(project_dir))

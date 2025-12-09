@@ -5,14 +5,20 @@ from nemory.project.layout import ensure_can_init_project, get_source_dir, get_c
 from nemory.project.project_config import ProjectConfig
 
 
-def init_project_dir(project_dir: str) -> None:
+def init_project_dir(project_dir: str) -> Path:
     ensure_can_init_project(project_dir=project_dir)
 
     project_path = Path(project_dir)
+
+    if not project_path.is_dir():
+        project_path.mkdir(parents=True)
+
     _create_default_src_dir(project_dir=project_path)
     _create_logs_dir(project_dir=project_path)
     _create_examples_dir(project_dir=project_path)
     _create_nemory_config_file(project_dir=project_path)
+
+    return project_path
 
 
 def _create_default_src_dir(project_dir: Path) -> None:

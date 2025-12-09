@@ -120,7 +120,7 @@ def test_postgres_plugin_divide_into_chunks():
     assert len(chunks) == 3
     assert chunks == unordered(
         EmbeddableChunk(
-            embeddable_text="test - best table",
+            embeddable_text="Table test with columns id,name",
             content=DatabaseTableChunkContent(
                 catalog_name="test",
                 schema_name="custom",
@@ -136,7 +136,7 @@ def test_postgres_plugin_divide_into_chunks():
             ),
         ),
         EmbeddableChunk(
-            embeddable_text="id",
+            embeddable_text="Column id in table test",
             content=DatabaseColumnChunkContent(
                 catalog_name="test",
                 schema_name="custom",
@@ -145,7 +145,7 @@ def test_postgres_plugin_divide_into_chunks():
             ),
         ),
         EmbeddableChunk(
-            embeddable_text="name",
+            embeddable_text="Column name in table test",
             content=DatabaseColumnChunkContent(
                 catalog_name="test",
                 schema_name="custom",

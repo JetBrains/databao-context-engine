@@ -1,5 +1,5 @@
 import pytest
-from nemory.plugins.databases.postgresql_introspector import PostgresqlIntrospector
+from nemory.plugins.databases.postgresql_introspector import PostgresqlIntrospector, PostgresConnectionProperties
 from psycopg import conninfo
 
 
@@ -7,13 +7,13 @@ from psycopg import conninfo
     "connection_config, expected_params",
     [
         pytest.param(
-            {
-                "host": "localhost",
-                "port": 5432,
-                "database": "test_db",
-                "user": "test_user",
-                "password": "secure_password",
-            },
+            PostgresConnectionProperties(
+                host="localhost",
+                port=5432,
+                database="test_db",
+                user="test_user",
+                password="secure_password",
+            ),
             {
                 "host": "localhost",
                 "port": "5432",
@@ -24,12 +24,12 @@ from psycopg import conninfo
             id="complete-config",
         ),
         pytest.param(
-            {
-                "host": "localhost",
-                "database": "test_db",
-                "user": "test_user",
-                "password": "secure_password",
-            },
+            PostgresConnectionProperties(
+                host="localhost",
+                database="test_db",
+                user="test_user",
+                password="secure_password",
+            ),
             {
                 "host": "localhost",
                 "port": "5432",
@@ -40,10 +40,10 @@ from psycopg import conninfo
             id="missing-port",
         ),
         pytest.param(
-            {
-                "host": "localhost",
-                "password": "secure_password",
-            },
+            PostgresConnectionProperties(
+                host="localhost",
+                password="secure_password",
+            ),
             {
                 "host": "localhost",
                 "port": "5432",
@@ -52,12 +52,12 @@ from psycopg import conninfo
             id="missing-database-and-user",
         ),
         pytest.param(
-            {
-                "host": "localhost",
-                "database": "test db",
-                "user": "user  name",
-                "password": "p@ss;word",
-            },
+            PostgresConnectionProperties(
+                host="localhost",
+                database="test db",
+                user="user  name",
+                password="p@ss;word",
+            ),
             {
                 "host": "localhost",
                 "port": "5432",
@@ -68,12 +68,12 @@ from psycopg import conninfo
             id="parameters-with-spaces",
         ),
         pytest.param(
-            {
-                "host": "localhost",
-                "database": "test'db",
-                "user": "user''name",
-                "password": "p@ss;word",
-            },
+            PostgresConnectionProperties(
+                host="localhost",
+                database="test'db",
+                user="user''name",
+                password="p@ss;word",
+            ),
             {
                 "host": "localhost",
                 "port": "5432",
@@ -84,13 +84,13 @@ from psycopg import conninfo
             id="parameters-with-quotes",
         ),
         pytest.param(
-            {
-                "host": "localhost",
-                "port": "1234",
-                "database": r"test\db",
-                "user": r"user\\name",
-                "password": "p@ss;word",
-            },
+            PostgresConnectionProperties(
+                host="localhost",
+                port=1234,
+                database=r"test\db",
+                user=r"user\\name",
+                password="p@ss;word",
+            ),
             {
                 "host": "localhost",
                 "port": "1234",
@@ -101,12 +101,12 @@ from psycopg import conninfo
             id="parameters-with-backslashes",
         ),
         pytest.param(
-            {
-                "host": "localhost",
-                "database": "te  st'db",
-                "user": "us''er'na:me",
-                "password": r"p@ss;wo\rd",
-            },
+            PostgresConnectionProperties(
+                host="localhost",
+                database="te  st'db",
+                user="us''er'na:me",
+                password=r"p@ss;wo\rd",
+            ),
             {
                 "host": "localhost",
                 "port": "5432",
@@ -115,6 +115,28 @@ from psycopg import conninfo
                 "password": r"p@ss;wo\rd",
             },
             id="parameters-with-mixed-escaping",
+        ),
+        pytest.param(
+            PostgresConnectionProperties(
+                host="localhost",
+                database="te  st'db",
+                user="us''er'na:me",
+                password=r"p@ss;wo\rd",
+                additional_properties={
+                    "connect_timeout": 10,
+                    "application_name": "test",
+                },
+            ),
+            {
+                "host": "localhost",
+                "port": "5432",
+                "dbname": "te  st'db",
+                "user": "us''er'na:me",
+                "password": r"p@ss;wo\rd",
+                "connect_timeout": "10",
+                "application_name": "test",
+            },
+            id="parameters-with-additional-properties",
         ),
     ],
 )
