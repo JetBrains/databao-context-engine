@@ -1,10 +1,19 @@
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from nemory.pluginlib.build_plugin import BuildPlugin
 
-PluginList = dict[str, BuildPlugin]
+class DatasourceKind(StrEnum):
+    CONFIG = "config"
+    FILE = "file"
+
+
+@dataclass(frozen=True)
+class DatasourceDescriptor:
+    path: Path
+    kind: DatasourceKind
+    main_type: str
 
 
 @dataclass(frozen=True)

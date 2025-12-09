@@ -1,6 +1,5 @@
 import logging
 
-from nemory.build_sources.internal.types import PluginList
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildFilePlugin, BuildPlugin
 
 logger = logging.getLogger(__name__)
@@ -8,6 +7,9 @@ logger = logging.getLogger(__name__)
 
 class DuplicatePluginTypeError(RuntimeError):
     """Raised when two plugins register the same <main>/<sub> plugin key."""
+
+
+PluginList = dict[str, BuildPlugin]
 
 
 def load_plugins(exclude_file_plugins: bool = False) -> PluginList:

@@ -4,11 +4,11 @@ import logging
 from datetime import datetime
 
 from nemory.build_sources.internal.plugin_execution import execute
-from nemory.build_sources.internal.types import PreparedDatasource
 from nemory.pluginlib.build_plugin import (
     BuildExecutionResult,
     BuildPlugin,
 )
+from nemory.project.types import PreparedDatasource
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.storage.models import RunDTO
 from nemory.storage.repositories.datasource_run_repository import DatasourceRunRepository

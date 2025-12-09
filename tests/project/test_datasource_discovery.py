@@ -2,11 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from nemory.build_sources.internal.datasource_discovery import (
-    DatasourceKind,
-    discover_datasources,
-    load_datasource_descriptor,
-)
+from nemory.project.datasource_discovery import discover_datasources, load_datasource_descriptor
+from nemory.project.types import DatasourceKind
 
 
 def _mk(p: Path, text: str = "x") -> Path:

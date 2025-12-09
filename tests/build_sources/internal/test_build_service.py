@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from nemory.build_sources.internal.build_service import BuildService
-from nemory.build_sources.internal.types import PreparedDatasource, PreparedFile
 from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk
+from nemory.project.types import PreparedDatasource, PreparedFile
 
 
 def mk_result(*, id="ds-1", name="foo", typ="files/md", result=None):

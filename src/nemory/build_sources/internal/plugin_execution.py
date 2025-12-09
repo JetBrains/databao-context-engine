@@ -1,6 +1,5 @@
 from typing import cast
 
-from nemory.build_sources.internal.types import PreparedConfig, PreparedDatasource
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildExecutionResult,
@@ -8,6 +7,7 @@ from nemory.pluginlib.build_plugin import (
     BuildPlugin,
 )
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin, execute_file_plugin
+from nemory.project.types import PreparedConfig, PreparedDatasource
 
 
 def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuildExecutionResult:
