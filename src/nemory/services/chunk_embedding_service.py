@@ -1,6 +1,7 @@
 from nemory.llm.descriptions.provider import DescriptionProvider
 from nemory.llm.embeddings.provider import EmbeddingProvider
 from nemory.pluginlib.build_plugin import EmbeddableChunk
+from nemory.serialisation.yaml import to_yaml_string
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.services.models import ChunkEmbedding
 from nemory.services.persistence_service import PersistenceService
@@ -35,7 +36,8 @@ class ChunkEmbeddingService:
 
         enriched_embeddings: list[ChunkEmbedding] = []
         for chunk in chunks:
-            generated_description = self._description_provider.describe(text=repr(chunk.content), context=result)
+            chunk_display_text = to_yaml_string(chunk.content)
+            generated_description = self._description_provider.describe(text=chunk_display_text, context=result)
 
             embedding_text = generated_description + "\n" + chunk.embeddable_text
 
@@ -45,6 +47,7 @@ class ChunkEmbeddingService:
                 ChunkEmbedding(
                     chunk=chunk,
                     vec=vec,
+                    display_text=chunk_display_text,
                     generated_description=generated_description,
                 )
             )

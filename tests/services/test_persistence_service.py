@@ -18,9 +18,9 @@ def test_write_chunks_and_embeddings(
 ):
     chunks = [EmbeddableChunk("A", "a"), EmbeddableChunk("B", "b"), EmbeddableChunk("C", "c")]
     chunk_embeddings = [
-        ChunkEmbedding(chunk=chunks[0], vec=_vec(0.0), generated_description="g1"),
-        ChunkEmbedding(chunk=chunks[1], vec=_vec(1.0), generated_description="g2"),
-        ChunkEmbedding(chunk=chunks[2], vec=_vec(2.0), generated_description="g3"),
+        ChunkEmbedding(chunk=chunks[0], vec=_vec(0.0), display_text=chunks[0].content, generated_description="g1"),
+        ChunkEmbedding(chunk=chunks[1], vec=_vec(1.0), display_text=chunks[1].content, generated_description="g2"),
+        ChunkEmbedding(chunk=chunks[2], vec=_vec(2.0), display_text=chunks[2].content, generated_description="g3"),
     ]
 
     datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
@@ -48,7 +48,7 @@ def test_empty_pairs_raises_value_error(persistence, run_repo, datasource_run_re
 
 def test_invalid_fk_rolls_back_entire_batch(persistence, chunk_repo, embedding_repo, table_name):
     pairs = [
-        ChunkEmbedding(chunk=EmbeddableChunk("X", "x"), vec=_vec(0.0), generated_description="g1"),
+        ChunkEmbedding(chunk=EmbeddableChunk("X", "x"), vec=_vec(0.0), display_text="x", generated_description="g1"),
     ]
 
     with pytest.raises(IntegrityError):
@@ -66,9 +66,9 @@ def test_mid_batch_failure_rolls_back(
     datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
 
     pairs = [
-        ChunkEmbedding(EmbeddableChunk("A", "a"), _vec(0.0), generated_description="a"),
-        ChunkEmbedding(EmbeddableChunk("B", "b"), _vec(1.0), generated_description="b"),
-        ChunkEmbedding(EmbeddableChunk("C", "c"), _vec(2.0), generated_description="c"),
+        ChunkEmbedding(EmbeddableChunk("A", "a"), _vec(0.0), display_text="a", generated_description="a"),
+        ChunkEmbedding(EmbeddableChunk("B", "b"), _vec(1.0), display_text="b", generated_description="b"),
+        ChunkEmbedding(EmbeddableChunk("C", "c"), _vec(2.0), display_text="c", generated_description="c"),
     ]
 
     calls = {"n": 0}
@@ -159,7 +159,9 @@ def test_write_chunks_and_embeddings_with_complex_content(
     ]
 
     pairs = [
-        ChunkEmbedding(chunk=EmbeddableChunk(et, obj), vec=_vec(float(i)), generated_description="g1")
+        ChunkEmbedding(
+            chunk=EmbeddableChunk(et, obj), vec=_vec(float(i)), display_text=str(obj), generated_description="g1"
+        )
         for i, (et, obj) in enumerate(complex_items)
     ]
 

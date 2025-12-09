@@ -1,11 +1,9 @@
 import logging
 from pathlib import Path
-from typing import TextIO
-
-import yaml
 
 from nemory.pluginlib.build_plugin import BuildExecutionResult
 from nemory.project.layout import get_output_dir
+from nemory.serialisation.yaml import write_yaml_to_stream
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +21,7 @@ def export_build_result(run_dir: Path, result: BuildExecutionResult):
     export_file_path = _get_result_export_file_path(run_dir, result)
 
     with export_file_path.open("w") as export_file:
-        _write_result_in_file(export_file, result)
+        write_yaml_to_stream(data=result, file_stream=export_file)
 
     logger.info(f"Exported result to {export_file_path.resolve()}")
 
@@ -33,12 +31,8 @@ def append_result_to_all_results(run_dir: Path, result: BuildExecutionResult):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as export_file:
         export_file.write(f"# ===== {result.type} - {result.name} =====\n")
-        _write_result_in_file(export_file, result)
+        write_yaml_to_stream(data=result, file_stream=export_file)
         export_file.write("\n")
-
-
-def _write_result_in_file(export_file: TextIO, result: BuildExecutionResult):
-    yaml.safe_dump(result._to_yaml_serializable(), export_file, sort_keys=False)
 
 
 def _get_result_export_file_path(run_dir: Path, result: BuildExecutionResult) -> Path:

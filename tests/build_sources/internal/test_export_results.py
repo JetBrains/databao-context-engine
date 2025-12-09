@@ -60,7 +60,7 @@ def test_export_build_result_writes_yaml(tmp_path: Path) -> None:
     data = yaml.safe_load(out.read_text())
     assert data["name"] == "Datasource 1"
     assert data["type"] == "databases/my-db"
-    assert data["result"] == repr(res.result)
+    assert data["result"] == res.result
 
 
 def test_append_result_to_all_results_appends(tmp_path: Path) -> None:
