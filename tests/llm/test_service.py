@@ -3,7 +3,8 @@ import json
 import pytest
 import requests
 
-from nemory.embeddings.providers.ollama.service import (
+from nemory.llm.errors import OllamaTransientError, OllamaPermanentError
+from nemory.llm.service import (
     OllamaService,
     OllamaConfig,
 )
@@ -32,23 +33,22 @@ def test_embed_alt_schema_under_data_embedding():
     assert vec == [0.1, 0.2]
 
 
-def test_embed_timeout_raises_timeouterror():
+def test_embed_timeout_raises_transienterror():
     session = _StubSession()
     session.set_next_post(requests.Timeout("boom"))
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(OllamaTransientError):
         service.embed(model="m", text="t")
 
 
-def test_embed_http_error_includes_body():
+def test_embed_permanent_error_includes_body():
     session = _StubSession()
     session.set_next_post(_StubResponse(status=500, json_obj={"error": "x"}, text="server blew up"))
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
-    with pytest.raises(requests.HTTPError) as ei:
+    with pytest.raises(OllamaPermanentError) as ei:
         service.embed(model="m", text="t")
-    assert "body:" in str(ei.value)
     assert "server blew up" in str(ei.value)
 
 
@@ -57,7 +57,7 @@ def test_embed_malformed_json_raises_valueerror():
     session.set_next_post(_StubResponse(status=200, json_obj=json.JSONDecodeError("err", "doc", 0)))
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(OllamaPermanentError):
         service.embed(model="m", text="t")
 
 
@@ -88,9 +88,8 @@ def test_pull_model_http_error_raises_with_body_snippet():
     sess.set_next_post(_StubResponse(status=500, json_obj=None, text="internal boom"))
     service = OllamaService(OllamaConfig(host="x"), session=sess)
 
-    with pytest.raises(requests.HTTPError) as ei:
+    with pytest.raises(OllamaPermanentError) as ei:
         service.pull_model(model="m", timeout=1.0)
-    assert "body:" in str(ei.value)
     assert "internal boom" in str(ei.value)
 
 
@@ -138,7 +137,7 @@ def test_pull_model_timeout_raises_timeouterror():
     session.set_next_post(requests.Timeout("slow"))
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(OllamaTransientError):
         service.pull_model(model="m", timeout=0.01)
 
 
@@ -190,6 +189,71 @@ def test_wait_until_healthy_times_out(monkeypatch):
     assert service.wait_until_healthy(timeout=0.05, poll_interval=0.01) is False
 
 
+def test_describe_happy_path():
+    session = _StubSession()
+    session.set_next_post(_StubResponse(status=200, json_obj={"response": "  some description  "}))
+    service = OllamaService(OllamaConfig(host="host", port=11434, timeout=12.0), session=session)
+
+    desc = service.describe(model="llama3", text="hello", context="world")
+
+    assert desc == "some description"
+
+    call = session.calls[0]
+    assert call["method"] == "POST"
+    assert call["url"] == "http://host:11434/api/generate"
+
+    body = call["json"]
+    assert body["model"] == "llama3"
+    assert body["stream"] is False
+    assert body["options"] == {"temperature": 0.1}
+
+
+def test_describe_missing_response_raises_valueerror():
+    session = _StubSession()
+    session.set_next_post(_StubResponse(status=200, json_obj={"not_response": "x"}))
+    service = OllamaService(OllamaConfig(host="x"), session=session)
+
+    with pytest.raises(ValueError):
+        service.describe(model="m", text="t", context="c")
+
+
+def test_describe_non_string_response_raises_valueerror():
+    session = _StubSession()
+    session.set_next_post(_StubResponse(status=200, json_obj={"response": 123}))
+    service = OllamaService(OllamaConfig(host="x"), session=session)
+
+    with pytest.raises(ValueError):
+        service.describe(model="m", text="t", context="c")
+
+
+def test_describe_timeout_raises_transient_error():
+    session = _StubSession()
+    session.set_next_post(requests.Timeout("slow"))
+    service = OllamaService(OllamaConfig(host="x"), session=session)
+
+    with pytest.raises(OllamaTransientError):
+        service.describe(model="m", text="t", context="c")
+
+
+def test_describe_http_error_raises_permanent_with_body():
+    session = _StubSession()
+    session.set_next_post(_StubResponse(status=500, json_obj=None, text="internal error"))
+    service = OllamaService(OllamaConfig(host="x"), session=session)
+
+    with pytest.raises(OllamaPermanentError) as ei:
+        service.describe(model="m", text="t", context="c")
+    assert "internal error" in str(ei.value)
+
+
+def test_describe_malformed_json_raises_permanent_error():
+    session = _StubSession()
+    session.set_next_post(_StubResponse(status=200, json_obj=json.JSONDecodeError("err", "doc", 0)))
+    service = OllamaService(OllamaConfig(host="x"), session=session)
+
+    with pytest.raises(OllamaPermanentError):
+        service.describe(model="m", text="t", context="c")
+
+
 class _StubResponse:
     def __init__(self, status: int = 200, json_obj: Any = None, text: str = ""):
         self.status_code = status
@@ -234,6 +298,15 @@ class _StubSession:
         if isinstance(tgt, Exception):
             raise tgt
         return tgt
+
+    def request(self, method, url, **kwargs):
+        method = method.upper()
+        if method == "POST":
+            return self.post(url, **kwargs)
+        elif method == "GET":
+            return self.get(url, **kwargs)
+        else:
+            raise ValueError(f"Unsupported method in _StubSession: {method}")
 
 
 _LIST_MODELS_JSON_RESPONSE_WITH_NOMIC_MODEL = {

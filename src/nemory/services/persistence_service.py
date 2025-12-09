@@ -36,14 +36,19 @@ class PersistenceService:
 
         with transaction(self._conn):
             for chunk_embedding in chunk_embeddings:
-                chunk_dto = self.create_chunk(datasource_run_id=datasource_run_id, chunk=chunk_embedding.chunk)
+                chunk_dto = self.create_chunk(
+                    datasource_run_id=datasource_run_id,
+                    chunk=chunk_embedding.chunk,
+                    generated_description=chunk_embedding.generated_description,
+                )
                 self.create_embedding(table_name=table_name, chunk_id=chunk_dto.chunk_id, vec=chunk_embedding.vec)
 
-    def create_chunk(self, *, datasource_run_id: int, chunk: EmbeddableChunk) -> ChunkDTO:
+    def create_chunk(self, *, datasource_run_id: int, chunk: EmbeddableChunk, generated_description: str) -> ChunkDTO:
         return self._chunk_repo.create(
             datasource_run_id=datasource_run_id,
             embeddable_text=chunk.embeddable_text,
             display_text=repr(chunk.content),
+            generated_description=generated_description,
         )
 
     def create_embedding(self, *, table_name: str, chunk_id: int, vec: Sequence[float]):

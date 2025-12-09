@@ -40,6 +40,7 @@ def make_chunk(
     *,
     embeddable_text: str = "sample embeddable",
     display_text: str = "display text",
+    generated_description: str = "generated description",
     datasource_run_id: int | None = None,
 ) -> ChunkDTO:
     if datasource_run_id is None:
@@ -50,6 +51,7 @@ def make_chunk(
         datasource_run_id=datasource_run_id,
         embeddable_text=embeddable_text,
         display_text=display_text,
+        generated_description=generated_description,
     )
 
 

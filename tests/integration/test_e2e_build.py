@@ -93,7 +93,7 @@ def fake_provider() -> _FakeProvider:
 @pytest.fixture
 def use_fake_provider(mocker, fake_provider):
     return mocker.patch(
-        "nemory.build_sources.internal.build_wiring.create_ollama_provider",
+        "nemory.build_sources.internal.build_wiring.create_ollama_embedding_provider",
         return_value=fake_provider,
     )
 

@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Sequence
 
-from nemory.embeddings.provider import EmbeddingProvider
+from nemory.llm.embeddings.provider import EmbeddingProvider
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.storage.repositories.run_repository import RunRepository
 from nemory.storage.repositories.vector_search_repository import VectorSearchRepository

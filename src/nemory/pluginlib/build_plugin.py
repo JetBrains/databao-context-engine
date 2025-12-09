@@ -83,7 +83,7 @@ class BaseBuildPlugin(Protocol):
     def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]: ...
 
     """
-    A method dividing the data source context into meaninful chunks that will be used when searching the context from an AI prompt.
+    A method dividing the data source context into meaningful chunks that will be used when searching the context from an AI prompt.
     """
 
 

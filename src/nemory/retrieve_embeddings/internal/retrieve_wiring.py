@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from nemory.embeddings.providers.ollama.factory import create_ollama_provider
+from nemory.llm.factory import create_ollama_service, create_ollama_embedding_provider
 from nemory.project.layout import ensure_project_dir, read_config_file
 from nemory.retrieve_embeddings.internal.retrieve_runner import retrieve
 from nemory.services.factories import create_retrieve_service
@@ -15,8 +15,9 @@ def retrieve_embeddings(
     ensure_project_dir(str(project_dir))
 
     with open_duckdb_connection(get_db_path()) as conn:
-        provider = create_ollama_provider()
-        retrieve_service = create_retrieve_service(conn, provider=provider)
+        ollama_service = create_ollama_service()
+        embedding_provider = create_ollama_embedding_provider(ollama_service)
+        retrieve_service = create_retrieve_service(conn, embedding_provider=embedding_provider)
         retrieve(
             project_dir=project_dir,
             retrieve_service=retrieve_service,

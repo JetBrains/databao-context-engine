@@ -70,6 +70,8 @@ class BuildService:
             storage_directory=str(prepared_source.path.parent),
         )
 
-        self._chunk_embedding_service.embed_chunks(datasource_run_id=datasource_run.datasource_run_id, chunks=chunks)
+        self._chunk_embedding_service.embed_chunks(
+            datasource_run_id=datasource_run.datasource_run_id, chunks=chunks, result=repr(result.result)
+        )
 
         return result

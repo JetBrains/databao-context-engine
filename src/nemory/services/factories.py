@@ -1,7 +1,8 @@
 from _duckdb import DuckDBPyConnection
 
 from nemory.build_sources.internal.build_service import BuildService
-from nemory.embeddings.provider import EmbeddingProvider
+from nemory.llm.descriptions.provider import DescriptionProvider
+from nemory.llm.embeddings.provider import EmbeddingProvider
 from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from nemory.services.chunk_embedding_service import ChunkEmbeddingService
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
@@ -55,21 +56,30 @@ def create_persistence_service(conn: DuckDBPyConnection) -> PersistenceService:
 def create_chunk_embedding_service(
     conn: DuckDBPyConnection,
     *,
-    provider: EmbeddingProvider,
+    embedding_provider: EmbeddingProvider,
+    description_provider: DescriptionProvider,
 ) -> ChunkEmbeddingService:
     resolver = create_shard_resolver(conn)
     persistence = create_persistence_service(conn)
-    return ChunkEmbeddingService(persistence_service=persistence, provider=provider, shard_resolver=resolver)
+    return ChunkEmbeddingService(
+        persistence_service=persistence,
+        embedding_provider=embedding_provider,
+        shard_resolver=resolver,
+        description_provider=description_provider,
+    )
 
 
 def create_build_service(
     conn: DuckDBPyConnection,
     *,
-    provider: EmbeddingProvider,
+    embedding_provider: EmbeddingProvider,
+    description_provider: DescriptionProvider,
 ) -> BuildService:
     run_repo = create_run_repository(conn)
     datasource_run_repo = create_datasource_run_repository(conn)
-    chunk_embedding_service = create_chunk_embedding_service(conn, provider=provider)
+    chunk_embedding_service = create_chunk_embedding_service(
+        conn, embedding_provider=embedding_provider, description_provider=description_provider
+    )
 
     return BuildService(
         run_repo=run_repo,
@@ -81,7 +91,7 @@ def create_build_service(
 def create_retrieve_service(
     conn: DuckDBPyConnection,
     *,
-    provider: EmbeddingProvider,
+    embedding_provider: EmbeddingProvider,
 ) -> RetrieveService:
     run_repo = create_run_repository(conn)
     vector_search_repo = create_vector_search_repository(conn)
@@ -91,5 +101,5 @@ def create_retrieve_service(
         run_repo=run_repo,
         vector_search_repo=vector_search_repo,
         shard_resolver=shard_resolver,
-        provider=provider,
+        provider=embedding_provider,
     )

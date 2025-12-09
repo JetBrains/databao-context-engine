@@ -8,3 +8,4 @@ from nemory.pluginlib.build_plugin import EmbeddableChunk
 class ChunkEmbedding:
     chunk: EmbeddableChunk
     vec: Sequence[float]
+    generated_description: str

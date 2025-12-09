@@ -2,8 +2,8 @@ import logging
 import os
 import subprocess
 
-from nemory.embeddings.providers.ollama.config import OllamaConfig
-from nemory.embeddings.providers.ollama.service import OllamaService
+from nemory.llm.config import OllamaConfig
+from nemory.llm.service import OllamaService
 
 logger = logging.getLogger(__name__)
 

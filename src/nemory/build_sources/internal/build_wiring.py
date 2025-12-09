@@ -2,7 +2,11 @@ import logging
 from pathlib import Path
 
 from nemory.build_sources.internal.build_runner import build
-from nemory.embeddings.providers.ollama.factory import create_ollama_provider
+from nemory.llm.factory import (
+    create_ollama_description_provider,
+    create_ollama_service,
+    create_ollama_embedding_provider,
+)
 from nemory.project.info import get_nemory_version
 from nemory.project.layout import ensure_project_dir, read_config_file
 from nemory.services.factories import (
@@ -26,8 +30,12 @@ def build_all_datasources(project_dir: str | Path):
     logger.debug(f"Starting to build datasources in project {project_dir.resolve()}")
 
     with open_duckdb_connection(get_db_path()) as conn:
-        provider = create_ollama_provider()
-        build_service = create_build_service(conn, provider=provider)
+        ollama_service = create_ollama_service()
+        embedding_provider = create_ollama_embedding_provider(ollama_service)
+        description_provider = create_ollama_description_provider(ollama_service)
+        build_service = create_build_service(
+            conn, embedding_provider=embedding_provider, description_provider=description_provider
+        )
         nemory_config = read_config_file(project_dir)
         build(
             project_dir=project_dir,

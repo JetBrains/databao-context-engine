@@ -2,15 +2,6 @@ from collections.abc import Sequence
 from typing import Protocol
 
 
-class EmbeddingProviderError(Exception): ...
-
-
-class EmbeddingProviderTransientError(EmbeddingProviderError): ...
-
-
-class EmbeddingProviderPermanentError(EmbeddingProviderError): ...
-
-
 class EmbeddingProvider(Protocol):
     @property
     def embedder(self) -> str: ...
