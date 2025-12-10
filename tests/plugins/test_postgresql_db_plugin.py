@@ -17,7 +17,7 @@ from nemory.plugins.databases.databases_types import (
     DatabaseTable,
 )
 from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
-from tests.plugins.database_test_utils import assert_database_structure
+from tests.plugins.test_database_utils import assert_database_structure
 
 
 @pytest.fixture(scope="module")

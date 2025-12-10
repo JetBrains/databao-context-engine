@@ -10,7 +10,7 @@ from nemory.plugins.databases.databases_types import (
     DatabaseColumn,
     DatabaseIntrospectionResult,
 )
-from tests.plugins.database_test_utils import assert_database_structure
+from tests.plugins.test_database_utils import assert_database_structure
 
 HTTP_PORT = 8123
 

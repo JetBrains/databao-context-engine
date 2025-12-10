@@ -7,7 +7,7 @@ from testcontainers.mysql import MySqlContainer  # type: ignore
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.databases.databases_types import DatabaseColumn
 from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
-from tests.plugins.database_test_utils import assert_database_structure
+from tests.plugins.test_database_utils import assert_database_structure
 
 
 @pytest.fixture(scope="module")

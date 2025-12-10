@@ -7,7 +7,7 @@ from testcontainers.mssql import SqlServerContainer  # type: ignore
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.databases.databases_types import DatabaseColumn
 from nemory.plugins.mssql_db_plugin import MSSQLDbPlugin
-from tests.plugins.database_test_utils import assert_database_structure
+from tests.plugins.test_database_utils import assert_database_structure
 
 MSSQL_HTTP_PORT = 1433
 # doesn't work with mssql_container.get_container_host_ip (localhost)
