@@ -26,7 +26,7 @@ def assert_database_structure(result: DatabaseIntrospectionResult, expected_cata
         assert_keys(actual_map, expected_map, path, "columns")
         for col_name, expected_column in expected_map.items():
             if actual_map[col_name] != expected_column:
-                fail(f"Column {col_name} mismatch: expected={expected_column}, got={actual_map[col_name]}", path)
+                assert actual_map[col_name] == expected_column, f"Column {col_name} mismatch at {'.'.join(path)}"
 
     actual_catalogs = {c.name: c for c in result.catalogs}
     assert_keys(actual_catalogs, expected_catalogs, [], "catalogs")
