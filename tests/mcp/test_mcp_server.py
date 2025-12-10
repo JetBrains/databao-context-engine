@@ -23,7 +23,7 @@ def anyio_backend(request):
 
 @asynccontextmanager
 async def run_mcp_server_stdio_test(
-    project_dir: str,
+    project_dir: Path,
     nemory_path: Path,
     run_name: str | None = None,
 ):
@@ -38,7 +38,7 @@ async def run_mcp_server_stdio_test(
     async with stdio_client(
         StdioServerParameters(
             command="uv",
-            args=["run", "nemory", "--project-dir", project_dir, "mcp"] + mcp_args,
+            args=["run", "nemory", "--project-dir", str(project_dir.resolve()), "mcp"] + mcp_args,
             env={"NEMORY_PATH": str(nemory_path.resolve())},
         )
     ) as (
@@ -52,7 +52,7 @@ async def run_mcp_server_stdio_test(
 
 @asynccontextmanager
 async def run_mcp_server_http_test(
-    project_dir: str,
+    project_dir: Path,
     nemory_path: Path,
     run_name: str | None = None,
     host: str | None = None,
@@ -122,7 +122,7 @@ def _is_connection_error(e: Exception) -> bool:
 
 @pytest.mark.anyio
 async def test_run_mcp_server__list_tools(nemory_path: Path, project_with_runs: ProjectWithRuns):
-    async with run_mcp_server_stdio_test(str(project_with_runs.project_dir), nemory_path=nemory_path) as session:
+    async with run_mcp_server_stdio_test(project_with_runs.project_dir, nemory_path=nemory_path) as session:
         # List available tools
         tools = await session.list_tools()
         assert len(tools.tools) == 2
@@ -131,7 +131,7 @@ async def test_run_mcp_server__list_tools(nemory_path: Path, project_with_runs: 
 
 @pytest.mark.anyio
 async def test_run_mcp_server__all_results_tool_with_no_run_name(nemory_path: Path, project_with_runs: ProjectWithRuns):
-    async with run_mcp_server_stdio_test(str(project_with_runs.project_dir), nemory_path=nemory_path) as session:
+    async with run_mcp_server_stdio_test(project_with_runs.project_dir, nemory_path=nemory_path) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (
             all_results.content[0].text
@@ -146,7 +146,7 @@ async def test_run_mcp_server__all_results_tool_with_run_name(nemory_path: Path,
     run_name = project_with_runs.runs[2].run_dir.name
 
     async with run_mcp_server_stdio_test(
-        str(project_with_runs.project_dir), nemory_path=nemory_path, run_name=run_name
+        project_with_runs.project_dir, nemory_path=nemory_path, run_name=run_name
     ) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (
@@ -158,7 +158,7 @@ async def test_run_mcp_server__all_results_tool_with_run_name(nemory_path: Path,
 @pytest.mark.anyio
 async def test_run_mcp_server__with_custom_host_and_port(nemory_path: Path, project_with_runs: ProjectWithRuns):
     async with run_mcp_server_http_test(
-        project_dir=str(project_with_runs.project_dir), nemory_path=nemory_path, host="localhost", port=8001
+        project_dir=project_with_runs.project_dir, nemory_path=nemory_path, host="localhost", port=8001
     ) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
         assert (

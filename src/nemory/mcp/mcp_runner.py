@@ -11,19 +11,19 @@ logger = logging.getLogger(__name__)
 
 
 def run_mcp_server(
-    project_dir: str,
+    project_dir: Path,
     run_name: str | None,
     transport: McpTransport,
     host: str | None = None,
     port: int | None = None,
 ) -> None:
-    project_path = ensure_project_dir(project_dir=project_dir)
+    ensure_project_dir(project_dir=project_dir)
     if run_name is None:
-        run_name = _get_latest_run_name(project_path)
+        run_name = _get_latest_run_name(project_dir)
 
-    logger.info(f"Using {run_name} from project {project_path.resolve()}")
+    logger.info(f"Using {run_name} from project {project_dir.resolve()}")
 
-    McpServer(project_path, run_name, host, port).run(transport)
+    McpServer(project_dir, run_name, host, port).run(transport)
 
 
 def _get_latest_run_name(project_dir: Path) -> str:

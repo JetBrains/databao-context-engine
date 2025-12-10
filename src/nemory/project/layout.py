@@ -10,46 +10,42 @@ CONFIG_FILE_NAME = "nemory.ini"
 ALL_RESULTS_FILE_NAME = "all_results.yaml"
 
 
-def ensure_project_dir(project_dir: str, should_be_initialised: bool = True) -> Path:
-    project_path = Path(project_dir)
-
-    if not project_path.is_dir():
-        raise ValueError(f"The current project directory is not valid: {project_path.resolve()}")
+def ensure_project_dir(project_dir: Path, should_be_initialised: bool = True) -> Path:
+    if not project_dir.is_dir():
+        raise ValueError(f"The current project directory is not valid: {project_dir.resolve()}")
 
     if should_be_initialised:
-        if not get_config_file(project_path).is_file():
+        if not get_config_file(project_dir).is_file():
             raise ValueError(
-                f"The current project directory has not been initialised. It should contain a config file. [project_dir: {project_path.resolve()}]"
+                f"The current project directory has not been initialised. It should contain a config file. [project_dir: {project_dir.resolve()}]"
             )
 
-        if not get_source_dir(project_path).is_dir():
+        if not get_source_dir(project_dir).is_dir():
             raise ValueError(
-                f"The current project directory has not been initialised. It should contain a src directory. [project_dir: {project_path.resolve()}]"
+                f"The current project directory has not been initialised. It should contain a src directory. [project_dir: {project_dir.resolve()}]"
             )
 
-    return project_path
+    return project_dir
 
 
 def is_project_dir_valid(project_dir: Path) -> bool:
     return get_config_file(project_dir).is_file() and get_source_dir(project_dir).is_dir()
 
 
-def ensure_can_init_project(project_dir: str) -> bool:
-    project_path = Path(project_dir)
-
-    if get_source_dir(project_path).is_dir():
+def ensure_can_init_project(project_dir: Path) -> bool:
+    if get_source_dir(project_dir).is_dir():
         raise ValueError(
-            f"Can't initialise a Nemory project in a folder that already contains a src directory. [project_dir: {project_path.resolve()}]"
+            f"Can't initialise a Nemory project in a folder that already contains a src directory. [project_dir: {project_dir.resolve()}]"
         )
 
-    if get_config_file(project_path).is_file():
+    if get_config_file(project_dir).is_file():
         raise ValueError(
-            f"Can't initialise a Nemory project in a folder that already contains a Nemory config file. [project_dir: {project_path.resolve()}]"
+            f"Can't initialise a Nemory project in a folder that already contains a Nemory config file. [project_dir: {project_dir.resolve()}]"
         )
 
-    if get_examples_dir(project_path).is_file():
+    if get_examples_dir(project_dir).is_file():
         raise ValueError(
-            f"Can't initialise a Nemory project in a folder that already contains an examples dir. [project_dir: {project_path.resolve()}]"
+            f"Can't initialise a Nemory project in a folder that already contains an examples dir. [project_dir: {project_dir.resolve()}]"
         )
 
     return True
@@ -73,8 +69,8 @@ def get_run_dir(project_dir: Path, run_name: str) -> Path:
     return run_dir
 
 
-def get_examples_dir(project_path: Path) -> Path:
-    return project_path.joinpath(EXAMPLES_FOLDER_NAME)
+def get_examples_dir(project_dir: Path) -> Path:
+    return project_dir.joinpath(EXAMPLES_FOLDER_NAME)
 
 
 def get_config_file(project_dir: Path) -> Path:

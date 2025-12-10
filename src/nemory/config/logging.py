@@ -8,13 +8,12 @@ import yaml
 from nemory.project.layout import get_logs_dir, is_project_dir_valid
 
 
-def configure_logging(verbose: bool, quiet: bool, project_dir: str) -> None:
+def configure_logging(verbose: bool, quiet: bool, project_dir: Path) -> None:
     with Path(__file__).parent.joinpath("log_config.yaml").open(mode="r") as log_config_file:
         log_config = yaml.safe_load(log_config_file)
 
-        project_path = Path(project_dir)
-        if is_project_dir_valid(project_path):
-            logs_dir_path = get_logs_dir(project_path)
+        if is_project_dir_valid(project_dir):
+            logs_dir_path = get_logs_dir(project_dir)
             logs_dir_path.mkdir(exist_ok=True)
 
             file_handler_name = "logFile"

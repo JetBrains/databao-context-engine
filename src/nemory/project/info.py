@@ -7,7 +7,7 @@ from nemory.project.layout import is_project_dir_valid, read_config_file
 from nemory.system.properties import get_nemory_path
 
 
-def get_command_info(project_dir: str) -> str:
+def get_command_info(project_dir: Path) -> str:
     info_lines = []
     info_lines.append(f"Nemory version: {get_nemory_version()}")
     info_lines.append(f"Nemory storage dir: {get_nemory_path()}")
@@ -19,12 +19,11 @@ def get_command_info(project_dir: str) -> str:
 
     info_lines.append("")
 
-    project_path = Path(project_dir)
-    if is_project_dir_valid(project_path):
-        info_lines.append(f"Project dir: {project_dir}")
-        info_lines.append(f"Project ID: {read_config_file(project_path).project_id}")
+    if is_project_dir_valid(project_dir):
+        info_lines.append(f"Project dir: {project_dir.resolve()}")
+        info_lines.append(f"Project ID: {read_config_file(project_dir).project_id}")
     else:
-        info_lines.append(f"Project not initialised at {project_dir}")
+        info_lines.append(f"Project not initialised at {project_dir.resolve()}")
 
     return os.linesep.join(info_lines)
 

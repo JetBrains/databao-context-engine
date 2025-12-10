@@ -113,6 +113,6 @@ def table_name(conn):
 def project_path(tmp_path) -> Path:
     tmp_project_dir = tmp_path.joinpath("project_dir")
     tmp_project_dir.mkdir(parents=True, exist_ok=True)
-    init_project_dir(project_dir=str(tmp_project_dir))
+    init_project_dir(project_dir=tmp_project_dir)
 
     return tmp_project_dir

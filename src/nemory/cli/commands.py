@@ -31,14 +31,16 @@ def nemory(ctx: Context, verbose: bool, quiet: bool, project_dir: str | None) ->
         exit(1)
 
     if project_dir is None:
-        project_dir = str(Path.cwd())
+        project_path = Path.cwd()
+    else:
+        project_path = Path(project_dir)
 
-    configure_logging(verbose=verbose, quiet=quiet, project_dir=project_dir)
+    configure_logging(verbose=verbose, quiet=quiet, project_dir=project_path)
 
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["quiet"] = quiet
-    ctx.obj["project_dir"] = project_dir
+    ctx.obj["project_dir"] = project_path
 
     migrate()
 

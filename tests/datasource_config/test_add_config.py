@@ -22,7 +22,7 @@ def test_add_datasource_config__with_no_custom_properties(project_path: Path):
     inputs = ["dummy/dummy_default", "my datasource name"]
 
     with cli_runner.isolation(input=os.linesep.join(inputs)):
-        add_datasource_config(str(project_path))
+        add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -45,7 +45,7 @@ def test_add_datasource_config__with_all_values_filled(project_path: Path):
     ]
 
     with cli_runner.isolation(input=os.linesep.join(inputs)):
-        add_datasource_config(str(project_path))
+        add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("databases").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -78,7 +78,7 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
     ]
 
     with cli_runner.isolation(input="\n".join(inputs)):
-        add_datasource_config(str(project_path))
+        add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("databases").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -111,7 +111,7 @@ def test_add_datasource_config__with_custom_property_list(project_path: Path):
     ]
 
     with cli_runner.isolation(input="\n".join(inputs)):
-        add_datasource_config(str(project_path))
+        add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -146,7 +146,7 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
     ]
 
     with cli_runner.isolation(input="\n".join(inputs)):
-        add_datasource_config(str(project_path))
+        add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()

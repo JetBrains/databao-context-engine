@@ -18,14 +18,13 @@ from nemory.system.properties import get_db_path
 logger = logging.getLogger(__name__)
 
 
-def build_all_datasources(project_dir: str | Path):
+def build_all_datasources(project_dir: Path):
     """
     Public build entrypoint
     - Instantiates the build service
     - Delegates the actual build logic to the build runner
     """
-    project_dir = Path(project_dir)
-    ensure_project_dir(str(project_dir))
+    ensure_project_dir(project_dir)
 
     logger.debug(f"Starting to build datasources in project {project_dir.resolve()}")
 

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Any, cast
 
 import click
@@ -15,10 +16,10 @@ from nemory.project.layout import (
 )
 
 
-def add_datasource_config(project_dir: str) -> None:
-    project_path = ensure_project_dir(project_dir)
+def add_datasource_config(project_dir: Path) -> None:
+    ensure_project_dir(project_dir)
 
-    click.echo(f"We will guide you to add a new datasource in your Nemory project, at {project_path.resolve()}")
+    click.echo(f"We will guide you to add a new datasource in your Nemory project, at {project_dir.resolve()}")
 
     all_datasource_plugins = load_plugins(exclude_file_plugins=True)
 
@@ -30,13 +31,13 @@ def add_datasource_config(project_dir: str) -> None:
     datasource_name = click.prompt("Datasource name?", type=str)
 
     config_folder, config_type = config_full_type.split("/")
-    ensure_datasource_config_file_doesnt_exist(project_path, config_folder, datasource_name)
+    ensure_datasource_config_file_doesnt_exist(project_dir, config_folder, datasource_name)
     basic_config = {"type": config_type, "name": datasource_name}
 
     config_for_plugin = _create_config_for_plugin(cast(BuildDatasourcePlugin, all_datasource_plugins[config_full_type]))
 
     config_content = config_content_to_yaml_string(basic_config | config_for_plugin)
-    config_file_path = create_datasource_config_file(project_path, config_folder, datasource_name, config_content)
+    config_file_path = create_datasource_config_file(project_dir, config_folder, datasource_name, config_content)
 
     click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file_path}")
 

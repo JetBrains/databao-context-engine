@@ -9,10 +9,9 @@ from nemory.system.properties import get_db_path
 
 
 def retrieve_embeddings(
-    project_dir: str | Path, retrieve_text: str, run_name: str | None, limit: int | None, output_format: str
+    project_dir: Path, retrieve_text: str, run_name: str | None, limit: int | None, output_format: str
 ) -> None:
-    project_dir = Path(project_dir)
-    ensure_project_dir(str(project_dir))
+    ensure_project_dir(project_dir)
 
     with open_duckdb_connection(get_db_path()) as conn:
         ollama_service = create_ollama_service()
