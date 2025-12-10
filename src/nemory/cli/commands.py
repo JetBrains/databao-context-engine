@@ -69,7 +69,7 @@ def init(ctx: Context) -> None:
         click.echo(str(e), err=True)
 
     if click.confirm("\nDo you want to configure a datasource now?"):
-        add_datasource_config(ctx.obj["project_dir"])
+        add_datasource_config_internal(ctx.obj["project_dir"])
 
 
 @nemory.group()
