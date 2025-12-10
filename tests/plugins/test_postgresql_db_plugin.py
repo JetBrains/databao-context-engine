@@ -17,6 +17,7 @@ from nemory.plugins.databases.databases_types import (
     DatabaseTable,
 )
 from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
+from tests.plugins.test_database_utils import assert_database_structure
 
 
 @pytest.fixture(scope="module")
@@ -47,33 +48,18 @@ def test_postgres_plugin_execute(postgres_container_with_columns: PostgresContai
     config_file = _create_config_file_from_container(postgres_container_with_columns)
 
     execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
-
-    assert execution_result.result == DatabaseIntrospectionResult(
-        catalogs=[
-            DatabaseCatalog(
-                name="test",
-                schemas=[
-                    DatabaseSchema(
-                        name="public",
-                        tables=[],
-                    ),
-                    DatabaseSchema(
-                        name="custom",
-                        tables=[
-                            DatabaseTable(
-                                name="test",
-                                columns=[
-                                    DatabaseColumn(name="id", type="int4", nullable=False),
-                                    DatabaseColumn(name="name", type="varchar", nullable=True),
-                                ],
-                                samples=[],
-                            )
-                        ],
-                    ),
-                ],
-            )
-        ]
-    )
+    expected_catalogs = {
+        "test": {
+            "public": {},
+            "custom": {
+                "test": [
+                    DatabaseColumn(name="id", type="int4", nullable=False),
+                    DatabaseColumn(name="name", type="varchar", nullable=True),
+                ]
+            },
+        }
+    }
+    assert_database_structure(execution_result.result, expected_catalogs)
 
 
 def test_postgres_plugin_divide_into_chunks():
