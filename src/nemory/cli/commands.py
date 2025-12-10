@@ -33,7 +33,7 @@ def nemory(ctx: Context, verbose: bool, quiet: bool, project_dir: str | None) ->
     if project_dir is None:
         project_path = Path.cwd()
     else:
-        project_path = Path(project_dir)
+        project_path = Path(project_dir).expanduser()
 
     configure_logging(verbose=verbose, quiet=quiet, project_dir=project_path)
 
