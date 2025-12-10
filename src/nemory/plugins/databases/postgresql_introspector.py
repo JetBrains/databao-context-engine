@@ -1,4 +1,4 @@
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 import psycopg
 from psycopg import Connection
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from nemory.pluginlib.config_properties import ConfigPropertyAnnotation
 from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from nemory.plugins.databases.databases_types import DatabaseColumn
+from nemory.plugins.databases.databases_types import DatabaseColumn, DatabasePartitionInfo
 
 
 class PostgresConnectionProperties(BaseModel):
@@ -53,17 +53,64 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
 
     def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = """
-        SELECT table_name, column_name, is_nullable, udt_name, data_type
-        FROM information_schema.columns
-        WHERE table_catalog = %s AND table_schema = %s
+        SELECT rel.relname    as table_name,
+               att.attname    as column_name,
+               not att.attnotnull as is_nullable,
+               typ.typname    as type_name
+        FROM pg_catalog.pg_attribute att
+                 JOIN pg_catalog.pg_class rel ON att.attrelid = rel.oid
+                 JOIN pg_catalog.pg_namespace nsp ON rel.relnamespace = nsp.oid
+                 JOIN pg_catalog.pg_type typ ON att.atttypid = typ.oid
+        WHERE
+            -- filter out system columns
+            att.attnum >= 1 AND
+            -- filter out partitions
+            not rel.relispartition 
+          AND
+            nsp.nspname = %s
         """
-        return SQLQuery(sql, (catalog, schema))
+        return SQLQuery(sql, [schema])
 
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
         return DatabaseColumn(
             name=row["column_name"],
-            type=row["udt_name"],
-            nullable=row["is_nullable"].upper() == "YES",
+            type=row["type_name"],
+            nullable=row["is_nullable"],
+        )
+
+    def _sql_partitions_for_schema(self, catalog: str, schema: str) -> SQLQuery:
+        sql = """
+        WITH partitions AS
+                 (SELECT parentrel.oid, array_agg(childrel.relname) as partition_tables
+                  FROM pg_catalog.pg_class parentrel
+                           JOIN pg_catalog.pg_inherits inh ON inh.inhparent = parentrel.oid
+                           JOIN pg_catalog.pg_class childrel ON inh.inhrelid = childrel.oid
+                  GROUP BY parentrel.oid)
+        SELECT rel.relname            as table_name,
+               CASE part.partstrat
+                   WHEN 'h' THEN 'hash partitioned'
+                   WHEN 'l' THEN 'list partitioned'
+                   WHEN 'r' THEN 'range partitioned'
+                   END                AS partitioning_strategy,
+               array_agg(att.attname) as columns_in_partition_key,
+               partitions.partition_tables
+        FROM pg_catalog.pg_partitioned_table part
+                 JOIN pg_catalog.pg_class rel ON part.partrelid = rel.oid
+                 JOIN pg_catalog.pg_namespace nsp ON rel.relnamespace = nsp.oid
+                 JOIN pg_catalog.pg_attribute att ON att.attrelid = rel.oid AND att.attnum = ANY (part.partattrs)
+                 JOIN partitions ON partitions.oid = rel.oid
+        WHERE nsp.nspname = %s
+        GROUP BY rel.relname, part.partstrat, partitions.partition_tables
+        """
+        return SQLQuery(sql, [schema])
+
+    def _construct_partition_info(self, row: dict[str, Any]) -> DatabasePartitionInfo:
+        return DatabasePartitionInfo(
+            meta={
+                "partitioning_strategy": row["partitioning_strategy"],
+                "columns_in_partition_key": row["columns_in_partition_key"],
+            },
+            partition_tables=row["partition_tables"],
         )
 
     def _create_connection_string_for_config(self, connection_config: PostgresConnectionProperties) -> str:

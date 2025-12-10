@@ -1,3 +1,4 @@
+import contextlib
 from datetime import datetime
 from typing import Any, Mapping
 
@@ -13,6 +14,7 @@ from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
     DatabaseColumn,
     DatabaseIntrospectionResult,
+    DatabasePartitionInfo,
     DatabaseSchema,
     DatabaseTable,
 )
@@ -28,38 +30,121 @@ def postgres_container():
     container.stop()
 
 
-@pytest.fixture(scope="module")
-def postgres_container_with_columns(postgres_container):
-    connection_url = postgres_container.get_connection_url()
-    with psycopg.connect(connection_url) as conn:
+@pytest.fixture
+def create_db_schema(create_pg_conn, request):
+    @contextlib.contextmanager
+    def _create_db_schema(desired_schema_name: str | None = None):
+        actual_schema_name = desired_schema_name or request.function.__name__
+        conn = create_pg_conn()
+        conn.execute(f"CREATE SCHEMA {actual_schema_name};")
+        conn.commit()
+        conn.close()
+        try:
+            yield actual_schema_name
+        finally:
+            new_conn = create_pg_conn()
+            new_conn.execute(f"DROP SCHEMA IF EXISTS {actual_schema_name} CASCADE;")
+            new_conn.commit()
+            new_conn.close()
+
+    return _create_db_schema
+
+
+@pytest.fixture
+def create_pg_conn(postgres_container: PostgresContainer):
+    def create_connection():
+        connection_url = postgres_container.get_connection_url()
+        conn = psycopg.connect(connection_url)
+        return conn
+
+    yield create_connection
+
+
+def _init_with_test_table(create_pg_conn, schema_name):
+    with create_pg_conn() as conn:
         cursor = conn.cursor()
-
-        cursor.execute("""
-                CREATE SCHEMA custom;
-                CREATE TABLE custom.test (id int not null, name varchar(255) null)
-                """)
-
-    return postgres_container
+        cursor.execute(f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null)")
 
 
-def test_postgres_plugin_execute(postgres_container_with_columns: PostgresContainer):
-    plugin = PostgresqlDbPlugin()
+def test_postgres_plugin_execute(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+    schema_name = "custom"
+    with create_db_schema(schema_name):
+        _init_with_test_table(create_pg_conn, schema_name)
+        plugin = PostgresqlDbPlugin()
 
-    config_file = _create_config_file_from_container(postgres_container_with_columns)
+        config_file = _create_config_file_from_container(postgres_container)
 
-    execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
-    expected_catalogs = {
-        "test": {
-            "public": {},
-            "custom": {
-                "test": [
-                    DatabaseColumn(name="id", type="int4", nullable=False),
-                    DatabaseColumn(name="name", type="varchar", nullable=True),
-                ]
-            },
+        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        expected_catalogs = {
+            "test": {
+                "public": {},
+                "custom": {
+                    "test": [
+                        DatabaseColumn(name="id", type="int4", nullable=False),
+                        DatabaseColumn(name="name", type="varchar", nullable=True),
+                    ]
+                },
+            }
         }
-    }
-    assert_database_structure(execution_result.result, expected_catalogs)
+        assert_database_structure(execution_result.result, expected_catalogs)
+
+
+def test_postgres_partitions(create_pg_conn, create_db_schema, postgres_container):
+    with create_db_schema() as db_schema:
+        with create_pg_conn() as conn:
+            conn.execute(f"""
+                        CREATE TABLE {db_schema}.test_partitions (id int not null, name varchar(255) null)
+                        PARTITION BY RANGE (id);
+
+                        CREATE TABLE {db_schema}.test_partitions_1 PARTITION OF {db_schema}.test_partitions
+                        FOR VALUES FROM (0) TO (10);
+
+                        CREATE TABLE {db_schema}.test_partitions_2 PARTITION OF {db_schema}.test_partitions
+                        FOR VALUES FROM (10) TO (20);
+                    """)
+
+        plugin = PostgresqlDbPlugin()
+
+        config_file = _create_config_file_from_container(postgres_container)
+
+        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+
+        assert execution_result.result == DatabaseIntrospectionResult(
+            [
+                DatabaseCatalog(
+                    "test",
+                    [
+                        DatabaseSchema(
+                            name="public",
+                            tables=[],
+                        ),
+                        DatabaseSchema(
+                            db_schema,
+                            tables=[
+                                DatabaseTable(
+                                    "test_partitions",
+                                    [
+                                        DatabaseColumn("id", "int4", False),
+                                        DatabaseColumn("name", "varchar", True),
+                                    ],
+                                    [],
+                                    partition_info=DatabasePartitionInfo(
+                                        meta={
+                                            "columns_in_partition_key": ["id"],
+                                            "partitioning_strategy": "range partitioned",
+                                        },
+                                        partition_tables=[
+                                            "test_partitions_1",
+                                            "test_partitions_2",
+                                        ],
+                                    ),
+                                )
+                            ],
+                        ),
+                    ],
+                )
+            ]
+        )
 
 
 def test_postgres_plugin_divide_into_chunks():

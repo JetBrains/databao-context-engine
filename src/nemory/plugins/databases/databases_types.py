@@ -11,10 +11,17 @@ class DatabaseColumn:
 
 
 @dataclass
+class DatabasePartitionInfo:
+    meta: dict[str, Any]
+    partition_tables: list[str]
+
+
+@dataclass
 class DatabaseTable:
     name: str
     columns: list[DatabaseColumn]
     samples: list[dict[str, Any]]
+    partition_info: DatabasePartitionInfo | None = None
     description: str | None = None
 
 

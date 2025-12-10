@@ -10,6 +10,7 @@ from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
     DatabaseColumn,
     DatabaseIntrospectionResult,
+    DatabasePartitionInfo,
     DatabaseSchema,
     DatabaseTable,
 )
@@ -33,11 +34,17 @@ class BaseIntrospector[T](ABC):
                 schemas: list[DatabaseSchema] = []
                 for schema in schemas_per_catalog.get(catalog, []):
                     columns_per_table = self._collect_columns_for_schema(connection, catalog, schema)
+                    partition_infos_per_table = self._collect_partitions_for_schema(connection, catalog, schema)
                     schemas.append(
                         DatabaseSchema(
                             name=schema,
                             tables=[
-                                DatabaseTable(name=table, columns=columns_per_table[table], samples=[])
+                                DatabaseTable(
+                                    name=table,
+                                    columns=columns_per_table[table],
+                                    samples=[],
+                                    partition_info=partition_infos_per_table.get(table),
+                                )
                                 for table in columns_per_table
                             ],
                         )
@@ -94,17 +101,32 @@ class BaseIntrospector[T](ABC):
     def _collect_columns_for_schema(self, connection, catalog: str, schema: str):
         sql_query = self._sql_columns_for_schema(catalog, schema)
         rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
-
-        tables: dict[str, list] = {}
+        columns: dict[str, list] = {}
 
         for row in rows:
             table_name = row.get("table_name")
             if not table_name:
                 continue
 
-            tables.setdefault(table_name, []).append(self._construct_column(row))
+            columns.setdefault(table_name, []).append(self._construct_column(row))
 
-        return tables
+        return columns
+
+    def _collect_partitions_for_schema(self, connection, catalog: str, schema: str):
+        sql_query = self._sql_partitions_for_schema(catalog, schema)
+        partitions: dict[str, DatabasePartitionInfo] = {}
+        if not sql_query:
+            return partitions
+
+        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
+        for row in rows:
+            table_name = row.get("table_name")
+            if not table_name:
+                continue
+            partitions[table_name] = self._construct_partition_info(row)
+
+        return partitions
 
     @abstractmethod
     def _connect(self, file_config: T):
@@ -124,6 +146,12 @@ class BaseIntrospector[T](ABC):
 
     @abstractmethod
     def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
+        raise NotImplementedError
+
+    def _sql_partitions_for_schema(self, catalog: str, schema: str) -> SQLQuery | None:
+        return None
+
+    def _construct_partition_info(self, row: dict[str, Any]) -> DatabasePartitionInfo:
         raise NotImplementedError
 
     def _resolve_pseudo_catalog_name(self, file_config: T) -> str:
