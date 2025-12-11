@@ -1,5 +1,7 @@
 import logging
 import os
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -14,6 +16,28 @@ from nemory.project.types import PreparedConfig
 logger = logging.getLogger(__name__)
 
 
+class ValidationStatus(Enum):
+    VALID = "Valid"
+    INVALID = "Invalid"
+    UNKNOWN = "Unknown"
+
+
+@dataclass(kw_only=True)
+class ValidationResult:
+    validation_status: ValidationStatus
+    summary: str | None
+    full_message: str | None = None
+
+    def format(self, show_summary_only: bool = True) -> str:
+        formatted_string = str(self.validation_status.value)
+        if self.summary:
+            formatted_string += f" - {self.summary}"
+        if not show_summary_only and self.full_message:
+            formatted_string += f"{os.linesep}{self.full_message}"
+
+        return formatted_string
+
+
 def validate_datasource_config(project_dir: Path, *, datasource_config_files: list[str] | None = None):
     ensure_project_dir(project_dir)
 
@@ -22,7 +46,7 @@ def validate_datasource_config(project_dir: Path, *, datasource_config_files: li
     resuls_as_string = (
         os.linesep.join(
             [
-                f"{datasource_path}: {_truncate_validation_result(validation_result) if len(results) > 1 else validation_result}"
+                f"{datasource_path}: {validation_result.format(show_summary_only=len(results) > 1)}"
                 for datasource_path, validation_result in results.items()
             ]
         )
@@ -31,29 +55,17 @@ def validate_datasource_config(project_dir: Path, *, datasource_config_files: li
     )
     logger.info(f"Validation complete: {os.linesep}{resuls_as_string}")
 
-    if len(results) > 1:
-        has_invalid_results = next(
-            (True for result_string in results.values() if not result_string.startswith("Valid")), False
+    if len(results) > 1 and any(
+        result for result in results.values() if result.validation_status == ValidationStatus.INVALID
+    ):
+        logger.info(
+            'To get more details about the invalid configuration, try re-running this command specifying only one datasource to validate.\n e.g: nemory datasource validate "my-source-folder/my-config-name.yaml"'
         )
-        if has_invalid_results:
-            logger.info(
-                'To get more details about the invalid configuration, try re-running this command specifying only one datasource to validate.\n e.g: nemory datasource validate "my-source-folder/my-config-name.yaml"'
-            )
-
-
-def _truncate_validation_result(validation_result: str) -> str:
-    """
-    Results returned by the plugin could be quite long, making it very hard to read when presented as a list.
-    This function allows to truncate that result to be able to print it on one line.
-    """
-    first_line = validation_result.split(os.linesep)[0]
-
-    return first_line if len(first_line) < 80 else (first_line[:79] + "…")
 
 
 def _validate_datasource_config(
     project_dir: Path, *, datasource_config_files: list[str] | None = None
-) -> dict[str, str]:
+) -> dict[str, ValidationResult]:
     src_dir = get_source_dir(project_dir)
 
     datasources_to_traverse = None
@@ -72,7 +84,9 @@ def _validate_datasource_config(
             logger.debug(
                 "No plugin for '%s' (datasource=%s) — skipping.", prepared_source.full_type, prepared_source.path
             )
-            result[result_key] = "Invalid - No compatible plugin found"
+            result[result_key] = ValidationResult(
+                validation_status=ValidationStatus.INVALID, summary="No compatible plugin found"
+            )
             continue
 
         if isinstance(prepared_source, PreparedConfig) and isinstance(plugin, BuildDatasourcePlugin):
@@ -84,7 +98,7 @@ def _validate_datasource_config(
                     datasource_name=prepared_source.datasource_name,
                 )
 
-                result[result_key] = "Valid"
+                result[result_key] = ValidationResult(validation_status=ValidationStatus.VALID, summary=None)
             except Exception as e:
                 logger.debug(
                     f"Connection failed for {prepared_source.datasource_name} with error: {str(e)}",
@@ -92,10 +106,21 @@ def _validate_datasource_config(
                     stack_info=True,
                 )
                 if isinstance(e, ValidationError):
-                    result[result_key] = "Invalid - Config file is invalid"
+                    result[result_key] = ValidationResult(
+                        validation_status=ValidationStatus.INVALID,
+                        summary="Config file is invalid",
+                        full_message=str(e),
+                    )
                 elif isinstance(e, NotImplementedError | NotSupportedError):
-                    result[result_key] = "Unknown - Plugin doesn't support validating its config"
+                    result[result_key] = ValidationResult(
+                        validation_status=ValidationStatus.UNKNOWN,
+                        summary="Plugin doesn't support validating its config",
+                    )
                 else:
-                    result[result_key] = f"Invalid - {str(e)}"
+                    result[result_key] = ValidationResult(
+                        validation_status=ValidationStatus.INVALID,
+                        summary="Connection with the datasource can not be established",
+                        full_message=str(e),
+                    )
 
     return result
