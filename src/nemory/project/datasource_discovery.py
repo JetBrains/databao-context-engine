@@ -12,8 +12,11 @@ logger = logging.getLogger(__name__)
 
 def traverse_datasources(
     project_dir: Path,
+    *,
+    datasources_to_traverse: list[DatasourceDescriptor] | None = None,
 ) -> Iterator[PreparedDatasource]:
-    datasources = discover_datasources(project_dir)
+    datasources = discover_datasources(project_dir) if datasources_to_traverse is None else datasources_to_traverse
+
     if not datasources:
         logger.info("No sources discovered under %s", project_dir)
         return
@@ -54,6 +57,32 @@ def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
             datasource = load_datasource_descriptor(path, main_type)
             if datasource is not None:
                 datasources.append(datasource)
+
+    return datasources
+
+
+def get_datasource_descriptors(project_dir: Path, datasource_config_files: list[str]):
+    src = get_source_dir(project_dir)
+    if not src.exists() or not src.is_dir():
+        raise ValueError(f"src directory does not exist in {project_dir}")
+
+    datasources: list[DatasourceDescriptor] = []
+    for datasource_config_file in datasource_config_files:
+        config_segments = datasource_config_file.split("/")
+        if len(config_segments) != 2:
+            raise ValueError(
+                f"Invalid datasource config file path: {datasource_config_file}. The path must be relative to the src folder (e.g: my-folder/my-config.yaml)"
+            )
+
+        main_type, datasource_name = config_segments
+
+        config_file_path = src.joinpath(main_type, datasource_name)
+        if not config_file_path.is_file():
+            raise ValueError(f"Datasource config file not found: {config_file_path}")
+
+        datasource = load_datasource_descriptor(config_file_path, main_type)
+        if datasource is not None:
+            datasources.append(datasource)
 
     return datasources
 
