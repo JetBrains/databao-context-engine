@@ -61,14 +61,14 @@ def _validate_datasource_config(project_dir: Path) -> dict[str, str]:
 
         if isinstance(prepared_source, PreparedConfig) and isinstance(plugin, BuildDatasourcePlugin):
             try:
-                is_datasource_valid = check_connection_for_datasource(
+                check_connection_for_datasource(
                     plugin=plugin,
                     full_type=prepared_source.full_type,
                     config=prepared_source.config,
                     datasource_name=prepared_source.datasource_name,
                 )
 
-                result[result_key] = "Valid" if is_datasource_valid else "Invalid - Unknown reason"
+                result[result_key] = "Valid"
             except Exception as e:
                 logger.debug(
                     f"Connection failed for {prepared_source.datasource_name} with error: {str(e)}",

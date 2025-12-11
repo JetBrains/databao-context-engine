@@ -94,7 +94,13 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
     The method that will be called when a config file has been found for a data source supported by this plugin.
     """
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> bool:
+    def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> None:
+        """
+        Checks whether the configuration to the datasource is working.
+
+        The function is expected to succeed without a result if the connection is working.
+        If something is wrong with the connection, the function should raise an Exception
+        """
         raise NotSupportedError("This method is not implemented for this plugin")
 
 

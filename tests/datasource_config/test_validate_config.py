@@ -25,8 +25,12 @@ class DummyPluginWithSimpleConfig(BuildDatasourcePlugin[ConfigToValidate]):
     def supported_types(self) -> set[str]:
         return {"dummy/simple_config"}
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: ConfigToValidate) -> bool:
-        return file_config.host == "localhost" and file_config.port == 1234
+    def check_connection(self, full_type: str, datasource_name: str, file_config: ConfigToValidate) -> None:
+        if file_config.host != "localhost":
+            raise ValueError("Host must be localhost")
+
+        if file_config.port not in (1234, 5678):
+            raise ValueError("Port must be 1234 or 5678")
 
 
 @pytest.fixture(autouse=True)
@@ -84,7 +88,7 @@ def test_validate_datasource_config_with_failing_config_validation(project_path:
         "dummy/not_implemented.yaml": "Unknown - Plugin doesn't support validating its config",
         "dummy/invalid.yaml": "Invalid - Config file is invalid",
         "dummy/invalid2.yaml": "Invalid - Config file is invalid",
-        "dummy/invalid3.yaml": "Invalid - Unknown reason",
+        "dummy/invalid3.yaml": "Invalid - Port must be 1234 or 5678",
     }
 
 
