@@ -60,16 +60,20 @@ def create_pg_conn(postgres_container: PostgresContainer):
     yield create_connection
 
 
-def _init_with_test_table(create_pg_conn, schema_name):
+def _init_with_test_table(create_pg_conn, schema_name, with_samples=False):
     with create_pg_conn() as conn:
         cursor = conn.cursor()
         cursor.execute(f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null)")
 
+        if with_samples:
+            cursor.execute("INSERT INTO custom.test (id, name) VALUES (1, 'Alice'), (2, 'Bob');")
 
-def test_postgres_plugin_execute(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+
+@pytest.mark.parametrize("with_samples", [False, True], ids=["database_structure", "database_structure_with_samples"])
+def test_postgres_plugin_execute(create_db_schema, create_pg_conn, postgres_container: PostgresContainer, with_samples):
     schema_name = "custom"
     with create_db_schema(schema_name):
-        _init_with_test_table(create_pg_conn, schema_name)
+        _init_with_test_table(create_pg_conn, schema_name, with_samples)
         plugin = PostgresqlDbPlugin()
 
         config_file = _create_config_file_from_container(postgres_container)
@@ -86,7 +90,7 @@ def test_postgres_plugin_execute(create_db_schema, create_pg_conn, postgres_cont
                 },
             }
         }
-        assert_database_structure(execution_result.result, expected_catalogs)
+        assert_database_structure(execution_result.result, expected_catalogs, with_samples)
 
 
 def test_postgres_partitions(create_pg_conn, create_db_schema, postgres_container):

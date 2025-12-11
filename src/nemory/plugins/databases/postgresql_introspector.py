@@ -113,6 +113,10 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             partition_tables=row["partition_tables"],
         )
 
+    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
+        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT %s'
+        return SQLQuery(sql, (limit,))
+
     def _create_connection_string_for_config(self, connection_config: PostgresConnectionProperties) -> str:
         def _escape_pg_value(value: str) -> str:
             escaped = value.replace("\\", "\\\\").replace("'", "\\'")
