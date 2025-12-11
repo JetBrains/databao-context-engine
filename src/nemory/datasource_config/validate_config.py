@@ -22,7 +22,7 @@ def validate_datasource_config(project_dir: Path):
     resuls_as_string = (
         os.linesep.join(
             [
-                f"{datasource_path}: {_truncate_error(validation_result)}"
+                f"{datasource_path}: {_truncate_validation_result(validation_result)}"
                 for datasource_path, validation_result in results.items()
             ]
         )
@@ -32,10 +32,10 @@ def validate_datasource_config(project_dir: Path):
     logger.info(f"Validation complete: {os.linesep}{resuls_as_string}")
 
 
-def _truncate_error(validation_result: str) -> str:
+def _truncate_validation_result(validation_result: str) -> str:
     """
-    Errors returned by the plugin could be quite long and make the results very hard to read.
-    When we are returning the results of multiple connection
+    Results returned by the plugin could be quite long, making it very hard to read when presented as a list.
+    This function allows to truncate that result to be able to print it on one line.
     """
     first_line = validation_result.split(os.linesep)[0]
 
