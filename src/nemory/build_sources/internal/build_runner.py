@@ -43,7 +43,7 @@ def build(
                 )
                 continue
 
-            if run is None:
+            if run is None or run_dir is None:
                 # Initialiase the run as soon as we found a source
                 run = build_service.start_run(project_id=project_id, nemory_version=nemory_version)
                 run_dir = create_run_dir(project_dir, run.run_name)
