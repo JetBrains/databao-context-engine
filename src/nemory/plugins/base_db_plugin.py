@@ -47,5 +47,10 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T]):
             result=introspection_result,
         )
 
+    def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> bool:
+        self._introspector._connect(file_config)
+
+        return True
+
     def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
         return build_database_chunks(build_result.result)

@@ -14,13 +14,35 @@ logger = logging.getLogger(__name__)
 def execute_datasource_plugin(
     plugin: BuildDatasourcePlugin, full_type: str, config: Mapping[str, Any], datasource_name: str
 ) -> BuildExecutionResult:
-    file_config = TypeAdapter(plugin.config_file_type).validate_python(config)
+    if not isinstance(plugin, BuildDatasourcePlugin):
+        raise ValueError("This method can only execute a BuildDatasourcePlugin")
+
+    validated_config = _validate_datasource_config_file(config, plugin)
 
     return plugin.execute(
         full_type=full_type,
         datasource_name=datasource_name,
-        file_config=file_config,
+        file_config=validated_config,
     )
+
+
+def check_connection_for_datasource(
+    plugin: BuildDatasourcePlugin, full_type: str, config: Mapping[str, Any], datasource_name: str
+) -> bool:
+    if not isinstance(plugin, BuildDatasourcePlugin):
+        raise ValueError("Connection checks can only be performed on BuildDatasourcePlugin")
+
+    validated_config = _validate_datasource_config_file(config, plugin)
+
+    return plugin.check_connection(
+        full_type=full_type,
+        datasource_name=datasource_name,
+        file_config=validated_config,
+    )
+
+
+def _validate_datasource_config_file(config: Mapping[str, Any], plugin: BuildDatasourcePlugin) -> Any:
+    return TypeAdapter(plugin.config_file_type).validate_python(config)
 
 
 def execute_file_plugin(plugin: BuildFilePlugin, full_type: str, file_path: Path) -> BuildExecutionResult:

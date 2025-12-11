@@ -94,6 +94,9 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
     The method that will be called when a config file has been found for a data source supported by this plugin.
     """
 
+    def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> bool:
+        raise NotSupportedError("This method is not implemented for this plugin")
+
 
 class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):
     """
@@ -110,6 +113,10 @@ class BuildFilePlugin(BaseBuildPlugin, Protocol):
     """
     The method that will be called when a file has been found as a data source supported by this plugin.
     """
+
+
+class NotSupportedError(RuntimeError):
+    """Exception raised by methods not supported by a plugin"""
 
 
 BuildPlugin = BuildDatasourcePlugin | BuildFilePlugin
