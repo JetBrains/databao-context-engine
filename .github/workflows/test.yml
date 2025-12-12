@@ -60,4 +60,4 @@ jobs:
             -d '{"name":"nomic-embed-text:latest"}' \
             http://localhost:11434/api/pull || true
 
-      - run: uv run pytest -q
+      - run: uv run pytest -v
