@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from nemory.datasource_config.validate_config import _validate_datasource_config
+from nemory.datasource_config.validate_config import ValidationResult, ValidationStatus, _validate_datasource_config
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin
 from nemory.project.layout import create_datasource_config_file
 from nemory.serialisation.yaml import to_yaml_string
@@ -83,12 +83,12 @@ def test_validate_datasource_config_with_failing_config_validation(project_path:
 
     result = _validate_datasource_config(project_path)
 
-    assert result == {
+    assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
         "databases/unknown.yaml": "Invalid - No compatible plugin found",
         "dummy/not_implemented.yaml": "Unknown - Plugin doesn't support validating its config",
         "dummy/invalid.yaml": "Invalid - Config file is invalid",
         "dummy/invalid2.yaml": "Invalid - Config file is invalid",
-        "dummy/invalid3.yaml": "Invalid - Port must be 1234 or 5678",
+        "dummy/invalid3.yaml": "Invalid - Connection with the datasource can not be established",
     }
 
 
@@ -103,5 +103,95 @@ def test_validate_datasource_config_with_valid_connections(project_path: Path):
     result = _validate_datasource_config(project_path)
 
     assert result == {
-        "dummy/valid.yaml": "Valid",
+        "dummy/valid.yaml": ValidationResult(validation_status=ValidationStatus.VALID, summary=None),
     }
+
+
+def test_validate_datasource_config_with_filter(project_path: Path):
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "valid",
+        {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
+    )
+    with_config_file(
+        project_path, "dummy/dummy_default", "not_implemented", {"type": "dummy_default", "name": "my datasource name"}
+    )
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "invalid",
+        {"type": "simple_config", "name": "my datasource name"},
+    )
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "invalid3",
+        {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "9876"},
+    )
+
+    result = _validate_datasource_config(
+        project_path, datasource_config_files=["dummy/not_implemented.yaml", "dummy/invalid3.yaml"]
+    )
+
+    assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
+        "dummy/not_implemented.yaml": "Unknown - Plugin doesn't support validating its config",
+        "dummy/invalid3.yaml": "Invalid - Connection with the datasource can not be established",
+    }
+
+
+def test_validate_datasource_config_with_single_filter(project_path: Path):
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "valid",
+        {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
+    )
+    with_config_file(
+        project_path, "dummy/dummy_default", "not_implemented", {"type": "dummy_default", "name": "my datasource name"}
+    )
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "invalid",
+        {"type": "simple_config", "name": "my datasource name"},
+    )
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "invalid3",
+        {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "9876"},
+    )
+
+    result = _validate_datasource_config(project_path, datasource_config_files=["dummy/valid.yaml"])
+
+    assert result == {
+        "dummy/valid.yaml": ValidationResult(validation_status=ValidationStatus.VALID, summary=None),
+    }
+
+
+def test_validate_datasource_config_with_invalid_filter(project_path: Path):
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "valid",
+        {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
+    )
+    with_config_file(
+        project_path, "dummy/dummy_default", "not_implemented", {"type": "dummy_default", "name": "my datasource name"}
+    )
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "invalid",
+        {"type": "simple_config", "name": "my datasource name"},
+    )
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "invalid3",
+        {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "9876"},
+    )
+
+    with pytest.raises(ValueError):
+        _validate_datasource_config(project_path, datasource_config_files=["dummy/not_a_file.yaml"])
