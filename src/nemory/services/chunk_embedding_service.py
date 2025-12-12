@@ -1,3 +1,7 @@
+import logging
+from enum import Enum
+from typing import cast
+
 from nemory.llm.descriptions.provider import DescriptionProvider
 from nemory.llm.embeddings.provider import EmbeddingProvider
 from nemory.pluginlib.build_plugin import EmbeddableChunk
@@ -6,6 +10,20 @@ from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.services.models import ChunkEmbedding
 from nemory.services.persistence_service import PersistenceService
 
+logger = logging.getLogger(__name__)
+
+
+class ChunkEmbeddingMode(Enum):
+    EMBEDDABLE_TEXT_ONLY = "EMBEDDABLE_TEXT_ONLY"
+    GENERATED_DESCRIPTION_ONLY = "GENERATED_DESCRIPTION_ONLY"
+    EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION = "EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION"
+
+    def should_generate_description(self) -> bool:
+        return self in (
+            ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY,
+            ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION,
+        )
+
 
 class ChunkEmbeddingService:
     def __init__(
@@ -13,13 +31,18 @@ class ChunkEmbeddingService:
         *,
         persistence_service: PersistenceService,
         embedding_provider: EmbeddingProvider,
-        description_provider: DescriptionProvider,
+        description_provider: DescriptionProvider | None,
         shard_resolver: EmbeddingShardResolver,
+        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     ):
         self._persistence_service = persistence_service
         self._embedding_provider = embedding_provider
         self._description_provider = description_provider
         self._shard_resolver = shard_resolver
+        self._chunk_embedding_mode = chunk_embedding_mode
+
+        if self._chunk_embedding_mode.should_generate_description() and description_provider is None:
+            raise ValueError("A DescriptionProvider must be provided when generating descriptions")
 
     def embed_chunks(self, *, datasource_run_id: int, chunks: list[EmbeddableChunk], result: str) -> None:
         """
@@ -34,12 +57,28 @@ class ChunkEmbeddingService:
         if not chunks:
             return
 
+        logger.debug(
+            f"Embedding {len(chunks)} chunks for datasource run {datasource_run_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
+        )
+
         enriched_embeddings: list[ChunkEmbedding] = []
         for chunk in chunks:
             chunk_display_text = to_yaml_string(chunk.content)
-            generated_description = self._description_provider.describe(text=chunk_display_text, context=result)
 
-            embedding_text = generated_description + "\n" + chunk.embeddable_text
+            generated_description = ""
+            match self._chunk_embedding_mode:
+                case ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY:
+                    embedding_text = chunk.embeddable_text
+                case ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY:
+                    generated_description = cast(DescriptionProvider, self._description_provider).describe(
+                        text=chunk_display_text, context=result
+                    )
+                    embedding_text = generated_description
+                case ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION:
+                    generated_description = cast(DescriptionProvider, self._description_provider).describe(
+                        text=chunk_display_text, context=result
+                    )
+                    embedding_text = generated_description + "\n" + chunk.embeddable_text
 
             vec = self._embedding_provider.embed(embedding_text)
 

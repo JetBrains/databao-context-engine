@@ -1,12 +1,15 @@
+import pytest
+
 from nemory.llm.descriptions.provider import DescriptionProvider
 from nemory.pluginlib.build_plugin import EmbeddableChunk
-from nemory.services.chunk_embedding_service import ChunkEmbeddingService
+from nemory.services.chunk_embedding_service import ChunkEmbeddingService, ChunkEmbeddingMode
 from nemory.services.persistence_service import PersistenceService
 from nemory.services.table_name_policy import TableNamePolicy
 
 
+@pytest.mark.parametrize("chunk_embedding_mode", [mode for mode in ChunkEmbeddingMode])
 def test_embed_flow_persists_chunks_and_embeddings(
-    conn, run_repo, datasource_run_repo, chunk_repo, embedding_repo, registry_repo, resolver
+    conn, run_repo, datasource_run_repo, chunk_repo, embedding_repo, registry_repo, resolver, chunk_embedding_mode
 ):
     run = run_repo.create(project_id="project-id")
     datasource_run = datasource_run_repo.create(
@@ -26,6 +29,7 @@ def test_embed_flow_persists_chunks_and_embeddings(
         embedding_provider=embedding_provider,
         shard_resolver=resolver,
         description_provider=description_provider,
+        chunk_embedding_mode=chunk_embedding_mode,
     )
 
     chunks = [
@@ -44,9 +48,10 @@ def test_embed_flow_persists_chunks_and_embeddings(
     assert len(chunks_for_datasource_run) == 3
     assert [s.embeddable_text for s in chunks_for_datasource_run] == ["gamma", "beta", "alpha"]
 
-    for chunk in chunks_for_datasource_run:
-        assert chunk.generated_description is not None
-        assert chunk.display_text in chunk.generated_description
+    if chunk_embedding_mode.should_generate_description():
+        for chunk in chunks_for_datasource_run:
+            assert chunk.generated_description is not None
+            assert chunk.display_text in chunk.generated_description
 
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3
