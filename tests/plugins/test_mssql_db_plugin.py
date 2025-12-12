@@ -1,3 +1,4 @@
+import platform
 from typing import Any, Mapping
 
 import mssql_python  # type: ignore
@@ -16,6 +17,11 @@ MSSQL_HOST = "127.0.0.1"
 
 @pytest.fixture(scope="module")
 def mssql_container():
+    os_release = platform.freedesktop_os_release()
+    release_name = os_release["NAME"]
+    if "nixos" in release_name.lower():
+        pytest.skip(f"mssql-python connector doesn't work on NixOS out of the box. Release name: {release_name}")
+
     container = SqlServerContainer()
     container.start()
     yield container
