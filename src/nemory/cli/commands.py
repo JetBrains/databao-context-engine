@@ -6,12 +6,13 @@ from click import Context
 
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.config.logging import configure_logging
-from nemory.llm.install import resolve_ollama_bin
 from nemory.datasource_config.add_config import add_datasource_config as add_datasource_config_internal
 from nemory.datasource_config.validate_config import validate_datasource_config as validate_datasource_config_internal
+from nemory.llm.install import resolve_ollama_bin
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.info import get_command_info
-from nemory.project.init_project import init_project_dir
+from nemory.project.init_project import InitErrorReason, InitProjectError, init_project_dir
+from nemory.project.layout import create_project_dir
 from nemory.retrieve_embeddings.internal.retrieve_wiring import retrieve_embeddings
 from nemory.storage.migrate import migrate
 
@@ -62,9 +63,23 @@ def init(ctx: Context) -> None:
     """
     Create an empty Nemory project
     """
-    project_path = init_project_dir(project_dir=ctx.obj["project_dir"])
+    project_dir = ctx.obj["project_dir"]
+    try:
+        init_project_dir(project_dir=project_dir)
+    except InitProjectError as e:
+        if e.reason == InitErrorReason.PROJECT_DIR_DOESNT_EXIST:
+            if click.confirm(
+                f"The directory {ctx.obj['project_dir'].resolve()} does not exist. Do you want to create it?",
+                default=True,
+            ):
+                create_project_dir(project_dir=project_dir)
+                init_project_dir(project_dir=project_dir)
+            else:
+                return
+        else:
+            raise e
 
-    click.echo(f"Project initialized successfully at {project_path.resolve()}")
+    click.echo(f"Project initialized successfully at {project_dir.resolve()}")
 
     try:
         resolve_ollama_bin()
@@ -72,7 +87,7 @@ def init(ctx: Context) -> None:
         click.echo(str(e), err=True)
 
     if click.confirm("\nDo you want to configure a datasource now?"):
-        add_datasource_config_internal(ctx.obj["project_dir"])
+        add_datasource_config_internal(project_dir)
 
 
 @nemory.group()

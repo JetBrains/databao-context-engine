@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from nemory.project.init_project import init_project_dir
+from nemory.project.init_project import InitErrorReason, InitProjectError, init_project_dir
 from nemory.project.layout import CONFIG_FILE_NAME, EXAMPLES_FOLDER_NAME, SOURCE_FOLDER_NAME, is_project_dir_valid
 from nemory.project.project_config import ProjectConfig
 
@@ -35,15 +35,15 @@ def test_init_project_dir(tmp_path: Path):
     assert isinstance(ProjectConfig.from_file(config_file).project_id, uuid.UUID)
 
 
-def test_init_project_dir_creates_dir_when_dir_doesnt_exist(tmp_path: Path):
+def test_init_project_dir_fails_when_dir_doesnt_exist(tmp_path: Path):
     project_dir = tmp_path.joinpath("project")
 
     assert not project_dir.is_dir()
 
-    init_project_dir(project_dir=project_dir)
+    with pytest.raises(InitProjectError) as e:
+        init_project_dir(project_dir=project_dir)
 
-    assert project_dir.is_dir()
-    assert is_project_dir_valid(project_dir) is True
+    assert e.value.reason == InitErrorReason.PROJECT_DIR_DOESNT_EXIST
 
 
 def test_init_project_dir_fails_when_dir_already_has_a_config(tmp_path: Path):
@@ -56,8 +56,10 @@ def test_init_project_dir_fails_when_dir_already_has_a_config(tmp_path: Path):
     assert project_dir.is_dir()
     assert config_file.is_file()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InitProjectError) as e:
         init_project_dir(project_dir=project_dir)
+
+    assert e.value.reason == InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED
 
 
 def test_init_project_dir_fails_when_dir_already_has_a_src_dir(tmp_path: Path):
@@ -70,5 +72,7 @@ def test_init_project_dir_fails_when_dir_already_has_a_src_dir(tmp_path: Path):
     assert project_dir.is_dir()
     assert src_dir.is_dir()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InitProjectError) as e:
         init_project_dir(project_dir=project_dir)
+
+    assert e.value.reason == InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED

@@ -28,27 +28,14 @@ def ensure_project_dir(project_dir: Path, should_be_initialised: bool = True) ->
     return project_dir
 
 
+def create_project_dir(project_dir: Path) -> Path:
+    project_dir.mkdir(parents=True, exist_ok=False)
+
+    return project_dir
+
+
 def is_project_dir_valid(project_dir: Path) -> bool:
     return get_config_file(project_dir).is_file() and get_source_dir(project_dir).is_dir()
-
-
-def ensure_can_init_project(project_dir: Path) -> bool:
-    if get_source_dir(project_dir).is_dir():
-        raise ValueError(
-            f"Can't initialise a Nemory project in a folder that already contains a src directory. [project_dir: {project_dir.resolve()}]"
-        )
-
-    if get_config_file(project_dir).is_file():
-        raise ValueError(
-            f"Can't initialise a Nemory project in a folder that already contains a Nemory config file. [project_dir: {project_dir.resolve()}]"
-        )
-
-    if get_examples_dir(project_dir).is_file():
-        raise ValueError(
-            f"Can't initialise a Nemory project in a folder that already contains an examples dir. [project_dir: {project_dir.resolve()}]"
-        )
-
-    return True
 
 
 def get_source_dir(project_dir: Path) -> Path:
