@@ -20,7 +20,7 @@ def _is_nixos_distro() -> bool:
         os_release = platform.freedesktop_os_release()
         release_name = os_release["NAME"]
         return "nixos" in release_name.lower()
-    except OSError | KeyError:
+    except (OSError, KeyError):
         return False
 
 
