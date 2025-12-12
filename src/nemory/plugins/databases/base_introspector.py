@@ -22,6 +22,10 @@ class BaseIntrospector[T](ABC):
     supports_catalogs: bool = True
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
 
+    def check_connection(self, file_config: T) -> None:
+        with self._connect(file_config) as connection:
+            self._fetchall_dicts(connection, "SELECT 1 as test", None)
+
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
         connection = self._connect(file_config)
         with connection:
