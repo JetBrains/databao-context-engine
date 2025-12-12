@@ -15,12 +15,19 @@ MSSQL_HTTP_PORT = 1433
 MSSQL_HOST = "127.0.0.1"
 
 
+def _is_nixos_distro() -> bool:
+    try:
+        os_release = platform.freedesktop_os_release()
+        release_name = os_release["NAME"]
+        return "nixos" in release_name.lower()
+    except OSError | KeyError:
+        return False
+
+
 @pytest.fixture(scope="module")
 def mssql_container():
-    os_release = platform.freedesktop_os_release()
-    release_name = os_release["NAME"]
-    if "nixos" in release_name.lower():
-        pytest.skip(f"mssql-python connector doesn't work on NixOS out of the box. Release name: {release_name}")
+    if _is_nixos_distro():
+        pytest.skip("mssql-python connector doesn't work on NixOS out of the box")
 
     container = SqlServerContainer()
     container.start()
