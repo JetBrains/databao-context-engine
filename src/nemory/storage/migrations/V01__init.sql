@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS run (
     project_id      TEXT NOT NULL,
     started_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ended_at        TIMESTAMP,
-    nemory_version  TEXT
+    nemory_version TEXT,
+    run_name TEXT NOT NULL,
 );
 
 CREATE TABLE IF NOT EXISTS datasource_run (
@@ -20,7 +21,8 @@ CREATE TABLE IF NOT EXISTS datasource_run (
     plugin              TEXT NOT NULL,
     source_id           TEXT NOT NULL,
     storage_directory   TEXT NOT NULL,
-    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    full_type TEXT NOT NULL,
 );
 
 CREATE TABLE IF NOT EXISTS chunk (
@@ -28,7 +30,8 @@ CREATE TABLE IF NOT EXISTS chunk (
     datasource_run_id        BIGINT NOT NULL REFERENCES datasource_run(datasource_run_id),
     embeddable_text  TEXT NOT NULL,
     display_text     TEXT,
-    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    generated_description TEXT,
 );
 
 CREATE TABLE IF NOT EXISTS embedding_model_registry (
@@ -49,7 +52,8 @@ CREATE TABLE IF NOT EXISTS embedding_ollama__nomic_embed_text_v1_5__768 (
 );
 CREATE INDEX IF NOT EXISTS emb_hnsw_embedding_ollama__nomic_embed_text_v1_5__768 ON embedding_ollama__nomic_embed_text_v1_5__768 USING HNSW (vec) WITH (metric = 'cosine');
 
-INSERT INTO
+INSERT
+OR IGNORE INTO
     embedding_model_registry(embedder, model_id, dim, table_name)
 VALUES
     ('ollama', 'nomic-embed-text:v1.5', 768, 'embedding_ollama__nomic_embed_text_v1_5__768');

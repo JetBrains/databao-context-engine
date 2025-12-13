@@ -1,1 +1,0 @@
-ALTER TABLE chunk ADD COLUMN IF NOT EXISTS generated_description TEXT;

@@ -1,0 +1,4 @@
+CREATE TABLE test_3
+(
+    id BIGINT PRIMARY KEY,
+);

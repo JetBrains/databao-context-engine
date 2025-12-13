@@ -7,7 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "click>=8.3.0",
     "duckdb>=1.4.3",
-    "pyway>=0.3.32",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
     "psycopg2-binary>=2.9.11",
