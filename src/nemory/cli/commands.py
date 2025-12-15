@@ -103,21 +103,19 @@ def add_datasource_config(ctx: Context) -> None:
     add_datasource_config_cli(ctx.obj["project_dir"])
 
 
-@datasource.command(name="validate")
+@datasource.command(name="check")
 @click.argument(
     "datasources-config-files",
     type=click.STRING,
     nargs=-1,
 )
 @click.pass_context
-def validate_datasource_config(ctx: Context, datasources_config_files: list[str] | None) -> None:
+def check_datasource_config(ctx: Context, datasources_config_files: list[str] | None) -> None:
     """
-    Validates whether a datasource configuration is valid and the connection with the datasource can be established.
+    Check whether a datasource configuration is valid and the connection with the datasource can be established.
 
     By default, all datasources declared in the project will be validated.
     You can explicitely list which datasources to validate by using the [DATASOURCES_CONFIG_FILES] argument. Each argument must be the path to the file within the src folder (e.g: my-folder/my-config.yaml)
-
-    If only one [DATASOURCES_CONFIG_FILES] is specified, the command will output a more detailed description of the validation error if any.
     """
     validate_datasource_config_cli(ctx.obj["project_dir"], datasource_config_files=datasources_config_files)
 
