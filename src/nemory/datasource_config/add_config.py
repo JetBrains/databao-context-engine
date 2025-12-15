@@ -5,10 +5,10 @@ from typing import Any, cast
 import click
 import yaml
 
-from nemory.plugins.plugin_loader import load_plugins
 from nemory.introspection.property_extract import get_property_list_from_type
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
 from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
+from nemory.plugins.plugin_loader import load_plugins
 from nemory.project.layout import (
     create_datasource_config_file,
     ensure_datasource_config_file_doesnt_exist,
@@ -16,7 +16,7 @@ from nemory.project.layout import (
 )
 
 
-def add_datasource_config(project_dir: Path) -> None:
+def add_datasource_config(project_dir: Path) -> str:
     ensure_project_dir(project_dir)
 
     click.echo(f"We will guide you to add a new datasource in your Nemory project, at {project_dir.resolve()}")
@@ -40,6 +40,8 @@ def add_datasource_config(project_dir: Path) -> None:
     config_file_path = create_datasource_config_file(project_dir, config_folder, datasource_name, config_content)
 
     click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file_path}")
+
+    return f"{config_folder}/{datasource_name}{config_file_path.suffix}"
 
 
 def config_content_to_yaml_string(config_content: dict[str, Any]) -> str:

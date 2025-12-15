@@ -5,9 +5,8 @@ import click
 from click import Context
 
 from nemory.build_sources.public.api import build_all_datasources
+from nemory.cli.datasources import add_datasource_config_cli, validate_datasource_config_cli
 from nemory.config.logging import configure_logging
-from nemory.datasource_config.add_config import add_datasource_config as add_datasource_config_internal
-from nemory.datasource_config.validate_config import validate_datasource_config as validate_datasource_config_internal
 from nemory.llm.install import resolve_ollama_bin
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.info import get_command_info
@@ -87,7 +86,7 @@ def init(ctx: Context) -> None:
         click.echo(str(e), err=True)
 
     if click.confirm("\nDo you want to configure a datasource now?"):
-        add_datasource_config_internal(project_dir)
+        add_datasource_config_cli(project_dir)
 
 
 @nemory.group()
@@ -101,7 +100,7 @@ def add_datasource_config(ctx: Context) -> None:
     """
     Add a new datasource configuration, asking all relevant information for that datasource and saving it in your Nemory project.
     """
-    add_datasource_config_internal(ctx.obj["project_dir"])
+    add_datasource_config_cli(ctx.obj["project_dir"])
 
 
 @datasource.command(name="validate")
@@ -120,7 +119,7 @@ def validate_datasource_config(ctx: Context, datasources_config_files: list[str]
 
     If only one [DATASOURCES_CONFIG_FILES] is specified, the command will output a more detailed description of the validation error if any.
     """
-    validate_datasource_config_internal(ctx.obj["project_dir"], datasource_config_files=datasources_config_files)
+    validate_datasource_config_cli(ctx.obj["project_dir"], datasource_config_files=datasources_config_files)
 
 
 @nemory.command()
