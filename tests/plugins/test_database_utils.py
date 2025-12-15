@@ -1,13 +1,18 @@
 from typing import Any, Mapping
 
-from nemory.plugins.databases.databases_types import DatabaseIntrospectionResult, DatabaseColumn
+from nemory.plugins.databases.databases_types import DatabaseIntrospectionResult, DatabaseColumn, DatabaseTable
 
 TableSpec = dict[str, list[DatabaseColumn]]  # table_name -> list of DatabaseColumn
 SchemaSpec = dict[str, TableSpec]  # schema_name -> TableSpec
 CatalogSpec = dict[str, SchemaSpec]  # catalog_name -> SchemaSpec
 
 
-def assert_database_structure(result: DatabaseIntrospectionResult, expected_catalogs: CatalogSpec):
+def assert_database_structure(
+    result: DatabaseIntrospectionResult,
+    expected_catalogs: CatalogSpec,
+    with_samples: bool = False,
+    samples_limit: int = 5,
+):
     def fail(msg: str, path: list[str]):
         full = ".".join(path)
         raise AssertionError(f"{msg} at {full}" if full else msg)
@@ -28,6 +33,19 @@ def assert_database_structure(result: DatabaseIntrospectionResult, expected_cata
             if actual_map[col_name] != expected_column:
                 assert actual_map[col_name] == expected_column, f"Column {col_name} mismatch at {'.'.join(path)}"
 
+    def assert_samples(actual_table: DatabaseTable, expected_columns: list[DatabaseColumn], path: list[str]):
+        assert len(actual_table.samples) > 0, f"No samples found for table {actual_table.name} at {'.'.join(path)}"
+        expected_keys = {column.name for column in expected_columns}
+        for sample in actual_table.samples:
+            sample_keys = sample.keys()
+            assert sample_keys == expected_keys, (
+                f"Sample keys {sample_keys} do not match columns {expected_keys} "
+                f"for table {table_name} at {'.'.join(path)}"
+            )
+        assert len(actual_table.samples) <= samples_limit, (
+            f"Too many samples found for table {actual_table.name} at {'.'.join(path)}"
+        )
+
     actual_catalogs = {c.name: c for c in result.catalogs}
     assert_keys(actual_catalogs, expected_catalogs, [], "catalogs")
 
@@ -46,3 +64,5 @@ def assert_database_structure(result: DatabaseIntrospectionResult, expected_cata
             for table_name, expected_table_columns in expected_tables.items():
                 table = actual_tables[table_name]
                 assert_columns(table.columns, expected_table_columns, [catalog_name, schema_name, table_name])
+                if with_samples:
+                    assert_samples(table, expected_table_columns, [catalog_name, schema_name])
