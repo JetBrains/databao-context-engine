@@ -62,3 +62,7 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             type=clean_type,
             nullable=(row.get("is_nullable") == "YES"),
         )
+
+    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
+        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT %s'
+        return SQLQuery(sql, (limit,))

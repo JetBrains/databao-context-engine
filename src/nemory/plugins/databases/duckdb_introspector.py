@@ -61,3 +61,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             type=row["data_type"],
             nullable=row["is_nullable"].upper() == "YES",
         )
+
+    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
+        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT ?'
+        return SQLQuery(sql, (limit,))

@@ -118,3 +118,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
         connection_string = ";".join(f"{k}={v}" for k, v in connection_parts.items() if v is not None)
         return connection_string
+
+    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
+        sql = f'SELECT TOP ({limit}) * FROM "{schema}"."{table}"'
+        return SQLQuery(sql, [limit])

@@ -64,3 +64,7 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
 
     def _resolve_pseudo_catalog_name(self, file_config: AthenaConfigFile) -> str:
         return "awsdatacatalog"
+
+    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
+        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT %(limit)s'
+        return SQLQuery(sql, {"limit": limit})

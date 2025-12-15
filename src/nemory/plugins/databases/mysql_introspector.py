@@ -52,3 +52,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             type=row.get("data_type", "unknown"),
             nullable=row.get("is_nullable", "NO").upper() == "YES",
         )
+
+    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
+        sql = f"SELECT * FROM `{schema}`.`{table}` LIMIT %s"
+        return SQLQuery(sql, (limit,))

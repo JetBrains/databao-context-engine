@@ -70,3 +70,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         for catalog in catalogs:
             parts.append(f"SELECT schema_name, catalog_name FROM {catalog}.information_schema.schemata")
         return SQLQuery(" UNION ALL ".join(parts), None)
+
+    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
+        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT ?'
+        return SQLQuery(sql, (limit,))
