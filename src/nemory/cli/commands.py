@@ -91,6 +91,9 @@ def init(ctx: Context) -> None:
 
 @nemory.group()
 def datasource() -> None:
+    """
+    Manage datasource configurations
+    """
     pass
 
 
@@ -98,7 +101,9 @@ def datasource() -> None:
 @click.pass_context
 def add_datasource_config(ctx: Context) -> None:
     """
-    Add a new datasource configuration, asking all relevant information for that datasource and saving it in your Nemory project.
+    Add a new datasource configuration.
+
+    The command will ask all relevant information for that datasource and save it in your Nemory project.
     """
     add_datasource_config_cli(ctx.obj["project_dir"])
 
@@ -112,9 +117,11 @@ def add_datasource_config(ctx: Context) -> None:
 @click.pass_context
 def check_datasource_config(ctx: Context, datasources_config_files: list[str] | None) -> None:
     """
-    Check whether a datasource configuration is valid and the connection with the datasource can be established.
+    Check whether a datasource configuration is valid.
 
-    By default, all datasources declared in the project will be validated.
+    The configuration is considered as valid if a connection with the datasource can be established.
+
+    By default, all datasources declared in the project will be checked.
     You can explicitely list which datasources to validate by using the [DATASOURCES_CONFIG_FILES] argument. Each argument must be the path to the file within the src folder (e.g: my-folder/my-config.yaml)
     """
     validate_datasource_config_cli(ctx.obj["project_dir"], datasource_config_files=datasources_config_files)
@@ -123,6 +130,13 @@ def check_datasource_config(ctx: Context, datasources_config_files: list[str] | 
 @nemory.command()
 @click.pass_context
 def build(ctx: Context) -> None:
+    """
+    Build context for all datasources
+
+    The output of the build command will be saved in a "run" folder in the output directory.
+
+    Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
+    """
     build_all_datasources(project_dir=ctx.obj["project_dir"])
 
 
