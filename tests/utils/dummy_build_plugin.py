@@ -63,7 +63,6 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
 
     def execute(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> BuildExecutionResult:
         return BuildExecutionResult(
-            id=str(uuid.uuid4()),
             name=file_config["displayName"],
             type=full_type,
             description="My best description for that DB",
@@ -115,7 +114,6 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
 
     def execute(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> BuildExecutionResult:
         return BuildExecutionResult(
-            id="dummy",
             name=datasource_name,
             type=full_type,
             result={"ok": True},
@@ -137,7 +135,6 @@ class DummyFilePlugin(BuildFilePlugin):
 
     def execute(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> BuildExecutionResult:
         return BuildExecutionResult(
-            id="dummy",
             name=file_name,
             type=full_type,
             result={"file_ok": True},
@@ -167,7 +164,6 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
         self, full_type: str, datasource_name: str, file_config: AdditionalDummyConfigFile
     ) -> BuildExecutionResult:
         return BuildExecutionResult(
-            id="dummy",
             name=datasource_name,
             type=full_type,
             result={"additional_ok": True},
@@ -189,7 +185,6 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigP
 
     def execute(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> BuildExecutionResult:
         return BuildExecutionResult(
-            id="dummy",
             name=datasource_name,
             type=full_type,
             result={"no_config_ok": True},

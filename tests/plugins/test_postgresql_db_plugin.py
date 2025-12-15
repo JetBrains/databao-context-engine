@@ -151,7 +151,6 @@ def test_postgres_plugin_divide_into_chunks():
     plugin = PostgresqlDbPlugin()
 
     input = BuildExecutionResult(
-        id="id",
         name="name",
         type="databases/postgres",
         description=None,

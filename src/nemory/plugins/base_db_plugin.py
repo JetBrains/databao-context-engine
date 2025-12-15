@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import TypeVar
 
@@ -16,7 +15,6 @@ from nemory.plugins.databases.database_chunker import build_database_chunks
 
 
 class BaseDatabaseConfigFile(BaseModel):
-    id: str | None = Field(default=None)
     name: str | None = Field(default=None)
     type: str
 
@@ -38,7 +36,6 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T]):
         introspection_result = self._introspector.introspect_database(file_config)
 
         return BuildExecutionResult(
-            id=file_config.id or str(uuid.uuid4()),
             name=file_config.name or datasource_name,
             type=full_type,
             description=None,

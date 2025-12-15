@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -18,7 +17,6 @@ def _run_dir(tmp_path: Path) -> Path:
 
 def _make_result(*, name: str, full_type: str, payload: object) -> BuildExecutionResult:
     return BuildExecutionResult(
-        id=str(uuid.uuid4()),
         name=name,
         type=full_type,
         description="desc",

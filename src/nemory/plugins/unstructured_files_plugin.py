@@ -1,10 +1,9 @@
 import re
-import uuid
 from datetime import datetime
 from io import BufferedReader
 from typing import TypedDict
 
-from nemory.pluginlib.build_plugin import BuildFilePlugin, BuildExecutionResult, EmbeddableChunk
+from nemory.pluginlib.build_plugin import BuildExecutionResult, BuildFilePlugin, EmbeddableChunk
 
 
 class FileChunk(TypedDict):
@@ -32,7 +31,6 @@ class InternalUnstructuredFilesPlugin(BuildFilePlugin):
         file_content = self._read_file(file_buffer)
 
         return BuildExecutionResult(
-            id=str(uuid.uuid4()),
             name=file_name,
             type=full_type,
             description="",

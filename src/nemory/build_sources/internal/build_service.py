@@ -66,7 +66,7 @@ class BuildService:
             run_id=run_id,
             plugin=plugin.name,
             full_type=prepared_source.full_type,
-            source_id=result.id or prepared_source.path.stem,
+            source_id=result.name or prepared_source.path.stem,
             storage_directory=str(prepared_source.path.parent),
         )
 

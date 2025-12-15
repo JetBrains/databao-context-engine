@@ -9,9 +9,8 @@ from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk
 from nemory.project.types import PreparedDatasource, PreparedFile
 
 
-def mk_result(*, id="ds-1", name="foo", typ="files/md", result=None):
+def mk_result(*, name="foo", typ="files/md", result=None):
     return BuildExecutionResult(
-        id=id,
         name=name,
         type=typ,
         description=None,
@@ -91,7 +90,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     plugin.name = "pluggy"
     prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "two.md", full_type="files/md")
 
-    result = mk_result(id="ext-id", name="two", typ="files/md")
+    result = mk_result(name="two", typ="files/md")
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=result)
 
     chunks = [EmbeddableChunk("a", "A"), EmbeddableChunk("b", "B")]
@@ -106,7 +105,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
         run_id=9,
         plugin="pluggy",
         full_type="files/md",
-        source_id="ext-id",
+        source_id="two",
         storage_directory=str(prepared.path.parent),
     )
     chunk_embed_svc.embed_chunks.assert_called_once_with(
@@ -123,7 +122,7 @@ def test_process_prepared_source_uses_path_stem_when_result_id_missing(svc, repo
     plugin.name = "pluggy"
     prepared = mk_prepared(tmp_path / "src" / "databases" / "pg.yaml", full_type="databases/postgres")
 
-    res = mk_result(id=None, name="pg", typ="databases/postgres")
+    res = mk_result(name="pg", typ="databases/postgres")
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=res)
 
     plugin.divide_result_into_chunks.return_value = [EmbeddableChunk("e", "E")]

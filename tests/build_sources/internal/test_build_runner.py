@@ -13,7 +13,6 @@ from nemory.services.run_name_policy import RunNamePolicy
 
 def _result(name="demo", typ="files/md"):
     return BuildExecutionResult(
-        id="id-1",
         name=name,
         type=typ,
         description=None,

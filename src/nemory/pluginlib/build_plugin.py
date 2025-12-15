@@ -29,11 +29,6 @@ class BuildExecutionResult:
     as well as a method that allows to create chunks from the result.
     """
 
-    id: str
-    """
-    The id of the built data source
-    """
-
     name: str
     """
     The name of the built data source
