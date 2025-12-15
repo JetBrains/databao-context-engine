@@ -19,7 +19,7 @@ def patch_load_plugins(mocker):
 def test_add_datasource_config__with_no_custom_properties(project_path: Path):
     cli_runner = CliRunner()
 
-    inputs = ["dummy/dummy_default", "my datasource name"]
+    inputs = ["dummy", "dummy_default", "my datasource name"]
 
     with cli_runner.isolation(input=os.linesep.join(inputs)):
         add_datasource_config(project_path)
@@ -35,7 +35,8 @@ def test_add_datasource_config__with_all_values_filled(project_path: Path):
     cli_runner = CliRunner()
 
     inputs = [
-        "databases/dummy_db",
+        "databases",
+        "dummy_db",
         "my datasource name",
         "15.356",
         "property_with_default",
@@ -68,7 +69,8 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
     cli_runner = CliRunner()
 
     inputs = [
-        "databases/dummy_db",
+        "databases",
+        "dummy_db",
         "my datasource name",
         "3.14",
         "",
@@ -101,7 +103,8 @@ def test_add_datasource_config__with_custom_property_list(project_path: Path):
     cli_runner = CliRunner()
 
     inputs = [
-        "dummy/no_config_type",
+        "dummy",
+        "no_config_type",
         "my datasource name",
         "3.14",
         "value",
@@ -136,7 +139,8 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
     cli_runner = CliRunner()
 
     inputs = [
-        "dummy/no_config_type",
+        "dummy",
+        "no_config_type",
         "my datasource name",
         "3.14",
         "",

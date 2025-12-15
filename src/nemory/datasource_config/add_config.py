@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, cast
 
@@ -8,7 +9,7 @@ import yaml
 from nemory.introspection.property_extract import get_property_list_from_type
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
 from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
-from nemory.plugins.plugin_loader import load_plugins
+from nemory.plugins.plugin_loader import PluginList, load_plugins
 from nemory.project.layout import (
     create_datasource_config_file,
     ensure_datasource_config_file_doesnt_exist,
@@ -23,14 +24,27 @@ def add_datasource_config(project_dir: Path) -> str:
 
     all_datasource_plugins = load_plugins(exclude_file_plugins=True)
 
-    config_full_type = click.prompt(
-        "What type of datasource do you want to add?", type=click.Choice(all_datasource_plugins.keys())
+    supported_types_by_folder = _group_supported_types_by_folder(all_datasource_plugins)
+
+    all_config_folders = sorted(supported_types_by_folder.keys())
+    config_folder = click.prompt(
+        "What type of datasource do you want to add?",
+        type=click.Choice(all_config_folders),
+        default=all_config_folders[0] if len(all_config_folders) == 1 else None,
     )
-    click.echo(f"Selected type: {config_full_type}")
+    click.echo(f"Selected type: {config_folder}")
+
+    all_subtypes_for_folder = sorted(supported_types_by_folder[config_folder])
+    config_type = click.prompt(
+        "What is the subtype of this datasource?",
+        type=click.Choice(all_subtypes_for_folder),
+        default=all_subtypes_for_folder[0] if len(all_subtypes_for_folder) == 1 else None,
+    )
+    click.echo(f"Selected subtype: {config_type}")
 
     datasource_name = click.prompt("Datasource name?", type=str)
 
-    config_folder, config_type = config_full_type.split("/")
+    config_full_type = f"{config_folder}/{config_type}"
     ensure_datasource_config_file_doesnt_exist(project_dir, config_folder, datasource_name)
     basic_config = {"type": config_type, "name": datasource_name}
 
@@ -42,6 +56,15 @@ def add_datasource_config(project_dir: Path) -> str:
     click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file_path}")
 
     return f"{config_folder}/{datasource_name}{config_file_path.suffix}"
+
+
+def _group_supported_types_by_folder(all_datasource_plugins: PluginList) -> dict[str, list[str]]:
+    main_to_subtypes = defaultdict(list)
+    for supported_full_type in all_datasource_plugins.keys():
+        main_type, subtype = supported_full_type.split("/")
+        main_to_subtypes[main_type].append(subtype)
+
+    return main_to_subtypes
 
 
 def config_content_to_yaml_string(config_content: dict[str, Any]) -> str:
