@@ -9,6 +9,7 @@ import duckdb
 import pytest
 
 from nemory.build_sources.public.api import build_all_datasources
+from nemory.services.chunk_embedding_service import ChunkEmbeddingMode
 from nemory.storage.migrate import migrate
 
 
@@ -101,7 +102,7 @@ def use_fake_provider(mocker, fake_provider):
 def test_e2e_build_with_fake_provider(
     project_dir, db_path, conn, run_repo, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
 ):
-    build_all_datasources(project_dir=project_dir)
+    build_all_datasources(project_dir=project_dir, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY)
 
     runs = run_repo.list()
     assert len(runs) == 1
@@ -133,7 +134,7 @@ def test_one_source_fails_but_others_succeed(
 
     mocker.patch.object(execmod, "execute", side_effect=flaky_execute)
 
-    build_all_datasources(project_dir=project_dir)
+    build_all_datasources(project_dir=project_dir, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY)
 
     runs = run_repo.list()
     assert len(runs) == 1 and runs[0].ended_at is not None

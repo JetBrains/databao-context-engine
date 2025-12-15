@@ -4,7 +4,7 @@ from nemory.build_sources.internal.build_service import BuildService
 from nemory.llm.descriptions.provider import DescriptionProvider
 from nemory.llm.embeddings.provider import EmbeddingProvider
 from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
-from nemory.services.chunk_embedding_service import ChunkEmbeddingService
+from nemory.services.chunk_embedding_service import ChunkEmbeddingMode, ChunkEmbeddingService
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.services.persistence_service import PersistenceService
 from nemory.services.run_name_policy import RunNamePolicy
@@ -57,7 +57,8 @@ def create_chunk_embedding_service(
     conn: DuckDBPyConnection,
     *,
     embedding_provider: EmbeddingProvider,
-    description_provider: DescriptionProvider,
+    description_provider: DescriptionProvider | None,
+    chunk_embedding_mode: ChunkEmbeddingMode,
 ) -> ChunkEmbeddingService:
     resolver = create_shard_resolver(conn)
     persistence = create_persistence_service(conn)
@@ -66,6 +67,7 @@ def create_chunk_embedding_service(
         embedding_provider=embedding_provider,
         shard_resolver=resolver,
         description_provider=description_provider,
+        chunk_embedding_mode=chunk_embedding_mode,
     )
 
 
@@ -73,12 +75,16 @@ def create_build_service(
     conn: DuckDBPyConnection,
     *,
     embedding_provider: EmbeddingProvider,
-    description_provider: DescriptionProvider,
+    description_provider: DescriptionProvider | None,
+    chunk_embedding_mode: ChunkEmbeddingMode,
 ) -> BuildService:
     run_repo = create_run_repository(conn)
     datasource_run_repo = create_datasource_run_repository(conn)
     chunk_embedding_service = create_chunk_embedding_service(
-        conn, embedding_provider=embedding_provider, description_provider=description_provider
+        conn,
+        embedding_provider=embedding_provider,
+        description_provider=description_provider,
+        chunk_embedding_mode=chunk_embedding_mode,
     )
 
     return BuildService(

@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from typing import Literal
 
 import click
 from click import Context
@@ -13,6 +14,7 @@ from nemory.project.info import get_command_info
 from nemory.project.init_project import InitErrorReason, InitProjectError, init_project_dir
 from nemory.project.layout import create_project_dir
 from nemory.retrieve_embeddings.internal.retrieve_wiring import retrieve_embeddings
+from nemory.services.chunk_embedding_service import ChunkEmbeddingMode
 from nemory.storage.migrate import migrate
 
 
@@ -128,8 +130,22 @@ def check_datasource_config(ctx: Context, datasources_config_files: list[str] | 
 
 
 @nemory.command()
+@click.option(
+    "-m",
+    "--chunk-embedding-mode",
+    type=click.Choice(
+        ["embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"]
+    ),
+    default="embeddable_text_only",
+    help="Choose how chunks will be embedded. If a mode with the generated_description is selected, a local LLM model will be downloaded and used.",
+)
 @click.pass_context
-def build(ctx: Context) -> None:
+def build(
+    ctx: Context,
+    chunk_embedding_mode: Literal[
+        "embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"
+    ],
+) -> None:
     """
     Build context for all datasources
 
@@ -137,7 +153,9 @@ def build(ctx: Context) -> None:
 
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
-    build_all_datasources(project_dir=ctx.obj["project_dir"])
+    build_all_datasources(
+        project_dir=ctx.obj["project_dir"], chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper())
+    )
 
 
 @nemory.command()
