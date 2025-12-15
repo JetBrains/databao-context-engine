@@ -11,6 +11,7 @@ def assert_database_structure(
     result: DatabaseIntrospectionResult,
     expected_catalogs: CatalogSpec,
     with_samples: bool = False,
+    samples_limit: int = 5,
 ):
     def fail(msg: str, path: list[str]):
         full = ".".join(path)
@@ -41,6 +42,9 @@ def assert_database_structure(
                 f"Sample keys {sample_keys} do not match columns {expected_keys} "
                 f"for table {table_name} at {'.'.join(path)}"
             )
+        assert len(actual_table.samples) <= samples_limit, (
+            f"Too many samples found for table {actual_table.name} at {'.'.join(path)}"
+        )
 
     actual_catalogs = {c.name: c for c in result.catalogs}
     assert_keys(actual_catalogs, expected_catalogs, [], "catalogs")

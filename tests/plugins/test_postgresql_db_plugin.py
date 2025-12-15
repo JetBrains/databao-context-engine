@@ -1,4 +1,6 @@
 import contextlib
+import random
+import string
 from datetime import datetime
 from typing import Any, Mapping
 
@@ -66,7 +68,19 @@ def _init_with_test_table(create_pg_conn, schema_name, with_samples=False):
         cursor.execute(f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null)")
 
         if with_samples:
-            cursor.execute("INSERT INTO custom.test (id, name) VALUES (1, 'Alice'), (2, 'Bob');")
+            cursor.execute(f"INSERT INTO {schema_name}.test (id, name) VALUES (1, 'Alice'), (2, 'Bob');")
+
+
+def _init_with_big_table(create_pg_conn, schema_name):
+    with create_pg_conn() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null)")
+
+        rows, n = [], 1000
+        for i in range(n):
+            random_name = "".join(random.choices(string.ascii_letters, k=5))
+            rows.append((i, random_name))
+        cursor.executemany(f"INSERT INTO {schema_name}.test (id, name) VALUES (%s, %s)", rows)
 
 
 @pytest.mark.parametrize("with_samples", [False, True], ids=["database_structure", "database_structure_with_samples"])
@@ -91,6 +105,42 @@ def test_postgres_plugin_execute(create_db_schema, create_pg_conn, postgres_cont
             }
         }
         assert_database_structure(execution_result.result, expected_catalogs, with_samples)
+
+
+def test_postgres_exact_samples(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+    schema_name = "custom"
+    with create_db_schema(schema_name):
+        _init_with_test_table(create_pg_conn, schema_name, with_samples=True)
+        plugin = PostgresqlDbPlugin()
+        config_file = _create_config_file_from_container(postgres_container)
+        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        catalogs = {c.name: c for c in execution_result.result.catalogs}
+        schema = {s.name: s for s in catalogs["test"].schemas}[schema_name]
+        table = {t.name: t for t in schema.tables}["test"]
+        samples = table.samples
+
+        expected_rows = [
+            {"id": 1, "name": "Alice"},
+            {"id": 2, "name": "Bob"},
+        ]
+        assert samples == expected_rows
+
+
+def test_postgres_samples_in_big(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+    schema_name = "custom"
+    with create_db_schema(schema_name):
+        _init_with_big_table(create_pg_conn, schema_name)
+        plugin = PostgresqlDbPlugin()
+        limit = plugin._introspector._SAMPLE_LIMIT
+        config_file = _create_config_file_from_container(postgres_container)
+        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        catalogs = {c.name: c for c in execution_result.result.catalogs}
+        schema = {s.name: s for s in catalogs["test"].schemas}[schema_name]
+        table = {t.name: t for t in schema.tables}["test"]
+        print(table.samples)
+        assert len(table.samples) == limit
 
 
 def test_postgres_partitions(create_pg_conn, create_db_schema, postgres_container):
