@@ -143,6 +143,57 @@ def test_postgres_samples_in_big(create_db_schema, create_pg_conn, postgres_cont
         assert len(table.samples) == limit
 
 
+def test_postgres_tables_with_indexes(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+    schema_name = "custom"
+    with create_db_schema(schema_name):
+        with create_pg_conn() as conn:
+            conn.execute(
+                f"""
+                CREATE TABLE {schema_name}.indexed_table (
+                    id INT NOT NULL,
+                    name VARCHAR(255),
+                    email VARCHAR(255)
+                );
+
+                CREATE UNIQUE INDEX idx_indexed_table_id
+                    ON {schema_name}.indexed_table (id);
+
+                CREATE INDEX idx_indexed_table_name
+                    ON {schema_name}.indexed_table (name);
+
+                CREATE INDEX idx_indexed_table_name_email
+                    ON {schema_name}.indexed_table (name, email);
+
+                INSERT INTO {schema_name}.indexed_table (id, name, email)
+                VALUES
+                    (1, 'Alice', 'alice@example.com'),
+                    (2, 'Bob', 'bob@example.com');
+                """
+            )
+
+        plugin = PostgresqlDbPlugin()
+        config_file = _create_config_file_from_container(postgres_container)
+        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        expected_catalogs = {
+            "test": {
+                "public": {},
+                "custom": {
+                    "indexed_table": [
+                        DatabaseColumn(name="id", type="int4", nullable=False),
+                        DatabaseColumn(name="name", type="varchar", nullable=True),
+                        DatabaseColumn(name="email", type="varchar", nullable=True),
+                    ]
+                },
+            }
+        }
+
+        assert_database_structure(
+            execution_result.result,
+            expected_catalogs,
+            with_samples=True,
+        )
+
+
 def test_postgres_partitions(create_pg_conn, create_db_schema, postgres_container):
     with create_db_schema() as db_schema:
         with create_pg_conn() as conn:
