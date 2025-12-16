@@ -46,7 +46,7 @@ def load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     """
     Statically register built-in plugins
     """
-    from nemory.plugins.athena_db_plugin import AthenaDbPlugin
+    # from nemory.plugins.athena_db_plugin import AthenaDbPlugin
     from nemory.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
     from nemory.plugins.duckdb_db_plugin import DuckDbPlugin
     from nemory.plugins.mssql_db_plugin import MSSQLDbPlugin
@@ -55,13 +55,13 @@ def load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     from nemory.plugins.snowflake_db_plugin import SnowflakeDbPlugin
 
     return [
-        AthenaDbPlugin(),
-        ClickhouseDbPlugin(),
-        DuckDbPlugin(),
-        MSSQLDbPlugin(),
-        MySQLDbPlugin(),
+    #     AthenaDbPlugin(),
+    #     ClickhouseDbPlugin(),
+    #     DuckDbPlugin(),
+    #     MSSQLDbPlugin(),
+    #     MySQLDbPlugin(),
         PostgresqlDbPlugin(),
-        SnowflakeDbPlugin(),
+    #     SnowflakeDbPlugin(),
     ]
 
 

@@ -141,7 +141,7 @@ class OllamaService:
         base = """
         You are a helpful assistant.
         
-        I will give you some TEXT and CONTEXT.
+        I will give you some TEXT.
         Write a concise, human-readable description of the TEXT suitable for displaying in a UI.
         - 1-2 sentences
         - Be factual and avoid speculation
@@ -149,11 +149,8 @@ class OllamaService:
         - No preambles or labels, just the description itself.
         - Your entire reply MUST be only the description itself. No extra commentary.
         
-        CONTEXT:
-        {context}
-        
         TEXT:
         {text}
         """
 
-        return textwrap.dedent(base).format(context=context, text=text).strip()
+        return textwrap.dedent(base).format(text=text).strip()
