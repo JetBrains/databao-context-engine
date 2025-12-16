@@ -1,11 +1,13 @@
 import logging
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from nemory.project.layout import get_source_dir
 from nemory.project.types import DatasourceDescriptor, DatasourceKind, PreparedConfig, PreparedDatasource, PreparedFile
+from nemory.templating.renderer import DceTemplateError, render_template
 
 logger = logging.getLogger(__name__)
 
@@ -121,10 +123,12 @@ def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource | No
 
     else:
         try:
-            with datasource.path.open("r", encoding="utf-8") as fh:
-                config = yaml.safe_load(fh) or {}
+            config = _parse_config_file(datasource.path)
         except Exception as e:
-            logger.warning("Skipping invalid YAML %s: %s", datasource.path, str(e))
+            if isinstance(e, DceTemplateError):
+                logger.warning("Error rendering the template for config file at %s: %s", datasource.path, str(e))
+            else:
+                logger.warning("Skipping invalid YAML %s: %s", datasource.path, str(e))
             return None
         subtype = config.get("type")
         if not subtype or not isinstance(subtype, str):
@@ -134,3 +138,9 @@ def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource | No
         return PreparedConfig(
             full_type=full_type, path=datasource.path, config=config, datasource_name=datasource.path.stem
         )
+
+
+def _parse_config_file(file_path: Path) -> dict[Any, Any]:
+    rendered_file = render_template(file_path.read_text())
+
+    return yaml.safe_load(rendered_file) or {}
