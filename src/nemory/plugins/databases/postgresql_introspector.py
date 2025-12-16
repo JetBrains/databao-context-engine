@@ -32,8 +32,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
 
     def _connect(self, file_config: PostgresConfigFile):
         connection_string = self._create_connection_string_for_config(file_config.connection)
-
-        return psycopg.connect(connection_string)
+        conn = psycopg.connect(connection_string)
+        conn.autocommit = True
+        return conn
 
     def _fetchall_dicts(self, connection: Connection, sql: str, params) -> list[dict]:
         with connection.cursor(row_factory=dict_row) as cur:
@@ -65,9 +66,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             -- filter out system columns
             att.attnum >= 1 AND
             -- filter out partitions
-            not rel.relispartition AND 
+            not rel.relispartition AND
             -- filter out indexes and views
-             rel.relkind IN ('r', 'p')
+            rel.relkind IN ('r', 'p')
           AND
             nsp.nspname = %s
         """
