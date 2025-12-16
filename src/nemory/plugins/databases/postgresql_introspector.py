@@ -65,7 +65,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             -- filter out system columns
             att.attnum >= 1 AND
             -- filter out partitions
-            not rel.relispartition 
+            not rel.relispartition AND 
+            -- filter out indexes and views
+             rel.relkind IN ('r', 'p')
           AND
             nsp.nspname = %s
         """
