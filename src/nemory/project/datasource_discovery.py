@@ -6,8 +6,16 @@ from typing import Any
 import yaml
 
 from nemory.project.layout import get_source_dir
-from nemory.project.types import DatasourceDescriptor, DatasourceKind, PreparedConfig, PreparedDatasource, PreparedFile
-from nemory.templating.renderer import DceTemplateError, render_template
+from nemory.project.types import (
+    DatasourceDescriptor,
+    DatasourceKind,
+    PreparedConfig,
+    PreparedDatasource,
+    PreparedDatasourceError,
+    PreparedFile,
+)
+from nemory.templating.renderer import render_template
+from nemory.utils.result import Err, Ok, Result
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +24,7 @@ def traverse_datasources(
     project_dir: Path,
     *,
     datasources_to_traverse: list[DatasourceDescriptor] | None = None,
-) -> Iterator[PreparedDatasource]:
+) -> Iterator[Result[PreparedDatasource, PreparedDatasourceError]]:
     datasources = discover_datasources(project_dir) if datasources_to_traverse is None else datasources_to_traverse
 
     if not datasources:
@@ -26,16 +34,14 @@ def traverse_datasources(
     for datasource in datasources:
         try:
             prepared_source = _prepare_source(datasource)
-            if prepared_source is None:
-                continue
 
             logger.info(f'Found datasource of type "{prepared_source.full_type}" with name {prepared_source.path.stem}')
 
-            yield prepared_source
+            yield Ok(prepared_source)
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
             logger.info("Failed to prepare source at (%s): %s", datasource.path, str(e))
-            continue
+            yield Err(PreparedDatasourceError("Failed to prepare source", datasource.path, e))
 
     return
 
@@ -117,7 +123,7 @@ def load_datasource_descriptor(path: Path, parent_name: str) -> DatasourceDescri
     return None
 
 
-def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource | None:
+def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
     """
     Convert a discovered datasource into a prepared datasource ready for plugin execution
     """
@@ -127,18 +133,12 @@ def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource | No
         return PreparedFile(full_type=full_type, path=datasource.path)
 
     else:
-        try:
-            config = _parse_config_file(datasource.path)
-        except Exception as e:
-            if isinstance(e, DceTemplateError):
-                logger.warning("Error rendering the template for config file at %s: %s", datasource.path, str(e))
-            else:
-                logger.warning("Skipping invalid YAML %s: %s", datasource.path, str(e))
-            return None
+        config = _parse_config_file(datasource.path)
+
         subtype = config.get("type")
         if not subtype or not isinstance(subtype, str):
-            logger.warning("Config missing 'type' at %s - skipping", datasource.path)
-            return None
+            raise ValueError("Config missing 'type' at %s - skipping", datasource.path)
+
         full_type = f"{datasource.main_type}/{subtype}"
         return PreparedConfig(
             full_type=full_type, path=datasource.path, config=config, datasource_name=datasource.path.stem

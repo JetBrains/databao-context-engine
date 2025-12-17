@@ -14,14 +14,7 @@ class UnknownEnvVarTemplateError(DceTemplateError):
 def render_template(source: str) -> str:
     env = SandboxedEnvironment()
 
-    try:
-        return env.from_string(source=str(source)).render(env_var=resolve_env_var)
-    except Exception as e:
-        if isinstance(e, DceTemplateError):
-            raise e
-
-        # Wraps any Jinja exception into our own
-        raise DceTemplateError(f"Error rendering template:{os.linesep}{str(e)}") from e
+    return env.from_string(source=str(source)).render(env_var=resolve_env_var)
 
 
 def resolve_env_var(env_var: str, default: str | None = None) -> str:

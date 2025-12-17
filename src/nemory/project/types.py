@@ -30,4 +30,14 @@ class PreparedFile:
     path: Path
 
 
+class PreparedDatasourceError(Exception):
+    path: Path
+
+    def __init__(self, message: str, path: Path, cause: Exception | None = None):
+        self.__cause__ = cause
+        super().__init__(message)
+
+        self.path = path
+
+
 PreparedDatasource = PreparedConfig | PreparedFile

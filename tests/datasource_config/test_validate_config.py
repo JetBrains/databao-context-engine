@@ -195,3 +195,56 @@ def test_validate_datasource_config_with_invalid_filter(project_path: Path):
 
     with pytest.raises(ValueError):
         _validate_datasource_config(project_path, datasource_config_files=["dummy/not_a_file.yaml"])
+
+
+def test_validate_datasource_config_with_no_type(project_path: Path):
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "valid",
+        {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
+    )
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "invalid",
+        {"type": "simple_config", "name": "my datasource name"},
+    )
+    with_config_file(project_path, "dummy/dummy_default", "no_type", {"name": "no_type"})
+
+    result = _validate_datasource_config(project_path)
+
+    assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
+        "dummy/valid.yaml": "Valid",
+        "dummy/invalid.yaml": "Invalid - Config file is invalid",
+        "dummy/no_type.yaml": "Invalid - Failed to prepare source",
+    }
+
+
+def test_validate_datasource_config_with_invalid_template(project_path: Path):
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "valid",
+        {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
+    )
+    with_config_file(
+        project_path,
+        "dummy/simple_config",
+        "invalid",
+        {"type": "simple_config", "name": "my datasource name"},
+    )
+    with_config_file(
+        project_path,
+        "dummy/dummy_default",
+        "template_error",
+        {"name": "{{ unexisting_function() }}", "type": "dummy_default"},
+    )
+
+    result = _validate_datasource_config(project_path)
+
+    assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
+        "dummy/valid.yaml": "Valid",
+        "dummy/invalid.yaml": "Invalid - Config file is invalid",
+        "dummy/template_error.yaml": "Invalid - Failed to prepare source",
+    }

@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from nemory.build_sources.internal import build_runner
+from nemory.utils.result import Ok
 from tests.utils.fakes import FakeSource
 
 
@@ -17,7 +18,11 @@ def stub_plugins(mocker):
 @pytest.fixture
 def stub_prepared_sources(mocker):
     def _stub(sources):
-        return mocker.patch.object(build_runner, "traverse_datasources", return_value=sources)
+        return mocker.patch.object(
+            build_runner,
+            "traverse_datasources",
+            return_value=[Ok(source) for source in sources],
+        )
 
     return _stub
 
