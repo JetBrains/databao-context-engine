@@ -38,8 +38,11 @@ def duckdb_with_custom_schema(temp_duckdb_file: Path):
     return temp_duckdb_file
 
 
-def test_duckdb_plugin_introspection(temp_duckdb_file: Path):
+@pytest.mark.parametrize("with_samples", [False, True], ids=["database_structure", "database_structure_with_samples"])
+def test_duckdb_plugin_introspection(temp_duckdb_file: Path, with_samples):
     execute_duckdb_queries(temp_duckdb_file, "CREATE TABLE test (id INTEGER NOT NULL)")
+    if with_samples:
+        execute_duckdb_queries(temp_duckdb_file, "INSERT INTO test (id) VALUES (1), (2), (3)")
     plugin = DuckDbPlugin()
     config = _create_config_file_from_container(temp_duckdb_file)
     result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
@@ -53,10 +56,17 @@ def test_duckdb_plugin_introspection(temp_duckdb_file: Path):
             }
         }
     }
-    assert_database_structure(result, expected_structure)
+    assert_database_structure(result, expected_structure, with_samples)
 
 
-def test_duckdb_plugin_introspection_custom_schema(duckdb_with_custom_schema: Path):
+@pytest.mark.parametrize("with_samples", [False, True], ids=["database_structure", "database_structure_with_samples"])
+def test_duckdb_plugin_introspection_custom_schema(duckdb_with_custom_schema: Path, with_samples):
+    if with_samples:
+        execute_duckdb_queries(
+            duckdb_with_custom_schema,
+            "INSERT INTO custom.test (id, name) VALUES (1, 'Alice'), (2, NULL)",
+            "INSERT INTO custom.test2 (id, name) VALUES (1.5, 'a'), (NULL, 'b')",
+        )
     plugin = DuckDbPlugin()
     config = _create_config_file_from_container(duckdb_with_custom_schema)
     result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
@@ -77,7 +87,35 @@ def test_duckdb_plugin_introspection_custom_schema(duckdb_with_custom_schema: Pa
             "another": {},
         }
     }
-    assert_database_structure(result, expected_structure)
+    assert_database_structure(result, expected_structure, with_samples)
+
+
+def test_duckdb_exact_samples(temp_duckdb_file: Path):
+    execute_duckdb_queries(temp_duckdb_file, "CREATE TABLE test (id INTEGER NOT NULL)")
+    execute_duckdb_queries(temp_duckdb_file, "INSERT INTO test (id) VALUES (1), (2), (3)")
+    plugin = DuckDbPlugin()
+    config = _create_config_file_from_container(temp_duckdb_file)
+    result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
+    catalogs = {c.name: c for c in result.catalogs}
+    main_schema = {s.name: s for s in catalogs["test_db"].schemas}["main"]
+    table = {t.name: t for t in main_schema.tables}["test"]
+    assert table.samples == [{"id": 1}, {"id": 2}, {"id": 3}]
+
+
+def test_duckdb_samples_in_big(temp_duckdb_file: Path):
+    execute_duckdb_queries(
+        temp_duckdb_file,
+        "CREATE TABLE test_big (id INTEGER NOT NULL, name VARCHAR)",
+        "INSERT INTO test_big (id, name) VALUES " + ", ".join(f"({i}, 'name{i}')" for i in range(100)),
+    )
+    plugin = DuckDbPlugin()
+    limit = plugin._introspector._SAMPLE_LIMIT
+    config = _create_config_file_from_container(temp_duckdb_file)
+    result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
+    catalogs = {c.name: c for c in result.catalogs}
+    main_schema = {s.name: s for s in catalogs["test_db"].schemas}["main"]
+    table = {t.name: t for t in main_schema.tables}["test_big"]
+    assert len(table.samples) == limit
 
 
 def _create_config_file_from_container(duckdb_path: Path) -> Mapping[str, Any]:

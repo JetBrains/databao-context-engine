@@ -120,5 +120,5 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
         return connection_string
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
-        sql = f'SELECT TOP ({limit}) * FROM "{schema}"."{table}"'
+        sql = f'SELECT TOP ({limit}) * FROM "{catalog}"."{schema}"."{table}"'
         return SQLQuery(sql, [limit])
