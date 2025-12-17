@@ -56,12 +56,17 @@ def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
     datasources: list[DatasourceDescriptor] = []
     for main_dir in sorted((p for p in src.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
         main_type = main_dir.name
-        for path in sorted((p for p in main_dir.iterdir() if p.is_file()), key=lambda p: p.name.lower()):
+        for path in sorted((p for p in main_dir.iterdir() if _is_datasource_file(p)), key=lambda p: p.name.lower()):
             datasource = load_datasource_descriptor(path, main_type)
             if datasource is not None:
                 datasources.append(datasource)
 
     return datasources
+
+
+def _is_datasource_file(p: Path) -> bool:
+    # ignore backup files
+    return p.is_file() and not p.suffix.endswith("~")
 
 
 def get_datasource_descriptors(project_dir: Path, datasource_config_files: list[str]):
