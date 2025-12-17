@@ -40,7 +40,7 @@ class _SyncAsyncpgConnection:
             raise
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, exception_type, exception_value, traceback):
         try:
             if self._conn is not None and self._event_loop is not None and not self._event_loop.is_closed():
                 self._event_loop.run_until_complete(self._conn.close())
@@ -50,18 +50,24 @@ class _SyncAsyncpgConnection:
                 self._event_loop.close()
             self._event_loop = None
 
+    @property
+    def conn(self) -> asyncpg.Connection:
+        if self._conn is None:
+            raise RuntimeError("Connection is not open")
+        return self._conn
+
     def _run_blocking(self, awaitable) -> Any:
-        if not self._conn or not self._event_loop:
-            raise RuntimeError("Database connection is closed. Cannot execute queries")
+        if self._event_loop is None:
+            raise RuntimeError("Event loop is not initialized")
         return self._event_loop.run_until_complete(awaitable)
 
     def fetch_rows(self, sql: str, params: Sequence[Any] | None = None) -> list[dict]:
         query_params = [] if params is None else list(params)
-        records = self._run_blocking(self._conn.fetch(sql, *query_params))
+        records = self._run_blocking(self.conn.fetch(sql, *query_params))
         return [dict(record) for record in records]
 
     def fetch_scalar_values(self, sql: str) -> list[Any]:
-        records = self._run_blocking(self._conn.fetch(sql))
+        records = self._run_blocking(self.conn.fetch(sql))
         return [record[0] for record in records]
 
 
