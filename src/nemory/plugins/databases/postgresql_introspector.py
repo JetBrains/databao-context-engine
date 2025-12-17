@@ -1,8 +1,7 @@
-from typing import Annotated, Any
+import asyncio
+from typing import Annotated, Any, Sequence
 
-import psycopg
-from psycopg import Connection
-from psycopg.rows import dict_row
+import asyncpg
 from pydantic import BaseModel, Field
 
 from nemory.pluginlib.config_properties import ConfigPropertyAnnotation
@@ -25,32 +24,74 @@ class PostgresConfigFile(BaseDatabaseConfigFile):
     connection: PostgresConnectionProperties
 
 
+class _SyncAsyncpgConnection:
+    def __init__(self, connect_kwargs: dict[str, Any]):
+        self._connect_kwargs = connect_kwargs
+        self._conn: asyncpg.Connection | None = None
+        self._event_loop: asyncio.AbstractEventLoop | None = None
+
+    def __enter__(self):
+        self._event_loop = asyncio.new_event_loop()
+        try:
+            self._conn = self._event_loop.run_until_complete(asyncpg.connect(**self._connect_kwargs))
+        except Exception:
+            self._event_loop.close()
+            self._event_loop = None
+            raise
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if self._conn is not None and self._event_loop is not None and not self._event_loop.is_closed():
+                self._event_loop.run_until_complete(self._conn.close())
+        finally:
+            self._conn = None
+            if self._event_loop is not None and not self._event_loop.is_closed():
+                self._event_loop.close()
+            self._event_loop = None
+
+    def _run_blocking(self, awaitable) -> Any:
+        if not self._conn or not self._event_loop:
+            raise RuntimeError("Database connection is closed. Cannot execute queries")
+        return self._event_loop.run_until_complete(awaitable)
+
+    def fetch_rows(self, sql: str, params: Sequence[Any] | None = None) -> list[dict]:
+        query_params = [] if params is None else list(params)
+        records = self._run_blocking(self._conn.fetch(sql, *query_params))
+        return [dict(record) for record in records]
+
+    def fetch_scalar_values(self, sql: str) -> list[Any]:
+        records = self._run_blocking(self._conn.fetch(sql))
+        return [record[0] for record in records]
+
+
 class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "pg_catalog", "pg_toast"}
 
     supports_catalogs = True
 
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
+        if self.supports_catalogs:
+            sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY($1)"
+            return SQLQuery(sql, (catalogs,))
+        else:
+            sql = "SELECT schema_name FROM information_schema.schemata"
+            return SQLQuery(sql, None)
+
     def _connect(self, file_config: PostgresConfigFile):
-        connection_string = self._create_connection_string_for_config(file_config.connection)
-        conn = psycopg.connect(connection_string)
-        conn.autocommit = True
-        return conn
+        kwargs = self._create_connection_kwargs(file_config.connection)
+        return _SyncAsyncpgConnection(kwargs)
 
-    def _fetchall_dicts(self, connection: Connection, sql: str, params) -> list[dict]:
-        with connection.cursor(row_factory=dict_row) as cur:
-            cur.execute(sql, params)
-            return [r for r in cur.fetchall()]
+    def _fetchall_dicts(self, connection: _SyncAsyncpgConnection, sql: str, params) -> list[dict]:
+        return connection.fetch_rows(sql, params)
 
-    def _get_catalogs(self, connection: Connection, file_config: PostgresConfigFile) -> list[str]:
+    def _get_catalogs(self, connection: _SyncAsyncpgConnection, file_config: PostgresConfigFile) -> list[str]:
         database = file_config.connection.database
         if database is not None:
             return [database]
 
-        catalog_results = connection.execute(
-            "SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false"
-        ).fetchall()
-
-        return [row[0] for row in catalog_results]
+        rows = connection.fetch_scalar_values("SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false")
+        return rows
 
     def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
         sql = """
@@ -70,7 +111,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             -- filter out indexes and views
             rel.relkind IN ('r', 'p')
           AND
-            nsp.nspname = %s
+            nsp.nspname = $1
         """
         return SQLQuery(sql, [schema])
 
@@ -102,7 +143,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                  JOIN pg_catalog.pg_namespace nsp ON rel.relnamespace = nsp.oid
                  JOIN pg_catalog.pg_attribute att ON att.attrelid = rel.oid AND att.attnum = ANY (part.partattrs)
                  JOIN partitions ON partitions.oid = rel.oid
-        WHERE nsp.nspname = %s
+        WHERE nsp.nspname = $1
         GROUP BY rel.relname, part.partstrat, partitions.partition_tables
         """
         return SQLQuery(sql, [schema])
@@ -117,7 +158,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         )
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
-        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT %s'
+        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT $1'
         return SQLQuery(sql, (limit,))
 
     def _create_connection_string_for_config(self, connection_config: PostgresConnectionProperties) -> str:
@@ -142,3 +183,17 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             f"{k}={_escape_pg_value(str(v))}" for k, v in connection_parts.items() if v is not None
         )
         return connection_string
+
+    def _create_connection_kwargs(self, connection_config: PostgresConnectionProperties) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "host": connection_config.host,
+            "port": connection_config.port or 5432,
+            "database": connection_config.database or "postgres",
+        }
+
+        if connection_config.user:
+            kwargs["user"] = connection_config.user
+        if connection_config.password:
+            kwargs["password"] = connection_config.password
+        kwargs.update(connection_config.additional_properties or {})
+        return kwargs
