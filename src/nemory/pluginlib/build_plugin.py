@@ -137,6 +137,10 @@ class DatasourceType:
         return self.full_type.split("/")[0]
 
     @property
+    def config_folder(self):
+        return self.main_type
+
+    @property
     def subtype(self):
         return self.full_type.split("/")[1]
 

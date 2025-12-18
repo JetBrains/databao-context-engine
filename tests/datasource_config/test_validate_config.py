@@ -51,7 +51,7 @@ def load_dummy_plugins() -> dict[DatasourceType, BuildPlugin]:
 def with_config_file(project_dir: Path, full_type: str, datasource_name: str, config_content: dict[str, Any]):
     create_datasource_config_file(
         project_dir=project_dir,
-        config_folder_name=full_type.split("/")[0],
+        datasource_type=DatasourceType(full_type=full_type),
         datasource_name=datasource_name,
         config_content=to_yaml_string(config_content),
     )

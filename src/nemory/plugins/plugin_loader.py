@@ -12,6 +12,19 @@ class DuplicatePluginTypeError(RuntimeError):
 PluginList = dict[DatasourceType, BuildPlugin]
 
 
+def get_all_available_plugin_types(exclude_file_plugins: bool = False) -> set[DatasourceType]:
+    return set(load_plugins(exclude_file_plugins=exclude_file_plugins).keys())
+
+
+def get_plugin_for_type(datasource_type: DatasourceType) -> BuildPlugin:
+    all_plugins = load_plugins()
+
+    if datasource_type not in all_plugins:
+        raise ValueError(f"No plugin found for type '{datasource_type.full_type}'")
+
+    return load_plugins()[datasource_type]
+
+
 def load_plugins(exclude_file_plugins: bool = False) -> PluginList:
     """
     Loads both builtin and external plugins and merges them into one list

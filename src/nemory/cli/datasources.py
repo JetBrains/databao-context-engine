@@ -3,7 +3,7 @@ from pathlib import Path
 
 import click
 
-from nemory.datasource_config.add_config import add_datasource_config
+from nemory.cli.add_datasource_config import add_datasource_config_interactive
 from nemory.datasource_config.validate_config import (
     ValidationStatus,
     validate_datasource_config,
@@ -12,7 +12,7 @@ from nemory.datasource_config.validate_config import (
 
 
 def add_datasource_config_cli(project_dir: Path) -> None:
-    datasource_config_file = add_datasource_config(project_dir)
+    datasource_config_file = add_datasource_config_interactive(project_dir)
 
     if click.confirm("\nDo you want to check the connection to this new datasource?"):
         validate_datasource_config_cli(project_dir, datasource_config_files=[datasource_config_file])
