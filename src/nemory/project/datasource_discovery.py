@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -11,39 +10,11 @@ from nemory.project.types import (
     DatasourceKind,
     PreparedConfig,
     PreparedDatasource,
-    PreparedDatasourceError,
     PreparedFile,
 )
 from nemory.templating.renderer import render_template
-from nemory.utils.result import Err, Ok, Result
 
 logger = logging.getLogger(__name__)
-
-
-def traverse_datasources(
-    project_dir: Path,
-    *,
-    datasources_to_traverse: list[DatasourceDescriptor] | None = None,
-) -> Iterator[Result[PreparedDatasource, PreparedDatasourceError]]:
-    datasources = discover_datasources(project_dir) if datasources_to_traverse is None else datasources_to_traverse
-
-    if not datasources:
-        logger.info("No sources discovered under %s", project_dir)
-        return
-
-    for datasource in datasources:
-        try:
-            prepared_source = _prepare_source(datasource)
-
-            logger.info(f'Found datasource of type "{prepared_source.full_type}" with name {prepared_source.path.stem}')
-
-            yield Ok(prepared_source)
-        except Exception as e:
-            logger.debug(str(e), exc_info=True, stack_info=True)
-            logger.info("Failed to prepare source at (%s): %s", datasource.path, str(e))
-            yield Err(PreparedDatasourceError("Failed to prepare source", datasource.path, e))
-
-    return
 
 
 def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
@@ -123,7 +94,7 @@ def load_datasource_descriptor(path: Path, parent_name: str) -> DatasourceDescri
     return None
 
 
-def _prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
+def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
     """
     Convert a discovered datasource into a prepared datasource ready for plugin execution
     """

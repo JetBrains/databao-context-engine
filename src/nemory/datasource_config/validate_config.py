@@ -9,10 +9,13 @@ from pydantic import ValidationError
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
 from nemory.pluginlib.plugin_utils import check_connection_for_datasource
 from nemory.plugins.plugin_loader import load_plugins
-from nemory.project.datasource_discovery import get_datasource_descriptors, traverse_datasources
+from nemory.project.datasource_discovery import (
+    discover_datasources,
+    get_datasource_descriptors,
+    prepare_source,
+)
 from nemory.project.layout import ensure_project_dir, get_source_dir
-from nemory.project.types import PreparedConfig, PreparedDatasourceError
-from nemory.utils.result import is_err
+from nemory.project.types import PreparedConfig
 
 logger = logging.getLogger(__name__)
 
@@ -85,23 +88,27 @@ def _validate_datasource_config(
 ) -> dict[str, ValidationResult]:
     src_dir = get_source_dir(project_dir)
 
-    datasources_to_traverse = None
     if datasource_config_files:
         logger.info(f"Validating datasource(s): {datasource_config_files}")
         datasources_to_traverse = get_datasource_descriptors(project_dir, datasource_config_files)
+    else:
+        datasources_to_traverse = discover_datasources(project_dir)
 
     plugins = load_plugins(exclude_file_plugins=True)
 
     result = {}
-    for source_result in traverse_datasources(project_dir, datasources_to_traverse=datasources_to_traverse):
-        if is_err(source_result):
-            error = source_result.err_value
-            result[str(error.path.relative_to(src_dir))] = get_validation_result_from_error(error)
+    for discovered_datasource in datasources_to_traverse:
+        result_key = str(discovered_datasource.path.relative_to(src_dir))
+
+        try:
+            prepared_source = prepare_source(discovered_datasource)
+        except Exception as e:
+            result[result_key] = ValidationResult(
+                validation_status=ValidationStatus.INVALID,
+                summary="Failed to prepare source",
+                full_message=str(e),
+            )
             continue
-
-        prepared_source = source_result.ok_value
-
-        result_key = str(prepared_source.path.relative_to(src_dir))
 
         plugin = plugins.get(prepared_source.full_type)
         if plugin is None:
@@ -135,13 +142,7 @@ def _validate_datasource_config(
 
 
 def get_validation_result_from_error(e: Exception):
-    if isinstance(e, PreparedDatasourceError):
-        return ValidationResult(
-            validation_status=ValidationStatus.INVALID,
-            summary=str(e),
-            full_message=str(e) + os.linesep + str(e.__cause__),
-        )
-    elif isinstance(e, ValidationError):
+    if isinstance(e, ValidationError):
         return ValidationResult(
             validation_status=ValidationStatus.INVALID,
             summary="Config file is invalid",
