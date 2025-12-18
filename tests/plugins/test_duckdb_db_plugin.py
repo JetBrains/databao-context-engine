@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Mapping, Any
+from typing import Any, Mapping
 
 import duckdb
 import pytest
@@ -9,6 +9,7 @@ from nemory.plugins.databases.databases_types import (
     DatabaseColumn,
 )
 from nemory.plugins.duckdb_db_plugin import DuckDbPlugin
+from nemory.pluginlib.build_plugin import DatasourceType
 from tests.plugins.test_database_utils import assert_database_structure
 
 
@@ -45,7 +46,7 @@ def test_duckdb_plugin_introspection(temp_duckdb_file: Path, with_samples):
         execute_duckdb_queries(temp_duckdb_file, "INSERT INTO test (id) VALUES (1), (2), (3)")
     plugin = DuckDbPlugin()
     config = _create_config_file_from_container(temp_duckdb_file)
-    result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
 
     expected_structure = {
         "test_db": {
@@ -69,7 +70,7 @@ def test_duckdb_plugin_introspection_custom_schema(duckdb_with_custom_schema: Pa
         )
     plugin = DuckDbPlugin()
     config = _create_config_file_from_container(duckdb_with_custom_schema)
-    result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
 
     expected_structure = {
         "test_db": {
@@ -95,7 +96,7 @@ def test_duckdb_exact_samples(temp_duckdb_file: Path):
     execute_duckdb_queries(temp_duckdb_file, "INSERT INTO test (id) VALUES (1), (2), (3)")
     plugin = DuckDbPlugin()
     config = _create_config_file_from_container(temp_duckdb_file)
-    result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
     catalogs = {c.name: c for c in result.catalogs}
     main_schema = {s.name: s for s in catalogs["test_db"].schemas}["main"]
     table = {t.name: t for t in main_schema.tables}["test"]
@@ -111,7 +112,7 @@ def test_duckdb_samples_in_big(temp_duckdb_file: Path):
     plugin = DuckDbPlugin()
     limit = plugin._introspector._SAMPLE_LIMIT
     config = _create_config_file_from_container(temp_duckdb_file)
-    result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
     catalogs = {c.name: c for c in result.catalogs}
     main_schema = {s.name: s for s in catalogs["test_db"].schemas}["main"]
     table = {t.name: t for t in main_schema.tables}["test_big"]

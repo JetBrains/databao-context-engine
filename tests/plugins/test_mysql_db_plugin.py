@@ -8,6 +8,7 @@ from testcontainers.mysql import MySqlContainer  # type: ignore
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.databases.databases_types import DatabaseColumn, DatabaseIntrospectionResult
 from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
+from nemory.pluginlib.build_plugin import DatasourceType
 from tests.plugins.test_database_utils import assert_database_structure
 
 
@@ -92,7 +93,9 @@ def test_mysql_introspection(mysql_container: MySqlContainer, create_mysql_conn,
     _init_mysql_catalogs(create_mysql_conn, mysql_container, with_samples)
     plugin = MySQLDbPlugin()
     config_file = _create_config_file_from_container(mysql_container)
-    result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name").result
+    result = execute_datasource_plugin(
+        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+    ).result
 
     expected_structure = {
         "default": {
@@ -145,7 +148,9 @@ def test_mysql_exact_samples(mysql_container: MySqlContainer, create_mysql_conn)
     _init_mysql_catalogs(create_mysql_conn, mysql_container, with_samples=True)
     plugin = MySQLDbPlugin()
     config_file = _create_config_file_from_container(mysql_container)
-    execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+    execution_result = execute_datasource_plugin(
+        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+    )
     assert isinstance(execution_result.result, DatabaseIntrospectionResult)
 
     catalogs = {c.name: c for c in execution_result.result.catalogs}
@@ -171,7 +176,9 @@ def test_mysql_samples_in_big(mysql_container: MySqlContainer, create_mysql_conn
     plugin = MySQLDbPlugin()
     limit = plugin._introspector._SAMPLE_LIMIT
     config_file = _create_config_file_from_container(mysql_container)
-    execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+    execution_result = execute_datasource_plugin(
+        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+    )
     assert isinstance(execution_result.result, DatabaseIntrospectionResult)
     catalogs = {c.name: c for c in execution_result.result.catalogs}
     schema = {s.name: s for s in catalogs["default"].schemas}["custom"]

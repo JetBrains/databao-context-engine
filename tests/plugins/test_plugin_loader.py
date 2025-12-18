@@ -4,6 +4,7 @@ from nemory.plugins.plugin_loader import (
     DuplicatePluginTypeError,
     merge_plugins,
 )
+from nemory.pluginlib.build_plugin import DatasourceType
 
 
 class P1:
@@ -29,9 +30,13 @@ class P3Overlap:
 
 def test_merge_plugins():
     reg = merge_plugins([P1()], [P2()])
-    assert set(reg.keys()) == {"files/md", "databases/pg", "files/txt"}
-    assert reg["files/md"].name == "p1"
-    assert reg["files/txt"].name == "p2"
+    assert set(reg.keys()) == {
+        DatasourceType(full_type="files/md"),
+        DatasourceType(full_type="databases/pg"),
+        DatasourceType(full_type="files/txt"),
+    }
+    assert reg[DatasourceType(full_type="files/md")].name == "p1"
+    assert reg[DatasourceType(full_type="files/txt")].name == "p2"
 
 
 def test_merge_plugins_duplicate_raises():

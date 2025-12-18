@@ -11,6 +11,7 @@ from nemory.pluginlib.build_plugin import (
     BuildPlugin,
     DefaultBuildDatasourcePlugin,
     EmbeddableChunk,
+    DatasourceType,
 )
 from nemory.pluginlib.config_properties import (
     ConfigPropertyAnnotation,
@@ -224,15 +225,15 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigP
         ]
 
 
-def load_dummy_plugins(exclude_file_plugins: bool = False) -> dict[str, BuildPlugin]:
-    result: dict[str, BuildPlugin] = {
-        "databases/dummy_db": DummyBuildDatasourcePlugin(),
-        "dummy/dummy_default": DummyDefaultDatasourcePlugin(),
-        "additional/dummy_type": AdditionalDummyPlugin(),
-        "dummy/no_config_type": DummyPluginWithNoConfigType(),
+def load_dummy_plugins(exclude_file_plugins: bool = False) -> dict[DatasourceType, BuildPlugin]:
+    result: dict[DatasourceType, BuildPlugin] = {
+        DatasourceType(full_type="databases/dummy_db"): DummyBuildDatasourcePlugin(),
+        DatasourceType(full_type="dummy/dummy_default"): DummyDefaultDatasourcePlugin(),
+        DatasourceType(full_type="additional/dummy_type"): AdditionalDummyPlugin(),
+        DatasourceType(full_type="dummy/no_config_type"): DummyPluginWithNoConfigType(),
     }
 
     if not exclude_file_plugins:
-        result.update({"files/dummy": DummyFilePlugin()})
+        result.update({DatasourceType(full_type="files/dummy"): DummyFilePlugin()})
 
     return result

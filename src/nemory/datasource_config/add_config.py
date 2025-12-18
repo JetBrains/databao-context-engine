@@ -7,7 +7,7 @@ import click
 import yaml
 
 from nemory.introspection.property_extract import get_property_list_from_type
-from nemory.pluginlib.build_plugin import BuildDatasourcePlugin
+from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, DatasourceType
 from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
 from nemory.plugins.plugin_loader import PluginList, load_plugins
 from nemory.project.layout import (
@@ -44,11 +44,13 @@ def add_datasource_config(project_dir: Path) -> str:
 
     datasource_name = click.prompt("Datasource name?", type=str)
 
-    config_full_type = f"{config_folder}/{config_type}"
+    config_datasource_type = DatasourceType.from_main_and_subtypes(config_folder, config_type)
     ensure_datasource_config_file_doesnt_exist(project_dir, config_folder, datasource_name)
     basic_config = {"type": config_type, "name": datasource_name}
 
-    config_for_plugin = _create_config_for_plugin(cast(BuildDatasourcePlugin, all_datasource_plugins[config_full_type]))
+    config_for_plugin = _create_config_for_plugin(
+        cast(BuildDatasourcePlugin, all_datasource_plugins[config_datasource_type])
+    )
 
     config_content = config_content_to_yaml_string(basic_config | config_for_plugin)
     config_file_path = create_datasource_config_file(project_dir, config_folder, datasource_name, config_content)
@@ -60,9 +62,8 @@ def add_datasource_config(project_dir: Path) -> str:
 
 def _group_supported_types_by_folder(all_datasource_plugins: PluginList) -> dict[str, list[str]]:
     main_to_subtypes = defaultdict(list)
-    for supported_full_type in all_datasource_plugins.keys():
-        main_type, subtype = supported_full_type.split("/")
-        main_to_subtypes[main_type].append(subtype)
+    for datasource_type in all_datasource_plugins.keys():
+        main_to_subtypes[datasource_type.main_type].append(datasource_type.subtype)
 
     return main_to_subtypes
 

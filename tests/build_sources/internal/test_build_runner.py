@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from nemory.build_sources.internal import build_runner
-from nemory.pluginlib.build_plugin import BuildExecutionResult
+from nemory.pluginlib.build_plugin import BuildExecutionResult, DatasourceType
 from nemory.project.types import PreparedFile
 from nemory.services.run_name_policy import RunNamePolicy
 
@@ -72,7 +72,7 @@ def test_build_skips_source_without_plugin(
     datasources = SimpleNamespace(path=tmp_path / "src" / "files" / "md" / "one.md")
     stub_sources([datasources])
     stub_plugins({})
-    stub_prepare([PreparedFile(full_type="files/md", path=datasources.path)])
+    stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=datasources.path)])
 
     build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
     mock_build_service.start_run.assert_not_called()
@@ -88,8 +88,8 @@ def test_build_processes_file_source_and_exports(
 ):
     src = SimpleNamespace(path=tmp_path / "src" / "files" / "md" / "one.md")
     stub_sources([src])
-    stub_prepare([PreparedFile(full_type="files/md", path=src.path)])
-    stub_plugins({"files/md": object()})
+    stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=src.path)])
+    stub_plugins({DatasourceType(full_type="files/md"): object()})
 
     mock_build_service.process_prepared_source.return_value = _result(name="one", typ="files/md")
 
@@ -108,11 +108,11 @@ def test_build_continues_on_service_exception(
     stub_sources([s1, s2])
     stub_prepare(
         [
-            PreparedFile(full_type="files/md", path=s1.path),
-            PreparedFile(full_type="files/md", path=s2.path),
+            PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=s1.path),
+            PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=s2.path),
         ]
     )
-    stub_plugins({"files/md": object()})
+    stub_plugins({DatasourceType(full_type="files/md"): object()})
 
     mock_build_service.process_prepared_source.side_effect = [RuntimeError("boom"), _result(name="b")]
 
