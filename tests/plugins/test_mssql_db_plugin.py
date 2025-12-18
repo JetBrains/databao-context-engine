@@ -8,6 +8,7 @@ from testcontainers.mssql import SqlServerContainer  # type: ignore
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.databases.databases_types import DatabaseColumn, DatabaseIntrospectionResult
 from nemory.plugins.mssql_db_plugin import MSSQLDbPlugin
+from nemory.pluginlib.build_plugin import DatasourceType
 from tests.plugins.test_database_utils import assert_database_structure
 
 MSSQL_HTTP_PORT = 1433
@@ -126,7 +127,9 @@ def test_mssql_introspection(mssql_container, create_mssql_conn, with_samples):
     _init_mssql_catalogs(create_mssql_conn, with_samples)
     plugin = MSSQLDbPlugin()
     config_file = _create_config_file_from_container(mssql_container)
-    result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name").result
+    result = execute_datasource_plugin(
+        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+    ).result
 
     # should guest schema be ignored?
     expected_structure = {
@@ -162,7 +165,9 @@ def test_mssql_exact_samples(mssql_container: SqlServerContainer, create_mssql_c
     _init_mssql_catalogs(create_mssql_conn, with_samples=True)
     plugin = MSSQLDbPlugin()
     config_file = _create_config_file_from_container(mssql_container)
-    execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+    execution_result = execute_datasource_plugin(
+        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+    )
     assert isinstance(execution_result.result, DatabaseIntrospectionResult)
 
     catalogs = {c.name: c for c in execution_result.result.catalogs}
@@ -185,7 +190,9 @@ def test_mssql_samples_in_big(mssql_container: SqlServerContainer, create_mssql_
     plugin = MSSQLDbPlugin()
     limit = plugin._introspector._SAMPLE_LIMIT
     config_file = _create_config_file_from_container(mssql_container)
-    execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+    execution_result = execute_datasource_plugin(
+        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+    )
     assert isinstance(execution_result.result, DatabaseIntrospectionResult)
     catalogs = {c.name: c for c in execution_result.result.catalogs}
     schema = {s.name: s for s in catalogs["custom"].schemas}["dbo"]

@@ -6,13 +6,13 @@ from typing import Any, Mapping
 
 from pydantic import TypeAdapter
 
-from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildExecutionResult, BuildFilePlugin
+from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildExecutionResult, BuildFilePlugin, DatasourceType
 
 logger = logging.getLogger(__name__)
 
 
 def execute_datasource_plugin(
-    plugin: BuildDatasourcePlugin, full_type: str, config: Mapping[str, Any], datasource_name: str
+    plugin: BuildDatasourcePlugin, datasource_type: DatasourceType, config: Mapping[str, Any], datasource_name: str
 ) -> BuildExecutionResult:
     if not isinstance(plugin, BuildDatasourcePlugin):
         raise ValueError("This method can only execute a BuildDatasourcePlugin")
@@ -20,14 +20,14 @@ def execute_datasource_plugin(
     validated_config = _validate_datasource_config_file(config, plugin)
 
     return plugin.execute(
-        full_type=full_type,
+        full_type=datasource_type.full_type,
         datasource_name=datasource_name,
         file_config=validated_config,
     )
 
 
 def check_connection_for_datasource(
-    plugin: BuildDatasourcePlugin, full_type: str, config: Mapping[str, Any], datasource_name: str
+    plugin: BuildDatasourcePlugin, datasource_type: DatasourceType, config: Mapping[str, Any], datasource_name: str
 ) -> None:
     if not isinstance(plugin, BuildDatasourcePlugin):
         raise ValueError("Connection checks can only be performed on BuildDatasourcePlugin")
@@ -35,7 +35,7 @@ def check_connection_for_datasource(
     validated_config = _validate_datasource_config_file(config, plugin)
 
     plugin.check_connection(
-        full_type=full_type,
+        full_type=datasource_type.full_type,
         datasource_name=datasource_name,
         file_config=validated_config,
     )
@@ -45,10 +45,12 @@ def _validate_datasource_config_file(config: Mapping[str, Any], plugin: BuildDat
     return TypeAdapter(plugin.config_file_type).validate_python(config)
 
 
-def execute_file_plugin(plugin: BuildFilePlugin, full_type: str, file_path: Path) -> BuildExecutionResult:
+def execute_file_plugin(
+    plugin: BuildFilePlugin, datasource_type: DatasourceType, file_path: Path
+) -> BuildExecutionResult:
     with file_path.open("rb") as fh:
         return plugin.execute(
-            full_type=full_type,
+            full_type=datasource_type.full_type,
             file_name=file_path.name,
             file_buffer=fh,
         )

@@ -9,7 +9,7 @@ import pytest
 from pytest_unordered import unordered
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
-from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk
+from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk, DatasourceType
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.databases.database_chunker import DatabaseColumnChunkContent, DatabaseTableChunkContent
 from nemory.plugins.databases.databases_types import (
@@ -92,7 +92,9 @@ def test_postgres_plugin_execute(create_db_schema, create_pg_conn, postgres_cont
 
         config_file = _create_config_file_from_container(postgres_container)
 
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
         expected_catalogs = {
             "test": {
                 "public": {},
@@ -113,7 +115,9 @@ def test_postgres_exact_samples(create_db_schema, create_pg_conn, postgres_conta
         _init_with_test_table(create_pg_conn, schema_name, with_samples=True)
         plugin = PostgresqlDbPlugin()
         config_file = _create_config_file_from_container(postgres_container)
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
         assert isinstance(execution_result.result, DatabaseIntrospectionResult)
         catalogs = {c.name: c for c in execution_result.result.catalogs}
         schema = {s.name: s for s in catalogs["test"].schemas}[schema_name]
@@ -134,7 +138,9 @@ def test_postgres_samples_in_big(create_db_schema, create_pg_conn, postgres_cont
         plugin = PostgresqlDbPlugin()
         limit = plugin._introspector._SAMPLE_LIMIT
         config_file = _create_config_file_from_container(postgres_container)
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
         assert isinstance(execution_result.result, DatabaseIntrospectionResult)
         catalogs = {c.name: c for c in execution_result.result.catalogs}
         schema = {s.name: s for s in catalogs["test"].schemas}[schema_name]
@@ -173,7 +179,9 @@ def test_postgres_tables_with_indexes(create_db_schema, create_pg_conn, postgres
 
         plugin = PostgresqlDbPlugin()
         config_file = _create_config_file_from_container(postgres_container)
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
         expected_catalogs = {
             "test": {
                 "public": {},
@@ -212,7 +220,9 @@ def test_postgres_partitions(create_pg_conn, create_db_schema, postgres_containe
 
         config_file = _create_config_file_from_container(postgres_container)
 
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
 
         assert execution_result.result == DatabaseIntrospectionResult(
             [

@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from nemory.datasource_config.validate_config import ValidationResult, ValidationStatus, _validate_datasource_config
-from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin
+from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
 from nemory.project.layout import create_datasource_config_file
 from nemory.serialisation.yaml import to_yaml_string
 from tests.utils.dummy_build_plugin import (
@@ -41,10 +41,10 @@ def patch_load_plugins(mocker):
     )
 
 
-def load_dummy_plugins() -> dict[str, BuildPlugin]:
+def load_dummy_plugins() -> dict[DatasourceType, BuildPlugin]:
     return {
-        "dummy/simple_config": DummyPluginWithSimpleConfig(),  # type: ignore[abstract]
-        "dummy/dummy_default": DummyDefaultDatasourcePlugin(),
+        DatasourceType(full_type="dummy/simple_config"): DummyPluginWithSimpleConfig(),  # type: ignore[abstract]
+        DatasourceType(full_type="dummy/dummy_default"): DummyDefaultDatasourcePlugin(),
     }
 
 

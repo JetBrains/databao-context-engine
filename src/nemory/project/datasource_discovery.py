@@ -4,6 +4,7 @@ from typing import Any
 
 import yaml
 
+from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.project.layout import get_source_dir
 from nemory.project.types import (
     DatasourceDescriptor,
@@ -100,8 +101,10 @@ def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
     """
     if datasource.kind is DatasourceKind.FILE:
         file_subtype = datasource.path.suffix.lower().lstrip(".")
-        full_type = f"{datasource.main_type}/{file_subtype}"
-        return PreparedFile(full_type=full_type, path=datasource.path)
+        return PreparedFile(
+            datasource_type=DatasourceType.from_main_and_subtypes(main_type=datasource.main_type, subtype=file_subtype),
+            path=datasource.path,
+        )
 
     else:
         config = _parse_config_file(datasource.path)
@@ -110,9 +113,11 @@ def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
         if not subtype or not isinstance(subtype, str):
             raise ValueError("Config missing 'type' at %s - skipping", datasource.path)
 
-        full_type = f"{datasource.main_type}/{subtype}"
         return PreparedConfig(
-            full_type=full_type, path=datasource.path, config=config, datasource_name=datasource.path.stem
+            datasource_type=DatasourceType.from_main_and_subtypes(main_type=datasource.main_type, subtype=subtype),
+            path=datasource.path,
+            config=config,
+            datasource_name=datasource.path.stem,
         )
 
 

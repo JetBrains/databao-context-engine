@@ -121,3 +121,25 @@ class NotSupportedError(RuntimeError):
 
 
 BuildPlugin = BuildDatasourcePlugin | BuildFilePlugin
+
+
+@dataclass(kw_only=True, frozen=True)
+class DatasourceType:
+    full_type: str
+
+    def __post_init__(self):
+        type_segments = self.full_type.split("/")
+        if len(type_segments) != 2:
+            raise ValueError(f"Invalid DatasourceType: {self.full_type}")
+
+    @property
+    def main_type(self):
+        return self.full_type.split("/")[0]
+
+    @property
+    def subtype(self):
+        return self.full_type.split("/")[1]
+
+    @staticmethod
+    def from_main_and_subtypes(main_type: str, subtype: str) -> "DatasourceType":
+        return DatasourceType(full_type=f"{main_type}/{subtype}")

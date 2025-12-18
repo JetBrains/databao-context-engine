@@ -3,6 +3,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from nemory.pluginlib.build_plugin import DatasourceType
+
 
 class DatasourceKind(StrEnum):
     CONFIG = "config"
@@ -18,7 +20,7 @@ class DatasourceDescriptor:
 
 @dataclass(frozen=True)
 class PreparedConfig:
-    full_type: str
+    datasource_type: DatasourceType
     path: Path
     config: dict[Any, Any]
     datasource_name: str
@@ -26,7 +28,7 @@ class PreparedConfig:
 
 @dataclass(frozen=True)
 class PreparedFile:
-    full_type: str
+    datasource_type: DatasourceType
     path: Path
 
 

@@ -110,10 +110,12 @@ def _validate_datasource_config(
             )
             continue
 
-        plugin = plugins.get(prepared_source.full_type)
+        plugin = plugins.get(prepared_source.datasource_type)
         if plugin is None:
             logger.debug(
-                "No plugin for '%s' (datasource=%s) — skipping.", prepared_source.full_type, prepared_source.path
+                "No plugin for '%s' (datasource=%s) — skipping.",
+                prepared_source.datasource_type.full_type,
+                prepared_source.path,
             )
             result[result_key] = ValidationResult(
                 validation_status=ValidationStatus.INVALID, summary="No compatible plugin found"
@@ -124,7 +126,7 @@ def _validate_datasource_config(
             try:
                 check_connection_for_datasource(
                     plugin=plugin,
-                    full_type=prepared_source.full_type,
+                    datasource_type=prepared_source.datasource_type,
                     config=prepared_source.config,
                     datasource_name=prepared_source.datasource_name,
                 )
