@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from nemory.datasource_config.validate_config import ValidationResult, ValidationStatus, _validate_datasource_config
+from nemory.datasource_config.validate_config import ValidationResult, ValidationStatus, validate_datasource_config
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
 from nemory.project.layout import create_datasource_config_file
 from nemory.serialisation.yaml import to_yaml_string
@@ -81,7 +81,7 @@ def test_validate_datasource_config_with_failing_config_validation(project_path:
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "9876"},
     )
 
-    result = _validate_datasource_config(project_path)
+    result = validate_datasource_config(project_path)
 
     assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
         "databases/unknown.yaml": "Invalid - No compatible plugin found",
@@ -100,7 +100,7 @@ def test_validate_datasource_config_with_valid_connections(project_path: Path):
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
     )
 
-    result = _validate_datasource_config(project_path)
+    result = validate_datasource_config(project_path)
 
     assert result == {
         "dummy/valid.yaml": ValidationResult(validation_status=ValidationStatus.VALID, summary=None),
@@ -130,7 +130,7 @@ def test_validate_datasource_config_with_filter(project_path: Path):
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "9876"},
     )
 
-    result = _validate_datasource_config(
+    result = validate_datasource_config(
         project_path, datasource_config_files=["dummy/not_implemented.yaml", "dummy/invalid3.yaml"]
     )
 
@@ -163,7 +163,7 @@ def test_validate_datasource_config_with_single_filter(project_path: Path):
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "9876"},
     )
 
-    result = _validate_datasource_config(project_path, datasource_config_files=["dummy/valid.yaml"])
+    result = validate_datasource_config(project_path, datasource_config_files=["dummy/valid.yaml"])
 
     assert result == {
         "dummy/valid.yaml": ValidationResult(validation_status=ValidationStatus.VALID, summary=None),
@@ -194,7 +194,7 @@ def test_validate_datasource_config_with_invalid_filter(project_path: Path):
     )
 
     with pytest.raises(ValueError):
-        _validate_datasource_config(project_path, datasource_config_files=["dummy/not_a_file.yaml"])
+        validate_datasource_config(project_path, datasource_config_files=["dummy/not_a_file.yaml"])
 
 
 def test_validate_datasource_config_with_no_type(project_path: Path):
@@ -212,7 +212,7 @@ def test_validate_datasource_config_with_no_type(project_path: Path):
     )
     with_config_file(project_path, "dummy/dummy_default", "no_type", {"name": "no_type"})
 
-    result = _validate_datasource_config(project_path)
+    result = validate_datasource_config(project_path)
 
     assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
         "dummy/valid.yaml": "Valid",
@@ -241,7 +241,7 @@ def test_validate_datasource_config_with_invalid_template(project_path: Path):
         {"name": "{{ unexisting_function() }}", "type": "dummy_default"},
     )
 
-    result = _validate_datasource_config(project_path)
+    result = validate_datasource_config(project_path)
 
     assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
         "dummy/valid.yaml": "Valid",
