@@ -22,6 +22,15 @@ class CustomClass:
         self.my_list = ["1", "2", "3"]
 
 
+class CustomClassNoPublicFields:
+    def __init__(self):
+        self._hidden_var = "Beautiful"
+        self._second_hidden_var = "Content"
+
+    def __str__(self):
+        return f"{self._hidden_var} {self._second_hidden_var}"
+
+
 @dataclass
 class SimpleNestedClass:
     nested_var: str
@@ -106,3 +115,9 @@ def test_default_dict():
     result = to_yaml_string(d)
 
     assert result.strip() == "a: 1\nb: 2"
+
+
+def test_object_with_no_public_field():
+    result = to_yaml_string({"my_attribute": CustomClassNoPublicFields()})
+
+    assert result.strip() == "my_attribute: Beautiful Content"

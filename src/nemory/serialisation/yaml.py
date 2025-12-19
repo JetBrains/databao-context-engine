@@ -9,7 +9,12 @@ def default_representer(dumper: SafeDumper, data: object) -> Node:
         return dumper.represent_dict(data)
     elif hasattr(data, "__dict__"):
         # Doesn't serialise "private" attributes (that starts with an _)
-        return dumper.represent_dict({key: value for key, value in data.__dict__.items() if not key.startswith("_")})
+        data_public_attributes = {key: value for key, value in data.__dict__.items() if not key.startswith("_")}
+        if data_public_attributes:
+            return dumper.represent_dict(data_public_attributes)
+        else:
+            # If there is no public attributes, we default to the string representation
+            return dumper.represent_str(str(data))
     else:
         return dumper.represent_str(str(data))
 
