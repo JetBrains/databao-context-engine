@@ -7,10 +7,10 @@ from click import Context
 
 from nemory.build_sources.public.api import build_all_datasources
 from nemory.cli.datasources import add_datasource_config_cli, validate_datasource_config_cli
+from nemory.cli.info import echo_info
 from nemory.config.logging import configure_logging
 from nemory.llm.install import resolve_ollama_bin
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
-from nemory.project.info import get_command_info
 from nemory.project.init_project import InitErrorReason, InitProjectError, init_project_dir
 from nemory.project.layout import create_project_dir
 from nemory.retrieve_embeddings.internal.retrieve_wiring import retrieve_embeddings
@@ -55,7 +55,7 @@ def info(ctx: Context) -> None:
     Display system-wide information
     """
 
-    click.echo(get_command_info(project_dir=ctx.obj["project_dir"]))
+    echo_info(ctx.obj["project_dir"])
 
 
 @nemory.command()

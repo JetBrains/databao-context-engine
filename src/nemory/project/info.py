@@ -1,5 +1,4 @@
-import os
-import sys
+from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 
@@ -7,25 +6,37 @@ from nemory.project.layout import is_project_dir_valid, read_config_file
 from nemory.system.properties import get_nemory_path
 
 
-def get_command_info(project_dir: Path) -> str:
-    info_lines = []
-    info_lines.append(f"Nemory version: {get_nemory_version()}")
-    info_lines.append(f"Nemory storage dir: {get_nemory_path()}")
+@dataclass(kw_only=True, frozen=True)
+class NemoryProjectInfo:
+    project_path: Path
+    is_initialised: bool
+    project_id: str | None
 
-    info_lines.append("")
 
-    info_lines.append(f"OS name: {sys.platform}")
-    info_lines.append(f"OS architecture: {os.uname().machine if hasattr(os, 'uname') else 'unknown'}")
+@dataclass(kw_only=True, frozen=True)
+class NemoryInfo:
+    version: str
+    nemory_path: Path
 
-    info_lines.append("")
+    project_info: NemoryProjectInfo
 
-    if is_project_dir_valid(project_dir):
-        info_lines.append(f"Project dir: {project_dir.resolve()}")
-        info_lines.append(f"Project ID: {read_config_file(project_dir).project_id}")
-    else:
-        info_lines.append(f"Project not initialised at {project_dir.resolve()}")
 
-    return os.linesep.join(info_lines)
+def get_command_info(project_dir: Path) -> NemoryInfo:
+    return NemoryInfo(
+        version=get_nemory_version(),
+        nemory_path=get_nemory_path(),
+        project_info=_get_project_info(project_dir),
+    )
+
+
+def _get_project_info(project_dir: Path) -> NemoryProjectInfo:
+    is_project_initialised = is_project_dir_valid(project_dir)
+
+    return NemoryProjectInfo(
+        project_path=project_dir,
+        is_initialised=is_project_initialised,
+        project_id=read_config_file(project_dir).project_id if is_project_initialised else None,
+    )
 
 
 def get_nemory_version() -> str:
