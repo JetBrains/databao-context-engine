@@ -4,7 +4,7 @@ from typing import Annotated, Any, Sequence
 import asyncpg
 from pydantic import BaseModel, Field
 
-from nemory.pluginlib.config_properties import ConfigPropertyAnnotation
+from nemory.pluginlib.config import ConfigPropertyAnnotation
 from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from nemory.plugins.databases.databases_types import DatabaseTable

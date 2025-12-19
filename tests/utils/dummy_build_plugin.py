@@ -9,11 +9,11 @@ from nemory.pluginlib.build_plugin import (
     BuildExecutionResult,
     BuildFilePlugin,
     BuildPlugin,
+    DatasourceType,
     DefaultBuildDatasourcePlugin,
     EmbeddableChunk,
-    DatasourceType,
 )
-from nemory.pluginlib.config_properties import (
+from nemory.pluginlib.config import (
     ConfigPropertyAnnotation,
     ConfigPropertyDefinition,
     CustomiseConfigProperties,

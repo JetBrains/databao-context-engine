@@ -1,11 +1,11 @@
 import types
 from dataclasses import MISSING, fields, is_dataclass
-from typing import Annotated, Any, Union, get_origin, get_type_hints, ForwardRef
+from typing import Annotated, Any, ForwardRef, Union, get_origin, get_type_hints
 
 from pydantic import BaseModel, _internal
 from pydantic_core import PydanticUndefinedType
 
-from nemory.pluginlib.config_properties import ConfigPropertyAnnotation, ConfigPropertyDefinition
+from nemory.pluginlib.config import ConfigPropertyAnnotation, ConfigPropertyDefinition
 
 
 def get_property_list_from_type(root_type: type) -> list[ConfigPropertyDefinition]:
