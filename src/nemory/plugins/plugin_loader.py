@@ -51,6 +51,7 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     from nemory.plugins.duckdb_db_plugin import DuckDbPlugin
     from nemory.plugins.mssql_db_plugin import MSSQLDbPlugin
     from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
+    from nemory.plugins.parquet_plugin import ParquetPlugin
     from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
     from nemory.plugins.snowflake_db_plugin import SnowflakeDbPlugin
 
@@ -62,6 +63,7 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
         MySQLDbPlugin(),
         PostgresqlDbPlugin(),
         SnowflakeDbPlugin(),
+        ParquetPlugin(),
     ]
 
 

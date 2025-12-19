@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from pytest_unordered import unordered
 
 from nemory.introspection.property_extract import get_property_list_from_type
-from nemory.pluginlib.config_properties import ConfigPropertyAnnotation, ConfigPropertyDefinition
+from nemory.pluginlib.config import ConfigPropertyAnnotation, ConfigPropertyDefinition
 
 
 class TestSubclass:

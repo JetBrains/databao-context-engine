@@ -8,7 +8,7 @@ import yaml
 
 from nemory.introspection.property_extract import get_property_list_from_type
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, DatasourceType
-from nemory.pluginlib.config_properties import ConfigPropertyDefinition, CustomiseConfigProperties
+from nemory.pluginlib.config import ConfigPropertyDefinition, CustomiseConfigProperties
 from nemory.plugins.plugin_loader import PluginList, load_plugins
 from nemory.project.layout import (
     create_datasource_config_file,
