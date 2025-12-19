@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
+from uuid import UUID
 
 from nemory.project.layout import is_project_dir_valid, read_config_file
 from nemory.system.properties import get_nemory_path
@@ -10,7 +11,7 @@ from nemory.system.properties import get_nemory_path
 class NemoryProjectInfo:
     project_path: Path
     is_initialised: bool
-    project_id: str | None
+    project_id: UUID | None
 
 
 @dataclass(kw_only=True, frozen=True)
