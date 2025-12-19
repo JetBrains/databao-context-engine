@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -96,3 +97,12 @@ def test_write_yaml_to_file(tmp_path: Path):
     result = test_file.read_text()
 
     assert result.strip() == get_expected(my_uuid, now).strip()
+
+
+def test_default_dict():
+    d = defaultdict()
+    d["a"] = 1
+    d["b"] = 2
+    result = to_yaml_string(d)
+
+    assert result.strip() == "a: 1\nb: 2"

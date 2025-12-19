@@ -1,11 +1,13 @@
-from typing import Any, TextIO, cast
+from typing import Any, Mapping, TextIO, cast
 
 import yaml
 from yaml import Node, SafeDumper
 
 
 def default_representer(dumper: SafeDumper, data: object) -> Node:
-    if hasattr(data, "__dict__"):
+    if isinstance(data, Mapping):
+        return dumper.represent_dict(data)
+    elif hasattr(data, "__dict__"):
         # Doesn't serialise "private" attributes (that starts with an _)
         return dumper.represent_dict({key: value for key, value in data.__dict__.items() if not key.startswith("_")})
     else:
