@@ -4,7 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence, Union
+from typing import Any, Mapping, Protocol, Sequence, Union
 
 from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
@@ -14,11 +14,17 @@ from nemory.plugins.databases.databases_types import (
     DatabaseSchema,
     DatabaseTable,
 )
+from nemory.plugins.databases.introspection_scope import IntrospectionScope
+from nemory.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
 
 logger = logging.getLogger(__name__)
 
 
-class BaseIntrospector[T](ABC):
+class SupportsIntrospectionScope(Protocol):
+    introspection_scope: IntrospectionScope | None
+
+
+class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
     supports_catalogs: bool = True
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
     _SAMPLE_LIMIT: int = 5
@@ -32,7 +38,8 @@ class BaseIntrospector[T](ABC):
         with connection:
             catalogs = self._get_catalogs_adapted(connection, file_config)
             schemas_per_catalog = self._get_schemas(connection, catalogs, file_config)
-            schemas_per_catalog = self._filter_schemas(schemas_per_catalog, file_config)
+
+            catalogs, schemas_per_catalog = self._apply_introspection_scope(catalogs, schemas_per_catalog, file_config)
 
             introspected_catalogs: list[DatabaseCatalog] = []
             for catalog in catalogs:
@@ -89,18 +96,21 @@ class BaseIntrospector[T](ABC):
             sql = "SELECT schema_name FROM information_schema.schemata"
             return SQLQuery(sql, None)
 
-    def _filter_schemas(
+    def _apply_introspection_scope(
         self,
+        catalogs: list[str],
         schemas_per_catalog: dict[str, list[str]],
         file_config: T,
-    ) -> dict[str, list[str]]:
-        ignored = {s.lower() for s in (self._ignored_schemas() or [])}
-
-        return {
-            catalog: kept
-            for catalog, schemas in schemas_per_catalog.items()
-            if (kept := [s for s in schemas if s.lower() not in ignored])
-        }
+    ) -> tuple[list[str], dict[str, list[str]]]:
+        """
+        Apply the user-provided introspection scope to the discovered catalogs/schemas.
+        """
+        matcher = IntrospectionScopeMatcher(
+            file_config.introspection_scope,
+            ignored_schemas=self._ignored_schemas(),
+        )
+        selection = matcher.filter_scopes(catalogs, schemas_per_catalog)
+        return selection.catalogs, selection.schemas_per_catalog
 
     def _collect_columns_for_schema(self, connection, catalog: str, schema: str):
         sql_query = self._sql_columns_for_schema(catalog, schema)

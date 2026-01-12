@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
@@ -12,11 +12,14 @@ from nemory.pluginlib.build_plugin import (
 )
 from nemory.plugins.databases.base_introspector import BaseIntrospector
 from nemory.plugins.databases.database_chunker import build_database_chunks
+from nemory.plugins.databases.introspection_scope import IntrospectionScope
 
 
 class BaseDatabaseConfigFile(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     name: str | None = Field(default=None)
     type: str
+    introspection_scope: IntrospectionScope | None = Field(default=None, alias="introspection-scope")
 
 
 T = TypeVar("T", bound=BaseDatabaseConfigFile)
