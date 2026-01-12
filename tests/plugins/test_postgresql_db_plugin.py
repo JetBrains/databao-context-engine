@@ -4,7 +4,8 @@ import string
 from datetime import datetime
 from typing import Any, Mapping
 
-import psycopg
+import asyncio
+import asyncpg
 import pytest
 from pytest_unordered import unordered
 from testcontainers.postgres import PostgresContainer  # type: ignore
@@ -32,62 +33,69 @@ def postgres_container():
     container.stop()
 
 
+def _get_connect_kwargs(postgres_container: PostgresContainer) -> dict[str, Any]:
+    return {
+        "host": postgres_container.get_container_host_ip(),
+        "port": int(postgres_container.get_exposed_port(postgres_container.port)),
+        "database": postgres_container.dbname,
+        "user": postgres_container.username,
+        "password": postgres_container.password,
+    }
+
+
+def _execute(postgres_container: PostgresContainer, sql: str) -> None:
+    async def _run():
+        conn = await asyncpg.connect(**_get_connect_kwargs(postgres_container))
+        try:
+            await conn.execute(sql)
+        finally:
+            await conn.close()
+
+    asyncio.run(_run())
+
+
+def _executemany(postgres_container: PostgresContainer, sql: str, args) -> None:
+    async def _run():
+        conn = await asyncpg.connect(**_get_connect_kwargs(postgres_container))
+        try:
+            await conn.executemany(sql, args)
+        finally:
+            await conn.close()
+
+    asyncio.run(_run())
+
+
 @pytest.fixture
-def create_db_schema(create_pg_conn, request):
+def create_db_schema(postgres_container: PostgresContainer, request):
     @contextlib.contextmanager
     def _create_db_schema(desired_schema_name: str | None = None):
-        actual_schema_name = desired_schema_name or request.function.__name__
-        conn = create_pg_conn()
-        conn.execute(f"CREATE SCHEMA {actual_schema_name};")
-        conn.commit()
-        conn.close()
+        schema_name = desired_schema_name or request.function.__name__
+        _execute(postgres_container, f"CREATE SCHEMA {schema_name};")
         try:
-            yield actual_schema_name
+            yield schema_name
         finally:
-            new_conn = create_pg_conn()
-            new_conn.execute(f"DROP SCHEMA IF EXISTS {actual_schema_name} CASCADE;")
-            new_conn.commit()
-            new_conn.close()
+            _execute(postgres_container, f"DROP SCHEMA IF EXISTS {schema_name} CASCADE;")
 
     return _create_db_schema
 
 
-@pytest.fixture
-def create_pg_conn(postgres_container: PostgresContainer):
-    def create_connection():
-        connection_url = postgres_container.get_connection_url()
-        conn = psycopg.connect(connection_url)
-        return conn
-
-    yield create_connection
+def _init_with_test_table(postgres_container: PostgresContainer, schema_name, with_samples: bool = False):
+    _execute(postgres_container, f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null);")
+    if with_samples:
+        _execute(postgres_container, f"""INSERT INTO {schema_name}.test (id, name) VALUES (1, 'Alice'), (2, 'Bob');""")
 
 
-def _init_with_test_table(create_pg_conn, schema_name, with_samples=False):
-    with create_pg_conn() as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null)")
-
-        if with_samples:
-            cursor.execute(f"INSERT INTO {schema_name}.test (id, name) VALUES (1, 'Alice'), (2, 'Bob');")
-
-
-def _init_with_big_table(create_pg_conn, schema_name):
-    with create_pg_conn() as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null)")
-
-        rows, n = [], 1000
-        for i in range(n):
-            random_name = "".join(random.choices(string.ascii_letters, k=5))
-            rows.append((i, random_name))
-        cursor.executemany(f"INSERT INTO {schema_name}.test (id, name) VALUES (%s, %s)", rows)
+def _init_with_big_table(postgres_container: PostgresContainer, schema_name):
+    _execute(postgres_container, f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null);")
+    rows = [(i, "".join(random.choices(string.ascii_letters, k=5))) for i in range(1000)]
+    _executemany(postgres_container, f"INSERT INTO {schema_name}.test (id, name) VALUES ($1, $2);", rows)
 
 
 @pytest.mark.parametrize("with_samples", [False, True], ids=["database_structure", "database_structure_with_samples"])
-def test_postgres_plugin_execute(create_db_schema, create_pg_conn, postgres_container: PostgresContainer, with_samples):
+def test_postgres_plugin_execute(create_db_schema, postgres_container: PostgresContainer, with_samples):
     schema_name = "custom"
     with create_db_schema(schema_name):
-        _init_with_test_table(create_pg_conn, schema_name, with_samples)
+        _init_with_test_table(postgres_container, schema_name, with_samples)
         plugin = PostgresqlDbPlugin()
 
         config_file = _create_config_file_from_container(postgres_container)
@@ -109,10 +117,10 @@ def test_postgres_plugin_execute(create_db_schema, create_pg_conn, postgres_cont
         assert_database_structure(execution_result.result, expected_catalogs, with_samples)
 
 
-def test_postgres_exact_samples(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+def test_postgres_exact_samples(create_db_schema, postgres_container: PostgresContainer):
     schema_name = "custom"
     with create_db_schema(schema_name):
-        _init_with_test_table(create_pg_conn, schema_name, with_samples=True)
+        _init_with_test_table(postgres_container, schema_name, with_samples=True)
         plugin = PostgresqlDbPlugin()
         config_file = _create_config_file_from_container(postgres_container)
         execution_result = execute_datasource_plugin(
@@ -131,10 +139,10 @@ def test_postgres_exact_samples(create_db_schema, create_pg_conn, postgres_conta
         assert samples == expected_rows
 
 
-def test_postgres_samples_in_big(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+def test_postgres_samples_in_big(create_db_schema, postgres_container: PostgresContainer):
     schema_name = "custom"
     with create_db_schema(schema_name):
-        _init_with_big_table(create_pg_conn, schema_name)
+        _init_with_big_table(postgres_container, schema_name)
         plugin = PostgresqlDbPlugin()
         limit = plugin._introspector._SAMPLE_LIMIT
         config_file = _create_config_file_from_container(postgres_container)
@@ -149,33 +157,33 @@ def test_postgres_samples_in_big(create_db_schema, create_pg_conn, postgres_cont
         assert len(table.samples) == limit
 
 
-def test_postgres_tables_with_indexes(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+def test_postgres_tables_with_indexes(create_db_schema, postgres_container: PostgresContainer):
     schema_name = "custom"
     with create_db_schema(schema_name):
-        with create_pg_conn() as conn:
-            conn.execute(
-                f"""
-                CREATE TABLE {schema_name}.indexed_table (
-                    id INT NOT NULL,
-                    name VARCHAR(255),
-                    email VARCHAR(255)
-                );
+        _execute(
+            postgres_container,
+            f"""
+            CREATE TABLE {schema_name}.indexed_table (
+                id INT NOT NULL,
+                name VARCHAR(255),
+                email VARCHAR(255)
+            );
 
-                CREATE UNIQUE INDEX idx_indexed_table_id
-                    ON {schema_name}.indexed_table (id);
+            CREATE UNIQUE INDEX idx_indexed_table_id
+                ON {schema_name}.indexed_table (id);
 
-                CREATE INDEX idx_indexed_table_name
-                    ON {schema_name}.indexed_table (name);
+            CREATE INDEX idx_indexed_table_name
+                ON {schema_name}.indexed_table (name);
 
-                CREATE INDEX idx_indexed_table_name_email
-                    ON {schema_name}.indexed_table (name, email);
+            CREATE INDEX idx_indexed_table_name_email
+                ON {schema_name}.indexed_table (name, email);
 
-                INSERT INTO {schema_name}.indexed_table (id, name, email)
-                VALUES
-                    (1, 'Alice', 'alice@example.com'),
-                    (2, 'Bob', 'bob@example.com');
-                """
-            )
+            INSERT INTO {schema_name}.indexed_table (id, name, email)
+            VALUES
+                (1, 'Alice', 'alice@example.com'),
+                (2, 'Bob', 'bob@example.com');
+            """,
+        )
 
         plugin = PostgresqlDbPlugin()
         config_file = _create_config_file_from_container(postgres_container)
@@ -202,19 +210,21 @@ def test_postgres_tables_with_indexes(create_db_schema, create_pg_conn, postgres
         )
 
 
-def test_postgres_partitions(create_pg_conn, create_db_schema, postgres_container):
+def test_postgres_partitions(create_db_schema, postgres_container):
     with create_db_schema() as db_schema:
-        with create_pg_conn() as conn:
-            conn.execute(f"""
-                        CREATE TABLE {db_schema}.test_partitions (id int not null, name varchar(255) null)
-                        PARTITION BY RANGE (id);
+        _execute(
+            postgres_container,
+            f"""
+            CREATE TABLE {db_schema}.test_partitions (id int not null, name varchar(255) null)
+            PARTITION BY RANGE (id);
 
-                        CREATE TABLE {db_schema}.test_partitions_1 PARTITION OF {db_schema}.test_partitions
-                        FOR VALUES FROM (0) TO (10);
+            CREATE TABLE {db_schema}.test_partitions_1 PARTITION OF {db_schema}.test_partitions
+            FOR VALUES FROM (0) TO (10);
 
-                        CREATE TABLE {db_schema}.test_partitions_2 PARTITION OF {db_schema}.test_partitions
-                        FOR VALUES FROM (10) TO (20);
-                    """)
+            CREATE TABLE {db_schema}.test_partitions_2 PARTITION OF {db_schema}.test_partitions
+            FOR VALUES FROM (10) TO (20)
+            """,
+        )
 
         plugin = PostgresqlDbPlugin()
 
