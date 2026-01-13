@@ -1,9 +1,12 @@
+import logging
 from pathlib import Path
 
 from nemory.project.layout import get_run_dir
 from nemory.retrieve_embeddings.internal.export_results import export_retrieve_results
 from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from nemory.storage.repositories.vector_search_repository import VectorSearchResult, get_search_results_display_text
+
+logger = logging.getLogger(__name__)
 
 
 def retrieve(
@@ -25,6 +28,7 @@ def retrieve(
 
     if export_to_file:
         export_directory = get_run_dir(project_dir=project_dir, run_name=resolved_run_name)
-        export_retrieve_results(export_directory, display_texts)
+        export_file = export_retrieve_results(export_directory, display_texts)
+        logger.info(f"Exported results to {export_file}")
 
     return retrieve_results
