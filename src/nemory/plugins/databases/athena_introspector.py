@@ -103,7 +103,8 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
             table_name, 
             column_name, 
             ordinal_position, 
-            data_type
+            data_type,
+            is_nullable
         FROM 
             {catalog}.information_schema.columns
         WHERE 

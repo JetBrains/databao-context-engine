@@ -44,12 +44,12 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
 
     def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
         comps = self._component_queries()
-        results: dict[str, list[dict]] = {cq["name"]: [] for cq in comps}
+        results: dict[str, list[dict]] = {cq: [] for cq in comps}
 
         for cq in comps:
-            sql = cq["sql"].replace("{SCHEMA}", self._quote_literal(schema))
+            sql = comps.get(cq).replace("{SCHEMA}", self._quote_literal(schema))
             rows = self._fetchall_dicts(connection, sql, None)
-            results[cq["name"]] = rows
+            results[cq] = rows
 
         return TableBuilder.build_from_components(
             rels=results.get("relations", []),
@@ -61,16 +61,16 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             idx_cols=results.get("idx", []),
         )
 
-    def _component_queries(self) -> list[dict]:
-        return [
-            {"name": "relations", "sql": self._sql_relations()},
-            {"name": "columns", "sql": self._sql_columns()},
-            {"name": "pk", "sql": self._sql_primary_keys()},
-            {"name": "uq", "sql": self._sql_unique()},
-            {"name": "checks", "sql": self._sql_checks()},
-            {"name": "fks", "sql": self._sql_foreign_keys()},
-            {"name": "idx", "sql": self._sql_indexes()},
-        ]
+    def _component_queries(self) -> dict[str, str]:
+        return {
+            "relations": self._sql_relations(),
+            "columns": self._sql_columns(),
+            "pk": self._sql_primary_keys(),
+            "uq": self._sql_unique(),
+            "checks": self._sql_checks(),
+            "fks": self._sql_foreign_keys(),
+            "idx": self._sql_indexes(),
+        }
 
     def _sql_relations(self) -> str:
         return r"""
@@ -193,7 +193,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 duckdb_constraints() AS d
             WHERE 
                 d.schema_name = {SCHEMA}
-                AND d.constraint_type IN ('CHECK')
+                AND d.constraint_type = 'CHECK'
             ORDER BY 
                 d.table_name, 
                 d.constraint_name; 
