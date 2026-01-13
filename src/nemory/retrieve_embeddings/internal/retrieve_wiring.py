@@ -5,6 +5,7 @@ from nemory.project.layout import ensure_project_dir, read_config_file
 from nemory.retrieve_embeddings.internal.retrieve_runner import retrieve
 from nemory.services.factories import create_retrieve_service
 from nemory.storage.connection import open_duckdb_connection
+from nemory.storage.repositories.vector_search_repository import VectorSearchResult
 from nemory.system.properties import get_db_path
 
 
@@ -14,7 +15,7 @@ def retrieve_embeddings(
     run_name: str | None,
     limit: int | None,
     export_to_file: bool,
-) -> list[str]:
+) -> list[VectorSearchResult]:
     ensure_project_dir(project_dir)
 
     with open_duckdb_connection(get_db_path()) as conn:

@@ -5,6 +5,7 @@ from nemory.llm.factory import create_ollama_embedding_provider, create_ollama_s
 from nemory.project.layout import read_config_file
 from nemory.services.factories import create_retrieve_service
 from nemory.storage.connection import open_duckdb_connection
+from nemory.storage.repositories.vector_search_repository import get_search_results_display_text
 from nemory.system.properties import get_db_path
 
 
@@ -25,6 +26,8 @@ def run_retrieve_tool(project_dir: Path, *, run_name: str, text: str, limit: int
             limit=limit,
         )
 
-        retrieve_results.append(f"\nToday's date is {datetime.date.today()}")
+        display_results = get_search_results_display_text(retrieve_results)
 
-        return "\n".join(retrieve_results)
+        display_results.append(f"\nToday's date is {datetime.date.today()}")
+
+        return "\n".join(display_results)

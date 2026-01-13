@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from nemory.llm.embeddings.provider import EmbeddingProvider
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.storage.repositories.run_repository import RunRepository
-from nemory.storage.repositories.vector_search_repository import VectorSearchRepository
+from nemory.storage.repositories.vector_search_repository import VectorSearchRepository, VectorSearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,9 @@ class RetrieveService:
         self._provider = provider
         self._vector_search_repo = vector_search_repo
 
-    def retrieve(self, *, project_id: str, text: str, run_name: str, limit: int | None = None) -> list[str]:
+    def retrieve(
+        self, *, project_id: str, text: str, run_name: str, limit: int | None = None
+    ) -> list[VectorSearchResult]:
         if limit is None:
             limit = 10
 
@@ -56,7 +58,7 @@ class RetrieveService:
             farthest_result = max(search_results, key=lambda result: result.cosine_distance)
             logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
 
-        return [result.display_text for result in search_results]
+        return search_results
 
     def resolve_run_name(self, *, project_id: str, run_name: str | None) -> str:
         if run_name is None:

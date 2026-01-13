@@ -16,6 +16,7 @@ from nemory.project.layout import create_project_dir
 from nemory.retrieve_embeddings.public.api import retrieve_embeddings
 from nemory.services.chunk_embedding_service import ChunkEmbeddingMode
 from nemory.storage.migrate import migrate
+from nemory.storage.repositories.vector_search_repository import get_search_results_display_text
 
 
 @click.group()
@@ -196,13 +197,15 @@ def retrieve(
     """
     text = " ".join(retrieve_text)
 
-    display_texts = retrieve_embeddings(
+    retrieve_results = retrieve_embeddings(
         project_dir=ctx.obj["project_dir"],
         retrieve_text=text,
         run_name=run_name,
         limit=limit,
         export_to_file=output_format == "file",
     )
+
+    display_texts = get_search_results_display_text(retrieve_results)
 
     if output_format == "streamed":
         click.echo("\n".join(display_texts))
