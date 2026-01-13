@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,12 @@ from nemory.templating.renderer import render_template
 logger = logging.getLogger(__name__)
 
 DatasourceId = str
+
+
+@dataclass
+class Datasource:
+    id: DatasourceId
+    type: DatasourceType
 
 
 def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
