@@ -8,7 +8,7 @@ from nemory.storage.connection import open_duckdb_connection
 from nemory.system.properties import get_db_path
 
 
-def run_retrieve_tool(project_dir: Path, *, run_name: str | None = None, text: str, limit: int | None = None) -> str:
+def run_retrieve_tool(project_dir: Path, *, run_name: str, text: str, limit: int | None = None) -> str:
     """
     Execute the retrieve flow for MCP and return the matching display texts
     Adds the current date to the end
@@ -17,8 +17,6 @@ def run_retrieve_tool(project_dir: Path, *, run_name: str | None = None, text: s
         ollama_service = create_ollama_service()
         embedding_provider = create_ollama_embedding_provider(ollama_service)
         service = create_retrieve_service(conn, embedding_provider=embedding_provider)
-
-        run_name = service.resolve_run_name(project_id=str(read_config_file(project_dir).project_id), run_name=run_name)
 
         retrieve_results = service.retrieve(
             project_id=str(read_config_file(project_dir).project_id),

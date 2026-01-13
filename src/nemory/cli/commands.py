@@ -13,7 +13,7 @@ from nemory.llm.install import resolve_ollama_bin
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.init_project import InitErrorReason, InitProjectError, init_project_dir
 from nemory.project.layout import create_project_dir
-from nemory.retrieve_embeddings.internal.retrieve_wiring import retrieve_embeddings
+from nemory.retrieve_embeddings.public.api import retrieve_embeddings
 from nemory.services.chunk_embedding_service import ChunkEmbeddingMode
 from nemory.storage.migrate import migrate
 
@@ -176,22 +176,36 @@ def build(
     type=click.INT,
     help="Maximum number of chunk matches to return.",
 )
-@click.option("-o", "--output-format", type=click.STRING, help="The output format [file (default), streamed]")
+@click.option(
+    "-o",
+    "--output-format",
+    type=click.Choice(["file", "streamed"]),
+    default="file",
+    help="The output format [file (default), streamed]",
+)
 @click.pass_context
 def retrieve(
-    ctx: Context, retrieve_text: tuple[str, ...], run_name: str | None, limit: int | None, output_format: str = "file"
+    ctx: Context,
+    retrieve_text: tuple[str, ...],
+    run_name: str | None,
+    limit: int | None,
+    output_format: Literal["file", "streamed"],
 ) -> None:
     """
     Search the project's built context for the most relevant chunks.
     """
     text = " ".join(retrieve_text)
-    retrieve_embeddings(
+
+    display_texts = retrieve_embeddings(
         project_dir=ctx.obj["project_dir"],
         retrieve_text=text,
         run_name=run_name,
         limit=limit,
-        output_format=output_format,
+        export_to_file=output_format == "file",
     )
+
+    if output_format == "streamed":
+        click.echo("\n".join(display_texts))
 
 
 @nemory.command()
