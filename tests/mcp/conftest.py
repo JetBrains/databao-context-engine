@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 from nemory.project.layout import ALL_RESULTS_FILE_NAME, get_output_dir, read_config_file
-from nemory.services.factories import create_run_repository
 from nemory.storage.connection import open_duckdb_connection
+from nemory.storage.repositories.factories import create_run_repository
 from nemory.storage.repositories.run_repository import RunRepository
 
 

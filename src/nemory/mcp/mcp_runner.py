@@ -2,10 +2,8 @@ import logging
 from pathlib import Path
 
 from nemory.mcp.mcp_server import McpServer, McpTransport
-from nemory.project.layout import ensure_project_dir, read_config_file
-from nemory.services.factories import create_run_repository
-from nemory.storage.connection import open_duckdb_connection
-from nemory.system.properties import get_db_path
+from nemory.project.layout import ensure_project_dir
+from nemory.project.runs import resolve_run_name
 
 logger = logging.getLogger(__name__)
 
@@ -18,24 +16,8 @@ def run_mcp_server(
     port: int | None = None,
 ) -> None:
     ensure_project_dir(project_dir=project_dir)
-    if run_name is None:
-        run_name = _get_latest_run_name(project_dir)
+    resolved_run_name = resolve_run_name(project_dir=project_dir, run_name=run_name)
 
-    logger.info(f"Using {run_name} from project {project_dir.resolve()}")
+    logger.info(f"Using {resolved_run_name} from project {project_dir.resolve()}")
 
-    McpServer(project_dir, run_name, host, port).run(transport)
-
-
-def _get_latest_run_name(project_dir: Path) -> str:
-    project_id = read_config_file(project_dir).project_id
-    db_path = get_db_path()
-    with open_duckdb_connection(db_path) as conn:
-        run_repository = create_run_repository(conn)
-        run = run_repository.get_latest_run_for_project(str(project_id))
-
-        if run is None:
-            raise ValueError(
-                f"No runs found for project {project_id} using db path {db_path} and project {project_dir}"
-            )
-
-        return run.run_name
+    McpServer(project_dir, resolved_run_name, host, port).run(transport)

@@ -47,16 +47,6 @@ def get_output_dir(project_dir: Path) -> Path:
     return project_dir.joinpath(OUTPUT_FOLDER_NAME)
 
 
-def get_run_dir(project_dir: Path, run_name: str) -> Path:
-    run_dir = get_output_dir(project_dir).joinpath(run_name)
-    if not run_dir.is_dir():
-        raise ValueError(
-            f"The run with name {run_name} doesn't exist in the project. [project_dir: {project_dir.resolve()}]"
-        )
-
-    return run_dir
-
-
 def get_examples_dir(project_dir: Path) -> Path:
     return project_dir.joinpath(EXAMPLES_FOLDER_NAME)
 
