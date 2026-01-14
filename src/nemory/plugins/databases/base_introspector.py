@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence, Union
+from typing import Any, Mapping, Protocol, Sequence, Union
 
 from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
@@ -12,12 +11,18 @@ from nemory.plugins.databases.databases_types import (
     DatabaseSchema,
     DatabaseTable,
 )
+from nemory.plugins.databases.introspection_scope import IntrospectionScope
+from nemory.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
 
 logger = logging.getLogger(__name__)
 
 
-class BaseIntrospector[T](ABC):
-    supports_catalogs: bool = False
+class SupportsIntrospectionScope(Protocol):
+    introspection_scope: IntrospectionScope | None
+
+
+class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
+    supports_catalogs: bool = True
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
     _SAMPLE_LIMIT: int = 5
 
@@ -26,23 +31,30 @@ class BaseIntrospector[T](ABC):
             self._fetchall_dicts(connection, "SELECT 1 as test", None)
 
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
-        with self._connect(file_config) as root_conn:
-            catalogs = self._get_catalogs_adapted(root_conn, file_config)
+        matcher = IntrospectionScopeMatcher(
+            file_config.introspection_scope,
+            ignored_schemas=self._ignored_schemas(),
+        )
+
+        with self._connect(file_config) as root_connection:
+            catalogs = self._get_catalogs_adapted(root_connection, file_config)
 
         introspected_catalogs: list[DatabaseCatalog] = []
-
         for catalog in catalogs:
-            with self._connect_to_catalog(file_config, catalog) as connection:
-                schemas_map = self._get_schemas(connection, [catalog], file_config)
-                schemas_map = self._filter_schemas(schemas_map, file_config)
-                schema_names = schemas_map.get(catalog, [])
+            with self._connect_to_catalog(file_config, catalog) as catalog_connection:
+                discovered_schemas = self._list_schemas_for_catalog(catalog_connection, catalog)
+
+                selection = matcher.filter_scopes([catalog], {catalog: discovered_schemas})
+                selected_schemas = selection.schemas_per_catalog.get(catalog, [])
 
                 tables_by_schema: list[DatabaseSchema] = []
-                for schema in schema_names:
-                    tables = self.collect_schema_model(connection, catalog, schema) or []
+                for schema in selected_schemas:
+                    tables = self.collect_schema_model(catalog_connection, catalog, schema) or []
                     if tables:
                         for table in tables:
-                            table.samples = self._collect_samples_for_table(connection, catalog, schema, table.name)
+                            table.samples = self._collect_samples_for_table(
+                                catalog_connection, catalog, schema, table.name
+                            )
                         tables_by_schema.append(DatabaseSchema(name=schema, tables=tables))
                 if tables_by_schema:
                     introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=tables_by_schema))
@@ -53,25 +65,6 @@ class BaseIntrospector[T](ABC):
             return self._get_catalogs(connection, file_config)
         return [self._resolve_pseudo_catalog_name(file_config)]
 
-    def _get_schemas(self, connection: Any, catalogs: list[str], file_config: T) -> dict[str, list[str]]:
-        sql_query = self._sql_list_schemas(catalogs if self.supports_catalogs else None)
-        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
-
-        schemas_per_catalog: dict[str, list[str]] = defaultdict(list)
-        for row in rows:
-            catalog_name = row.get("catalog_name") or catalogs[0]
-            schema_name = row.get("schema_name")
-            if catalog_name and schema_name:
-                schemas_per_catalog[catalog_name].append(schema_name)
-            else:
-                logger.warning(
-                    "Skipping row with missing catalog or schema name: catalog=%s, schema=%s, row=%s",
-                    catalog_name,
-                    schema_name,
-                    row,
-                )
-        return schemas_per_catalog
-
     def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
         if self.supports_catalogs:
             sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(%s)"
@@ -80,18 +73,17 @@ class BaseIntrospector[T](ABC):
             sql = "SELECT schema_name FROM information_schema.schemata"
             return SQLQuery(sql, None)
 
-    def _filter_schemas(
-        self,
-        schemas_per_catalog: dict[str, list[str]],
-        file_config: T,
-    ) -> dict[str, list[str]]:
-        ignored = {s.lower() for s in (self._ignored_schemas() or [])}
+    def _list_schemas_for_catalog(self, connection: Any, catalog: str) -> list[str]:
+        sql_query = self._sql_list_schemas([catalog] if self.supports_catalogs else None)
+        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
 
-        return {
-            catalog: kept
-            for catalog, schemas in schemas_per_catalog.items()
-            if (kept := [s for s in schemas if s.lower() not in ignored])
-        }
+        schemas: list[str] = []
+        for row in rows:
+            schema_name = row.get("schema_name")
+            if schema_name:
+                schemas.append(schema_name)
+
+        return schemas
 
     @abstractmethod
     def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
