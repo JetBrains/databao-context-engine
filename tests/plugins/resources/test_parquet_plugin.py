@@ -26,7 +26,7 @@ def test_duckdb_secret_generation():
     )
     assert (
         generated_sql.strip()
-        == """CREATE test_secret (
+        == """CREATE SECRET test_secret (
     type s3, provider credential_chain, profile sandbox, chain sso
 );"""
     )

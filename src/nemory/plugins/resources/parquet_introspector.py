@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from urllib.parse import urlparse
@@ -51,7 +52,7 @@ class ParquetIntrospectionResult:
 
 def generate_create_secret_sql(secret_name, duckdb_secret: DuckDBSecret) -> str:
     parameters = [("type", duckdb_secret.type)] + list(duckdb_secret.properties.items())
-    return f"""CREATE {secret_name} (
+    return f"""CREATE SECRET {secret_name} (
     {", ".join([f"{k} {v}" for (k, v) in parameters])}
 );
 """
@@ -59,7 +60,7 @@ def generate_create_secret_sql(secret_name, duckdb_secret: DuckDBSecret) -> str:
 
 @contextlib.contextmanager
 def _create_secret(conn: DuckDBPyConnection, duckdb_secret: DuckDBSecret):
-    secret_name = duckdb_secret.name or "secret"
+    secret_name = duckdb_secret.name or "gen_secret_" + str(uuid.uuid4()).replace("-", "_")
     create_secret_sql = generate_create_secret_sql(secret_name, duckdb_secret)
     try:
         logger.debug(f"About to create duckdb secret '{secret_name}' with type {duckdb_secret.type}")
