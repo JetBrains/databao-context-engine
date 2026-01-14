@@ -215,37 +215,40 @@ def test_postgres_partitions(create_db_schema, postgres_container):
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
 
-        assert execution_result.result == DatabaseIntrospectionResult(
-            [
-                DatabaseCatalog(
-                    "test",
-                    [
-                        DatabaseSchema(
-                            db_schema,
-                            tables=[
-                                DatabaseTable(
-                                    "test_partitions",
-                                    [
-                                        DatabaseColumn("id", "integer", False),
-                                        DatabaseColumn("name", "character varying(255)", True),
-                                    ],
-                                    [],
-                                    partition_info=DatabasePartitionInfo(
-                                        meta={
-                                            "columns_in_partition_key": ["id"],
-                                            "partitioning_strategy": "range partitioned",
-                                        },
-                                        partition_tables=[
-                                            "test_partitions_2", # In a subsequent PR, this will be fixed when we order keys and values in the introspections
-                                            "test_partitions_1",
+        assert (
+            execution_result.result
+            == DatabaseIntrospectionResult(
+                [
+                    DatabaseCatalog(
+                        "test",
+                        [
+                            DatabaseSchema(
+                                db_schema,
+                                tables=[
+                                    DatabaseTable(
+                                        "test_partitions",
+                                        [
+                                            DatabaseColumn("id", "integer", False),
+                                            DatabaseColumn("name", "character varying(255)", True),
                                         ],
-                                    ),
-                                )
-                            ],
-                        ),
-                    ],
-                )
-            ]
+                                        [],
+                                        partition_info=DatabasePartitionInfo(
+                                            meta={
+                                                "columns_in_partition_key": ["id"],
+                                                "partitioning_strategy": "range partitioned",
+                                            },
+                                            partition_tables=[
+                                                "test_partitions_2",  # In a subsequent PR, this will be fixed when we order keys and values in the introspections
+                                                "test_partitions_1",
+                                            ],
+                                        ),
+                                    )
+                                ],
+                            ),
+                        ],
+                    )
+                ]
+            )
         )
 
 
