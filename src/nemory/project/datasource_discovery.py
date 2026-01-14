@@ -5,6 +5,7 @@ from typing import Any
 
 import yaml
 
+from nemory.datasource_config.utils import get_datasource_id_from_config_file_path
 from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.project.layout import get_source_dir
 from nemory.project.types import (
@@ -25,6 +26,26 @@ DatasourceId = str
 class Datasource:
     id: DatasourceId
     type: DatasourceType
+
+
+def get_datasource_list(project_dir: Path) -> list[Datasource]:
+    result = []
+    for discovered_datasource in discover_datasources(project_dir=project_dir):
+        try:
+            prepared_source = prepare_source(discovered_datasource)
+        except Exception as e:
+            logger.debug(str(e), exc_info=True, stack_info=True)
+            logger.info(f"Invalid source at ({discovered_datasource.path}): {str(e)}")
+            continue
+
+        result.append(
+            Datasource(
+                id=get_datasource_id_from_config_file_path(project_dir, discovered_datasource.path),
+                type=prepared_source.datasource_type,
+            )
+        )
+
+    return result
 
 
 def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
