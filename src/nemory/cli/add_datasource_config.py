@@ -9,7 +9,7 @@ from nemory.datasource_config.add_config import (
     create_datasource_config_file,
     get_config_file_structure_for_datasource_type,
 )
-from nemory.datasource_config.utils import get_datasource_config_relative_path
+from nemory.datasource_config.utils import get_datasource_id_from_config_file_path
 from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.pluginlib.config_properties import ConfigPropertyDefinition
 from nemory.plugins.plugin_loader import get_all_available_plugin_types
@@ -35,7 +35,7 @@ def add_datasource_config_interactive(project_dir: Path) -> str:
 
     click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file_path}")
 
-    return get_datasource_config_relative_path(project_dir, config_file_path)
+    return get_datasource_id_from_config_file_path(project_dir, config_file_path)
 
 
 def _ask_for_datasource_type() -> DatasourceType:
