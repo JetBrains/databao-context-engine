@@ -133,15 +133,15 @@ class DatasourceType:
             raise ValueError(f"Invalid DatasourceType: {self.full_type}")
 
     @property
-    def main_type(self):
+    def main_type(self) -> str:
         return self.full_type.split("/")[0]
 
     @property
-    def config_folder(self):
+    def config_folder(self) -> str:
         return self.main_type
 
     @property
-    def subtype(self):
+    def subtype(self) -> str:
         return self.full_type.split("/")[1]
 
     @staticmethod
