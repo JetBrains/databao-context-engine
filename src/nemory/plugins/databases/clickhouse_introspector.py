@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from io import UnsupportedOperation
 from typing import Any, Mapping
 
 import clickhouse_connect
@@ -8,7 +7,8 @@ from pydantic import Field
 
 from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from nemory.plugins.databases.databases_types import DatabaseColumn
+from nemory.plugins.databases.databases_types import DatabaseTable
+from nemory.plugins.databases.table_builder import TableBuilder
 
 
 class ClickhouseConfigFile(BaseDatabaseConfigFile):
@@ -19,9 +19,9 @@ class ClickhouseConfigFile(BaseDatabaseConfigFile):
 
 
 class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
-    _IGNORED_SCHEMAS = {"information_schema", "system"}
+    _IGNORED_SCHEMAS = {"information_schema", "system", "INFORMATION_SCHEMA"}
 
-    supports_catalogs = False
+    supports_catalogs = True
 
     def _connect(self, file_config: ClickhouseConfigFile):
         connection = file_config.connection
@@ -30,39 +30,124 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
 
         return clickhouse_connect.get_client(**connection)
 
-    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        result = connection.query(sql, parameters=params) if params else connection.query(sql)
-        return [dict(zip(result.column_names, row)) for row in result.result_rows]
+    def _connect_to_catalog(self, file_config: ClickhouseConfigFile, catalog: str):
+        return self._connect(file_config)
 
     def _get_catalogs(self, connection, file_config: ClickhouseConfigFile) -> list[str]:
-        raise UnsupportedOperation("Clickhouse doesnt support catalogs")
+        return ["clickhouse"]
 
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
-        sql = """
-        SELECT 
-            table AS table_name,
-            name AS column_name,
-            type AS data_type,
-            if(startsWith(type, 'Nullable('), 'YES', 'NO') AS is_nullable
-        FROM system.columns
-        WHERE database = %s
-        ORDER BY table, position
-        """
-        return SQLQuery(sql, (schema,))
-
-    def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
-        raw_type = row["data_type"]
-        if isinstance(raw_type, str) and raw_type.startswith("Nullable(") and raw_type.endswith(")"):
-            clean_type = raw_type[len("Nullable(") : -1]
-        else:
-            clean_type = raw_type
-
-        return DatabaseColumn(
-            name=row["column_name"],
-            type=clean_type,
-            nullable=(row.get("is_nullable") == "YES"),
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
+        return SQLQuery(
+            """
+                SELECT 
+                    name AS schema_name, 
+                    'clickhouse' AS catalog_name 
+                FROM 
+                    system.databases
+            """,
+            None,
         )
+
+    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
+        comps = self._component_queries()
+        results: dict[str, list[dict]] = {cq: [] for cq in comps}
+        for cq, template_sql in comps.items():
+            sql = template_sql.replace("{SCHEMA}", self._quote_literal(schema))
+            results[cq] = self._fetchall_dicts(connection, sql, None)
+
+        return TableBuilder.build_from_components(
+            rels=results.get("relations", []),
+            cols=results.get("columns", []),
+            pk_cols=[],
+            uq_cols=[],
+            checks=[],
+            fk_cols=[],
+            idx_cols=results.get("idx", []),
+        )
+
+    def _component_queries(self) -> dict[str, str]:
+        return {"relations": self._sql_relations(), "columns": self._sql_columns(), "idx": self._sql_indexes()}
+
+    def _sql_relations(self) -> str:
+        return r"""
+            SELECT
+                t.name AS table_name,
+                multiIf(
+                    t.engine = 'View', 'view',
+                    t.engine = 'MaterializedView', 'materialized_view',
+                    t.engine IN (
+                    'File', 'URL',
+                    'S3', 'S3Queue',
+                    'AzureBlobStorage', 'AzureQueue',
+                    'HDFS',
+                    'MySQL', 'PostgreSQL', 'MongoDB', 'Redis',
+                    'JDBC', 'ODBC', 'SQLite',
+                    'Kafka', 'RabbitMQ', 'NATS',
+                    'ExternalDistributed',
+                    'DeltaLake', 'Iceberg', 'Hudi', 'Hive',
+                    'MaterializedPostgreSQL',
+                    'YTsaurus', 'ArrowFlight'
+                    ), 'external_table',
+                    'table'
+                ) AS kind,
+                t.comment AS description
+            FROM 
+                system.tables t
+            WHERE 
+                t.database = {SCHEMA}
+            ORDER BY 
+                t.name
+        """
+
+    def _sql_columns(self) -> str:
+        return r"""
+            SELECT
+                c.table AS table_name,
+                c.name AS column_name,
+                c.position AS ordinal_position,
+                c.type AS data_type,
+                (c.type LIKE 'Nullable(%') AS is_nullable,
+                c.default_expression AS default_expression,
+                CASE 
+                    WHEN c.default_kind IN ('MATERIALIZED','ALIAS') THEN 'computed' 
+                END AS generated,
+                c.comment AS description
+            FROM 
+                system.columns c
+            WHERE 
+                c.database = {SCHEMA}
+            ORDER BY 
+                c.table, 
+                c.position
+        """
+
+    def _sql_indexes(self) -> str:
+        return r"""
+            SELECT
+                i.table AS table_name,
+                i.name AS index_name,
+                1 AS position,
+                i.expr AS expr,
+                0 AS is_unique,
+                i.type AS method,
+                NULL AS predicate
+            FROM 
+                system.data_skipping_indices i
+            WHERE 
+                i.database = {SCHEMA}
+            ORDER BY 
+                i.table, 
+                i.name
+        """
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT %s'
         return SQLQuery(sql, (limit,))
+
+    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
+        res = connection.query(sql, parameters=params) if params else connection.query(sql)
+        cols = [c.lower() for c in res.column_names]
+        return [dict(zip(cols, row)) for row in res.result_rows]
+
+    def _quote_literal(self, value: str) -> str:
+        return "'" + str(value).replace("'", "\\'") + "'"

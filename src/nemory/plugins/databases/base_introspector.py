@@ -8,9 +8,7 @@ from typing import Any, Mapping, Sequence, Union
 
 from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
-    DatabaseColumn,
     DatabaseIntrospectionResult,
-    DatabasePartitionInfo,
     DatabaseSchema,
     DatabaseTable,
 )
@@ -19,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseIntrospector[T](ABC):
-    supports_catalogs: bool = True
+    supports_catalogs: bool = False
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
     _SAMPLE_LIMIT: int = 5
 
@@ -28,34 +26,27 @@ class BaseIntrospector[T](ABC):
             self._fetchall_dicts(connection, "SELECT 1 as test", None)
 
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
-        connection = self._connect(file_config)
-        with connection:
-            catalogs = self._get_catalogs_adapted(connection, file_config)
-            schemas_per_catalog = self._get_schemas(connection, catalogs, file_config)
-            schemas_per_catalog = self._filter_schemas(schemas_per_catalog, file_config)
+        with self._connect(file_config) as root_conn:
+            catalogs = self._get_catalogs_adapted(root_conn, file_config)
 
-            introspected_catalogs: list[DatabaseCatalog] = []
-            for catalog in catalogs:
-                schemas: list[DatabaseSchema] = []
-                for schema in schemas_per_catalog.get(catalog, []):
-                    columns_per_table = self._collect_columns_for_schema(connection, catalog, schema)
-                    partition_infos_per_table = self._collect_partitions_for_schema(connection, catalog, schema)
+        introspected_catalogs: list[DatabaseCatalog] = []
 
-                    tables: list[DatabaseTable] = []
-                    for table, columns in columns_per_table.items():
-                        samples = self._collect_samples_for_table(connection, catalog, schema, table)
-                        tables.append(
-                            DatabaseTable(
-                                name=table,
-                                columns=columns,
-                                samples=samples,
-                                partition_info=partition_infos_per_table.get(table),
-                            )
-                        )
-                    schemas.append(DatabaseSchema(name=schema, tables=tables))
-                introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=schemas))
+        for catalog in catalogs:
+            with self._connect_to_catalog(file_config, catalog) as connection:
+                schemas_map = self._get_schemas(connection, [catalog], file_config)
+                schemas_map = self._filter_schemas(schemas_map, file_config)
+                schema_names = schemas_map.get(catalog, [])
 
-            return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
+                tables_by_schema: list[DatabaseSchema] = []
+                for schema in schema_names:
+                    tables = self.collect_schema_model(connection, catalog, schema) or []
+                    if tables:
+                        for table in tables:
+                            table.samples = self._collect_samples_for_table(connection, catalog, schema, table.name)
+                        tables_by_schema.append(DatabaseSchema(name=schema, tables=tables))
+                if tables_by_schema:
+                    introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=tables_by_schema))
+        return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
 
     def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
         if self.supports_catalogs:
@@ -102,35 +93,9 @@ class BaseIntrospector[T](ABC):
             if (kept := [s for s in schemas if s.lower() not in ignored])
         }
 
-    def _collect_columns_for_schema(self, connection, catalog: str, schema: str):
-        sql_query = self._sql_columns_for_schema(catalog, schema)
-        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
-        columns: dict[str, list] = {}
-
-        for row in rows:
-            table_name = row.get("table_name")
-            if not table_name:
-                continue
-
-            columns.setdefault(table_name, []).append(self._construct_column(row))
-
-        return columns
-
-    def _collect_partitions_for_schema(self, connection, catalog: str, schema: str):
-        sql_query = self._sql_partitions_for_schema(catalog, schema)
-        partitions: dict[str, DatabasePartitionInfo] = {}
-        if not sql_query:
-            return partitions
-
-        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
-
-        for row in rows:
-            table_name = row.get("table_name")
-            if not table_name:
-                continue
-            partitions[table_name] = self._construct_partition_info(row)
-
-        return partitions
+    @abstractmethod
+    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
+        raise NotImplementedError
 
     def _collect_samples_for_table(self, connection, catalog: str, schema: str, table: str) -> list[dict[str, Any]]:
         samples: list[dict[str, Any]] = []
@@ -158,18 +123,10 @@ class BaseIntrospector[T](ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
-        raise NotImplementedError
-
-    @abstractmethod
-    def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
-        raise NotImplementedError
-
-    def _sql_partitions_for_schema(self, catalog: str, schema: str) -> SQLQuery | None:
-        return None
-
-    def _construct_partition_info(self, row: dict[str, Any]) -> DatabasePartitionInfo:
-        raise NotImplementedError
+    def _connect_to_catalog(self, file_config: T, catalog: str):
+        """Return a connection scoped to `catalog`. For engines that
+        don’t need a new connection, return a connection with the
+        session set/USE’d to that catalog."""
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         raise NotImplementedError
