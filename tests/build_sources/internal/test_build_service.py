@@ -105,7 +105,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
         run_id=9,
         plugin="pluggy",
         full_type="files/md",
-        source_id="files/two",
+        source_id="files/two.md",
         storage_directory=str(prepared.path.parent),
     )
     chunk_embed_svc.embed_chunks.assert_called_once_with(
@@ -132,7 +132,7 @@ def test_process_prepared_source_uses_path_stem_when_result_id_missing(svc, repo
 
     svc.process_prepared_source(run_id=1, prepared_source=prepared, plugin=plugin)
 
-    assert ds_repo.create.call_args.kwargs["source_id"] == "databases/pg"
+    assert ds_repo.create.call_args.kwargs["source_id"] == "databases/pg.yaml"
     assert ds_repo.create.call_args.kwargs["storage_directory"] == str(prepared.path.parent)
 
 

@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 
 from nemory.build_sources.internal.plugin_execution import execute
-from nemory.datasource_config.utils import get_datasource_id_from_type_and_name
+from nemory.datasource_config.utils import get_datasource_id_from_type_and_file_name
 from nemory.pluginlib.build_plugin import (
     BuildExecutionResult,
     BuildPlugin,
@@ -67,8 +67,8 @@ class BuildService:
             run_id=run_id,
             plugin=plugin.name,
             full_type=prepared_source.datasource_type.full_type,
-            source_id=get_datasource_id_from_type_and_name(
-                prepared_source.datasource_type, prepared_source.datasource_name
+            source_id=get_datasource_id_from_type_and_file_name(
+                prepared_source.datasource_type, prepared_source.path.name
             ),
             storage_directory=str(prepared_source.path.parent),
         )

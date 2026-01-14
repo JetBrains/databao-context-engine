@@ -31,9 +31,5 @@ class PreparedFile:
     datasource_type: DatasourceType
     path: Path
 
-    @property
-    def datasource_name(self) -> str:
-        return self.path.stem
-
 
 PreparedDatasource = PreparedConfig | PreparedFile
