@@ -5,11 +5,8 @@ from pathlib import Path
 import pytest
 
 from nemory.datasource_config.datasource_context import DatasourceContext
-from nemory.project.datasource_discovery import DatasourceId
-from nemory.project.layout import get_output_dir, read_config_file
-from nemory.storage.connection import open_duckdb_connection
-from nemory.storage.repositories.factories import create_run_repository
-from nemory.storage.repositories.run_repository import RunRepository
+from nemory.project.layout import get_output_dir
+from tests.utils.project_creation import with_run_dir
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -25,40 +22,26 @@ class ProjectWithRuns:
     runs: list[Run]
 
 
-def _create_output_context(run_dir: Path, datasource_id: DatasourceId, output: str):
-    output_file = run_dir.joinpath(datasource_id).with_suffix(".yaml")
-    output_file.parent.mkdir(exist_ok=True)
-    output_file.touch()
-    output_file.write_text(output)
-
-
-def _create_run_dir(run_repo: RunRepository, project_id: str, output_path: Path, started_at: datetime) -> Run:
-    run = run_repo.create(project_id=str(project_id), nemory_version="1.0", started_at=started_at)
-
-    run_dir = output_path.joinpath(run.run_name)
-    run_dir.mkdir()
-
-    datasource_contexts = [
-        DatasourceContext(datasource_id="main_type/datasource_name", context="Context for datasource name"),
-        DatasourceContext(datasource_id="dummy/my_datasource", context="Context for dummy/my_datasource"),
-    ]
-    for context in datasource_contexts:
-        _create_output_context(run_dir, context.datasource_id, context.context)
-
-    return Run(run_dir=run_dir, run_name=run.run_name, datasource_contexts=datasource_contexts)
-
-
 @pytest.fixture
 def project_with_runs(create_db, project_path: Path, db_path: Path) -> ProjectWithRuns:
     output_dir = get_output_dir(project_path)
     output_dir.mkdir()
 
-    with open_duckdb_connection(db_path) as conn:
-        run_repo = create_run_repository(conn)
-        project_id = str(read_config_file(project_path).project_id)
+    datasource_contexts = [
+        DatasourceContext(datasource_id="main_type/datasource_name", context="Context for datasource name"),
+        DatasourceContext(datasource_id="dummy/my_datasource", context="Context for dummy/my_datasource"),
+    ]
 
-        run_1 = _create_run_dir(run_repo, project_id, output_dir, datetime.now() - timedelta(days=10))
-        run_2 = _create_run_dir(run_repo, project_id, output_dir, datetime.now())
-        run_3 = _create_run_dir(run_repo, project_id, output_dir, datetime.now() - timedelta(days=3))
+    run_1_contexts = datasource_contexts[0:1]
+    run_1_dir = with_run_dir(db_path, project_path, run_1_contexts, datetime.now() - timedelta(days=10))
+    run_1 = Run(run_dir=run_1_dir, run_name=run_1_dir.name, datasource_contexts=run_1_contexts)
+
+    run_2_contexts = datasource_contexts
+    run_2_dir = with_run_dir(db_path, project_path, run_2_contexts, datetime.now())
+    run_2 = Run(run_dir=run_2_dir, run_name=run_2_dir.name, datasource_contexts=run_2_contexts)
+
+    run_3_contexts = datasource_contexts[1:2]
+    run_3_dir = with_run_dir(db_path, project_path, run_3_contexts, datetime.now() - timedelta(days=3))
+    run_3 = Run(run_dir=run_3_dir, run_name=run_3_dir.name, datasource_contexts=run_3_contexts)
 
     return ProjectWithRuns(project_dir=project_path, runs=[run_1, run_2, run_3])
