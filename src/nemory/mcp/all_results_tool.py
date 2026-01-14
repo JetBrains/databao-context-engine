@@ -1,11 +1,5 @@
-from pathlib import Path
-
-from nemory.project.layout import ALL_RESULTS_FILE_NAME
-from nemory.project.runs import get_run_dir
+from nemory.databao_engine import DatabaoContextEngine
 
 
-def run_all_results_tool(project_dir: Path, run_name: str) -> str:
-    run_directory = get_run_dir(project_dir, run_name)
-
-    with open(run_directory.joinpath(ALL_RESULTS_FILE_NAME), "r") as file:
-        return file.read()
+def run_all_results_tool(databao_context_engine: DatabaoContextEngine, run_name: str) -> str:
+    return databao_context_engine.get_all_contexts_formatted(run_name=run_name)

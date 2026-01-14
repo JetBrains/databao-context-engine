@@ -43,7 +43,7 @@ class McpServer:
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
         def all_results_tool():
-            return run_all_results_tool(self._databao_context_engine.project_dir, self._run_name)
+            return run_all_results_tool(self._databao_context_engine, self._run_name)
 
         @mcp.tool(
             description="Retrieve the context built from various resources, including databases, dbt tools, plain and structured files, to retrieve relevant information",

@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from nemory.project.layout import ALL_RESULTS_FILE_NAME, get_output_dir, read_config_file
+from nemory.datasource_config.datasource_context import DatasourceContext
+from nemory.project.datasource_discovery import DatasourceId
+from nemory.project.layout import get_output_dir, read_config_file
 from nemory.storage.connection import open_duckdb_connection
 from nemory.storage.repositories.factories import create_run_repository
 from nemory.storage.repositories.run_repository import RunRepository
@@ -14,7 +16,7 @@ from nemory.storage.repositories.run_repository import RunRepository
 class Run:
     run_dir: Path
     run_name: str
-    all_results_file_content: str
+    datasource_contexts: list[DatasourceContext]
 
 
 @dataclass(kw_only=True)
@@ -23,29 +25,27 @@ class ProjectWithRuns:
     runs: list[Run]
 
 
+def _create_output_context(run_dir: Path, datasource_id: DatasourceId, output: str):
+    output_file = run_dir.joinpath(datasource_id).with_suffix(".yaml")
+    output_file.parent.mkdir(exist_ok=True)
+    output_file.touch()
+    output_file.write_text(output)
+
+
 def _create_run_dir(run_repo: RunRepository, project_id: str, output_path: Path, started_at: datetime) -> Run:
     run = run_repo.create(project_id=str(project_id), nemory_version="1.0", started_at=started_at)
 
     run_dir = output_path.joinpath(run.run_name)
     run_dir.mkdir()
 
-    all_results_content = _create_all_results_file(run_dir)
+    datasource_contexts = [
+        DatasourceContext(datasource_id="main_type/datasource_name", context="Context for datasource name"),
+        DatasourceContext(datasource_id="dummy/my_datasource", context="Context for dummy/my_datasource"),
+    ]
+    for context in datasource_contexts:
+        _create_output_context(run_dir, context.datasource_id, context.context)
 
-    return Run(run_dir=run_dir, run_name=run.run_name, all_results_file_content=all_results_content)
-
-
-def _create_all_results_file(run_dir: Path) -> str:
-    all_results_file_path = run_dir.joinpath(ALL_RESULTS_FILE_NAME)
-    file_content = (
-        "# ===== Dummy - Dummy =====\n\n"
-        "# This file contains all the results of the build process.\n"
-        f"# Run name: {run_dir.name}"
-    )
-
-    with open(all_results_file_path, "w") as file:
-        file.write(file_content)
-
-    return file_content
+    return Run(run_dir=run_dir, run_name=run.run_name, datasource_contexts=datasource_contexts)
 
 
 @pytest.fixture

@@ -1,18 +1,18 @@
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from nemory.datasource_config.datasource_context import (
+    DatasourceContext,
+    get_all_contexts,
+    get_context_header_for_datasource,
+    get_datasource_context,
+)
 from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.project.datasource_discovery import Datasource, DatasourceId, get_datasource_list
 from nemory.project.layout import ensure_project_dir
 from nemory.retrieve_embeddings.public.api import retrieve_embeddings
-
-
-@dataclass
-class DatasourceContext:
-    datasource_id: DatasourceId
-    # TODO: Read the context as a BuildExecutionResult instead of a Yaml string?
-    context: str
 
 
 @dataclass
@@ -35,10 +35,19 @@ class DatabaoContextEngine:
         return get_datasource_list(self.project_dir)
 
     def get_datasource_context(self, datasource_id: DatasourceId, run_name: str | None = None) -> DatasourceContext:
-        raise NotImplementedError("Retrieving datasource context is not supported yet")
+        return get_datasource_context(project_dir=self.project_dir, datasource_id=datasource_id, run_name=run_name)
 
     def get_all_contexts(self, run_name: str | None = None) -> list[DatasourceContext]:
-        raise NotImplementedError("Retrieving all contexts is not supported yet")
+        return get_all_contexts(project_dir=self.project_dir, run_name=run_name)
+
+    def get_all_contexts_formatted(self, run_name: str | None = None) -> str:
+        all_contexts = self.get_all_contexts(run_name=run_name)
+
+        all_results = os.linesep.join(
+            [f"{get_context_header_for_datasource(context.datasource_id)}{context.context}" for context in all_contexts]
+        )
+
+        return all_results
 
     def search_context(
         self,
