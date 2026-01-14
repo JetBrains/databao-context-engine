@@ -9,7 +9,7 @@ from nemory.project.datasource_discovery import DatasourceId
 from nemory.project.runs import get_run_dir, resolve_run_name
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class DatasourceContext:
     datasource_id: DatasourceId
     # TODO: Read the context as a BuildExecutionResult instead of a Yaml string?

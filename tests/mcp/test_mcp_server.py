@@ -138,6 +138,11 @@ async def test_run_mcp_server__all_results_tool_with_no_run_name(nemory_path: Pa
         ).datasource_contexts
         assert all(context.context in all_results.content[0].text for context in run_contexts)
 
+        # Make sure the result only contains the contexts from the run
+        all_contexts = {context for run in project_with_runs.runs for context in run.datasource_contexts}
+        absent_context_in_run = all_contexts - set(run_contexts)
+        assert all(context.context not in all_results.content[0].text for context in absent_context_in_run)
+
 
 @pytest.mark.anyio
 async def test_run_mcp_server__all_results_tool_with_run_name(nemory_path: Path, project_with_runs: ProjectWithRuns):
@@ -147,8 +152,14 @@ async def test_run_mcp_server__all_results_tool_with_run_name(nemory_path: Path,
         project_with_runs.project_dir, nemory_path=nemory_path, run_name=run_name
     ) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
+
         run_contexts = next(run for run in project_with_runs.runs if run.run_dir.name == run_name).datasource_contexts
-        assert (context.context in all_results.content[0].text for context in run_contexts)
+        assert all(context.context in all_results.content[0].text for context in run_contexts)
+
+        # Make sure the result only contains the contexts from the run
+        all_contexts = {context for run in project_with_runs.runs for context in run.datasource_contexts}
+        absent_context_in_run = all_contexts - set(run_contexts)
+        assert all(context.context not in all_results.content[0].text for context in absent_context_in_run)
 
 
 @pytest.mark.anyio
@@ -160,4 +171,9 @@ async def test_run_mcp_server__with_custom_host_and_port(nemory_path: Path, proj
         run_contexts = next(
             iter(sorted(project_with_runs.runs, key=lambda run: run.run_name, reverse=True))
         ).datasource_contexts
-        assert (context.context in all_results.content[0].text for context in run_contexts)
+        assert all(context.context in all_results.content[0].text for context in run_contexts)
+
+        # Make sure the result only contains the contexts from the run
+        all_contexts = {context for run in project_with_runs.runs for context in run.datasource_contexts}
+        absent_context_in_run = all_contexts - set(run_contexts)
+        assert all(context.context not in all_results.content[0].text for context in absent_context_in_run)
