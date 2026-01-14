@@ -98,7 +98,7 @@ class ParquetIntrospector:
         with self._connect(file_config) as conn:
             with conn.cursor() as cur:
                 resolved_url = _resolve_url(file_config)
-                cur.execute(f"SELECT * from parquet_file_metadata('{resolved_url}')")
+                cur.execute(f"SELECT * FROM parquet_file_metadata('{resolved_url}') LIMIT 1")
                 columns = [desc[0].lower() for desc in cur.description] if cur.description else []
                 rows = cur.fetchall()
                 parquet_file_metadata = [dict(zip(columns, row)) for row in rows]
