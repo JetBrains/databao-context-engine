@@ -1,7 +1,9 @@
 import logging
 from pathlib import Path
 
-from nemory.pluginlib.build_plugin import BuildExecutionResult
+from nemory.datasource_config.datasource_context import get_context_header_for_datasource
+from nemory.datasource_config.utils import get_datasource_id_from_type_and_file_name
+from nemory.pluginlib.build_plugin import BuildExecutionResult, DatasourceType
 from nemory.project.layout import get_output_dir
 from nemory.serialisation.yaml import write_yaml_to_stream
 
@@ -30,7 +32,13 @@ def append_result_to_all_results(run_dir: Path, result: BuildExecutionResult):
     path = run_dir.joinpath("all_results.yaml")
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as export_file:
-        export_file.write(f"# ===== {result.type} - {result.name} =====\n")
+        export_file.write(
+            get_context_header_for_datasource(
+                get_datasource_id_from_type_and_file_name(
+                    DatasourceType(full_type=result.type), config_file_name=result.name
+                )
+            )
+        )
         write_yaml_to_stream(data=result, file_stream=export_file)
         export_file.write("\n")
 

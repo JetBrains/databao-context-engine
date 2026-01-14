@@ -75,7 +75,7 @@ def test_append_result_to_all_results_appends(tmp_path: Path) -> None:
     assert all_file.is_file()
     txt = all_file.read_text()
 
-    assert "# ===== files/txt - A =====\n" in txt
+    assert "# ===== files/A =====\n" in txt
     assert "name: A" in txt
-    assert "# ===== databases/postgres - B =====\n" in txt
+    assert "# ===== databases/B =====\n" in txt
     assert "name: B" in txt
