@@ -2,6 +2,7 @@ import logging
 from collections.abc import Sequence
 
 from nemory.llm.embeddings.provider import EmbeddingProvider
+from nemory.project.runs import resolve_run_name_from_repo
 from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
 from nemory.storage.repositories.run_repository import RunRepository
 from nemory.storage.repositories.vector_search_repository import VectorSearchRepository, VectorSearchResult
@@ -61,13 +62,4 @@ class RetrieveService:
         return search_results
 
     def resolve_run_name(self, *, project_id: str, run_name: str | None) -> str:
-        if run_name is None:
-            latest = self._run_repo.get_latest_run_for_project(project_id=project_id)
-            if latest is None:
-                raise LookupError(f"No runs found for project '{project_id}'. Run a build first.")
-            return latest.run_name
-        else:
-            run = self._run_repo.get_by_run_name(project_id=project_id, run_name=run_name)
-            if run is None:
-                raise LookupError(f"Run '{run_name}' not found for project '{project_id}'.")
-            return run.run_name
+        return resolve_run_name_from_repo(run_repository=self._run_repo, project_id=project_id, run_name=run_name)

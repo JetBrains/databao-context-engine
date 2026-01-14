@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from nemory.project.layout import get_run_dir
+from nemory.project.runs import get_run_dir
 from nemory.retrieve_embeddings.internal.export_results import export_retrieve_results
 from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from nemory.storage.repositories.vector_search_repository import VectorSearchResult, get_search_results_display_text
