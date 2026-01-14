@@ -1,9 +1,4 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-name: Python CI
+name: Pre commit checks
 
 permissions: { }
 
@@ -20,36 +15,46 @@ on:
 
 jobs:
   build:
-    name: "Build project and run unit tests"
+    name: pre-commit on ${{ matrix.python-version }}
+
     runs-on: ubuntu-latest
     permissions:
       contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.12", "3.13", "3.14" ]
+
     steps:
       - uses: actions/checkout@v5
 
       # in GitHub workflows, we don't let uv manage python installations since it could be slower
       # because GitHub caches the Python versions alongside the runner.
-      - name: "Set up Python"
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version-file: ".python-version"
+          python-version-file: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: "0.9.7"
+          enable-cache: true
 
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
-      - name: Run ruff checks
-        run: uv run ruff check
-        
-      - name: Run ruff format
-        run: uv run ruff format --check
+      - name: Cache pre-commit hooks
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml', 'uv.lock') }}
+          restore-keys: |
+            pre-commit-${{ runner.os }}-
 
-      - name: Run mypy type checking
-        run: uv run mypy . --exclude dist --exclude docs
+      - name: Run pre-commit
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
       - name: Build
         run: |
