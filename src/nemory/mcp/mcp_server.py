@@ -6,6 +6,7 @@ from typing import Literal
 from mcp.server import FastMCP
 from mcp.types import ToolAnnotations
 
+from nemory.databao_engine import DatabaoContextEngine
 from nemory.mcp.all_results_tool import run_all_results_tool
 from nemory.mcp.retrieve_tool import run_retrieve_tool
 
@@ -29,7 +30,7 @@ class McpServer:
         host: str | None = None,
         port: int | None = None,
     ):
-        self._project_dir = project_dir
+        self._databao_context_engine = DatabaoContextEngine(project_dir)
         self._run_name = run_name
 
         self._mcp_server = self._create_mcp_server(host, port)
@@ -42,14 +43,19 @@ class McpServer:
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
         def all_results_tool():
-            return run_all_results_tool(self._project_dir, self._run_name)
+            return run_all_results_tool(self._databao_context_engine.project_dir, self._run_name)
 
         @mcp.tool(
             description="Retrieve the context built from various resources, including databases, dbt tools, plain and structured files, to retrieve relevant information",
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
         def retrieve_tool(text: str, limit: int | None):
-            return run_retrieve_tool(self._project_dir, run_name=self._run_name, text=text, limit=limit or 50)
+            return run_retrieve_tool(
+                databao_context_engine=self._databao_context_engine,
+                run_name=self._run_name,
+                text=text,
+                limit=limit or 50,
+            )
 
         return mcp
 
