@@ -2,11 +2,12 @@ from unittest.mock import Mock
 
 import pytest
 
+from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from nemory.storage.repositories.vector_search_repository import VectorSearchResult
 
 
-def test_retrieve_returns_display_texts():
+def test_retrieve_returns_results():
     run_repo = Mock()
     vector_search_repo = Mock()
     shard_resolver = Mock()
@@ -21,10 +22,23 @@ def test_retrieve_returns_display_texts():
     provider.model_id = "nomic-embed-text"
     provider.embed.return_value = [0.1, 0.2]
 
-    vector_search_repo.get_display_texts_by_similarity.return_value = [
-        VectorSearchResult(display_text="a", embeddable_text="a", cosine_distance=0.5),
-        VectorSearchResult(display_text="b", embeddable_text="b", cosine_distance=0.51),
+    expected = [
+        VectorSearchResult(
+            display_text="a",
+            embeddable_text="a",
+            cosine_distance=0.5,
+            datasource_type=DatasourceType(full_type="full/type"),
+            datasource_id="full/a",
+        ),
+        VectorSearchResult(
+            display_text="b",
+            embeddable_text="b",
+            cosine_distance=0.51,
+            datasource_type=DatasourceType(full_type="full/type"),
+            datasource_id="full/b",
+        ),
     ]
+    vector_search_repo.get_display_texts_by_similarity.return_value = expected
 
     retrieve_service = RetrieveService(
         run_repo=run_repo,
@@ -50,7 +64,7 @@ def test_retrieve_returns_display_texts():
         limit=10,
     )
 
-    assert result == ["a", "b"]
+    assert result == expected
 
 
 def test_retrieve_uses_run_name_if_provided():
@@ -69,8 +83,20 @@ def test_retrieve_uses_run_name_if_provided():
     provider.embed.return_value = [0.1, 0.2]
 
     vector_search_repo.get_display_texts_by_similarity.return_value = [
-        VectorSearchResult(display_text="a", embeddable_text="a", cosine_distance=0.5),
-        VectorSearchResult(display_text="b", embeddable_text="b", cosine_distance=0.51),
+        VectorSearchResult(
+            display_text="a",
+            embeddable_text="a",
+            cosine_distance=0.5,
+            datasource_type=DatasourceType(full_type="full/type"),
+            datasource_id="full/a",
+        ),
+        VectorSearchResult(
+            display_text="b",
+            embeddable_text="b",
+            cosine_distance=0.51,
+            datasource_type=DatasourceType(full_type="full/type"),
+            datasource_id="full/b",
+        ),
     ]
 
     retrieve_service = RetrieveService(
@@ -100,9 +126,16 @@ def test_retrieve_honors_limit():
     provider.model_id = "nomic-embed-text"
     provider.embed.return_value = [0.5] * 768
 
-    vector_search_repo.get_display_texts_by_similarity.return_value = [
-        VectorSearchResult(display_text="x", embeddable_text="x", cosine_distance=0.5),
+    expected = [
+        VectorSearchResult(
+            display_text="x",
+            embeddable_text="x",
+            cosine_distance=0.5,
+            datasource_type=DatasourceType(full_type="full/type"),
+            datasource_id="full/x",
+        ),
     ]
+    vector_search_repo.get_display_texts_by_similarity.return_value = expected
 
     retrieve_service = RetrieveService(
         run_repo=run_repo,
@@ -116,7 +149,7 @@ def test_retrieve_honors_limit():
     vector_search_repo.get_display_texts_by_similarity.assert_called_once()
     _, kwargs = vector_search_repo.get_display_texts_by_similarity.call_args
     assert kwargs["limit"] == 3
-    assert result == ["x"]
+    assert result == expected
 
 
 def test_resolve_run_name_uses_given_name_when_run_exists():

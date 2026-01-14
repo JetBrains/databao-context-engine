@@ -130,3 +130,30 @@ def test_glob_is_case_insensitive():
     selection = matcher.filter_scopes(catalogs, schemas_per_catalog)
 
     assert selection.schemas_per_catalog == {"A": ["sales_2024", "SALES_TMP"]}
+
+
+def test_include_and_exclude_interaction_excludes_subset_of_included_scopes():
+    catalogs = ["A", "B"]
+    schemas_per_catalog = {
+        "A": ["s1", "s2"],
+        "B": ["s3", "s4"],
+    }
+
+    scope = IntrospectionScope(
+        include=[
+            ScopeIncludeRule(catalog="A", schemas=["s*"]),
+            ScopeIncludeRule(catalog="B", schemas=["s*"]),
+        ],
+        exclude=[
+            ScopeExcludeRule(catalog="B", schemas=["s3"]),
+        ],
+    )
+
+    matcher = IntrospectionScopeMatcher(scope, ignored_schemas=set())
+    selection = matcher.filter_scopes(catalogs, schemas_per_catalog)
+
+    assert selection.catalogs == ["A", "B"]
+    assert selection.schemas_per_catalog == {
+        "A": ["s1", "s2"],
+        "B": ["s4"],
+    }

@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence, Union
 
 from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
-    DatabaseColumn,
     DatabaseIntrospectionResult,
-    DatabasePartitionInfo,
     DatabaseSchema,
     DatabaseTable,
 )
@@ -34,59 +31,39 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
             self._fetchall_dicts(connection, "SELECT 1 as test", None)
 
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
-        connection = self._connect(file_config)
-        with connection:
-            catalogs = self._get_catalogs_adapted(connection, file_config)
-            schemas_per_catalog = self._get_schemas(connection, catalogs, file_config)
+        matcher = IntrospectionScopeMatcher(
+            file_config.introspection_scope,
+            ignored_schemas=self._ignored_schemas(),
+        )
 
-            catalogs, schemas_per_catalog = self._apply_introspection_scope(catalogs, schemas_per_catalog, file_config)
+        with self._connect(file_config) as root_connection:
+            catalogs = self._get_catalogs_adapted(root_connection, file_config)
 
-            introspected_catalogs: list[DatabaseCatalog] = []
-            for catalog in catalogs:
-                schemas: list[DatabaseSchema] = []
-                for schema in schemas_per_catalog.get(catalog, []):
-                    columns_per_table = self._collect_columns_for_schema(connection, catalog, schema)
-                    partition_infos_per_table = self._collect_partitions_for_schema(connection, catalog, schema)
+        introspected_catalogs: list[DatabaseCatalog] = []
+        for catalog in catalogs:
+            with self._connect_to_catalog(file_config, catalog) as catalog_connection:
+                discovered_schemas = self._list_schemas_for_catalog(catalog_connection, catalog)
 
-                    tables: list[DatabaseTable] = []
-                    for table, columns in columns_per_table.items():
-                        samples = self._collect_samples_for_table(connection, catalog, schema, table)
-                        tables.append(
-                            DatabaseTable(
-                                name=table,
-                                columns=columns,
-                                samples=samples,
-                                partition_info=partition_infos_per_table.get(table),
+                selection = matcher.filter_scopes([catalog], {catalog: discovered_schemas})
+                selected_schemas = selection.schemas_per_catalog.get(catalog, [])
+
+                tables_by_schema: list[DatabaseSchema] = []
+                for schema in selected_schemas:
+                    tables = self.collect_schema_model(catalog_connection, catalog, schema) or []
+                    if tables:
+                        for table in tables:
+                            table.samples = self._collect_samples_for_table(
+                                catalog_connection, catalog, schema, table.name
                             )
-                        )
-                    schemas.append(DatabaseSchema(name=schema, tables=tables))
-                introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=schemas))
-
-            return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
+                        tables_by_schema.append(DatabaseSchema(name=schema, tables=tables))
+                if tables_by_schema:
+                    introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=tables_by_schema))
+        return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
 
     def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
         if self.supports_catalogs:
             return self._get_catalogs(connection, file_config)
         return [self._resolve_pseudo_catalog_name(file_config)]
-
-    def _get_schemas(self, connection: Any, catalogs: list[str], file_config: T) -> dict[str, list[str]]:
-        sql_query = self._sql_list_schemas(catalogs if self.supports_catalogs else None)
-        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
-
-        schemas_per_catalog: dict[str, list[str]] = defaultdict(list)
-        for row in rows:
-            catalog_name = row.get("catalog_name") or catalogs[0]
-            schema_name = row.get("schema_name")
-            if catalog_name and schema_name:
-                schemas_per_catalog[catalog_name].append(schema_name)
-            else:
-                logger.warning(
-                    "Skipping row with missing catalog or schema name: catalog=%s, schema=%s, row=%s",
-                    catalog_name,
-                    schema_name,
-                    row,
-                )
-        return schemas_per_catalog
 
     def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
         if self.supports_catalogs:
@@ -96,51 +73,21 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
             sql = "SELECT schema_name FROM information_schema.schemata"
             return SQLQuery(sql, None)
 
-    def _apply_introspection_scope(
-        self,
-        catalogs: list[str],
-        schemas_per_catalog: dict[str, list[str]],
-        file_config: T,
-    ) -> tuple[list[str], dict[str, list[str]]]:
-        """
-        Apply the user-provided introspection scope to the discovered catalogs/schemas.
-        """
-        matcher = IntrospectionScopeMatcher(
-            file_config.introspection_scope,
-            ignored_schemas=self._ignored_schemas(),
-        )
-        selection = matcher.filter_scopes(catalogs, schemas_per_catalog)
-        return selection.catalogs, selection.schemas_per_catalog
-
-    def _collect_columns_for_schema(self, connection, catalog: str, schema: str):
-        sql_query = self._sql_columns_for_schema(catalog, schema)
-        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
-        columns: dict[str, list] = {}
-
-        for row in rows:
-            table_name = row.get("table_name")
-            if not table_name:
-                continue
-
-            columns.setdefault(table_name, []).append(self._construct_column(row))
-
-        return columns
-
-    def _collect_partitions_for_schema(self, connection, catalog: str, schema: str):
-        sql_query = self._sql_partitions_for_schema(catalog, schema)
-        partitions: dict[str, DatabasePartitionInfo] = {}
-        if not sql_query:
-            return partitions
-
+    def _list_schemas_for_catalog(self, connection: Any, catalog: str) -> list[str]:
+        sql_query = self._sql_list_schemas([catalog] if self.supports_catalogs else None)
         rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
 
+        schemas: list[str] = []
         for row in rows:
-            table_name = row.get("table_name")
-            if not table_name:
-                continue
-            partitions[table_name] = self._construct_partition_info(row)
+            schema_name = row.get("schema_name")
+            if schema_name:
+                schemas.append(schema_name)
 
-        return partitions
+        return schemas
+
+    @abstractmethod
+    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
+        raise NotImplementedError
 
     def _collect_samples_for_table(self, connection, catalog: str, schema: str, table: str) -> list[dict[str, Any]]:
         samples: list[dict[str, Any]] = []
@@ -168,18 +115,10 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _sql_columns_for_schema(self, catalog: str, schema: str) -> SQLQuery:
-        raise NotImplementedError
-
-    @abstractmethod
-    def _construct_column(self, row: dict[str, Any]) -> DatabaseColumn:
-        raise NotImplementedError
-
-    def _sql_partitions_for_schema(self, catalog: str, schema: str) -> SQLQuery | None:
-        return None
-
-    def _construct_partition_info(self, row: dict[str, Any]) -> DatabasePartitionInfo:
-        raise NotImplementedError
+    def _connect_to_catalog(self, file_config: T, catalog: str):
+        """Return a connection scoped to `catalog`. For engines that
+        don’t need a new connection, return a connection with the
+        session set/USE’d to that catalog."""
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         raise NotImplementedError

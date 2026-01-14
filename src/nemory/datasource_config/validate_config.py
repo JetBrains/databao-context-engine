@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from nemory.datasource_config.utils import get_datasource_config_relative_path
+from nemory.datasource_config.utils import get_datasource_id_from_config_file_path
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
 from nemory.pluginlib.plugin_utils import check_connection_for_datasource
 from nemory.plugins.plugin_loader import load_plugins
@@ -58,7 +58,7 @@ def validate_datasource_config(
 
     result = {}
     for discovered_datasource in datasources_to_traverse:
-        result_key = get_datasource_config_relative_path(project_dir, discovered_datasource.path)
+        result_key = get_datasource_id_from_config_file_path(project_dir, discovered_datasource.path)
 
         try:
             prepared_source = prepare_source(discovered_datasource)

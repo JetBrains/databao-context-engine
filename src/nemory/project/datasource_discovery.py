@@ -17,6 +17,8 @@ from nemory.templating.renderer import render_template
 
 logger = logging.getLogger(__name__)
 
+DatasourceId = str
+
 
 def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
     """
