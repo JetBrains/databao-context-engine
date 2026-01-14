@@ -46,8 +46,8 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         comps = self._component_queries()
         results: dict[str, list[dict]] = {cq: [] for cq in comps}
 
-        for cq in comps:
-            sql = comps.get(cq).replace("{SCHEMA}", self._quote_literal(schema))
+        for cq, template_sql in comps.items():
+            sql = template_sql.replace("{SCHEMA}", self._quote_literal(schema))
             rows = self._fetchall_dicts(connection, sql, None)
             results[cq] = rows
 

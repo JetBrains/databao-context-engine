@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -19,6 +20,15 @@ class CustomClass:
         self._hidden_var = "_hidden_var"
         self.exposed_var = "exposed_var"
         self.my_list = ["1", "2", "3"]
+
+
+class CustomClassNoPublicFields:
+    def __init__(self):
+        self._hidden_var = "Beautiful"
+        self._second_hidden_var = "Content"
+
+    def __str__(self):
+        return f"{self._hidden_var} {self._second_hidden_var}"
 
 
 @dataclass
@@ -96,3 +106,18 @@ def test_write_yaml_to_file(tmp_path: Path):
     result = test_file.read_text()
 
     assert result.strip() == get_expected(my_uuid, now).strip()
+
+
+def test_default_dict():
+    d = defaultdict()
+    d["a"] = 1
+    d["b"] = 2
+    result = to_yaml_string(d)
+
+    assert result.strip() == "a: 1\nb: 2"
+
+
+def test_object_with_no_public_field():
+    result = to_yaml_string({"my_attribute": CustomClassNoPublicFields()})
+
+    assert result.strip() == "my_attribute: Beautiful Content"

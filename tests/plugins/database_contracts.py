@@ -42,6 +42,13 @@ class IntrospectionAsserter:
             )
         return col_map[column]
 
+    def samples(self, catalog: str, schema: str, table: str):
+        t = self.table(catalog, schema, table)
+        samples = getattr(t, "samples", None)
+        if samples is None:
+            self.fail("Missing samples attribute", [catalog, schema, table, "samples"])
+        return samples
+
 
 class Fact:
     def check(self, a: IntrospectionAsserter) -> None:
@@ -354,6 +361,38 @@ class PartitionMetaContains(Fact):
                 a.fail(f"Expected partition meta key {k!r} missing. Meta keys={sorted(meta.keys())}", path)
             if meta[k] != v:
                 a.fail(f"Expected partition meta {k!r}={v!r}, got {meta[k]!r}", path)
+
+
+@dataclass(frozen=True)
+class SamplesEqual(Fact):
+    catalog: str
+    schema: str
+    table: str
+    rows: Sequence[Mapping[str, Any]]
+
+    def check(self, a: IntrospectionAsserter) -> None:
+        actual = a.samples(self.catalog, self.schema, self.table)
+        if list(actual) != list(self.rows):
+            a.fail(
+                f"Expected samples == {list(self.rows)!r}, got {list(actual)!r}",
+                [self.catalog, self.schema, self.table, "samples"],
+            )
+
+
+@dataclass(frozen=True)
+class SamplesCountIs(Fact):
+    catalog: str
+    schema: str
+    table: str
+    count: int
+
+    def check(self, a: IntrospectionAsserter) -> None:
+        actual = a.samples(self.catalog, self.schema, self.table)
+        if len(actual) != self.count:
+            a.fail(
+                f"Expected samples count={self.count}, got {len(actual)}",
+                [self.catalog, self.schema, self.table, "samples"],
+            )
 
 
 def assert_contract(result: DatabaseIntrospectionResult, facts: Iterable[Fact]) -> None:

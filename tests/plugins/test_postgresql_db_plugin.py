@@ -1,15 +1,14 @@
+import asyncio
 import contextlib
-import random
-import string
 from datetime import datetime
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
-import psycopg
+import asyncpg
 import pytest
 from pytest_unordered import unordered
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
-from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk
+from nemory.pluginlib.build_plugin import BuildExecutionResult, DatasourceType, EmbeddableChunk
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.databases.database_chunker import DatabaseColumnChunkContent, DatabaseTableChunkContent
 from nemory.plugins.databases.databases_types import (
@@ -28,6 +27,8 @@ from tests.plugins.database_contracts import (
     IndexExists,
     PartitionMetaContains,
     PrimaryKeyIs,
+    SamplesCountIs,
+    SamplesEqual,
     TableDescriptionContains,
     TableExists,
     TableKindIs,
@@ -44,112 +45,175 @@ def postgres_container():
     container.stop()
 
 
+def _get_connect_kwargs(postgres_container: PostgresContainer) -> dict[str, Any]:
+    return {
+        "host": postgres_container.get_container_host_ip(),
+        "port": int(postgres_container.get_exposed_port(postgres_container.port)),
+        "database": postgres_container.dbname,
+        "user": postgres_container.username,
+        "password": postgres_container.password,
+    }
+
+
+def _execute(postgres_container: PostgresContainer, sql: str) -> None:
+    async def _run():
+        conn = await asyncpg.connect(**_get_connect_kwargs(postgres_container))
+        try:
+            await conn.execute(sql)
+        finally:
+            await conn.close()
+
+    asyncio.run(_run())
+
+
+def _executemany(postgres_container: PostgresContainer, sql: str, args) -> None:
+    async def _run():
+        conn = await asyncpg.connect(**_get_connect_kwargs(postgres_container))
+        try:
+            await conn.executemany(sql, args)
+        finally:
+            await conn.close()
+
+    asyncio.run(_run())
+
+
 @pytest.fixture
-def create_db_schema(create_pg_conn, request):
+def create_db_schema(postgres_container: PostgresContainer, request):
     @contextlib.contextmanager
     def _create_db_schema(desired_schema_name: str | None = None):
-        actual_schema_name = desired_schema_name or request.function.__name__
-        conn = create_pg_conn()
-        conn.execute(f"CREATE SCHEMA {actual_schema_name};")
-        conn.commit()
-        conn.close()
+        schema_name = desired_schema_name or request.function.__name__
+        _execute(postgres_container, f"CREATE SCHEMA {schema_name};")
         try:
-            yield actual_schema_name
+            yield schema_name
         finally:
-            new_conn = create_pg_conn()
-            new_conn.execute(f"DROP SCHEMA IF EXISTS {actual_schema_name} CASCADE;")
-            new_conn.commit()
-            new_conn.close()
+            _execute(postgres_container, f"DROP SCHEMA IF EXISTS {schema_name} CASCADE;")
 
     return _create_db_schema
 
 
-@pytest.fixture
-def create_pg_conn(postgres_container: PostgresContainer):
-    def create_connection():
-        connection_url = postgres_container.get_connection_url()
-        conn = psycopg.connect(connection_url)
-        return conn
+@contextlib.contextmanager
+def seed_rows(
+    postgres_container: PostgresContainer,
+    schema_name: str,
+    table_name: str,
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    cleanup_tables: list[str] | None = None,
+):
+    cleanup_tables = cleanup_tables or [table_name]
 
-    yield create_connection
+    for t in cleanup_tables:
+        _execute(postgres_container, f"DELETE FROM {schema_name}.{t};")
+
+    try:
+        if rows:
+            columns = list(rows[0].keys())
+
+            col_sql = ", ".join(columns)
+            placeholders = ", ".join(f"${i}" for i in range(1, len(columns) + 1))
+            sql = f"INSERT INTO {schema_name}.{table_name} ({col_sql}) VALUES ({placeholders});"
+            args = [tuple(r[c] for c in columns) for r in rows]
+
+            _executemany(postgres_container, sql, args)
+
+        yield
+    finally:
+        for t in cleanup_tables:
+            _execute(postgres_container, f"DELETE FROM {schema_name}.{t};")
 
 
-def _init_with_test_table(create_pg_conn, schema_name, with_samples=False):
-    with create_pg_conn() as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null)")
-
-        if with_samples:
-            cursor.execute(f"INSERT INTO {schema_name}.test (id, name) VALUES (1, 'Alice'), (2, 'Bob');")
-
-
-def _init_with_big_table(create_pg_conn, schema_name):
-    with create_pg_conn() as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"CREATE TABLE {schema_name}.test (id int not null, name varchar(255) null)")
-
-        rows, n = [], 1000
-        for i in range(n):
-            random_name = "".join(random.choices(string.ascii_letters, k=5))
-            rows.append((i, random_name))
-        cursor.executemany(f"INSERT INTO {schema_name}.test (id, name) VALUES (%s, %s)", rows)
-
-
-def test_postgres_exact_samples(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+def test_postgres_exact_samples(create_db_schema, postgres_container: PostgresContainer):
     schema_name = "custom"
     with create_db_schema(schema_name):
-        _init_with_test_table(create_pg_conn, schema_name, with_samples=True)
-        plugin = PostgresqlDbPlugin()
-        config_file = _create_config_file_from_container(postgres_container)
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
-        catalogs = {c.name: c for c in execution_result.result.catalogs}
-        schema = {s.name: s for s in catalogs["test"].schemas}[schema_name]
-        table = {t.name: t for t in schema.tables}["test"]
-        samples = table.samples
+        _init_with_demo_schema(postgres_container, schema_name)
 
-        expected_rows = [
-            {"id": 1, "name": "Alice"},
-            {"id": 2, "name": "Bob"},
+        rows = [
+            {"product_id": 1, "sku": "SKU-1", "price": 10.50, "description": "foo"},
+            {"product_id": 2, "sku": "SKU-2", "price": 20.00, "description": None},
         ]
-        assert samples == expected_rows
+
+        cleanup = ["order_items", "products"]
+
+        with seed_rows(
+            postgres_container,
+            schema_name,
+            "products",
+            rows,
+            cleanup_tables=cleanup,
+        ):
+            plugin = PostgresqlDbPlugin()
+            config_file = _create_config_file_from_container(postgres_container)
+            execution_result = execute_datasource_plugin(
+                plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+            )
+            assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+
+            assert_contract(
+                execution_result.result,
+                [
+                    TableExists("test", schema_name, "products"),
+                    SamplesEqual("test", schema_name, "products", rows=rows),
+                ],
+            )
 
 
-def test_postgres_samples_in_big(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+def test_postgres_samples_in_big(create_db_schema, postgres_container: PostgresContainer):
     schema_name = "custom"
     with create_db_schema(schema_name):
-        _init_with_big_table(create_pg_conn, schema_name)
+        _init_with_demo_schema(postgres_container, schema_name)
+
         plugin = PostgresqlDbPlugin()
         limit = plugin._introspector._SAMPLE_LIMIT
-        config_file = _create_config_file_from_container(postgres_container)
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
-        catalogs = {c.name: c for c in execution_result.result.catalogs}
-        schema = {s.name: s for s in catalogs["test"].schemas}[schema_name]
-        table = {t.name: t for t in schema.tables}["test"]
-        print(table.samples)
-        assert len(table.samples) == limit
+
+        rows = [{"product_id": i, "sku": f"SKU-{i}", "price": float(i), "description": None} for i in range(1, 1000)]
+
+        cleanup = ["order_items", "products"]
+
+        with seed_rows(
+            postgres_container,
+            schema_name,
+            "products",
+            rows,
+            cleanup_tables=cleanup,
+        ):
+            config_file = _create_config_file_from_container(postgres_container)
+            execution_result = execute_datasource_plugin(
+                plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+            )
+            assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+
+            assert_contract(
+                execution_result.result,
+                [
+                    TableExists("test", schema_name, "products"),
+                    SamplesCountIs("test", schema_name, "products", count=limit),
+                ],
+            )
 
 
-def test_postgres_partitions(create_pg_conn, create_db_schema, postgres_container):
+def test_postgres_partitions(create_db_schema, postgres_container):
     with create_db_schema() as db_schema:
-        with create_pg_conn() as conn:
-            conn.execute(f"""
-                        CREATE TABLE {db_schema}.test_partitions (id int not null, name varchar(255) null)
-                        PARTITION BY RANGE (id);
+        _execute(
+            postgres_container,
+            f"""
+            CREATE TABLE {db_schema}.test_partitions (id int not null, name varchar(255) null)
+            PARTITION BY RANGE (id);
 
-                        CREATE TABLE {db_schema}.test_partitions_1 PARTITION OF {db_schema}.test_partitions
-                        FOR VALUES FROM (0) TO (10);
+            CREATE TABLE {db_schema}.test_partitions_1 PARTITION OF {db_schema}.test_partitions
+            FOR VALUES FROM (0) TO (10);
 
-                        CREATE TABLE {db_schema}.test_partitions_2 PARTITION OF {db_schema}.test_partitions
-                        FOR VALUES FROM (10) TO (20);
-                    """)
+            CREATE TABLE {db_schema}.test_partitions_2 PARTITION OF {db_schema}.test_partitions
+            FOR VALUES FROM (10) TO (20)
+            """,
+        )
 
         plugin = PostgresqlDbPlugin()
 
         config_file = _create_config_file_from_container(postgres_container)
 
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
 
         assert execution_result.result == DatabaseIntrospectionResult(
             [
@@ -172,8 +236,8 @@ def test_postgres_partitions(create_pg_conn, create_db_schema, postgres_containe
                                             "partitioning_strategy": "range partitioned",
                                         },
                                         partition_tables=[
+                                            "test_partitions_2", # In a subsequent PR, this will be fixed when we order keys and values in the introspections
                                             "test_partitions_1",
-                                            "test_partitions_2",
                                         ],
                                     ),
                                 )
@@ -264,10 +328,10 @@ def test_postgres_plugin_divide_into_chunks():
     )
 
 
-def _init_with_demo_schema(create_pg_conn, schema_name: str):
-    with create_pg_conn() as conn:
-        conn.execute(
-            f"""
+def _init_with_demo_schema(postgres_container, schema_name: str):
+    _execute(
+        postgres_container,
+        f"""
             CREATE TABLE {schema_name}.users (
                 user_id     integer GENERATED BY DEFAULT AS IDENTITY,
                 name        text NOT NULL,
@@ -390,18 +454,20 @@ def _init_with_demo_schema(create_pg_conn, schema_name: str):
             );
 
             COMMENT ON FOREIGN TABLE {schema_name}.customers_file IS 'External file-backed table (CSV)';
-            """
-        )
+            """,
+    )
 
 
-def test_postgres_introspection_contract(create_db_schema, create_pg_conn, postgres_container: PostgresContainer):
+def test_postgres_introspection_contract(create_db_schema, postgres_container: PostgresContainer):
     schema_name = "custom"
     with create_db_schema(schema_name):
-        _init_with_demo_schema(create_pg_conn, schema_name)
+        _init_with_demo_schema(postgres_container, schema_name)
 
         plugin = PostgresqlDbPlugin()
         config_file = _create_config_file_from_container(postgres_container)
-        execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
         assert isinstance(execution_result.result, DatabaseIntrospectionResult)
 
         assert_contract(

@@ -1,10 +1,13 @@
-from typing import Any, Mapping
+import contextlib
+from typing import Any, Mapping, Sequence
 
 import pymysql
 import pytest
 from testcontainers.mysql import MySqlContainer  # type: ignore
 
+from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
+from nemory.plugins.databases.databases_types import DatabaseIntrospectionResult
 from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
 from tests.plugins.database_contracts import (
     CheckConstraintExists,
@@ -12,6 +15,8 @@ from tests.plugins.database_contracts import (
     ForeignKeyExists,
     IndexExists,
     PrimaryKeyIs,
+    SamplesCountIs,
+    SamplesEqual,
     TableDescriptionContains,
     TableExists,
     TableKindIs,
@@ -28,8 +33,68 @@ def mysql_container():
     container.stop()
 
 
+@pytest.fixture
+def create_mysql_conn(mysql_container: MySqlContainer):
+    def _create_connection():
+        return pymysql.connect(
+            host=mysql_container.get_container_host_ip(),
+            port=int(mysql_container.get_exposed_port(mysql_container.port)),
+            user="root",
+            password=mysql_container.root_password,
+            database=mysql_container.dbname,
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True,
+        )
+
+    return _create_connection
+
+
+@contextlib.contextmanager
+def seed_rows(
+    create_mysql_conn,
+    catalog: str,
+    table: str,
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    cleanup_sql: Sequence[str] = (),
+):
+    conn = create_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(f"USE {catalog};")
+
+            if cleanup_sql:
+                for stmt in cleanup_sql:
+                    cursor.execute(stmt)
+            else:
+                cursor.execute(f"DELETE FROM {table};")
+
+            if rows:
+                columns = list(rows[0].keys())
+
+                col_sql = ", ".join(columns)
+                placeholders = ", ".join(["%s"] * len(columns))
+                sql = f"INSERT INTO {table} ({col_sql}) VALUES ({placeholders})"
+
+                data = [tuple(r[c] for c in columns) for r in rows]
+                cursor.executemany(sql, data)
+
+        yield
+    finally:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(f"USE {catalog};")
+                if cleanup_sql:
+                    for stmt in cleanup_sql:
+                        cursor.execute(stmt)
+                else:
+                    cursor.execute(f"DELETE FROM {table};")
+        finally:
+            conn.close()
+
+
 @pytest.fixture(scope="module")
-def mysql_container_with_columns(mysql_container: MySqlContainer):
+def mysql_container_with_demo_schema(mysql_container: MySqlContainer):
     conn = pymysql.connect(
         host=mysql_container.get_container_host_ip(),
         port=int(mysql_container.get_exposed_port(mysql_container.port)),
@@ -190,10 +255,12 @@ def mysql_container_with_columns(mysql_container: MySqlContainer):
     return mysql_container
 
 
-def test_mysql_introspection(mysql_container_with_columns):
+def test_mysql_introspection(mysql_container_with_demo_schema):
     plugin = MySQLDbPlugin()
-    config_file = _create_config_file_from_container(mysql_container_with_columns)
-    result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name").result
+    config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+    result = execute_datasource_plugin(
+        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+    ).result
 
     assert_contract(
         result,
@@ -398,6 +465,60 @@ def test_mysql_introspection(mysql_container_with_columns):
             ColumnIs("catalog_aux", "catalog_aux", "active_employees", "hired_at", type="timestamp"),
         ],
     )
+
+
+def test_mysql_exact_samples(mysql_container_with_demo_schema, create_mysql_conn):
+    rows = [
+        {"id": 1, "sku": "SKU-1", "price": 10.50, "description": "foo"},
+        {"id": 2, "sku": "SKU-2", "price": 20.00, "description": None},
+    ]
+
+    cleanup = [
+        "DELETE FROM table_order_items;",
+        "DELETE FROM table_products;",
+    ]
+
+    with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
+        plugin = MySQLDbPlugin()
+        config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
+        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            execution_result.result,
+            [
+                SamplesEqual("catalog_main", "catalog_main", "table_products", rows=rows),
+            ],
+        )
+
+
+def test_mysql_samples_in_big(mysql_container_with_demo_schema, create_mysql_conn):
+    plugin = MySQLDbPlugin()
+    limit = plugin._introspector._SAMPLE_LIMIT
+
+    rows = [{"id": i, "sku": f"SKU-{i}", "price": float(i), "description": None} for i in range(1, 1000)]
+
+    cleanup = [
+        "DELETE FROM table_order_items;",
+        "DELETE FROM table_products;",
+    ]
+
+    with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
+        config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
+        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            execution_result.result,
+            [
+                TableExists("catalog_main", "catalog_main", "table_products"),
+                SamplesCountIs("catalog_main", "catalog_main", "table_products", count=limit),
+            ],
+        )
 
 
 def _create_config_file_from_container(mysql: MySqlContainer) -> Mapping[str, Any]:

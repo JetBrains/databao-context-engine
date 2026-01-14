@@ -77,18 +77,17 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     _USE_BATCH = True
 
     def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
-        comps = self._component_queries(schema)
+        comps = self._component_queries()
 
         schema_lit = self._quote_literal(schema)
-        stmts = [cq["sql"].replace("{SCHEMA}", schema_lit) for cq in comps]
+        stmts = [sql.replace("{SCHEMA}", schema_lit) for sql in comps.values()]
         batch_prefix = "SET NOCOUNT ON; SET XACT_ABORT ON;"
         batch = batch_prefix + "\n" + ";\n".join(s.rstrip().rstrip(";") for s in stmts) + ";"
 
-        results: dict[str, list[dict]] = {cq["name"]: [] for cq in comps}
+        results: dict[str, list[dict]] = {name: [] for name in comps}
         with connection.cursor() as cur:
             cur.execute(batch)
-            for ix, cq in enumerate(comps, start=1):
-                name = cq["name"]
+            for ix, name in enumerate(comps.keys(), start=1):
                 try:
                     rows: list[dict] = []
                     if cur.description:
@@ -112,16 +111,16 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             idx_cols=results.get("idx", []),
         )
 
-    def _component_queries(self, schema: str) -> list[dict]:
-        return [
-            {"name": "relations", "sql": self._sql_relations()},
-            {"name": "columns", "sql": self._sql_columns()},
-            {"name": "pk", "sql": self._sql_primary_keys()},
-            {"name": "uq", "sql": self._sql_uniques()},
-            {"name": "checks", "sql": self._sql_checks()},
-            {"name": "fks", "sql": self._sql_foreign_keys()},
-            {"name": "idx", "sql": self._sql_indexes()},
-        ]
+    def _component_queries(self) -> dict[str, str]:
+        return {
+            "relations": self._sql_relations(),
+            "columns": self._sql_columns(),
+            "pk": self._sql_primary_keys(),
+            "uq": self._sql_uniques(),
+            "checks": self._sql_checks(),
+            "fks": self._sql_foreign_keys(),
+            "idx": self._sql_indexes(),
+        }
 
     def _sql_relations(self) -> str:
         return r"""
@@ -332,10 +331,6 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 ic.key_ordinal;
         """
 
-    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
-        sql = f'SELECT TOP ({limit}) * FROM "{schema}"."{table}"'
-        return SQLQuery(sql, [limit])
-
     def _create_connection_string_for_config(self, file_config: Mapping[str, Any]) -> str:
         def _escape_odbc_value(value: str) -> str:
             return "{" + value.replace("}", "}}").replace("{", "{{") + "}"
@@ -378,3 +373,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     def _quote_literal(self, value: str) -> str:
         return "'" + str(value).replace("'", "''") + "'"
+
+    def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
+        sql = f'SELECT TOP ({limit}) * FROM "{catalog}"."{schema}"."{table}"'
+        return SQLQuery(sql, [limit])

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from nemory.build_sources.internal.build_service import BuildService
-from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk
+from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk, DatasourceType
 from nemory.project.types import PreparedDatasource, PreparedFile
 
 
@@ -21,7 +21,7 @@ def mk_result(*, name="foo", typ="files/md", result=None):
 
 
 def mk_prepared(path: Path, full_type: str) -> PreparedDatasource:
-    return PreparedFile(path=path, full_type=full_type)
+    return PreparedFile(path=path, datasource_type=DatasourceType(full_type=full_type))
 
 
 @pytest.fixture

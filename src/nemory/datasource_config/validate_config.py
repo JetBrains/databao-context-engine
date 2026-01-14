@@ -6,11 +6,16 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from nemory.datasource_config.utils import get_datasource_config_relative_path
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
 from nemory.pluginlib.plugin_utils import check_connection_for_datasource
 from nemory.plugins.plugin_loader import load_plugins
-from nemory.project.datasource_discovery import get_datasource_descriptors, traverse_datasources
-from nemory.project.layout import ensure_project_dir, get_source_dir
+from nemory.project.datasource_discovery import (
+    discover_datasources,
+    get_datasource_descriptors,
+    prepare_source,
+)
+from nemory.project.layout import ensure_project_dir
 from nemory.project.types import PreparedConfig
 
 logger = logging.getLogger(__name__)
@@ -38,67 +43,39 @@ class ValidationResult:
         return formatted_string
 
 
-def validate_datasource_config(project_dir: Path, *, datasource_config_files: list[str] | None = None):
-    ensure_project_dir(project_dir)
-
-    results = _validate_datasource_config(project_dir, datasource_config_files=datasource_config_files)
-
-    if len(results) > 0:
-        valid_datasources = {
-            key: value for key, value in results.items() if value.validation_status == ValidationStatus.VALID
-        }
-        invalid_datasources = {
-            key: value for key, value in results.items() if value.validation_status == ValidationStatus.INVALID
-        }
-        unknown_datasources = {
-            key: value for key, value in results.items() if value.validation_status == ValidationStatus.UNKNOWN
-        }
-
-        # Print all errors
-        for datasource_path, validation_result in invalid_datasources.items():
-            logger.info(
-                f"Error for datasource {datasource_path}:{os.linesep}{validation_result.full_message}{os.linesep}"
-            )
-
-        results_summary = (
-            os.linesep.join(
-                [
-                    f"{datasource_path}: {validation_result.format(show_summary_only=True)}"
-                    for datasource_path, validation_result in results.items()
-                ]
-            )
-            if results
-            else "No datasource found"
-        )
-
-        logger.info(
-            f"Validation completed with {len(valid_datasources)} valid datasource(s) and {len(invalid_datasources) + len(unknown_datasources)} invalid (or unknown status) datasource(s)"
-            f"{os.linesep}{results_summary}"
-        )
-    else:
-        logger.info("No datasource found")
-
-
-def _validate_datasource_config(
+def validate_datasource_config(
     project_dir: Path, *, datasource_config_files: list[str] | None = None
 ) -> dict[str, ValidationResult]:
-    src_dir = get_source_dir(project_dir)
+    ensure_project_dir(project_dir)
 
-    datasources_to_traverse = None
     if datasource_config_files:
         logger.info(f"Validating datasource(s): {datasource_config_files}")
         datasources_to_traverse = get_datasource_descriptors(project_dir, datasource_config_files)
+    else:
+        datasources_to_traverse = discover_datasources(project_dir)
 
     plugins = load_plugins(exclude_file_plugins=True)
 
     result = {}
-    for prepared_source in traverse_datasources(project_dir, datasources_to_traverse=datasources_to_traverse):
-        result_key = str(prepared_source.path.relative_to(src_dir))
+    for discovered_datasource in datasources_to_traverse:
+        result_key = get_datasource_config_relative_path(project_dir, discovered_datasource.path)
 
-        plugin = plugins.get(prepared_source.full_type)
+        try:
+            prepared_source = prepare_source(discovered_datasource)
+        except Exception as e:
+            result[result_key] = ValidationResult(
+                validation_status=ValidationStatus.INVALID,
+                summary="Failed to prepare source",
+                full_message=str(e),
+            )
+            continue
+
+        plugin = plugins.get(prepared_source.datasource_type)
         if plugin is None:
             logger.debug(
-                "No plugin for '%s' (datasource=%s) — skipping.", prepared_source.full_type, prepared_source.path
+                "No plugin for '%s' (datasource=%s) — skipping.",
+                prepared_source.datasource_type.full_type,
+                prepared_source.path,
             )
             result[result_key] = ValidationResult(
                 validation_status=ValidationStatus.INVALID, summary="No compatible plugin found"
@@ -109,7 +86,7 @@ def _validate_datasource_config(
             try:
                 check_connection_for_datasource(
                     plugin=plugin,
-                    full_type=prepared_source.full_type,
+                    datasource_type=prepared_source.datasource_type,
                     config=prepared_source.config,
                     datasource_name=prepared_source.datasource_name,
                 )
@@ -121,22 +98,26 @@ def _validate_datasource_config(
                     exc_info=True,
                     stack_info=True,
                 )
-                if isinstance(e, ValidationError):
-                    result[result_key] = ValidationResult(
-                        validation_status=ValidationStatus.INVALID,
-                        summary="Config file is invalid",
-                        full_message=str(e),
-                    )
-                elif isinstance(e, NotImplementedError | NotSupportedError):
-                    result[result_key] = ValidationResult(
-                        validation_status=ValidationStatus.UNKNOWN,
-                        summary="Plugin doesn't support validating its config",
-                    )
-                else:
-                    result[result_key] = ValidationResult(
-                        validation_status=ValidationStatus.INVALID,
-                        summary="Connection with the datasource can not be established",
-                        full_message=str(e),
-                    )
+                result[result_key] = get_validation_result_from_error(e)
 
     return result
+
+
+def get_validation_result_from_error(e: Exception):
+    if isinstance(e, ValidationError):
+        return ValidationResult(
+            validation_status=ValidationStatus.INVALID,
+            summary="Config file is invalid",
+            full_message=str(e),
+        )
+    elif isinstance(e, NotImplementedError | NotSupportedError):
+        return ValidationResult(
+            validation_status=ValidationStatus.UNKNOWN,
+            summary="Plugin doesn't support validating its config",
+        )
+    else:
+        return ValidationResult(
+            validation_status=ValidationStatus.INVALID,
+            summary="Connection with the datasource can not be established",
+            full_message=str(e),
+        )

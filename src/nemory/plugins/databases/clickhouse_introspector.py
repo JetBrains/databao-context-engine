@@ -50,10 +50,10 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
 
     def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
         comps = self._component_queries()
-        results: dict[str, list[dict]] = {}
-        for cq in comps:
-            sql = cq["sql"].replace("{SCHEMA}", self._quote_literal(schema))
-            results[cq["name"]] = self._fetchall_dicts(connection, sql, None)
+        results: dict[str, list[dict]] = {cq: [] for cq in comps}
+        for cq, template_sql in comps.items():
+            sql = template_sql.replace("{SCHEMA}", self._quote_literal(schema))
+            results[cq] = self._fetchall_dicts(connection, sql, None)
 
         return TableBuilder.build_from_components(
             rels=results.get("relations", []),
@@ -65,12 +65,8 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             idx_cols=results.get("idx", []),
         )
 
-    def _component_queries(self) -> list[dict]:
-        return [
-            {"name": "relations", "sql": self._sql_relations()},
-            {"name": "columns", "sql": self._sql_columns()},
-            {"name": "idx", "sql": self._sql_indexes()},
-        ]
+    def _component_queries(self) -> dict[str, str]:
+        return {"relations": self._sql_relations(), "columns": self._sql_columns(), "idx": self._sql_indexes()}
 
     def _sql_relations(self) -> str:
         return r"""
@@ -149,7 +145,7 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
         return SQLQuery(sql, (limit,))
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        res = connection.query(sql)
+        res = connection.query(sql, parameters=params) if params else connection.query(sql)
         cols = [c.lower() for c in res.column_names]
         return [dict(zip(cols, row)) for row in res.result_rows]
 

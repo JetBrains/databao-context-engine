@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseIntrospector[T](ABC):
-    supports_catalogs: bool = True
+    supports_catalogs: bool = False
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
     _SAMPLE_LIMIT: int = 5
 

@@ -1,8 +1,7 @@
-from typing import Annotated, Any
+import asyncio
+from typing import Annotated, Any, Sequence
 
-import psycopg
-from psycopg import Connection
-from psycopg.rows import dict_row
+import asyncpg
 from pydantic import BaseModel, Field
 
 from nemory.pluginlib.config_properties import ConfigPropertyAnnotation
@@ -26,44 +25,94 @@ class PostgresConfigFile(BaseDatabaseConfigFile):
     connection: PostgresConnectionProperties
 
 
+class _SyncAsyncpgConnection:
+    def __init__(self, connect_kwargs: dict[str, Any]):
+        self._connect_kwargs = connect_kwargs
+        self._conn: asyncpg.Connection | None = None
+        self._event_loop: asyncio.AbstractEventLoop | None = None
+
+    def __enter__(self):
+        self._event_loop = asyncio.new_event_loop()
+        try:
+            self._conn = self._event_loop.run_until_complete(asyncpg.connect(**self._connect_kwargs))
+        except Exception:
+            self._event_loop.close()
+            self._event_loop = None
+            raise
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        try:
+            if self._conn is not None and self._event_loop is not None and not self._event_loop.is_closed():
+                self._event_loop.run_until_complete(self._conn.close())
+        finally:
+            self._conn = None
+            if self._event_loop is not None and not self._event_loop.is_closed():
+                self._event_loop.close()
+            self._event_loop = None
+
+    @property
+    def conn(self) -> asyncpg.Connection:
+        if self._conn is None:
+            raise RuntimeError("Connection is not open")
+        return self._conn
+
+    def _run_blocking(self, awaitable) -> Any:
+        if self._event_loop is None:
+            raise RuntimeError("Event loop is not initialized")
+        return self._event_loop.run_until_complete(awaitable)
+
+    def fetch_rows(self, sql: str, params: Sequence[Any] | None = None) -> list[dict]:
+        query_params = [] if params is None else list(params)
+        records = self._run_blocking(self.conn.fetch(sql, *query_params))
+        return [dict(record) for record in records]
+
+    def fetch_scalar_values(self, sql: str) -> list[Any]:
+        records = self._run_blocking(self.conn.fetch(sql))
+        return [record[0] for record in records]
+
+
 class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "pg_catalog", "pg_toast"}
 
     supports_catalogs = True
 
-    def _connect(self, file_config: PostgresConfigFile):
-        connection_string = self._create_connection_string_for_config(file_config.connection)
+    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
+        if self.supports_catalogs:
+            sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY($1)"
+            return SQLQuery(sql, (catalogs,))
+        else:
+            sql = "SELECT schema_name FROM information_schema.schemata"
+            return SQLQuery(sql, None)
 
-        return psycopg.connect(connection_string)
+    def _connect(self, file_config: PostgresConfigFile):
+        kwargs = self._create_connection_kwargs(file_config.connection)
+        return _SyncAsyncpgConnection(kwargs)
+
+    def _fetchall_dicts(self, connection: _SyncAsyncpgConnection, sql: str, params) -> list[dict]:
+        return connection.fetch_rows(sql, params)
+
+    def _get_catalogs(self, connection: _SyncAsyncpgConnection, file_config: PostgresConfigFile) -> list[str]:
+        database = file_config.connection.database
+        if database is not None:
+            return [database]
+
+        rows = connection.fetch_scalar_values("SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false")
+        return rows
 
     def _connect_to_catalog(self, file_config: PostgresConfigFile, catalog: str):
         cfg = file_config.model_copy(deep=True)
         cfg.connection.database = catalog
         return self._connect(cfg)
 
-    def _get_catalogs(self, connection: Connection, file_config: PostgresConfigFile) -> list[str]:
-        database = file_config.connection.database
-        if database is not None:
-            return [database]
+    def collect_schema_model(
+        self, connection: _SyncAsyncpgConnection, catalog: str, schema: str
+    ) -> list[DatabaseTable] | None:
+        comps = self._component_queries()
+        results: dict[str, list[dict]] = {name: [] for name in comps}
 
-        catalog_results = connection.execute(
-            "SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false"
-        ).fetchall()
-
-        return [row[0] for row in catalog_results]
-
-    def collect_schema_model(self, connection: Connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
-        comps = self._component_queries(schema)
-        results: dict[str, list[dict]] = {cq["name"]: [] for cq in comps}
-
-        with connection.pipeline():
-            curs = []
-            for cq in comps:
-                cur = connection.cursor(row_factory=dict_row)
-                cur.execute(cq["sql"], cq["params"])
-                curs.append((cq["name"], cur))
-            for name, cur in curs:
-                results[name] = cur.fetchall()
+        for cq, sql in comps.items():
+            results[cq] = self._fetchall_dicts(connection, sql, (schema,)) or []
 
         return TableBuilder.build_from_components(
             rels=results.get("relations", []),
@@ -76,17 +125,17 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             partitions=results.get("partitions", []),
         )
 
-    def _component_queries(self, schema: str) -> list[dict]:
-        return [
-            {"name": "relations", "sql": self._sql_relations(), "params": (schema,)},
-            {"name": "columns", "sql": self._sql_columns(), "params": (schema,)},
-            {"name": "pk", "sql": self._sql_primary_keys(), "params": (schema,)},
-            {"name": "uq", "sql": self._sql_uniques(), "params": (schema,)},
-            {"name": "checks", "sql": self._sql_checks(), "params": (schema,)},
-            {"name": "fks", "sql": self._sql_foreign_keys(), "params": (schema,)},
-            {"name": "idx", "sql": self._sql_indexes(), "params": (schema,)},
-            {"name": "partitions", "sql": self._sql_partitions(), "params": (schema,)},
-        ]
+    def _component_queries(self) -> dict[str, str]:
+        return {
+            "relations": self._sql_relations(),
+            "columns": self._sql_columns(),
+            "pk": self._sql_primary_keys(),
+            "uq": self._sql_uniques(),
+            "checks": self._sql_checks(),
+            "fks": self._sql_foreign_keys(),
+            "idx": self._sql_indexes(),
+            "partitions": self._sql_partitions(),
+        }
 
     def _sql_relations(self) -> str:
         return """
@@ -103,7 +152,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 pg_class c
                 JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE 
-                n.nspname = %s
+                n.nspname = $1
                 AND c.relkind IN ('r','p','v','m','f')
                 AND NOT c.relispartition
             ORDER BY 
@@ -130,7 +179,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN pg_namespace n ON n.oid  = c.relnamespace
                 LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
             WHERE 
-                n.nspname = %s
+                n.nspname = $1
                 AND a.attnum > 0
                 AND c.relkind IN ('r','p','v','m','f') 
                 AND NOT a.attisdropped
@@ -154,7 +203,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(attnum, pos) ON TRUE
                 JOIN pg_attribute  att ON att.attrelid = c.oid AND att.attnum = k.attnum
             WHERE 
-                n.nspname = %s
+                n.nspname = $1
                 AND con.contype = 'p'
                 AND NOT c.relispartition
             ORDER BY 
@@ -177,7 +226,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(attnum, pos) ON TRUE
                 JOIN pg_attribute  att ON att.attrelid = c.oid AND att.attnum = k.attnum
             WHERE 
-                n.nspname = %s
+                n.nspname = $1
                 AND con.contype = 'u'
                 AND NOT c.relispartition
             ORDER BY 
@@ -198,7 +247,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN pg_class c     ON c.oid = con.conrelid
                 JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE 
-                n.nspname = %s
+                n.nspname = $1
                 AND con.contype = 'c'
                 AND NOT c.relispartition
             ORDER BY 
@@ -236,7 +285,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN pg_attribute attc   ON attc.attrelid = c.oid     AND attc.attnum   = src.src_attnum
                 JOIN pg_attribute attref ON attref.attrelid = cref.oid AND attref.attnum = ref.ref_attnum
             WHERE 
-                n.nspname = %s
+                n.nspname = $1
                 AND con.contype = 'f'
                 AND NOT c.relispartition
             ORDER BY 
@@ -263,7 +312,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN pg_am        am  ON am.oid = idx.relam
                 CROSS JOIN LATERAL generate_series(1, i.indnkeyatts::int) AS k(pos)
             WHERE 
-                n.nspname = %s
+                n.nspname = $1
                 AND i.indisprimary = false
                 AND NOT EXISTS (
                     SELECT 
@@ -311,13 +360,13 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                             ON att.attrelid = rel.oid AND att.attnum = ANY (part.partattrs)
                        JOIN partitions ON partitions.oid = rel.oid
                WHERE
-                   nsp.nspname = %s
+                   nsp.nspname = $1
                GROUP BY
                    rel.relname, part.partstrat, partitions.partition_tables \
                """
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
-        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT %s'
+        sql = f'SELECT * FROM "{schema}"."{table}" LIMIT $1'
         return SQLQuery(sql, (limit,))
 
     def _create_connection_string_for_config(self, connection_config: PostgresConnectionProperties) -> str:
@@ -343,7 +392,16 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         )
         return connection_string
 
-    def _fetchall_dicts(self, connection: Connection, sql: str, params) -> list[dict]:
-        with connection.cursor(row_factory=dict_row) as cur:
-            cur.execute(sql, params)
-            return [r for r in cur.fetchall()]
+    def _create_connection_kwargs(self, connection_config: PostgresConnectionProperties) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "host": connection_config.host,
+            "port": connection_config.port or 5432,
+            "database": connection_config.database or "postgres",
+        }
+
+        if connection_config.user:
+            kwargs["user"] = connection_config.user
+        if connection_config.password:
+            kwargs["password"] = connection_config.password
+        kwargs.update(connection_config.additional_properties or {})
+        return kwargs

@@ -55,20 +55,17 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         )
 
     def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
-        comps = self._component_queries(schema)
-        results: dict[str, list[dict]] = {cq["name"]: [] for cq in comps}
+        comps = self._component_queries()
+        results: dict[str, list[dict]] = {name: [] for name in comps}
 
-        batch = (
-            ";\n".join(cq["sql"].replace("{SCHEMA}", self._quote_literal(schema)).rstrip().rstrip(";") for cq in comps)
-            + ";"
+        batch = ";\n".join(
+            sql.replace("{SCHEMA}", self._quote_literal(schema)).rstrip().rstrip(";") for sql in comps.values()
         )
 
         with connection.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(batch)
 
-            for ix, cq in enumerate(comps, start=1):
-                name = cq["name"]
-
+            for ix, name in enumerate(comps.keys(), start=1):
                 raw_rows = cur.fetchall() if cur.description else ()
 
                 rows_list: list[dict]
@@ -99,16 +96,16 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             idx_cols=results.get("idx", []),
         )
 
-    def _component_queries(self, schema: str) -> list[dict]:
-        return [
-            {"name": "relations", "sql": self._sql_relations()},
-            {"name": "columns", "sql": self._sql_columns()},
-            {"name": "pk", "sql": self._sql_primary_keys()},
-            {"name": "uq", "sql": self._sql_uniques()},
-            {"name": "checks", "sql": self._sql_checks()},
-            {"name": "fks", "sql": self._sql_foreign_keys()},
-            {"name": "idx", "sql": self._sql_indexes()},
-        ]
+    def _component_queries(self) -> dict[str, str]:
+        return {
+            "relations": self._sql_relations(),
+            "columns": self._sql_columns(),
+            "pk": self._sql_primary_keys(),
+            "uq": self._sql_uniques(),
+            "checks": self._sql_checks(),
+            "fks": self._sql_foreign_keys(),
+            "idx": self._sql_indexes(),
+        }
 
     def _sql_relations(self) -> str:
         return r"""

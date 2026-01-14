@@ -19,7 +19,7 @@ def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Bui
 
         return execute_datasource_plugin(
             plugin=ds_plugin,
-            full_type=prepared_datasource.full_type,
+            datasource_type=prepared_datasource.datasource_type,
             config=prepared_datasource.config,
             datasource_name=prepared_datasource.datasource_name,
         )
@@ -27,6 +27,6 @@ def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Bui
         file_plugin = cast(BuildFilePlugin, plugin)
         return execute_file_plugin(
             plugin=file_plugin,
-            full_type=prepared_datasource.full_type,
+            datasource_type=prepared_datasource.datasource_type,
             file_path=prepared_datasource.path,
         )

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.project.project_config import ProjectConfig
 
 SOURCE_FOLDER_NAME = "src"
@@ -90,9 +91,11 @@ def ensure_datasource_config_file_doesnt_exist(
 
 
 def create_datasource_config_file(
-    project_dir: Path, config_folder_name: str, datasource_name: str, config_content: str
+    project_dir: Path, datasource_type: DatasourceType, datasource_name: str, config_content: str
 ) -> Path:
-    config_file = ensure_datasource_config_file_doesnt_exist(project_dir, config_folder_name, datasource_name)
+    config_file = ensure_datasource_config_file_doesnt_exist(
+        project_dir, datasource_type.config_folder, datasource_name
+    )
     config_file.parent.mkdir(parents=True, exist_ok=True)
 
     config_file.touch()

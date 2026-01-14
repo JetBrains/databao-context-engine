@@ -1,9 +1,12 @@
-from typing import Any, Mapping
+import contextlib
+from datetime import date
+from typing import Any, Mapping, Sequence
 
 import clickhouse_connect
 import pytest
 from testcontainers.clickhouse import ClickHouseContainer  # type: ignore
 
+from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
 from nemory.plugins.databases.databases_types import (
@@ -12,6 +15,8 @@ from nemory.plugins.databases.databases_types import (
 from tests.plugins.database_contracts import (
     ColumnIs,
     IndexExists,
+    SamplesCountIs,
+    SamplesEqual,
     TableDescriptionContains,
     TableExists,
     TableKindIs,
@@ -139,10 +144,47 @@ def clickhouse_container_with_demo_schema(clickhouse_container: ClickHouseContai
     return clickhouse_container
 
 
+@pytest.fixture
+def create_clickhouse_client(clickhouse_container: ClickHouseContainer):
+    def _create_client(database: str | None = None):
+        return clickhouse_connect.get_client(
+            host=clickhouse_container.get_container_host_ip(),
+            port=int(clickhouse_container.get_exposed_port(HTTP_PORT)),
+            username=clickhouse_container.username,
+            password=clickhouse_container.password,
+            database=database or clickhouse_container.dbname,
+        )
+
+    return _create_client
+
+
+@contextlib.contextmanager
+def seed_rows(
+    create_clickhouse_client,
+    full_table_name: str,
+    rows: Sequence[Mapping[str, Any]],
+):
+    client = create_clickhouse_client()
+    try:
+        client.command(f"TRUNCATE TABLE {full_table_name}")
+
+        if rows:
+            columns = list(rows[0].keys())
+            data = [tuple(r[c] for c in columns) for r in rows]
+            client.insert(full_table_name, data, column_names=columns)
+
+        yield
+    finally:
+        client.command(f"TRUNCATE TABLE {full_table_name}")
+        client.close()
+
+
 def test_clickhouse_plugin_execute(clickhouse_container_with_demo_schema: ClickHouseContainer):
     plugin = ClickhouseDbPlugin()
     config_file = _create_config_file_from_container(clickhouse_container_with_demo_schema)
-    execution_result = execute_datasource_plugin(plugin, config_file["type"], config_file, "file_name")
+    execution_result = execute_datasource_plugin(
+        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+    )
     assert isinstance(execution_result.result, DatabaseIntrospectionResult)
 
     result = execution_result.result
@@ -261,6 +303,55 @@ def test_clickhouse_plugin_execute(clickhouse_container_with_demo_schema: ClickH
             ColumnIs("clickhouse", "ext", "customers_file", "created_at", type="DateTime", nullable=False),
         ],
     )
+
+
+def test_clickhouse_exact_samples(
+    create_clickhouse_client,
+    clickhouse_container_with_demo_schema: ClickHouseContainer,
+):
+    rows = [
+        {"day": date(2026, 1, 1), "total_amount_cents": 123},
+        {"day": date(2026, 1, 2), "total_amount_cents": 456},
+    ]
+
+    with seed_rows(create_clickhouse_client, "custom.revenue_by_day", rows):
+        plugin = ClickhouseDbPlugin()
+        config_file = _create_config_file_from_container(clickhouse_container_with_demo_schema)
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
+        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            execution_result.result,
+            [
+                SamplesEqual("clickhouse", "custom", "revenue_by_day", rows=rows),
+            ],
+        )
+
+
+def test_clickhouse_samples_in_big(
+    create_clickhouse_client,
+    clickhouse_container_with_demo_schema: ClickHouseContainer,
+):
+    plugin = ClickhouseDbPlugin()
+    limit = plugin._introspector._SAMPLE_LIMIT
+
+    rows = [{"day": date(2026, 1, (i % 28) + 1), "total_amount_cents": i} for i in range(1000)]
+
+    with seed_rows(create_clickhouse_client, "custom.revenue_by_day", rows):
+        config_file = _create_config_file_from_container(clickhouse_container_with_demo_schema)
+        execution_result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
+        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            execution_result.result,
+            [
+                SamplesCountIs("clickhouse", "custom", "revenue_by_day", count=limit),
+            ],
+        )
 
 
 def _create_config_file_from_container(clickhouse: ClickHouseContainer) -> Mapping[str, Any]:

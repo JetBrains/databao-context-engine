@@ -1,9 +1,11 @@
+import contextlib
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import duckdb
 import pytest
 
+from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.pluginlib.plugin_utils import execute_datasource_plugin
 from nemory.plugins.databases.databases_types import (
     DatabaseIntrospectionResult,
@@ -15,6 +17,8 @@ from tests.plugins.database_contracts import (
     ForeignKeyExists,
     IndexExists,
     PrimaryKeyIs,
+    SamplesCountIs,
+    SamplesEqual,
     TableExists,
     TableKindIs,
     UniqueConstraintExists,
@@ -33,6 +37,27 @@ def execute_duckdb_queries(db_file: Path, *queries: str):
     with conn:
         for query in queries:
             conn.execute(query)
+
+
+@contextlib.contextmanager
+def seed_rows(db_file: Path, full_table_name: str, rows: Sequence[Mapping[str, Any]]):
+    conn = duckdb.connect(database=str(db_file))
+    try:
+        conn.execute(f"TRUNCATE TABLE {full_table_name}")
+
+        if rows:
+            columns = list(rows[0].keys())
+
+            placeholders = ", ".join(["?"] * len(columns))
+            col_sql = ", ".join(columns)
+            sql = f"INSERT INTO {full_table_name} ({col_sql}) VALUES ({placeholders})"
+            data = [tuple(r[c] for c in columns) for r in rows]
+            conn.executemany(sql, data)
+
+        yield
+    finally:
+        conn.execute(f"TRUNCATE TABLE {full_table_name}")
+        conn.close()
 
 
 @pytest.fixture
@@ -119,7 +144,7 @@ def duckdb_with_demo_schema(temp_duckdb_file: Path):
 def test_duckdb_plugin_introspection_demo_schema(duckdb_with_demo_schema: Path):
     plugin = DuckDbPlugin()
     config = _create_config_file_from_container(duckdb_with_demo_schema)
-    result = execute_datasource_plugin(plugin, config["type"], config, "file_name").result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
     assert isinstance(result, DatabaseIntrospectionResult)
 
     assert_contract(
@@ -202,6 +227,51 @@ def test_duckdb_plugin_introspection_demo_schema(duckdb_with_demo_schema: Path):
             ColumnIs("test_db", "custom", "recent_paid_orders", "amount_cents", type="INTEGER"),
         ],
     )
+
+
+def test_duckdb_exact_samples(duckdb_with_demo_schema: Path):
+    rows = [
+        {"user_id": 1, "name": "Andrew", "email": "andrew@example.com", "is_active": 1},
+        {"user_id": 2, "name": "Boris", "email": "boris@example.com", "is_active": 1},
+        {"user_id": 3, "name": "Cathy", "email": "cathy@example.com", "is_active": 1},
+    ]
+
+    with seed_rows(duckdb_with_demo_schema, "custom.users", rows):
+        plugin = DuckDbPlugin()
+        config = _create_config_file_from_container(duckdb_with_demo_schema)
+        result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
+        assert isinstance(result, DatabaseIntrospectionResult)
+        assert_contract(
+            result,
+            [
+                SamplesEqual("test_db", "custom", "users", rows=rows),
+            ],
+        )
+
+
+def test_duckdb_samples_in_big(duckdb_with_demo_schema: Path):
+    plugin = DuckDbPlugin()
+    limit = plugin._introspector._SAMPLE_LIMIT
+    rows = [
+        {
+            "user_id": i,
+            "name": f"name{i}",
+            "email": f"user{i}@example.com",
+            "is_active": 1,
+        }
+        for i in range(1, 1000)
+    ]
+    with seed_rows(duckdb_with_demo_schema, "custom.users", rows):
+        config = _create_config_file_from_container(duckdb_with_demo_schema)
+        result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
+        assert isinstance(result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            result,
+            [
+                SamplesCountIs("test_db", "custom", "users", count=limit),
+            ],
+        )
 
 
 def _create_config_file_from_container(duckdb_path: Path) -> Mapping[str, Any]:
