@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.project.datasource_discovery import Datasource, DatasourceId
+from nemory.project.datasource_discovery import Datasource, DatasourceId, get_datasource_list
 from nemory.project.layout import ensure_project_dir
 from nemory.retrieve_embeddings.public.api import retrieve_embeddings
 
@@ -31,7 +31,8 @@ class DatabaoContextEngine:
         self.project_dir = project_dir
 
     def get_datasource_list(self) -> list[Datasource]:
-        raise NotImplementedError("Get the datasource list is not supported yet")
+        # TODO: Should this return the list of built datasources rather than the list of datasources within the src folder?
+        return get_datasource_list(self.project_dir)
 
     def get_datasource_context(self, datasource_id: DatasourceId, run_name: str | None = None) -> DatasourceContext:
         raise NotImplementedError("Retrieving datasource context is not supported yet")

@@ -1,16 +1,14 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from nemory.datasource_config.validate_config import ValidationResult, ValidationStatus, validate_datasource_config
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
-from nemory.project.layout import create_datasource_config_file
-from nemory.serialisation.yaml import to_yaml_string
 from tests.utils.dummy_build_plugin import (
     DummyDefaultDatasourcePlugin,
 )
+from tests.utils.project_creation import with_config_file
 
 
 @dataclass
@@ -46,15 +44,6 @@ def load_dummy_plugins() -> dict[DatasourceType, BuildPlugin]:
         DatasourceType(full_type="dummy/simple_config"): DummyPluginWithSimpleConfig(),  # type: ignore[abstract]
         DatasourceType(full_type="dummy/dummy_default"): DummyDefaultDatasourcePlugin(),
     }
-
-
-def with_config_file(project_dir: Path, full_type: str, datasource_name: str, config_content: dict[str, Any]):
-    create_datasource_config_file(
-        project_dir=project_dir,
-        datasource_type=DatasourceType(full_type=full_type),
-        datasource_name=datasource_name,
-        config_content=to_yaml_string(config_content),
-    )
 
 
 def test_validate_datasource_config_with_failing_config_validation(project_path: Path):
