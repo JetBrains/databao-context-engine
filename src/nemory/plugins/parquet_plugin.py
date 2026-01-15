@@ -1,8 +1,12 @@
 from datetime import datetime
 
 from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildExecutionResult, EmbeddableChunk
-from nemory.plugins.resources.parquet_introspector import ParquetConfigFile, ParquetIntrospector
-from nemory.plugins.resources.parquet_introspector import parquet_type as parquet_type
+from nemory.plugins.resources.parquet_chunker import build_parquet_chunks
+from nemory.plugins.resources.parquet_introspector import (
+    ParquetConfigFile,
+    ParquetIntrospector,
+    parquet_type,
+)
 
 
 class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):
@@ -17,7 +21,7 @@ class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):
         return {parquet_type}
 
     def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
-        return []
+        return build_parquet_chunks(build_result.result)
 
     def execute(self, full_type: str, datasource_name: str, file_config: ParquetConfigFile) -> BuildExecutionResult:
         introspection_result = self._introspector.introspect(file_config)

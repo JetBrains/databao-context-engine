@@ -11,7 +11,7 @@ from nemory.datasource_config.add_config import (
 )
 from nemory.datasource_config.utils import get_datasource_id_from_config_file_path
 from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.pluginlib.config_properties import ConfigPropertyDefinition
+from nemory.pluginlib.config import ConfigPropertyDefinition
 from nemory.plugins.plugin_loader import get_all_available_plugin_types
 from nemory.project.layout import (
     ensure_datasource_config_file_doesnt_exist,
