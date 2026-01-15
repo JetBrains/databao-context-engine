@@ -57,7 +57,7 @@ class BuildService:
         """
         result = execute(prepared_source, plugin)
 
-        chunks = plugin.divide_result_into_chunks(result.context)
+        chunks = plugin.divide_context_into_chunks(result.context)
         if not chunks:
             logger.info("No chunks for %s — skipping.", prepared_source.path.name)
             return result

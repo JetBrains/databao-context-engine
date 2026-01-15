@@ -282,7 +282,7 @@ def test_postgres_plugin_divide_into_chunks():
         ]
     )
 
-    chunks = plugin.divide_result_into_chunks(input)
+    chunks = plugin.divide_context_into_chunks(input)
 
     assert len(chunks) == 3
     assert chunks == unordered(

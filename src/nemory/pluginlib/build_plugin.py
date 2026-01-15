@@ -30,7 +30,7 @@ class BaseBuildPlugin(Protocol):
     If the plugin supports multiple types, they should check the type given in the `full_type` argument when `execute` is called.
     """
 
-    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]: ...
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]: ...
 
     """
     A method dividing the data source context into meaningful chunks that will be used when searching the context from an AI prompt.
