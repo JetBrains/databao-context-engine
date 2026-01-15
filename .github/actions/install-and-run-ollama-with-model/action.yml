@@ -1,0 +1,40 @@
+name: Run ollama docker container and pull model
+runs:
+  using: "composite"
+  steps:
+    - name: Cache Ollama models
+      uses: actions/cache@v4
+      with:
+        path: ~/.ollama
+        key: ollama-${{ runner.os }}-nomic-embed-text-v1.5
+        restore-keys: |
+          ollama-${{ runner.os }}-
+
+    - name: Start Ollama (no container healthcheck)
+      shell: bash
+      run: |
+        docker run -d --name ollama \
+          -p 11434:11434 \
+          -e OLLAMA_HOST=0.0.0.0:11434 \
+          -v ~/.ollama:/root/.ollama \
+          ollama/ollama:latest
+
+    - name: Wait for Ollama
+      shell: bash
+      run: |
+        for i in {1..120}; do
+          if curl -fsS http://localhost:11434/api/tags >/dev/null; then
+            echo "Ollama is healthy"; exit 0
+          fi
+          sleep 2
+        done
+        echo "Ollama did not become healthy in time" >&2
+        docker logs ollama || true
+        exit 1
+
+    - name: Pull model for tests
+      shell: bash
+      run: |
+        curl -fsS -H 'Content-Type: application/json' \
+          -d '{"name":"nomic-embed-text:v1.5"}' \
+          http://localhost:11434/api/pull || true
