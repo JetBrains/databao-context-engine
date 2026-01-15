@@ -10,7 +10,7 @@ runs:
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: ${{ python-version }}
+        python-version: ${{ inputs.python-version }}
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
