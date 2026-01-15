@@ -1,15 +1,10 @@
 from pathlib import Path
 
-from nemory.pluginlib.build_plugin import DatasourceType
 from nemory.project.layout import get_source_dir
 
 
 def get_datasource_id_from_config_file_path(project_dir: Path, datasource_config_file_path: Path) -> str:
     return str(datasource_config_file_path.relative_to(get_source_dir(project_dir=project_dir)))
-
-
-def get_datasource_id_from_type_and_file_name(datasource_type: DatasourceType, config_file_name: str) -> str:
-    return get_datasource_id_from_main_type_and_file_name(datasource_type.main_type, config_file_name)
 
 
 def get_datasource_id_from_main_type_and_file_name(datasource_main_type: str, config_file_name: str) -> str:
