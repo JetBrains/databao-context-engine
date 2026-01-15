@@ -258,9 +258,7 @@ def mysql_container_with_demo_schema(mysql_container: MySqlContainer):
 def test_mysql_introspection(mysql_container_with_demo_schema):
     plugin = MySQLDbPlugin()
     config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
-    result = execute_datasource_plugin(
-        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
-    ).result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name")
 
     assert_contract(
         result,
@@ -481,13 +479,13 @@ def test_mysql_exact_samples(mysql_container_with_demo_schema, create_mysql_conn
     with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
         plugin = MySQLDbPlugin()
         config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
-        execution_result = execute_datasource_plugin(
+        result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(
-            execution_result.result,
+            result,
             [
                 SamplesEqual("catalog_main", "catalog_main", "table_products", rows=rows),
             ],
@@ -507,13 +505,13 @@ def test_mysql_samples_in_big(mysql_container_with_demo_schema, create_mysql_con
 
     with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
         config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
-        execution_result = execute_datasource_plugin(
+        result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(
-            execution_result.result,
+            result,
             [
                 TableExists("catalog_main", "catalog_main", "table_products"),
                 SamplesCountIs("catalog_main", "catalog_main", "table_products", count=limit),

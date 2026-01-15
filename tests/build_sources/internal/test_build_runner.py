@@ -6,18 +6,17 @@ import pytest
 import yaml
 
 from nemory.build_sources.internal import build_runner
-from nemory.pluginlib.build_plugin import BuildExecutionResult, DatasourceType
+from nemory.pluginlib.build_plugin import DatasourceType
+from nemory.build_sources.internal.plugin_execution import BuildExecutionResult
 from nemory.project.types import PreparedFile
 from nemory.services.run_name_policy import RunNamePolicy
 
 
-def _result(name="demo", typ="files/md"):
+def _result(name="files/demo.md", typ="files/md"):
     return BuildExecutionResult(
-        name=name,
-        type=typ,
-        description=None,
-        version=None,
-        executed_at=datetime.now(),
+        datasource_id=name,
+        datasource_type=typ,
+        context_built_at=datetime.now(),
         result={"ok": True},
     )
 
@@ -69,7 +68,7 @@ def test_build_returns_early_when_no_sources(stub_sources, stub_plugins, mock_bu
 def test_build_skips_source_without_plugin(
     stub_sources, stub_plugins, stub_prepare, mock_build_service, fake_run_dir, tmp_path
 ):
-    datasources = SimpleNamespace(path=tmp_path / "src" / "files" / "md" / "one.md")
+    datasources = SimpleNamespace(path=tmp_path / "src" / "files" / "one.md")
     stub_sources([datasources])
     stub_plugins({})
     stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=datasources.path)])
@@ -86,12 +85,12 @@ def test_build_skips_source_without_plugin(
 def test_build_processes_file_source_and_exports(
     stub_sources, stub_plugins, stub_prepare, mock_build_service, fake_run_dir, tmp_path
 ):
-    src = SimpleNamespace(path=tmp_path / "src" / "files" / "md" / "one.md")
+    src = SimpleNamespace(path=tmp_path / "src" / "files" / "one.md")
     stub_sources([src])
     stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=src.path)])
     stub_plugins({DatasourceType(full_type="files/md"): object()})
 
-    mock_build_service.process_prepared_source.return_value = _result(name="one", typ="files/md")
+    mock_build_service.process_prepared_source.return_value = _result(name="files/one.md", typ="files/md")
 
     build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
 
@@ -103,8 +102,8 @@ def test_build_processes_file_source_and_exports(
 def test_build_continues_on_service_exception(
     stub_sources, stub_plugins, stub_prepare, mock_build_service, fake_run_dir, tmp_path
 ):
-    s1 = SimpleNamespace(path=tmp_path / "src" / "files" / "md" / "a.md")
-    s2 = SimpleNamespace(path=tmp_path / "src" / "files" / "md" / "b.md")
+    s1 = SimpleNamespace(path=tmp_path / "src" / "files" / "a.md")
+    s2 = SimpleNamespace(path=tmp_path / "src" / "files" / "b.md")
     stub_sources([s1, s2])
     stub_prepare(
         [
@@ -114,7 +113,7 @@ def test_build_continues_on_service_exception(
     )
     stub_plugins({DatasourceType(full_type="files/md"): object()})
 
-    mock_build_service.process_prepared_source.side_effect = [RuntimeError("boom"), _result(name="b")]
+    mock_build_service.process_prepared_source.side_effect = [RuntimeError("boom"), _result(name="files/b.md")]
 
     build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
 

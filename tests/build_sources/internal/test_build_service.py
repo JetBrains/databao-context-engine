@@ -5,17 +5,16 @@ from types import SimpleNamespace
 import pytest
 
 from nemory.build_sources.internal.build_service import BuildService
-from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk, DatasourceType
+from nemory.pluginlib.build_plugin import EmbeddableChunk, DatasourceType
+from nemory.build_sources.internal.plugin_execution import BuildExecutionResult
 from nemory.project.types import PreparedDatasource, PreparedFile
 
 
-def mk_result(*, name="foo", typ="files/md", result=None):
+def mk_result(*, name="files/foo.md", typ="files/md", result=None):
     return BuildExecutionResult(
-        name=name,
-        type=typ,
-        description=None,
-        version=None,
-        executed_at=datetime.now(),
+        datasource_id=name,
+        datasource_type=typ,
+        context_built_at=datetime.now(),
         result=result if result is not None else {"ok": True},
     )
 
@@ -72,7 +71,7 @@ def test_process_prepared_source_no_chunks_skips_write_and_embed(svc, repos, chu
     run_repo, ds_repo = repos
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "one.md", full_type="files/md")
+    prepared = mk_prepared(tmp_path / "src" / "files" / "one.md", full_type="files/md")
 
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=mk_result())
     plugin.divide_result_into_chunks.return_value = []
@@ -88,9 +87,9 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     run_repo, ds_repo = repos
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "two.md", full_type="files/md")
+    prepared = mk_prepared(tmp_path / "src" / "files" / "two.md", full_type="files/md")
 
-    result = mk_result(name="two", typ="files/md")
+    result = mk_result(name="files/two.md", typ="files/md")
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=result)
 
     chunks = [EmbeddableChunk("a", "A"), EmbeddableChunk("b", "B")]
@@ -122,7 +121,7 @@ def test_process_prepared_source_uses_path_stem_when_result_id_missing(svc, repo
     plugin.name = "pluggy"
     prepared = mk_prepared(tmp_path / "src" / "databases" / "pg.yaml", full_type="databases/postgres")
 
-    res = mk_result(name="pg", typ="databases/postgres")
+    res = mk_result(name="databases/pg.yaml", typ="databases/postgres")
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=res)
 
     plugin.divide_result_into_chunks.return_value = [EmbeddableChunk("e", "E")]
@@ -140,7 +139,7 @@ def test_process_prepared_source_execute_error_bubbles_and_no_writes(svc, repos,
     run_repo, ds_repo = repos
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "boom.md", full_type="files/md")
+    prepared = mk_prepared(tmp_path / "src" / "files" / "boom.md", full_type="files/md")
 
     mocker.patch("nemory.build_sources.internal.build_service.execute", side_effect=RuntimeError("exec-fail"))
 
@@ -155,7 +154,7 @@ def test_process_prepared_source_embed_error_bubbles_after_row_creation(svc, rep
     run_repo, ds_repo = repos
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "x.md", full_type="files/md")
+    prepared = mk_prepared(tmp_path / "src" / "files" / "x.md", full_type="files/md")
 
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=mk_result())
     plugin.divide_result_into_chunks.return_value = [EmbeddableChunk("x", "X")]

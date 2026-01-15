@@ -315,9 +315,7 @@ def mssql_container_with_demo_schema(mssql_container: SqlServerContainer):
 def test_mssql_introspection(mssql_container_with_demo_schema):
     plugin = MSSQLDbPlugin()
     config_file = _create_config_file_from_container(mssql_container_with_demo_schema)
-    result = execute_datasource_plugin(
-        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
-    ).result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name")
     assert isinstance(result, DatabaseIntrospectionResult)
 
     assert_contract(
@@ -497,13 +495,13 @@ def test_mssql_exact_samples(mssql_container_with_demo_schema, create_mssql_conn
     with seed_rows(create_mssql_conn, "catalog_main", "dbo.table_products", rows, cleanup_sql=cleanup):
         plugin = MSSQLDbPlugin()
         config_file = _create_config_file_from_container(mssql_container_with_demo_schema)
-        execution_result = execute_datasource_plugin(
+        result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(
-            execution_result.result,
+            result,
             [
                 TableExists("catalog_main", "dbo", "table_products"),
                 SamplesEqual("catalog_main", "dbo", "table_products", rows=rows),
@@ -524,13 +522,13 @@ def test_mssql_samples_in_big(mssql_container_with_demo_schema, create_mssql_con
 
     with seed_rows(create_mssql_conn, "catalog_main", "dbo.table_products", rows, cleanup_sql=cleanup):
         config_file = _create_config_file_from_container(mssql_container_with_demo_schema)
-        execution_result = execute_datasource_plugin(
+        result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(
-            execution_result.result,
+            result,
             [
                 TableExists("catalog_main", "dbo", "table_products"),
                 SamplesCountIs("catalog_main", "dbo", "table_products", count=limit),
