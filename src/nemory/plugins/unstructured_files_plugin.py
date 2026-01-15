@@ -1,9 +1,8 @@
 import re
-from datetime import datetime
 from io import BufferedReader
-from typing import TypedDict
+from typing import Any, TypedDict
 
-from nemory.pluginlib.build_plugin import BuildExecutionResult, BuildFilePlugin, EmbeddableChunk
+from nemory.pluginlib.build_plugin import BuildFilePlugin, EmbeddableChunk
 
 
 class FileChunk(TypedDict):
@@ -27,24 +26,15 @@ class InternalUnstructuredFilesPlugin(BuildFilePlugin):
     def supported_types(self) -> set[str]:
         return {f"files/{extension}" for extension in self._SUPPORTED_FILES_EXTENSIONS}
 
-    def execute(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> BuildExecutionResult:
+    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
         file_content = self._read_file(file_buffer)
 
-        return BuildExecutionResult(
-            name=file_name,
-            type=full_type,
-            description="",
-            version="1.0.0",
-            executed_at=datetime.now(),
-            result={
-                "chunks": self._chunk_file(file_content),
-            },
-        )
+        return {
+            "chunks": self._chunk_file(file_content),
+        }
 
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
-        return [
-            self._create_embeddable_chunk_from_file_chunk(file_chunk) for file_chunk in build_result.result["chunks"]
-        ]
+    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
+        return [self._create_embeddable_chunk_from_file_chunk(file_chunk) for file_chunk in build_result["chunks"]]
 
     def _create_embeddable_chunk_from_file_chunk(self, file_chunk: FileChunk) -> EmbeddableChunk:
         return EmbeddableChunk(

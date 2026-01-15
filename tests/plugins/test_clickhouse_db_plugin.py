@@ -182,12 +182,8 @@ def seed_rows(
 def test_clickhouse_plugin_execute(clickhouse_container_with_demo_schema: ClickHouseContainer):
     plugin = ClickhouseDbPlugin()
     config_file = _create_config_file_from_container(clickhouse_container_with_demo_schema)
-    execution_result = execute_datasource_plugin(
-        plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
-    )
-    assert isinstance(execution_result.result, DatabaseIntrospectionResult)
-
-    result = execution_result.result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name")
+    assert isinstance(result, DatabaseIntrospectionResult)
 
     assert_contract(
         result,
@@ -317,13 +313,13 @@ def test_clickhouse_exact_samples(
     with seed_rows(create_clickhouse_client, "custom.revenue_by_day", rows):
         plugin = ClickhouseDbPlugin()
         config_file = _create_config_file_from_container(clickhouse_container_with_demo_schema)
-        execution_result = execute_datasource_plugin(
+        result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(
-            execution_result.result,
+            result,
             [
                 SamplesEqual("clickhouse", "custom", "revenue_by_day", rows=rows),
             ],
@@ -341,13 +337,13 @@ def test_clickhouse_samples_in_big(
 
     with seed_rows(create_clickhouse_client, "custom.revenue_by_day", rows):
         config_file = _create_config_file_from_container(clickhouse_container_with_demo_schema)
-        execution_result = execute_datasource_plugin(
+        result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(
-            execution_result.result,
+            result,
             [
                 SamplesCountIs("clickhouse", "custom", "revenue_by_day", count=limit),
             ],

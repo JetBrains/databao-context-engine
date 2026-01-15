@@ -1,12 +1,10 @@
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
 from io import BufferedReader
 from typing import Annotated, Any, Mapping, TypedDict
 
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
-    BuildExecutionResult,
     BuildFilePlugin,
     BuildPlugin,
     DatasourceType,
@@ -62,45 +60,38 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
     def supported_types(self) -> set[str]:
         return {"databases/dummy_db"}
 
-    def execute(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> BuildExecutionResult:
-        return BuildExecutionResult(
-            name=file_config["displayName"],
-            type=full_type,
-            description="My best description for that DB",
-            executed_at=datetime.now(),
-            version="1.0",
-            result={
-                "catalogs": [
-                    {
-                        "name": "random_catalog",
-                        "description": "A great catalog",
-                        "schemas": [
-                            DbSchema(
-                                name="a_schema",
-                                description="The only schema",
-                                tables=[
-                                    DbTable(
-                                        name="a_table",
-                                        description="A table",
-                                    ),
-                                    DbTable(
-                                        name="second_table",
-                                        description="An other table",
-                                    ),
-                                ],
-                            ),
-                        ],
-                    }
-                ]
-            },
-        )
+    def build_context(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> Any:
+        return {
+            "catalogs": [
+                {
+                    "name": "random_catalog",
+                    "description": "A great catalog",
+                    "schemas": [
+                        DbSchema(
+                            name="a_schema",
+                            description="The only schema",
+                            tables=[
+                                DbTable(
+                                    name="a_table",
+                                    description="A table",
+                                ),
+                                DbTable(
+                                    name="second_table",
+                                    description="An other table",
+                                ),
+                            ],
+                        ),
+                    ],
+                }
+            ]
+        }
 
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
         return [
             _convert_table_to_embedding_chunk(
                 table=table,
             )
-            for catalog in build_result.result.get("catalogs", list())
+            for catalog in build_result.get("catalogs", list())
             for schema in catalog.get("schemas", list())
             for table in schema.get("tables", list())
         ]
@@ -113,17 +104,10 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return {"dummy/dummy_default"}
 
-    def execute(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> BuildExecutionResult:
-        return BuildExecutionResult(
-            name=datasource_name,
-            type=full_type,
-            result={"ok": True},
-            version="1.0",
-            executed_at=datetime.now(),
-            description=None,
-        )
+    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
+        return {"ok": True}
 
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
         return []
 
 
@@ -134,17 +118,10 @@ class DummyFilePlugin(BuildFilePlugin):
     def supported_types(self) -> set[str]:
         return {"files/dummy"}
 
-    def execute(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> BuildExecutionResult:
-        return BuildExecutionResult(
-            name=file_name,
-            type=full_type,
-            result={"file_ok": True},
-            version="1.0",
-            executed_at=datetime.now(),
-            description=None,
-        )
+    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
+        return {"file_ok": True}
 
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
         return []
 
 
@@ -161,19 +138,10 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
     def supported_types(self) -> set[str]:
         return {"additional/dummy_type"}
 
-    def execute(
-        self, full_type: str, datasource_name: str, file_config: AdditionalDummyConfigFile
-    ) -> BuildExecutionResult:
-        return BuildExecutionResult(
-            name=datasource_name,
-            type=full_type,
-            result={"additional_ok": True},
-            version="1.0",
-            executed_at=datetime.now(),
-            description=None,
-        )
+    def build_context(self, full_type: str, datasource_name: str, file_config: AdditionalDummyConfigFile) -> Any:
+        return {"additional_ok": True}
 
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
         return []
 
 
@@ -184,17 +152,10 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigP
     def supported_types(self) -> set[str]:
         return {"dummy/no_config_type"}
 
-    def execute(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> BuildExecutionResult:
-        return BuildExecutionResult(
-            name=datasource_name,
-            type=full_type,
-            result={"no_config_ok": True},
-            version="1.0",
-            executed_at=datetime.now(),
-            description=None,
-        )
+    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
+        return {"no_config_ok": True}
 
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
+    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
         return []
 
     def get_config_file_properties(self) -> list[ConfigPropertyDefinition]:

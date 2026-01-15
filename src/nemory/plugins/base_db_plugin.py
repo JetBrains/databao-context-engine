@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import TypeVar
+from typing import Any, TypeVar
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
-    BuildExecutionResult,
     EmbeddableChunk,
 )
 from nemory.plugins.databases.base_introspector import BaseIntrospector
@@ -35,20 +33,13 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T]):
     def supported_types(self) -> set[str]:
         return self.supported
 
-    def execute(self, full_type: str, datasource_name: str, file_config: T) -> BuildExecutionResult:
+    def build_context(self, full_type: str, datasource_name: str, file_config: T) -> Any:
         introspection_result = self._introspector.introspect_database(file_config)
 
-        return BuildExecutionResult(
-            name=file_config.name or datasource_name,
-            type=full_type,
-            description=None,
-            version=None,
-            executed_at=datetime.now(),
-            result=introspection_result,
-        )
+        return introspection_result
 
     def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> None:
         self._introspector.check_connection(file_config)
 
-    def divide_result_into_chunks(self, build_result: BuildExecutionResult) -> list[EmbeddableChunk]:
-        return build_database_chunks(build_result.result)
+    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
+        return build_database_chunks(build_result)

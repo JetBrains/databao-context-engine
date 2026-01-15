@@ -72,9 +72,9 @@ def _test_parquet_files(request, tmp_path: Path):
 def test_glob_parquet_files(_test_parquet_files: TestParquetFiles):
     plugin = ParquetPlugin()
     config = ParquetConfigFile(type=parquet_type, url=f"{_test_parquet_files.path}/*.parquet")
-    result = plugin.execute("resources/parquet", "test", file_config=config)
+    result = plugin.build_context("resources/parquet", "test", file_config=config)
     # noinspection PyTypeChecker
-    assert result.result == ParquetIntrospectionResult(
+    assert result == ParquetIntrospectionResult(
         files=[
             ParquetFile(
                 name=ANY,

@@ -3,10 +3,9 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from nemory.build_sources.internal.plugin_execution import execute
+from nemory.build_sources.internal.plugin_execution import execute, BuildExecutionResult
 from nemory.datasource_config.utils import get_datasource_id_from_type_and_file_name
 from nemory.pluginlib.build_plugin import (
-    BuildExecutionResult,
     BuildPlugin,
 )
 from nemory.project.types import PreparedDatasource
@@ -58,7 +57,7 @@ class BuildService:
         """
         result = execute(prepared_source, plugin)
 
-        chunks = plugin.divide_result_into_chunks(result)
+        chunks = plugin.divide_result_into_chunks(result.result)
         if not chunks:
             logger.info("No chunks for %s — skipping.", prepared_source.path.name)
             return result

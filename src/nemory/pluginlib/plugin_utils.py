@@ -6,20 +6,20 @@ from typing import Any, Mapping
 
 from pydantic import TypeAdapter
 
-from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildExecutionResult, BuildFilePlugin, DatasourceType
+from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildFilePlugin, DatasourceType
 
 logger = logging.getLogger(__name__)
 
 
 def execute_datasource_plugin(
     plugin: BuildDatasourcePlugin, datasource_type: DatasourceType, config: Mapping[str, Any], datasource_name: str
-) -> BuildExecutionResult:
+) -> Any:
     if not isinstance(plugin, BuildDatasourcePlugin):
         raise ValueError("This method can only execute a BuildDatasourcePlugin")
 
     validated_config = _validate_datasource_config_file(config, plugin)
 
-    return plugin.execute(
+    return plugin.build_context(
         full_type=datasource_type.full_type,
         datasource_name=datasource_name,
         file_config=validated_config,
@@ -45,11 +45,9 @@ def _validate_datasource_config_file(config: Mapping[str, Any], plugin: BuildDat
     return TypeAdapter(plugin.config_file_type).validate_python(config)
 
 
-def execute_file_plugin(
-    plugin: BuildFilePlugin, datasource_type: DatasourceType, file_path: Path
-) -> BuildExecutionResult:
+def execute_file_plugin(plugin: BuildFilePlugin, datasource_type: DatasourceType, file_path: Path) -> Any:
     with file_path.open("rb") as fh:
-        return plugin.execute(
+        return plugin.build_file_context(
             full_type=datasource_type.full_type,
             file_name=file_path.name,
             file_buffer=fh,

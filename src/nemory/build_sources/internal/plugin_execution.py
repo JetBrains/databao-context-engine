@@ -1,8 +1,9 @@
-from typing import cast
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, cast
 
 from nemory.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
-    BuildExecutionResult,
     BuildFilePlugin,
     BuildPlugin,
 )
@@ -10,7 +11,48 @@ from nemory.pluginlib.plugin_utils import execute_datasource_plugin, execute_fil
 from nemory.project.types import PreparedConfig, PreparedDatasource
 
 
+@dataclass()
+class BuildExecutionResult:
+    """
+    Dataclass defining the result of building a datasource's context.
+    """
+
+    datasource_id: str
+    """
+    The ID of the built data source
+    """
+
+    datasource_type: str
+    """
+    The type of the built data source
+    """
+
+    context_built_at: datetime
+    """
+    The time at which the context was built
+    """
+
+    result: Any
+    """
+    A dictionary containing the actual context generated for the data source.
+    This dictionary should be serializable in YAML format.
+    """
+
+
 def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuildExecutionResult:
+    built_context = _execute(prepared_datasource, plugin)
+
+    datasource_id = str(prepared_datasource.path.relative_to(prepared_datasource.path.parent.parent))
+
+    return BuildExecutionResult(
+        datasource_id=datasource_id,
+        datasource_type=prepared_datasource.datasource_type.full_type,
+        context_built_at=datetime.now(),
+        result=built_context,
+    )
+
+
+def _execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Any:
     """
     Run a prepared source through the plugin
     """
