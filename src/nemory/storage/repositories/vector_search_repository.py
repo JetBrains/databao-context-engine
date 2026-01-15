@@ -16,10 +16,6 @@ class VectorSearchResult:
     datasource_id: DatasourceId
 
 
-def get_search_results_display_text(search_results: list[VectorSearchResult]) -> list[str]:
-    return [result.display_text for result in search_results]
-
-
 class VectorSearchRepository:
     _DEFAULT_DISTANCE_THRESHOLD = 0.75
 

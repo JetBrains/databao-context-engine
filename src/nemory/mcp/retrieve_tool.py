@@ -1,33 +1,22 @@
 import datetime
-from pathlib import Path
 
-from nemory.llm.factory import create_ollama_embedding_provider, create_ollama_service
-from nemory.project.layout import read_config_file
-from nemory.services.factories import create_retrieve_service
-from nemory.storage.connection import open_duckdb_connection
-from nemory.storage.repositories.vector_search_repository import get_search_results_display_text
-from nemory.system.properties import get_db_path
+from nemory.databao_engine import DatabaoContextEngine
 
 
-def run_retrieve_tool(project_dir: Path, *, run_name: str, text: str, limit: int | None = None) -> str:
+def run_retrieve_tool(
+    *, databao_context_engine: DatabaoContextEngine, run_name: str, text: str, limit: int | None = None
+) -> str:
     """
     Execute the retrieve flow for MCP and return the matching display texts
     Adds the current date to the end
     """
-    with open_duckdb_connection(get_db_path()) as conn:
-        ollama_service = create_ollama_service()
-        embedding_provider = create_ollama_embedding_provider(ollama_service)
-        service = create_retrieve_service(conn, embedding_provider=embedding_provider)
 
-        retrieve_results = service.retrieve(
-            project_id=str(read_config_file(project_dir).project_id),
-            text=text,
-            run_name=run_name,
-            limit=limit,
-        )
+    retrieve_results = databao_context_engine.search_context(
+        retrieve_text=text, run_name=run_name, limit=limit, export_to_file=False
+    )
 
-        display_results = get_search_results_display_text(retrieve_results)
+    display_results = [context_search_result.context_result for context_search_result in retrieve_results]
 
-        display_results.append(f"\nToday's date is {datetime.date.today()}")
+    display_results.append(f"\nToday's date is {datetime.date.today()}")
 
-        return "\n".join(display_results)
+    return "\n".join(display_results)

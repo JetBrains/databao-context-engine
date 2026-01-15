@@ -9,14 +9,13 @@ from nemory.build_sources.public.api import build_all_datasources
 from nemory.cli.datasources import add_datasource_config_cli, validate_datasource_config_cli
 from nemory.cli.info import echo_info
 from nemory.config.logging import configure_logging
+from nemory.databao_engine import DatabaoContextEngine
 from nemory.llm.install import resolve_ollama_bin
 from nemory.mcp.mcp_runner import McpTransport, run_mcp_server
 from nemory.project.init_project import InitErrorReason, InitProjectError, init_project_dir
 from nemory.project.layout import create_project_dir
-from nemory.retrieve_embeddings.public.api import retrieve_embeddings
 from nemory.services.chunk_embedding_service import ChunkEmbeddingMode
 from nemory.storage.migrate import migrate
-from nemory.storage.repositories.vector_search_repository import get_search_results_display_text
 
 
 @click.group()
@@ -197,17 +196,14 @@ def retrieve(
     """
     text = " ".join(retrieve_text)
 
-    retrieve_results = retrieve_embeddings(
-        project_dir=ctx.obj["project_dir"],
-        retrieve_text=text,
-        run_name=run_name,
-        limit=limit,
-        export_to_file=output_format == "file",
+    databao_engine = DatabaoContextEngine(project_dir=ctx.obj["project_dir"])
+
+    retrieve_results = databao_engine.search_context(
+        retrieve_text=text, run_name=run_name, limit=limit, export_to_file=output_format == "file"
     )
 
-    display_texts = get_search_results_display_text(retrieve_results)
-
     if output_format == "streamed":
+        display_texts = [context_search_result.context_result for context_search_result in retrieve_results]
         click.echo("\n".join(display_texts))
 
 
