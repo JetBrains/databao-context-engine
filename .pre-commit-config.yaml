@@ -24,11 +24,3 @@ repos:
         entry: uv run ruff format
         language: system
         pass_filenames: false
-
-      - id: mypy
-        name: mypy
-        types: [python]
-        description: Verify types statically
-        entry: uv run mypy
-        language: system
-        pass_filenames: false

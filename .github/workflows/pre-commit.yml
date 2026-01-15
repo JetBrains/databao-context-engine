@@ -56,6 +56,9 @@ jobs:
       - name: Run pre-commit
         run: uv run pre-commit run --all-files --show-diff-on-failure
 
+      - name: Run mypy type checking
+        run: uv run mypy
+
       - name: Build
         run: |
           uv build
