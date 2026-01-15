@@ -7,17 +7,17 @@ from urllib.parse import urlparse
 
 import duckdb
 from _duckdb import DuckDBPyConnection
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from nemory.pluginlib.config import DuckDBSecret
-from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 
 parquet_type = "resources/parquet"
 
 logger = logging.getLogger(__name__)
 
 
-class ParquetConfigFile(BaseDatabaseConfigFile):
+class ParquetConfigFile(BaseModel):
+    name: str | None = Field(default=None)
     type: str = Field(default=parquet_type)
     url: str = Field(
         default=type,
