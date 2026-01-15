@@ -57,7 +57,7 @@ class BuildService:
         """
         result = execute(prepared_source, plugin)
 
-        chunks = plugin.divide_result_into_chunks(result.result)
+        chunks = plugin.divide_result_into_chunks(result.context)
         if not chunks:
             logger.info("No chunks for %s — skipping.", prepared_source.path.name)
             return result
@@ -73,7 +73,7 @@ class BuildService:
         )
 
         self._chunk_embedding_service.embed_chunks(
-            datasource_run_id=datasource_run.datasource_run_id, chunks=chunks, result=repr(result.result)
+            datasource_run_id=datasource_run.datasource_run_id, chunks=chunks, result=repr(result.context)
         )
 
         return result

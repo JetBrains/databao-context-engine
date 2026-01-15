@@ -15,7 +15,7 @@ def mk_result(*, name="files/foo.md", typ="files/md", result=None):
         datasource_id=name,
         datasource_type=typ,
         context_built_at=datetime.now(),
-        result=result if result is not None else {"ok": True},
+        context=result if result is not None else {"ok": True},
     )
 
 
@@ -110,7 +110,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     chunk_embed_svc.embed_chunks.assert_called_once_with(
         datasource_run_id=555,
         chunks=chunks,
-        result=repr(result.result),
+        result=repr(result.context),
     )
     assert out is result
 

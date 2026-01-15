@@ -20,7 +20,7 @@ def _make_result(*, id: str, full_type: str, payload: object) -> BuildExecutionR
         datasource_id=id,
         datasource_type=full_type,
         context_built_at=datetime.now(),
-        result=payload,
+        context=payload,
     )
 
 
@@ -56,7 +56,7 @@ def test_export_build_result_writes_yaml(tmp_path: Path) -> None:
     data = yaml.safe_load(out.read_text())
     assert data["datasource_id"] == "databases/Datasource 1.yaml"
     assert data["datasource_type"] == "databases/my-db"
-    assert data["result"] == res.result
+    assert data["context"] == res.context
 
 
 def test_append_result_to_all_results_appends(tmp_path: Path) -> None:
