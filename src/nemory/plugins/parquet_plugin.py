@@ -20,8 +20,8 @@ class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):
     def supported_types(self) -> set[str]:
         return {parquet_type}
 
-    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
-        return build_parquet_chunks(build_result)
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+        return build_parquet_chunks(context)
 
     def build_context(self, full_type: str, datasource_name: str, file_config: ParquetConfigFile) -> Any:
         introspection_result = self._introspector.introspect(file_config)

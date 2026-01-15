@@ -33,8 +33,8 @@ class InternalUnstructuredFilesPlugin(BuildFilePlugin):
             "chunks": self._chunk_file(file_content),
         }
 
-    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
-        return [self._create_embeddable_chunk_from_file_chunk(file_chunk) for file_chunk in build_result["chunks"]]
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+        return [self._create_embeddable_chunk_from_file_chunk(file_chunk) for file_chunk in context["chunks"]]
 
     def _create_embeddable_chunk_from_file_chunk(self, file_chunk: FileChunk) -> EmbeddableChunk:
         return EmbeddableChunk(

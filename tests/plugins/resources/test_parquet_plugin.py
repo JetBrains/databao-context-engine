@@ -129,7 +129,7 @@ def test_parquet_files_chunks(_test_parquet_files: TestParquetFiles):
     }
 
     result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name")
-    chunks = plugin.divide_result_into_chunks(result)
+    chunks = plugin.divide_context_into_chunks(result)
     assert chunks == [
         EmbeddableChunk(
             embeddable_text=f"Column [name = doubles, type = DOUBLE, number of values = 101] in parquet file {filename}",

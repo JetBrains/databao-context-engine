@@ -86,12 +86,12 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
             ]
         }
 
-    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return [
             _convert_table_to_embedding_chunk(
                 table=table,
             )
-            for catalog in build_result.get("catalogs", list())
+            for catalog in context.get("catalogs", list())
             for schema in catalog.get("schemas", list())
             for table in schema.get("tables", list())
         ]
@@ -107,7 +107,7 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
     def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
         return {"ok": True}
 
-    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return []
 
 
@@ -121,7 +121,7 @@ class DummyFilePlugin(BuildFilePlugin):
     def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
         return {"file_ok": True}
 
-    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return []
 
 
@@ -141,7 +141,7 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
     def build_context(self, full_type: str, datasource_name: str, file_config: AdditionalDummyConfigFile) -> Any:
         return {"additional_ok": True}
 
-    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return []
 
 
@@ -155,7 +155,7 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigP
     def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
         return {"no_config_ok": True}
 
-    def divide_result_into_chunks(self, build_result: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return []
 
     def get_config_file_properties(self) -> list[ConfigPropertyDefinition]:

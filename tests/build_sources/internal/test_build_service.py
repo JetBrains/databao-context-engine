@@ -74,7 +74,7 @@ def test_process_prepared_source_no_chunks_skips_write_and_embed(svc, repos, chu
     prepared = mk_prepared(tmp_path / "src" / "files" / "one.md", full_type="files/md")
 
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=mk_result())
-    plugin.divide_result_into_chunks.return_value = []
+    plugin.divide_context_into_chunks.return_value = []
 
     out = svc.process_prepared_source(run_id=7, prepared_source=prepared, plugin=plugin)
 
@@ -93,7 +93,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=result)
 
     chunks = [EmbeddableChunk("a", "A"), EmbeddableChunk("b", "B")]
-    plugin.divide_result_into_chunks.return_value = chunks
+    plugin.divide_context_into_chunks.return_value = chunks
 
     ds_row = SimpleNamespace(datasource_run_id=555)
     ds_repo.create.return_value = ds_row
@@ -124,7 +124,7 @@ def test_process_prepared_source_uses_path_stem_when_result_id_missing(svc, repo
     res = mk_result(name="databases/pg.yaml", typ="databases/postgres")
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=res)
 
-    plugin.divide_result_into_chunks.return_value = [EmbeddableChunk("e", "E")]
+    plugin.divide_context_into_chunks.return_value = [EmbeddableChunk("e", "E")]
 
     ds_row = SimpleNamespace(datasource_run_id=777)
     ds_repo.create.return_value = ds_row
@@ -157,7 +157,7 @@ def test_process_prepared_source_embed_error_bubbles_after_row_creation(svc, rep
     prepared = mk_prepared(tmp_path / "src" / "files" / "x.md", full_type="files/md")
 
     mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=mk_result())
-    plugin.divide_result_into_chunks.return_value = [EmbeddableChunk("x", "X")]
+    plugin.divide_context_into_chunks.return_value = [EmbeddableChunk("x", "X")]
 
     ds_repo.create.return_value = SimpleNamespace(datasource_run_id=42)
     chunk_embed_svc.embed_chunks.side_effect = RuntimeError("embed-fail")
