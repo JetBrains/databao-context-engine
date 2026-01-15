@@ -32,7 +32,7 @@ class BuildExecutionResult:
     The time at which the context was built
     """
 
-    result: Any
+    context: Any
     """
     A dictionary containing the actual context generated for the data source.
     This dictionary should be serializable in YAML format.
@@ -48,7 +48,7 @@ def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Bui
         datasource_id=datasource_id,
         datasource_type=prepared_datasource.datasource_type.full_type,
         context_built_at=datetime.now(),
-        result=built_context,
+        context=built_context,
     )
 
 

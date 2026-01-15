@@ -17,7 +17,7 @@ def _result(name="files/demo.md", typ="files/md"):
         datasource_id=name,
         datasource_type=typ,
         context_built_at=datetime.now(),
-        result={"ok": True},
+        context={"ok": True},
     )
 
 
