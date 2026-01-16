@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -89,7 +90,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     plugin.name = "pluggy"
     prepared = mk_prepared(tmp_path / "src" / "files" / "two.md", full_type="files/md")
 
-    result = mk_result(name="files/two.md", typ="files/md")
+    result = mk_result(name="files/two.md", typ="files/md", result={"context": "ok"})
     mocker.patch("databao_context_engine.build_sources.internal.build_service.execute", return_value=result)
 
     chunks = [EmbeddableChunk("a", "A"), EmbeddableChunk("b", "B")]
@@ -110,7 +111,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     chunk_embed_svc.embed_chunks.assert_called_once_with(
         datasource_run_id=555,
         chunks=chunks,
-        result=repr(result.context),
+        result=f"context: ok{os.linesep}",
     )
     assert out is result
 
