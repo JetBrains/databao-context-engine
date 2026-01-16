@@ -20,6 +20,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "asyncio>=4.0.0",
     "asyncpg-stubs>=0.31.1",
+    "urllib3>=2.6.3",
 ]
 
 [build-system]
