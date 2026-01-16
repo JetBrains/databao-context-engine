@@ -9,7 +9,6 @@ from nemory.plugins.databases.databases_types import (
     DatabaseCatalog,
     DatabaseIntrospectionResult,
     DatabaseSchema,
-    DatabaseTable,
 )
 from nemory.plugins.databases.introspection_scope import IntrospectionScope
 from nemory.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
@@ -31,7 +30,7 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
             self._fetchall_dicts(connection, "SELECT 1 as test", None)
 
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
-        matcher = IntrospectionScopeMatcher(
+        scope_matcher = IntrospectionScopeMatcher(
             file_config.introspection_scope,
             ignored_schemas=self._ignored_schemas(),
         )
@@ -42,22 +41,25 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
         introspected_catalogs: list[DatabaseCatalog] = []
         for catalog in catalogs:
             with self._connect_to_catalog(file_config, catalog) as catalog_connection:
-                discovered_schemas = self._list_schemas_for_catalog(catalog_connection, catalog)
+                schemas_in_catalog = self._list_schemas_for_catalog(catalog_connection, catalog)
 
-                selection = matcher.filter_scopes([catalog], {catalog: discovered_schemas})
-                selected_schemas = selection.schemas_per_catalog.get(catalog, [])
+                scope_match = scope_matcher.filter_scopes([catalog], {catalog: schemas_in_catalog})
+                schemas_to_introspect = scope_match.schemas_per_catalog.get(catalog, [])
+                if not schemas_to_introspect:
+                    continue
 
-                tables_by_schema: list[DatabaseSchema] = []
-                for schema in selected_schemas:
-                    tables = self.collect_schema_model(catalog_connection, catalog, schema) or []
-                    if tables:
-                        for table in tables:
-                            table.samples = self._collect_samples_for_table(
-                                catalog_connection, catalog, schema, table.name
-                            )
-                        tables_by_schema.append(DatabaseSchema(name=schema, tables=tables))
-                if tables_by_schema:
-                    introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=tables_by_schema))
+                introspected_schemas = self.collect_catalog_model(catalog_connection, catalog, schemas_to_introspect)
+
+                if not introspected_schemas:
+                    continue
+
+                for schema in introspected_schemas:
+                    for table in schema.tables:
+                        table.samples = self._collect_samples_for_table(
+                            catalog_connection, catalog, schema.name, table.name
+                        )
+
+                introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=introspected_schemas))
         return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
 
     def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
@@ -86,7 +88,7 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
         return schemas
 
     @abstractmethod
-    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
+    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
         raise NotImplementedError
 
     def _collect_samples_for_table(self, connection, catalog: str, schema: str, table: str) -> list[dict[str, Any]]:

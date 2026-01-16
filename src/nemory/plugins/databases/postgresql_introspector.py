@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 from nemory.pluginlib.config_properties import ConfigPropertyAnnotation
 from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from nemory.plugins.databases.databases_types import DatabaseTable
-from nemory.plugins.databases.table_builder import TableBuilder
+from nemory.plugins.databases.databases_types import DatabaseSchema
+from nemory.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
 class PostgresConnectionProperties(BaseModel):
@@ -105,16 +105,20 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         cfg.connection.database = catalog
         return self._connect(cfg)
 
-    def collect_schema_model(
-        self, connection: _SyncAsyncpgConnection, catalog: str, schema: str
-    ) -> list[DatabaseTable] | None:
+    def collect_catalog_model(
+        self, connection: _SyncAsyncpgConnection, catalog: str, schemas: list[str]
+    ) -> list[DatabaseSchema] | None:
+        if not schemas:
+            return []
+
         comps = self._component_queries()
         results: dict[str, list[dict]] = {name: [] for name in comps}
 
         for cq, sql in comps.items():
-            results[cq] = self._fetchall_dicts(connection, sql, (schema,)) or []
+            results[cq] = self._fetchall_dicts(connection, sql, (schemas,)) or []
 
-        return TableBuilder.build_from_components(
+        return IntrospectionModelBuilder.build_schemas_from_components(
+            schemas=schemas,
             rels=results.get("relations", []),
             cols=results.get("columns", []),
             pk_cols=results.get("pk", []),
@@ -140,6 +144,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     def _sql_relations(self) -> str:
         return """
             SELECT 
+                n.nspname AS schema_name,
                 c.relname AS table_name,
                 CASE c.relkind
                     WHEN 'v' THEN 'view'
@@ -152,16 +157,18 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 pg_class c
                 JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE 
-                n.nspname = $1
+                n.nspname = ANY($1)
                 AND c.relkind IN ('r','p','v','m','f')
                 AND NOT c.relispartition
             ORDER BY 
+                schema_name,
                 c.relname
         """
 
     def _sql_columns(self) -> str:
         return """
             SELECT
+                n.nspname AS schema_name,
                 c.relname AS table_name,
                 a.attname AS column_name,
                 a.attnum  AS ordinal_position,
@@ -179,12 +186,13 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN pg_namespace n ON n.oid  = c.relnamespace
                 LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
             WHERE 
-                n.nspname = $1
+                n.nspname = ANY($1)
                 AND a.attnum > 0
                 AND c.relkind IN ('r','p','v','m','f') 
                 AND NOT a.attisdropped
                 AND NOT c.relispartition
             ORDER BY 
+                schema_name,
                 c.relname, 
                 a.attnum
         """
@@ -192,29 +200,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     def _sql_primary_keys(self) -> str:
         return """
             SELECT
-            c.relname        AS table_name,
-            con.conname      AS constraint_name,
-            att.attname      AS column_name,
-            k.pos            AS position
-            FROM 
-                pg_constraint con
-                JOIN pg_class      c   ON c.oid = con.conrelid
-                JOIN pg_namespace  n   ON n.oid = c.relnamespace
-                JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(attnum, pos) ON TRUE
-                JOIN pg_attribute  att ON att.attrelid = c.oid AND att.attnum = k.attnum
-            WHERE 
-                n.nspname = $1
-                AND con.contype = 'p'
-                AND NOT c.relispartition
-            ORDER BY 
-                c.relname, 
-                con.conname, 
-                k.pos
-        """
-
-    def _sql_uniques(self) -> str:
-        return """
-            SELECT
+                n.nspname AS schema_name,
                 c.relname        AS table_name,
                 con.conname      AS constraint_name,
                 att.attname      AS column_name,
@@ -226,10 +212,36 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(attnum, pos) ON TRUE
                 JOIN pg_attribute  att ON att.attrelid = c.oid AND att.attnum = k.attnum
             WHERE 
-                n.nspname = $1
+                n.nspname = ANY($1)
+                AND con.contype = 'p'
+                AND NOT c.relispartition
+            ORDER BY 
+                schema_name,
+                c.relname, 
+                con.conname, 
+                k.pos
+        """
+
+    def _sql_uniques(self) -> str:
+        return """
+            SELECT
+                n.nspname AS schema_name,
+                c.relname        AS table_name,
+                con.conname      AS constraint_name,
+                att.attname      AS column_name,
+                k.pos            AS position
+            FROM 
+                pg_constraint con
+                JOIN pg_class      c   ON c.oid = con.conrelid
+                JOIN pg_namespace  n   ON n.oid = c.relnamespace
+                JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(attnum, pos) ON TRUE
+                JOIN pg_attribute  att ON att.attrelid = c.oid AND att.attnum = k.attnum
+            WHERE 
+                n.nspname = ANY($1)
                 AND con.contype = 'u'
                 AND NOT c.relispartition
             ORDER BY 
+                schema_name,
                 c.relname, 
                 con.conname, 
                 k.pos
@@ -238,6 +250,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     def _sql_checks(self) -> str:
         return """
             SELECT
+                n.nspname AS schema_name,
                 c.relname AS table_name,
                 con.conname AS constraint_name,
                 pg_get_expr(con.conbin, con.conrelid) AS expression,
@@ -247,10 +260,11 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN pg_class c     ON c.oid = con.conrelid
                 JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE 
-                n.nspname = $1
+                n.nspname = ANY($1)
                 AND con.contype = 'c'
                 AND NOT c.relispartition
             ORDER BY 
+                schema_name, 
                 c.relname, 
                 con.conname
         """
@@ -258,6 +272,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     def _sql_foreign_keys(self) -> str:
         return """
             SELECT
+                n.nspname AS schema_name,
                 c.relname           AS table_name,
                 con.conname         AS constraint_name,
                 src.ord             AS position,
@@ -285,10 +300,11 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN pg_attribute attc   ON attc.attrelid = c.oid     AND attc.attnum   = src.src_attnum
                 JOIN pg_attribute attref ON attref.attrelid = cref.oid AND attref.attnum = ref.ref_attnum
             WHERE 
-                n.nspname = $1
+                n.nspname = ANY($1)
                 AND con.contype = 'f'
                 AND NOT c.relispartition
             ORDER BY 
+                schema_name, 
                 c.relname, 
                 con.conname, 
                 src.ord
@@ -297,6 +313,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     def _sql_indexes(self) -> str:
         return """
             SELECT
+                n.nspname AS schema_name,
                 c.relname                                   AS table_name,
                 idx.relname                                 AS index_name,
                 k.pos                                       AS position,
@@ -312,7 +329,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 JOIN pg_am        am  ON am.oid = idx.relam
                 CROSS JOIN LATERAL generate_series(1, i.indnkeyatts::int) AS k(pos)
             WHERE 
-                n.nspname = $1
+                n.nspname = ANY($1)
                 AND i.indisprimary = false
                 AND NOT EXISTS (
                     SELECT 
@@ -325,6 +342,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 )
                 AND NOT c.relispartition
             ORDER BY 
+                n.nspname, 
                 c.relname, 
                 idx.relname, 
                 k.pos
@@ -332,37 +350,40 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
 
     def _sql_partitions(self) -> str:
         return """
-               WITH partitions AS (
-                   SELECT
-                       parentrel.oid,
-                       array_agg(childrel.relname) as partition_tables
-                   FROM
-                       pg_catalog.pg_class parentrel
-                           JOIN pg_catalog.pg_inherits inh ON inh.inhparent = parentrel.oid
-                           JOIN pg_catalog.pg_class childrel ON inh.inhrelid = childrel.oid
-                   GROUP BY
-                       parentrel.oid
-               )
-               SELECT
-                   rel.relname            AS table_name,
-                   CASE part.partstrat
-                       WHEN 'h' THEN 'hash partitioned'
-                       WHEN 'l' THEN 'list partitioned'
-                       WHEN 'r' THEN 'range partitioned'
-                       END                    AS partitioning_strategy,
-                   array_agg(att.attname) AS columns_in_partition_key,
-                   partitions.partition_tables
-               FROM
-                   pg_catalog.pg_partitioned_table part
-                       JOIN pg_catalog.pg_class rel ON part.partrelid = rel.oid
-                       JOIN pg_catalog.pg_namespace nsp ON rel.relnamespace = nsp.oid
-                       JOIN pg_catalog.pg_attribute att
-                            ON att.attrelid = rel.oid AND att.attnum = ANY (part.partattrs)
-                       JOIN partitions ON partitions.oid = rel.oid
-               WHERE
-                   nsp.nspname = $1
-               GROUP BY
-                   rel.relname, part.partstrat, partitions.partition_tables \
+            WITH partitions AS (
+                SELECT
+                    parentrel.oid,
+                    array_agg(childrel.relname) as partition_tables
+                FROM
+                    pg_catalog.pg_class parentrel
+                    JOIN pg_catalog.pg_inherits inh ON inh.inhparent = parentrel.oid
+                    JOIN pg_catalog.pg_class childrel ON inh.inhrelid = childrel.oid
+                GROUP BY
+                    parentrel.oid
+            )
+            SELECT
+                nsp.nspname AS schema_name,
+                rel.relname            AS table_name,
+                CASE part.partstrat
+                    WHEN 'h' THEN 'hash partitioned'
+                    WHEN 'l' THEN 'list partitioned'
+                    WHEN 'r' THEN 'range partitioned'
+                END                    AS partitioning_strategy,
+                array_agg(att.attname) AS columns_in_partition_key,
+                partitions.partition_tables
+            FROM
+                pg_catalog.pg_partitioned_table part
+                JOIN pg_catalog.pg_class rel ON part.partrelid = rel.oid
+                JOIN pg_catalog.pg_namespace nsp ON rel.relnamespace = nsp.oid
+                JOIN pg_catalog.pg_attribute att ON att.attrelid = rel.oid AND att.attnum = ANY (part.partattrs)
+                JOIN partitions ON partitions.oid = rel.oid
+            WHERE
+                nsp.nspname = ANY($1)
+            GROUP BY
+                schema_name,
+                rel.relname, 
+                part.partstrat, 
+                partitions.partition_tables
                """
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:

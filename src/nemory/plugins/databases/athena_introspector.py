@@ -8,8 +8,8 @@ from pydantic import Field
 
 from nemory.plugins.base_db_plugin import BaseDatabaseConfigFile
 from nemory.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from nemory.plugins.databases.databases_types import DatabaseTable
-from nemory.plugins.databases.table_builder import TableBuilder
+from nemory.plugins.databases.databases_types import DatabaseSchema
+from nemory.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
 class AthenaConfigFile(BaseDatabaseConfigFile):
@@ -51,45 +51,21 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
         sql = "SELECT schema_name, catalog_name FROM information_schema.schemata WHERE catalog_name = %(catalog)s"
         return SQLQuery(sql, {"catalog": catalog})
 
-    # TODO: Incomplete plugin
-    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
-        q = self._sql_columns(catalog, schema)
-        rows = self._fetchall_dicts(connection, q.sql, q.params)
-        if not rows:
+    # TODO: Incomplete plugin. Awaiting permission access to AWS to properly develop
+    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if not schemas:
             return []
 
-        rels: list[dict] = []
-        cols: list[dict] = []
-        seen_tables: set[str] = set()
+        comps = {"columns": self._sql_columns(catalog, schemas)}
+        results: dict[str, list[dict]] = {}
 
-        for r in rows:
-            table_name = r["table_name"]
-            if table_name not in seen_tables:
-                seen_tables.add(table_name)
-                rels.append(
-                    {
-                        "table_name": table_name,
-                        "kind": "table",
-                        "description": None,
-                    }
-                )
+        for name, q in comps.items():
+            results[name] = self._fetchall_dicts(connection, q.sql, q.params)
 
-            cols.append(
-                {
-                    "table_name": table_name,
-                    "column_name": r["column_name"],
-                    "ordinal_position": r["ordinal_position"],
-                    "data_type": r["data_type"],
-                    "is_nullable": True,
-                    "default_expression": None,
-                    "generated": None,
-                    "description": None,
-                }
-            )
-
-        return TableBuilder.build_from_components(
-            rels=rels,
-            cols=cols,
+        return IntrospectionModelBuilder.build_schemas_from_components(
+            schemas=schemas,
+            rels=results.get("relations", []),
+            cols=results.get("columns", []),
             pk_cols=[],
             uq_cols=[],
             checks=[],
@@ -97,9 +73,10 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
             idx_cols=[],
         )
 
-    def _sql_columns(self, catalog: str, schema: str) -> SQLQuery:
+    def _sql_columns(self, catalog: str, schemas: list[str]) -> SQLQuery:
         sql = f"""
         SELECT 
+            table_schema AS schema_name,
             table_name, 
             column_name, 
             ordinal_position, 
@@ -108,12 +85,13 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
         FROM 
             {catalog}.information_schema.columns
         WHERE 
-            table_schema = %(schema)s
+            table_schema IN ({schemas})
         ORDER BY
+            table_schema,
             table_name,
             ordinal_position
         """
-        return SQLQuery(sql, {"schema": schema})
+        return SQLQuery(sql, {"schema": schemas})
 
     def _resolve_pseudo_catalog_name(self, file_config: AthenaConfigFile) -> str:
         return "awsdatacatalog"

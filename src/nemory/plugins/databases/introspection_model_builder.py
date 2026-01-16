@@ -11,15 +11,71 @@ from nemory.plugins.databases.databases_types import (
     ForeignKeyColumnMap,
     Index,
     KeyConstraint,
+    DatabaseSchema,
 )
 
 
-class TableBuilder:
+class IntrospectionModelBuilder:
     def __init__(self) -> None:
         self.by_table: dict[str, DatabaseTable] = {}
 
     @classmethod
-    def build_from_components(
+    def build_schemas_from_components(
+        cls,
+        *,
+        schemas: list[str],
+        rels: list[dict] | None = None,
+        cols: list[dict] | None = None,
+        pk_cols: list[dict] | None = None,
+        uq_cols: list[dict] | None = None,
+        checks: list[dict] | None = None,
+        fk_cols: list[dict] | None = None,
+        idx_cols: list[dict] | None = None,
+        partitions: list[dict] | None = None,
+        schema_field: str = "schema_name",
+    ) -> list[DatabaseSchema]:
+        def group_by_schema(rows: list[dict] | None) -> dict[str, list[dict]]:
+            g: dict[str, list[dict]] = defaultdict(list)
+            for r in rows or []:
+                s = r.get(schema_field)
+                if isinstance(s, str) and s:
+                    g[s].append(r)
+            return g
+
+        grouped = {
+            "rels": group_by_schema(rels),
+            "cols": group_by_schema(cols),
+            "pk": group_by_schema(pk_cols),
+            "uq": group_by_schema(uq_cols),
+            "checks": group_by_schema(checks),
+            "fks": group_by_schema(fk_cols),
+            "idx": group_by_schema(idx_cols),
+            "parts": group_by_schema(partitions),
+        }
+
+        out: list[DatabaseSchema] = []
+        for schema in schemas:
+            tables = (
+                cls.build_tables_from_components(
+                    rels=grouped["rels"].get(schema, []),
+                    cols=grouped["cols"].get(schema, []),
+                    pk_cols=grouped["pk"].get(schema, []),
+                    uq_cols=grouped["uq"].get(schema, []),
+                    checks=grouped["checks"].get(schema, []),
+                    fk_cols=grouped["fks"].get(schema, []),
+                    idx_cols=grouped["idx"].get(schema, []),
+                    partitions=grouped["parts"].get(schema, []),
+                )
+                or []
+            )
+
+            if tables:
+                out.append(DatabaseSchema(name=schema, tables=tables))
+
+        return out
+
+    @classmethod
+    def build_tables_from_components(
         cls,
         *,
         rels: list[dict] | None = None,
@@ -169,7 +225,7 @@ class TableBuilder:
         for r in partitions or []:
             t = self.get_or_create_table(r["table_name"])
 
-            meta = {k: v for k, v in r.items() if k not in ("table_name", "partition_tables")}
+            meta = {k: v for k, v in r.items() if k not in ("table_name", "partition_tables", "schema_name")}
             part_tables = r.get("partition_tables") or []
             part_tables_list = [p for p in list(part_tables) if p is not None]
 
