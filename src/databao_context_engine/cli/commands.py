@@ -161,9 +161,11 @@ def build(
 
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
-    build_all_datasources(
+    result = build_all_datasources(
         project_dir=ctx.obj["project_dir"], chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper())
     )
+
+    click.echo(f"Build complete. Processed {len(result)} datasources.")
 
 
 @dce.command()
