@@ -47,5 +47,4 @@ def with_run_dir(
 def _create_output_context(run_dir: Path, datasource_id: DatasourceId, output: str):
     output_file = run_dir.joinpath(datasource_id).with_suffix(".yaml")
     output_file.parent.mkdir(exist_ok=True)
-    output_file.touch()
     output_file.write_text(output)

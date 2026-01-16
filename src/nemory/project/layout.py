@@ -88,7 +88,6 @@ def create_datasource_config_file(
     )
     config_file.parent.mkdir(parents=True, exist_ok=True)
 
-    config_file.touch()
     config_file.write_text(config_content)
 
     return config_file
