@@ -8,6 +8,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
 from databao_context_engine.project.types import PreparedDatasource
+from databao_context_engine.serialisation.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 from databao_context_engine.storage.models import RunDTO
 from databao_context_engine.storage.repositories.datasource_run_repository import DatasourceRunRepository
@@ -70,7 +71,7 @@ class BuildService:
         )
 
         self._chunk_embedding_service.embed_chunks(
-            datasource_run_id=datasource_run.datasource_run_id, chunks=chunks, result=repr(result.context)
+            datasource_run_id=datasource_run.datasource_run_id, chunks=chunks, result=to_yaml_string(result.context)
         )
 
         return result
