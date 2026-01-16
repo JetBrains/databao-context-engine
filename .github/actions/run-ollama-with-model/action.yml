@@ -1,0 +1,46 @@
+name: Run Ollama with model
+description: Start Ollama container and ensure model is present
+inputs:
+  model:
+    required: true
+    description: Model name to pull
+  models-path:
+    required: false
+    description: Ollama models path
+    default: "~/.ollama/models"
+  image:
+    required: false
+    description: Ollama image
+    default: "ollama/ollama:latest"
+
+runs:
+  using: composite
+  steps:
+    - name: Start Ollama
+      shell: bash
+      run: |
+        docker run -d --name ollama \
+          -p 11434:11434 \
+          -e OLLAMA_HOST=0.0.0.0:11434 \
+          -v ${{ inputs.models-path }}:/root/.ollama/models \
+          ${{ inputs.image }}
+
+    - name: Wait for Ollama
+      shell: bash
+      run: |
+        for i in {1..120}; do
+          if curl -fsS http://localhost:11434/api/tags >/dev/null; then
+            echo "Ollama is healthy"
+            exit 0
+          fi
+          sleep 2
+        done
+        docker logs ollama || true
+        exit 1
+
+    - name: Pull model
+      shell: bash
+      run: |
+        curl -fsS -H 'Content-Type: application/json' \
+          -d "{\"name\":\"${{ inputs.model }}\"}" \
+          http://localhost:11434/api/pull

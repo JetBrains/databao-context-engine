@@ -1,0 +1,64 @@
+name: Pytest Tests
+
+permissions: { }
+
+env:
+  OLLAMA_MODEL: nomic-embed-text
+  OLLAMA_MODEL_VERSION: v1.5
+
+on:
+  push:
+    paths-ignore:
+      - docs/
+    branches: [ "main" ]
+  pull_request:
+    paths-ignore:
+      - docs/
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  prepare-ollama-cache:
+    name: Prepare Ollama cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/prepare-ollama-cache
+        with:
+          model-name: ${{ env.OLLAMA_MODEL }}
+          model-version: ${{ env.OLLAMA_MODEL_VERSION }}
+
+  tests:
+    needs: prepare-ollama-cache
+    name: Run pytest on ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.12", "3.13"]
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore Ollama models cache
+        uses: ./.github/actions/ollama-cache-restore
+        with:
+          key: ollama-${{ runner.os }}-${{ env.OLLAMA_MODEL }}-${{ env.OLLAMA_MODEL_VERSION }}
+
+      - name: Start Ollama (uses cached models)
+        uses: ./.github/actions/run-ollama-with-model
+        with:
+          model: ${{ env.OLLAMA_MODEL}}:${{ env.OLLAMA_MODEL_VERSION}}
+
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run pytest
+        run: uv run pytest -v

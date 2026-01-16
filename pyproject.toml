@@ -48,6 +48,21 @@ generate_configs_schemas = "databao_context_engine.generate_configs_schemas:main
 [tool.uv.build-backend]
 source-exclude = ["tests"]
 
+[tool.ruff]
+line-length = 120
+
+[tool.mypy]
+#strict = true
+show_error_codes = true
+check_untyped_defs = false
+disallow_untyped_defs = false ## many errors now
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = false
+allow_redefinition_new = true
+local_partial_types = true
+files = ["src", "tests"]
+
 [[tool.mypy.overrides]]
 module = ["requests", "requests.*"]
 ignore_missing_imports = true

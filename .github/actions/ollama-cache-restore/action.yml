@@ -1,0 +1,25 @@
+name: Restore Ollama cache
+description: Restore Ollama models cache
+inputs:
+  key:
+    required: true
+    description: Cache key
+  path:
+    required: false
+    description: Cache path
+    default: ~/.ollama/models
+runs:
+  using: composite
+  steps:
+    - name: Restore cache
+      id: restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}
+        restore-keys: |
+          ollama-${{ runner.os }}-
+outputs:
+  cache-hit:
+    description: "Whether an exact cache key was found"
+    value: ${{ steps.restore.outputs.cache-hit }}
