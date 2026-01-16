@@ -4,7 +4,7 @@ from typing import Any
 
 from databao_context_engine.datasource_config.datasource_context import DatasourceContext
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.datasource_discovery import DatasourceId
+from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.project.layout import create_datasource_config_file, get_output_dir, read_config_file
 from databao_context_engine.serialisation.yaml import to_yaml_string
 from databao_context_engine.storage.connection import open_duckdb_connection
@@ -45,6 +45,6 @@ def with_run_dir(
 
 
 def _create_output_context(run_dir: Path, datasource_id: DatasourceId, output: str):
-    output_file = run_dir.joinpath(datasource_id).with_suffix(".yaml")
+    output_file = run_dir.joinpath(datasource_id.relative_path_to_context_file())
     output_file.parent.mkdir(exist_ok=True)
     output_file.write_text(output)

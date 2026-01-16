@@ -20,7 +20,7 @@ def make_datasource_run(
     *,
     plugin: str = "test-plugin",
     full_type: str = "folder/type",
-    source_id: str = "src-id",
+    source_id: str = "folder/name.yaml",
     storage_directory: str = "storage/path",
 ) -> DatasourceRunDTO:
     run = make_run(run_repo)

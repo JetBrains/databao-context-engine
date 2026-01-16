@@ -9,22 +9,23 @@ from databao_context_engine.datasource_config.validate_config import (
     ValidationStatus,
     validate_datasource_config,
 )
+from databao_context_engine.project.types import DatasourceId
 
 
 def add_datasource_config_cli(project_dir: Path) -> None:
-    datasource_config_file = add_datasource_config_interactive(project_dir)
+    datasource_id = add_datasource_config_interactive(project_dir)
 
     if click.confirm("\nDo you want to check the connection to this new datasource?"):
-        validate_datasource_config_cli(project_dir, datasource_config_files=[datasource_config_file])
+        validate_datasource_config_cli(project_dir, datasource_ids=[datasource_id])
 
 
-def validate_datasource_config_cli(project_dir: Path, *, datasource_config_files: list[str] | None) -> None:
-    results = validate_datasource_config(project_dir, datasource_config_files=datasource_config_files)
+def validate_datasource_config_cli(project_dir: Path, *, datasource_ids: list[DatasourceId] | None) -> None:
+    results = validate_datasource_config(project_dir, datasource_ids=datasource_ids)
 
     _print_datasource_validation_results(results)
 
 
-def _print_datasource_validation_results(results: dict[str, ValidationResult]) -> None:
+def _print_datasource_validation_results(results: dict[DatasourceId, ValidationResult]) -> None:
     if len(results) > 0:
         valid_datasources = {
             key: value for key, value in results.items() if value.validation_status == ValidationStatus.VALID
@@ -37,16 +38,16 @@ def _print_datasource_validation_results(results: dict[str, ValidationResult]) -
         }
 
         # Print all errors
-        for datasource_path, validation_result in invalid_datasources.items():
+        for datasource_id, validation_result in invalid_datasources.items():
             click.echo(
-                f"Error for datasource {datasource_path}:{os.linesep}{validation_result.full_message}{os.linesep}"
+                f"Error for datasource {str(datasource_id)}:{os.linesep}{validation_result.full_message}{os.linesep}"
             )
 
         results_summary = (
             os.linesep.join(
                 [
-                    f"{datasource_path}: {validation_result.format(show_summary_only=True)}"
-                    for datasource_path, validation_result in results.items()
+                    f"{str(datasource_id)}: {validation_result.format(show_summary_only=True)}"
+                    for datasource_id, validation_result in results.items()
                 ]
             )
             if results

@@ -10,7 +10,8 @@ from databao_context_engine.datasource_config.datasource_context import (
     get_datasource_context,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.datasource_discovery import Datasource, DatasourceId, get_datasource_list
+from databao_context_engine.project.datasource_discovery import get_datasource_list
+from databao_context_engine.project.types import DatasourceId, Datasource
 from databao_context_engine.project.layout import ensure_project_dir
 from databao_context_engine.retrieve_embeddings.public.api import retrieve_embeddings
 

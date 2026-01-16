@@ -6,7 +6,6 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from databao_context_engine.datasource_config.utils import get_datasource_id_from_config_file_path
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
 from databao_context_engine.pluginlib.plugin_utils import check_connection_for_datasource
 from databao_context_engine.plugins.plugin_loader import load_plugins
@@ -16,7 +15,7 @@ from databao_context_engine.project.datasource_discovery import (
     prepare_source,
 )
 from databao_context_engine.project.layout import ensure_project_dir
-from databao_context_engine.project.types import PreparedConfig
+from databao_context_engine.project.types import PreparedConfig, DatasourceId
 
 logger = logging.getLogger(__name__)
 
@@ -44,13 +43,13 @@ class ValidationResult:
 
 
 def validate_datasource_config(
-    project_dir: Path, *, datasource_config_files: list[str] | None = None
-) -> dict[str, ValidationResult]:
+    project_dir: Path, *, datasource_ids: list[DatasourceId] | None = None
+) -> dict[DatasourceId, ValidationResult]:
     ensure_project_dir(project_dir)
 
-    if datasource_config_files:
-        logger.info(f"Validating datasource(s): {datasource_config_files}")
-        datasources_to_traverse = get_datasource_descriptors(project_dir, datasource_config_files)
+    if datasource_ids:
+        logger.info(f"Validating datasource(s): {datasource_ids}")
+        datasources_to_traverse = get_datasource_descriptors(project_dir, datasource_ids)
     else:
         datasources_to_traverse = discover_datasources(project_dir)
 
@@ -58,7 +57,7 @@ def validate_datasource_config(
 
     result = {}
     for discovered_datasource in datasources_to_traverse:
-        result_key = get_datasource_id_from_config_file_path(project_dir, discovered_datasource.path)
+        result_key = DatasourceId.from_datasource_config_file_path(discovered_datasource.path)
 
         try:
             prepared_source = prepare_source(discovered_datasource)

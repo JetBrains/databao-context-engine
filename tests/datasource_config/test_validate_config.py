@@ -9,6 +9,7 @@ from databao_context_engine.datasource_config.validate_config import (
     validate_datasource_config,
 )
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
+from databao_context_engine.project.types import DatasourceId
 from tests.utils.dummy_build_plugin import (
     DummyDefaultDatasourcePlugin,
 )
@@ -76,7 +77,7 @@ def test_validate_datasource_config_with_failing_config_validation(project_path:
 
     result = validate_datasource_config(project_path)
 
-    assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
+    assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
         "databases/unknown.yaml": "Invalid - No compatible plugin found",
         "dummy/not_implemented.yaml": "Unknown - Plugin doesn't support validating its config",
         "dummy/invalid.yaml": "Invalid - Config file is invalid",
@@ -96,7 +97,9 @@ def test_validate_datasource_config_with_valid_connections(project_path: Path):
     result = validate_datasource_config(project_path)
 
     assert result == {
-        "dummy/valid.yaml": ValidationResult(validation_status=ValidationStatus.VALID, summary=None),
+        DatasourceId.from_string_repr("dummy/valid.yaml"): ValidationResult(
+            validation_status=ValidationStatus.VALID, summary=None
+        ),
     }
 
 
@@ -124,10 +127,14 @@ def test_validate_datasource_config_with_filter(project_path: Path):
     )
 
     result = validate_datasource_config(
-        project_path, datasource_config_files=["dummy/not_implemented.yaml", "dummy/invalid3.yaml"]
+        project_path,
+        datasource_ids=[
+            DatasourceId.from_string_repr("dummy/not_implemented.yaml"),
+            DatasourceId.from_string_repr("dummy/invalid3.yaml"),
+        ],
     )
 
-    assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
+    assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
         "dummy/not_implemented.yaml": "Unknown - Plugin doesn't support validating its config",
         "dummy/invalid3.yaml": "Invalid - Connection with the datasource can not be established",
     }
@@ -156,10 +163,14 @@ def test_validate_datasource_config_with_single_filter(project_path: Path):
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "9876"},
     )
 
-    result = validate_datasource_config(project_path, datasource_config_files=["dummy/valid.yaml"])
+    result = validate_datasource_config(
+        project_path, datasource_ids=[DatasourceId.from_string_repr("dummy/valid.yaml")]
+    )
 
     assert result == {
-        "dummy/valid.yaml": ValidationResult(validation_status=ValidationStatus.VALID, summary=None),
+        DatasourceId.from_string_repr("dummy/valid.yaml"): ValidationResult(
+            validation_status=ValidationStatus.VALID, summary=None
+        ),
     }
 
 
@@ -187,7 +198,9 @@ def test_validate_datasource_config_with_invalid_filter(project_path: Path):
     )
 
     with pytest.raises(ValueError):
-        validate_datasource_config(project_path, datasource_config_files=["dummy/not_a_file.yaml"])
+        validate_datasource_config(
+            project_path, datasource_ids=[DatasourceId.from_string_repr("dummy/not_a_file.yaml")]
+        )
 
 
 def test_validate_datasource_config_with_no_type(project_path: Path):
@@ -207,7 +220,7 @@ def test_validate_datasource_config_with_no_type(project_path: Path):
 
     result = validate_datasource_config(project_path)
 
-    assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
+    assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
         "dummy/valid.yaml": "Valid",
         "dummy/invalid.yaml": "Invalid - Config file is invalid",
         "dummy/no_type.yaml": "Invalid - Failed to prepare source",
@@ -236,7 +249,7 @@ def test_validate_datasource_config_with_invalid_template(project_path: Path):
 
     result = validate_datasource_config(project_path)
 
-    assert {key: value.format(show_summary_only=True) for key, value in result.items()} == {
+    assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
         "dummy/valid.yaml": "Valid",
         "dummy/invalid.yaml": "Invalid - Config file is invalid",
         "dummy/template_error.yaml": "Invalid - Failed to prepare source",

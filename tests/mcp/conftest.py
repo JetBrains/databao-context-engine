@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.project.layout import get_output_dir
 from tests.utils.project_creation import with_run_dir
 
@@ -28,8 +29,14 @@ def project_with_runs(create_db, project_path: Path, db_path: Path) -> ProjectWi
     output_dir.mkdir()
 
     datasource_contexts = [
-        DatasourceContext(datasource_id="main_type/datasource_name", context="Context for datasource name"),
-        DatasourceContext(datasource_id="dummy/my_datasource", context="Context for dummy/my_datasource"),
+        DatasourceContext(
+            datasource_id=DatasourceId.from_string_repr("main_type/datasource_name.yaml"),
+            context="Context for datasource name",
+        ),
+        DatasourceContext(
+            datasource_id=DatasourceId.from_string_repr("dummy/my_datasource.yaml"),
+            context="Context for dummy/my_datasource",
+        ),
     ]
 
     run_1_contexts = datasource_contexts[0:1]
