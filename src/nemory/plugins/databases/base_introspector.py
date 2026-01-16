@@ -38,16 +38,19 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
         with self._connect(file_config) as root_connection:
             catalogs = self._get_catalogs_adapted(root_connection, file_config)
 
-        introspected_catalogs: list[DatabaseCatalog] = []
+        discovered_schemas_per_catalog: dict[str, list[str]] = {}
         for catalog in catalogs:
+            with self._connect_to_catalog(file_config, catalog) as conn:
+                discovered_schemas_per_catalog[catalog] = self._list_schemas_for_catalog(conn, catalog)
+        scope = scope_matcher.filter_scopes(catalogs, discovered_schemas_per_catalog)
+
+        introspected_catalogs: list[DatabaseCatalog] = []
+        for catalog in scope.catalogs:
+            schemas_to_introspect = scope.schemas_per_catalog.get(catalog, [])
+            if not schemas_to_introspect:
+                continue
+
             with self._connect_to_catalog(file_config, catalog) as catalog_connection:
-                schemas_in_catalog = self._list_schemas_for_catalog(catalog_connection, catalog)
-
-                scope_match = scope_matcher.filter_scopes([catalog], {catalog: schemas_in_catalog})
-                schemas_to_introspect = scope_match.schemas_per_catalog.get(catalog, [])
-                if not schemas_to_introspect:
-                    continue
-
                 introspected_schemas = self.collect_catalog_model(catalog_connection, catalog, schemas_to_introspect)
 
                 if not introspected_schemas:
