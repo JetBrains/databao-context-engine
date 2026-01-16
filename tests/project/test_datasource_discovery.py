@@ -78,7 +78,7 @@ def test_skips_files_without_extension(tmp_path: Path):
 
 def test_load_descriptor_files_dir_yaml_is_FILE(tmp_path: Path):
     p = _mk(tmp_path / "src" / "files" / "conf.yaml", "k: v")
-    d = load_datasource_descriptor(p, parent_name="files")
+    d = load_datasource_descriptor(p)
     assert d is not None
     assert d.kind == DatasourceKind.FILE
     assert d.main_type == "files"
@@ -87,7 +87,7 @@ def test_load_descriptor_files_dir_yaml_is_FILE(tmp_path: Path):
 
 def test_load_descriptor_yaml_elsewhere_is_CONFIG(tmp_path: Path):
     p = _mk(tmp_path / "src" / "databases" / "ds.yaml", "type: pg")
-    d = load_datasource_descriptor(p, parent_name="databases")
+    d = load_datasource_descriptor(p)
     assert d is not None
     assert d.kind == DatasourceKind.CONFIG
     assert d.main_type == "databases"
@@ -96,4 +96,4 @@ def test_load_descriptor_yaml_elsewhere_is_CONFIG(tmp_path: Path):
 
 def test_load_descriptor_no_extension_returns_none(tmp_path: Path):
     p = _mk(tmp_path / "src" / "misc" / "NOEXT", "data")
-    assert load_datasource_descriptor(p, parent_name="misc") is None
+    assert load_datasource_descriptor(p) is None
