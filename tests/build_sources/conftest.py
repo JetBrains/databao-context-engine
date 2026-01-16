@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from nemory.build_sources.internal import build_runner
+from databao_context_engine.build_sources.internal import build_runner
 from tests.utils.fakes import FakeSource
 
 

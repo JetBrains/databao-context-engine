@@ -5,11 +5,11 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from nemory.build_sources.internal import build_runner
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.build_sources.internal.plugin_execution import BuildExecutionResult
-from nemory.project.types import PreparedFile
-from nemory.services.run_name_policy import RunNamePolicy
+from databao_context_engine.build_sources.internal import build_runner
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult
+from databao_context_engine.project.types import PreparedFile
+from databao_context_engine.services.run_name_policy import RunNamePolicy
 
 
 def _result(name="files/demo.md", typ="files/md"):
@@ -60,7 +60,7 @@ def test_build_returns_early_when_no_sources(stub_sources, stub_plugins, mock_bu
         project_dir=tmp_path,
         build_service=mock_build_service,
         project_id="proj",
-        nemory_version="v1",
+        dce_version="v1",
     )
     mock_build_service.start_run.assert_not_called()
 
@@ -73,7 +73,7 @@ def test_build_skips_source_without_plugin(
     stub_plugins({})
     stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=datasources.path)])
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", dce_version="v1")
     mock_build_service.start_run.assert_not_called()
     mock_build_service.process_prepared_source.assert_not_called()
     mock_build_service.finalize_run.assert_not_called()
@@ -92,7 +92,7 @@ def test_build_processes_file_source_and_exports(
 
     mock_build_service.process_prepared_source.return_value = _result(name="files/one.md", typ="files/md")
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", dce_version="v1")
 
     mock_build_service.start_run.assert_called_once()
     mock_build_service.process_prepared_source.assert_called_once()
@@ -115,7 +115,7 @@ def test_build_continues_on_service_exception(
 
     mock_build_service.process_prepared_source.side_effect = [RuntimeError("boom"), _result(name="files/b.md")]
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", nemory_version="v1")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", dce_version="v1")
 
     assert mock_build_service.process_prepared_source.call_count == 2
     mock_build_service.finalize_run.assert_called_once()

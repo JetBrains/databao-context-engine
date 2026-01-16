@@ -1,7 +1,7 @@
 import yaml
 
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from tests.utils.dummy_build_plugin import DummyDefaultDatasourcePlugin
 
 

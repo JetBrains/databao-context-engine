@@ -2,9 +2,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.retrieve_embeddings.internal.retrieve_service import RetrieveService
-from nemory.storage.repositories.vector_search_repository import VectorSearchResult
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.retrieve_embeddings.internal.retrieve_service import RetrieveService
+from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
 
 
 def test_retrieve_returns_results():

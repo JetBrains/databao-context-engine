@@ -1,4 +1,4 @@
-from collections import namedtuple, deque
+from collections import deque, namedtuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -6,11 +6,12 @@ from enum import Enum
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from nemory.pluginlib.build_plugin import EmbeddableChunk
-from nemory.storage.exceptions.exceptions import IntegrityError
-from nemory.services.models import ChunkEmbedding
-from tests.utils.factories import make_datasource_run
 import pytest
+
+from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+from databao_context_engine.services.models import ChunkEmbedding
+from databao_context_engine.storage.exceptions.exceptions import IntegrityError
+from tests.utils.factories import make_datasource_run
 
 
 def test_write_chunks_and_embeddings(

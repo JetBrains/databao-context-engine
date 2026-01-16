@@ -7,10 +7,13 @@ import pytest
 from pytest_unordered import unordered
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
-from nemory.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.plugins.databases.database_chunker import DatabaseColumnChunkContent, DatabaseTableChunkContent
-from nemory.plugins.databases.databases_types import (
+from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
+from databao_context_engine.plugins.databases.database_chunker import (
+    DatabaseColumnChunkContent,
+    DatabaseTableChunkContent,
+)
+from databao_context_engine.plugins.databases.databases_types import (
     DatabaseCatalog,
     DatabaseColumn,
     DatabaseIntrospectionResult,
@@ -18,7 +21,7 @@ from nemory.plugins.databases.databases_types import (
     DatabaseSchema,
     DatabaseTable,
 )
-from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
+from databao_context_engine.plugins.postgresql_db_plugin import PostgresqlDbPlugin
 from tests.plugins.database_contracts import (
     CheckConstraintExists,
     ColumnIs,

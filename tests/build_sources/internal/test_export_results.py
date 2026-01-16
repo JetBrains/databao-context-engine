@@ -3,12 +3,12 @@ from pathlib import Path
 
 import yaml
 
-from nemory.build_sources.internal.export_results import (
+from databao_context_engine.build_sources.internal.export_results import (
     append_result_to_all_results,
     create_run_dir,
     export_build_result,
 )
-from nemory.build_sources.internal.plugin_execution import BuildExecutionResult
+from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult
 
 
 def _run_dir(tmp_path: Path) -> Path:

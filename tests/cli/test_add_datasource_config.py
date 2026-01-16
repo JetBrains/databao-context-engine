@@ -4,15 +4,15 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from nemory.cli.add_datasource_config import add_datasource_config_interactive
-from nemory.datasource_config.add_config import config_content_to_yaml_string
-from nemory.project.layout import get_source_dir
+from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
+from databao_context_engine.datasource_config.add_config import config_content_to_yaml_string
+from databao_context_engine.project.layout import get_source_dir
 from tests.utils.dummy_build_plugin import load_dummy_plugins
 
 
 @pytest.fixture(autouse=True)
 def patch_load_plugins(mocker):
-    mocker.patch("nemory.plugins.plugin_loader.load_plugins", new=load_dummy_plugins)
+    mocker.patch("databao_context_engine.plugins.plugin_loader.load_plugins", new=load_dummy_plugins)
 
 
 def test_add_datasource_config__with_no_custom_properties(project_path: Path):

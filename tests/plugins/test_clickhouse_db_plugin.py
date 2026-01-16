@@ -6,10 +6,10 @@ import clickhouse_connect
 import pytest
 from testcontainers.clickhouse import ClickHouseContainer  # type: ignore
 
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
-from nemory.plugins.databases.databases_types import (
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
+from databao_context_engine.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
+from databao_context_engine.plugins.databases.databases_types import (
     DatabaseIntrospectionResult,
 )
 from tests.plugins.database_contracts import (

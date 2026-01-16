@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from nemory.plugins.databases.introspection_scope import (
+from databao_context_engine.plugins.databases.introspection_scope import (
     IntrospectionScope,
     ScopeExcludeRule,
     ScopeIncludeRule,

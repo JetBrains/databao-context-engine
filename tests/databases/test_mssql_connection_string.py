@@ -1,6 +1,6 @@
 import pytest
 
-from nemory.plugins.databases.mssql_introspector import MSSQLIntrospector
+from databao_context_engine.plugins.databases.mssql_introspector import MSSQLIntrospector
 
 
 @pytest.mark.parametrize(

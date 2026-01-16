@@ -3,8 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from nemory.datasource_config.validate_config import ValidationResult, ValidationStatus, validate_datasource_config
-from nemory.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
+from databao_context_engine.datasource_config.validate_config import (
+    ValidationResult,
+    ValidationStatus,
+    validate_datasource_config,
+)
+from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
 from tests.utils.dummy_build_plugin import (
     DummyDefaultDatasourcePlugin,
 )
@@ -34,7 +38,7 @@ class DummyPluginWithSimpleConfig(BuildDatasourcePlugin[ConfigToValidate]):
 @pytest.fixture(autouse=True)
 def patch_load_plugins(mocker):
     mocker.patch(
-        "nemory.datasource_config.validate_config.load_plugins",
+        "databao_context_engine.datasource_config.validate_config.load_plugins",
         return_value=load_dummy_plugins(),
     )
 

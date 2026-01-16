@@ -1,9 +1,9 @@
 import pytest
 
-from nemory.databao_engine import DatabaoContextEngine
-from nemory.datasource_config.datasource_context import DatasourceContext
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.project.datasource_discovery import Datasource
+from databao_context_engine.databao_engine import DatabaoContextEngine
+from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.project.datasource_discovery import Datasource
 from tests.utils.project_creation import with_config_file, with_run_dir
 
 

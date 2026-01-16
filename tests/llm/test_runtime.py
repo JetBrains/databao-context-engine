@@ -1,8 +1,9 @@
 import os
+
 import pytest
 
-from nemory.llm.config import OllamaConfig
-from nemory.llm.runtime import (
+from databao_context_engine.llm.config import OllamaConfig
+from databao_context_engine.llm.runtime import (
     OllamaRuntime,
 )
 

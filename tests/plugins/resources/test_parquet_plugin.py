@@ -5,12 +5,12 @@ from unittest.mock import ANY
 import duckdb
 import pytest
 
-from nemory.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
-from nemory.pluginlib.config import DuckDBSecret
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.plugins.parquet_plugin import ParquetPlugin
-from nemory.plugins.resources.parquet_chunker import ParquetColumnChunkContent
-from nemory.plugins.resources.parquet_introspector import (
+from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
+from databao_context_engine.pluginlib.config import DuckDBSecret
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
+from databao_context_engine.plugins.parquet_plugin import ParquetPlugin
+from databao_context_engine.plugins.resources.parquet_chunker import ParquetColumnChunkContent
+from databao_context_engine.plugins.resources.parquet_introspector import (
     ParquetColumn,
     ParquetConfigFile,
     ParquetFile,

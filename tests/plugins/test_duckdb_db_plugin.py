@@ -5,12 +5,12 @@ from typing import Any, Mapping, Sequence
 import duckdb
 import pytest
 
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.plugins.databases.databases_types import (
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
+from databao_context_engine.plugins.databases.databases_types import (
     DatabaseIntrospectionResult,
 )
-from nemory.plugins.duckdb_db_plugin import DuckDbPlugin
+from databao_context_engine.plugins.duckdb_db_plugin import DuckDbPlugin
 from tests.plugins.database_contracts import (
     CheckConstraintExists,
     ColumnIs,

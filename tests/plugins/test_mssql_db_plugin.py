@@ -6,10 +6,10 @@ import mssql_python  # type: ignore
 import pytest
 from testcontainers.mssql import SqlServerContainer  # type: ignore
 
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.plugins.databases.databases_types import DatabaseIntrospectionResult
-from nemory.plugins.mssql_db_plugin import MSSQLDbPlugin
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
+from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.mssql_db_plugin import MSSQLDbPlugin
 from tests.plugins.database_contracts import (
     CheckConstraintExists,
     ColumnIs,

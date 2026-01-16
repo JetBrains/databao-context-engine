@@ -1,10 +1,10 @@
 import pytest
 
-from nemory.llm.descriptions.provider import DescriptionProvider
-from nemory.pluginlib.build_plugin import EmbeddableChunk
-from nemory.services.chunk_embedding_service import ChunkEmbeddingService, ChunkEmbeddingMode
-from nemory.services.persistence_service import PersistenceService
-from nemory.services.table_name_policy import TableNamePolicy
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
+from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode, ChunkEmbeddingService
+from databao_context_engine.services.persistence_service import PersistenceService
+from databao_context_engine.services.table_name_policy import TableNamePolicy
 
 
 @pytest.mark.parametrize("chunk_embedding_mode", [mode for mode in ChunkEmbeddingMode])

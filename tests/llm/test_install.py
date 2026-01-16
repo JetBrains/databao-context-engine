@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from nemory.llm import install
+from databao_context_engine.llm import install
 
 
 def test_resolve_ollama_bin_uses_env_when_executable(tmp_path, monkeypatch):
@@ -8,7 +8,7 @@ def test_resolve_ollama_bin_uses_env_when_executable(tmp_path, monkeypatch):
     fake_bin.write_text("#!/bin/sh\necho ollama\n")
     fake_bin.chmod(0o755)
 
-    monkeypatch.setenv("NEMORY_OLLAMA_BIN", str(fake_bin))
+    monkeypatch.setenv("DCE_OLLAMA_BIN", str(fake_bin))
     monkeypatch.setattr(install.shutil, "which", lambda name: None)
 
     result = install.resolve_ollama_bin()
@@ -17,7 +17,7 @@ def test_resolve_ollama_bin_uses_env_when_executable(tmp_path, monkeypatch):
 
 def test_resolve_ollama_bin_ignores_env_if_not_executable(tmp_path, monkeypatch):
     fake_env_bin = tmp_path / "ollama-env"
-    monkeypatch.setenv("NEMORY_OLLAMA_BIN", str(fake_env_bin))
+    monkeypatch.setenv("DCE_OLLAMA_BIN", str(fake_env_bin))
 
     fake_system_bin = "/usr/local/bin/ollama"
     monkeypatch.setattr(install.shutil, "which", lambda name: fake_system_bin)
@@ -27,7 +27,7 @@ def test_resolve_ollama_bin_ignores_env_if_not_executable(tmp_path, monkeypatch)
 
 
 def test_resolve_ollama_bin_uses_system_ollama_if_present(monkeypatch):
-    monkeypatch.delenv("NEMORY_OLLAMA_BIN", raising=False)
+    monkeypatch.delenv("DCE_OLLAMA_BIN", raising=False)
 
     fake_system_bin = "/usr/bin/ollama"
     monkeypatch.setattr(install.shutil, "which", lambda name: fake_system_bin)
@@ -37,7 +37,7 @@ def test_resolve_ollama_bin_uses_system_ollama_if_present(monkeypatch):
 
 
 def test_resolve_ollama_bin_installs_managed_when_missing(tmp_path, monkeypatch):
-    monkeypatch.delenv("NEMORY_OLLAMA_BIN", raising=False)
+    monkeypatch.delenv("DCE_OLLAMA_BIN", raising=False)
     monkeypatch.setattr(install.shutil, "which", lambda name: None)
 
     managed_bin = tmp_path / "ollama" / "bin" / "ollama"
@@ -57,7 +57,7 @@ def test_resolve_ollama_bin_installs_managed_when_missing(tmp_path, monkeypatch)
 
 
 def test_resolve_ollama_bin_reuses_existing_managed(tmp_path, monkeypatch):
-    monkeypatch.delenv("NEMORY_OLLAMA_BIN", raising=False)
+    monkeypatch.delenv("DCE_OLLAMA_BIN", raising=False)
     monkeypatch.setattr(install.shutil, "which", lambda name: None)
 
     managed_bin = tmp_path / "ollama" / "bin" / "ollama"

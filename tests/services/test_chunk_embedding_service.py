@@ -2,11 +2,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from nemory.llm.descriptions.provider import DescriptionProvider
-from nemory.llm.embeddings.provider import EmbeddingProvider
-from nemory.pluginlib.build_plugin import EmbeddableChunk
-from nemory.services.chunk_embedding_service import ChunkEmbeddingService
-from nemory.services.table_name_policy import TableNamePolicy
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
+from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
+from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
+from databao_context_engine.services.table_name_policy import TableNamePolicy
 from tests.utils.factories import make_datasource_run
 
 

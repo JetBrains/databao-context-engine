@@ -3,9 +3,14 @@ from pathlib import Path
 
 import pytest
 
-from nemory.project.init_project import InitErrorReason, InitProjectError, init_project_dir
-from nemory.project.layout import CONFIG_FILE_NAME, EXAMPLES_FOLDER_NAME, SOURCE_FOLDER_NAME, is_project_dir_valid
-from nemory.project.project_config import ProjectConfig
+from databao_context_engine.project.init_project import InitErrorReason, InitProjectError, init_project_dir
+from databao_context_engine.project.layout import (
+    CONFIG_FILE_NAME,
+    EXAMPLES_FOLDER_NAME,
+    SOURCE_FOLDER_NAME,
+    is_project_dir_valid,
+)
+from databao_context_engine.project.project_config import ProjectConfig
 
 
 def test_init_project_dir(tmp_path: Path):

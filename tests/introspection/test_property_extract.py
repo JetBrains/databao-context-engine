@@ -6,8 +6,8 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 from pytest_unordered import unordered
 
-from nemory.introspection.property_extract import get_property_list_from_type
-from nemory.pluginlib.config import ConfigPropertyAnnotation, ConfigPropertyDefinition
+from databao_context_engine.introspection.property_extract import get_property_list_from_type
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation, ConfigPropertyDefinition
 
 
 class TestSubclass:

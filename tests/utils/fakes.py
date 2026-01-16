@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,14 +17,14 @@ class FakeRunRepository:
         self.updated: list[tuple[int, datetime | None, str | None]] = []
         self._next_id = 1
 
-    def create(self, *, project_id: str, nemory_version: str | None):
+    def create(self, *, project_id: str, dce_version: str | None):
         dto = FakeRunDTO(self._next_id)
         self._next_id += 1
-        self.created.append((project_id, nemory_version, dto))
+        self.created.append((project_id, dce_version, dto))
         return dto
 
-    def update(self, run_id: int, *, ended_at: datetime | None = None, nemory_version: str | None = None):
-        self.updated.append((run_id, ended_at, nemory_version))
+    def update(self, run_id: int, *, ended_at: datetime | None = None, dce_version: str | None = None):
+        self.updated.append((run_id, ended_at, dce_version))
         return FakeRunDTO(run_id)
 
 

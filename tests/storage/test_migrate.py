@@ -4,7 +4,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from nemory.storage.migrate import MigrationDTO, MigrationError, load_migrations, migrate
+from databao_context_engine.storage.migrate import MigrationDTO, MigrationError, load_migrations, migrate
 
 
 def _test_migration_path(migration_name) -> Path:

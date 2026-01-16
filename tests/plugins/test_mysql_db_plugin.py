@@ -5,10 +5,10 @@ import pymysql
 import pytest
 from testcontainers.mysql import MySqlContainer  # type: ignore
 
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.plugins.databases.databases_types import DatabaseIntrospectionResult
-from nemory.plugins.mysql_db_plugin import MySQLDbPlugin
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
+from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.mysql_db_plugin import MySQLDbPlugin
 from tests.plugins.database_contracts import (
     CheckConstraintExists,
     ColumnIs,

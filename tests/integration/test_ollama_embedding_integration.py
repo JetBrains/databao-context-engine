@@ -1,14 +1,14 @@
 import os
 
-from nemory.llm.config import OllamaConfig
-from nemory.llm.descriptions.ollama import OllamaDescriptionProvider
-from nemory.llm.embeddings.ollama import OllamaEmbeddingProvider
-from nemory.llm.runtime import OllamaRuntime
-from nemory.llm.service import OllamaService
-from nemory.pluginlib.build_plugin import EmbeddableChunk
-from nemory.services.chunk_embedding_service import ChunkEmbeddingService
-from nemory.services.persistence_service import PersistenceService
-from nemory.services.table_name_policy import TableNamePolicy
+from databao_context_engine.llm.config import OllamaConfig
+from databao_context_engine.llm.descriptions.ollama import OllamaDescriptionProvider
+from databao_context_engine.llm.embeddings.ollama import OllamaEmbeddingProvider
+from databao_context_engine.llm.runtime import OllamaRuntime
+from databao_context_engine.llm.service import OllamaService
+from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
+from databao_context_engine.services.persistence_service import PersistenceService
+from databao_context_engine.services.table_name_policy import TableNamePolicy
 
 MODEL = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
 CHAT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.2:1b")

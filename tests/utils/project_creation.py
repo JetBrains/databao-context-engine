@@ -2,13 +2,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from nemory.datasource_config.datasource_context import DatasourceContext
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.project.datasource_discovery import DatasourceId
-from nemory.project.layout import create_datasource_config_file, get_output_dir, read_config_file
-from nemory.serialisation.yaml import to_yaml_string
-from nemory.storage.connection import open_duckdb_connection
-from nemory.storage.repositories.factories import create_run_repository
+from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.project.datasource_discovery import DatasourceId
+from databao_context_engine.project.layout import create_datasource_config_file, get_output_dir, read_config_file
+from databao_context_engine.serialisation.yaml import to_yaml_string
+from databao_context_engine.storage.connection import open_duckdb_connection
+from databao_context_engine.storage.repositories.factories import create_run_repository
 
 
 def with_config_file(project_dir: Path, full_type: str, datasource_name: str, config_content: dict[str, Any]) -> Path:
@@ -33,7 +33,7 @@ def with_run_dir(
         if started_at is None:
             started_at = datetime.now()
 
-        run = run_repo.create(project_id=str(project_id), nemory_version="1.0", started_at=started_at)
+        run = run_repo.create(project_id=str(project_id), dce_version="1.0", started_at=started_at)
 
         run_dir = output_dir.joinpath(run.run_name)
         run_dir.mkdir()

@@ -1,0 +1,136 @@
+from typing import Any, Optional, Tuple
+
+import duckdb
+from _duckdb import ConstraintException
+
+from databao_context_engine.storage.exceptions.exceptions import IntegrityError
+from databao_context_engine.storage.models import DatasourceRunDTO
+
+
+class DatasourceRunRepository:
+    def __init__(self, conn: duckdb.DuckDBPyConnection):
+        self._conn = conn
+
+    def create(
+        self,
+        *,
+        run_id: int,
+        plugin: str,
+        full_type: str,
+        source_id: str,
+        storage_directory: str,
+    ) -> DatasourceRunDTO:
+        try:
+            row = self._conn.execute(
+                """
+            INSERT INTO
+                datasource_run(run_id, plugin, full_type, source_id, storage_directory)
+            VALUES
+                (?, ?, ?, ?, ?)
+            RETURNING
+                *
+            """,
+                [run_id, plugin, full_type, source_id, storage_directory],
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("datasource_run creation returned no object")
+            return self._row_to_dto(row)
+        except ConstraintException as e:
+            raise IntegrityError from e
+
+    def get(self, datasource_run_id: int) -> Optional[DatasourceRunDTO]:
+        row = self._conn.execute(
+            """
+        SELECT
+            *
+        FROM
+            datasource_run 
+        WHERE
+            datasource_run_id = ?
+        """,
+            [datasource_run_id],
+        ).fetchone()
+        return self._row_to_dto(row) if row else None
+
+    def update(
+        self,
+        datasource_run_id: int,
+        *,
+        plugin: Optional[str] = None,
+        full_type: Optional[str] = None,
+        source_id: Optional[str] = None,
+        storage_directory: Optional[str] = None,
+    ) -> Optional[DatasourceRunDTO]:
+        sets: list[Any] = []
+        params: list[Any] = []
+
+        if plugin is not None:
+            sets.append("plugin = ?")
+            params.append(plugin)
+        if full_type is not None:
+            sets.append("full_type = ?")
+            params.append(full_type)
+        if source_id is not None:
+            sets.append("source_id = ?")
+            params.append(source_id)
+        if storage_directory is not None:
+            sets.append("storage_directory = ?")
+            params.append(storage_directory)
+
+        if not sets:
+            return self.get(datasource_run_id)
+
+        params.append(datasource_run_id)
+        self._conn.execute(
+            f"""
+            UPDATE 
+                datasource_run
+            SET 
+                {", ".join(sets)}
+            WHERE 
+                datasource_run_id = ?
+            """,
+            params,
+        )
+
+        return self.get(datasource_run_id)
+
+    def delete(self, datasource_run_id: int) -> int:
+        row = self._conn.execute(
+            """
+            DELETE FROM 
+                datasource_run 
+            WHERE 
+                datasource_run_id = ? 
+            RETURNING 
+                datasource_run_id
+            """,
+            [datasource_run_id],
+        ).fetchone()
+        return 1 if row else 0
+
+    def list(self) -> list[DatasourceRunDTO]:
+        rows = self._conn.execute(
+            """
+            SELECT
+              *
+            FROM 
+                datasource_run
+            ORDER BY
+                datasource_run_id DESC
+            """
+        ).fetchall()
+        return [self._row_to_dto(r) for r in rows]
+
+    @staticmethod
+    def _row_to_dto(row: Tuple) -> DatasourceRunDTO:
+        datasource_run_id, run_id, plugin, source_id, storage_directory, created_at, full_type = row
+        return DatasourceRunDTO(
+            datasource_run_id=int(datasource_run_id),
+            run_id=int(run_id),
+            plugin=str(plugin),
+            full_type=str(full_type),
+            source_id=str(source_id),
+            storage_directory=str(storage_directory),
+            created_at=created_at,
+        )

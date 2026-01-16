@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from io import BufferedReader
 from typing import Annotated, Any, Mapping, TypedDict
 
-from nemory.pluginlib.build_plugin import (
+from databao_context_engine.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildFilePlugin,
     BuildPlugin,
@@ -11,7 +11,7 @@ from nemory.pluginlib.build_plugin import (
     DefaultBuildDatasourcePlugin,
     EmbeddableChunk,
 )
-from nemory.pluginlib.config import (
+from databao_context_engine.pluginlib.config import (
     ConfigPropertyAnnotation,
     ConfigPropertyDefinition,
     CustomiseConfigProperties,

@@ -1,7 +1,7 @@
 import pytest
 
-from nemory.storage.models import ChunkDTO
-from nemory.storage.exceptions.exceptions import IntegrityError
+from databao_context_engine.storage.exceptions.exceptions import IntegrityError
+from databao_context_engine.storage.models import ChunkDTO
 from tests.utils.factories import make_datasource_run
 
 

@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -412,6 +412,73 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0a/6e/1c8331ddf91ca4730ab3086a0f1be19c65510a33b5a441cb334e7a2d2560/cryptography-46.0.3-cp38-abi3-win32.whl", hash = "sha256:6276eb85ef938dc035d59b87c8a7dc559a232f954962520137529d77b18ff1df", size = 3036695, upload-time = "2025-10-15T23:18:08.672Z" },
     { url = "https://files.pythonhosted.org/packages/90/45/b0d691df20633eff80955a0fc7695ff9051ffce8b69741444bd9ed7bd0db/cryptography-46.0.3-cp38-abi3-win_amd64.whl", hash = "sha256:416260257577718c05135c55958b674000baef9a1c7d9e8f306ec60d71db850f", size = 3501720, upload-time = "2025-10-15T23:18:10.632Z" },
     { url = "https://files.pythonhosted.org/packages/e8/cb/2da4cc83f5edb9c3257d09e1e7ab7b23f049c7962cae8d842bbef0a9cec9/cryptography-46.0.3-cp38-abi3-win_arm64.whl", hash = "sha256:d89c3468de4cdc4f08a57e214384d0471911a3830fcdaf7a8cc587e42a866372", size = 2918740, upload-time = "2025-10-15T23:18:12.277Z" },
+]
+
+[[package]]
+name = "databao-context-engine"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "asyncio" },
+    { name = "asyncpg" },
+    { name = "asyncpg-stubs" },
+    { name = "click" },
+    { name = "clickhouse-connect" },
+    { name = "duckdb" },
+    { name = "jinja2" },
+    { name = "mcp" },
+    { name = "mssql-python" },
+    { name = "pyathena" },
+    { name = "pydantic" },
+    { name = "pymysql" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "snowflake-connector-python" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-mock" },
+    { name = "pytest-unordered" },
+    { name = "ruff" },
+    { name = "testcontainers" },
+    { name = "types-pymysql" },
+    { name = "types-pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncio", specifier = ">=4.0.0" },
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "asyncpg-stubs", specifier = ">=0.31.1" },
+    { name = "click", specifier = ">=8.3.0" },
+    { name = "clickhouse-connect", specifier = ">=0.10.0" },
+    { name = "duckdb", specifier = ">=1.4.3" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "mcp", specifier = ">=1.23.3" },
+    { name = "mssql-python", specifier = ">=1.0.0" },
+    { name = "pyathena", specifier = ">=3.22.0" },
+    { name = "pydantic", specifier = ">=2.12.4" },
+    { name = "pymysql", specifier = ">=1.1.2" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "requests", specifier = ">=2.32.5" },
+    { name = "snowflake-connector-python", specifier = ">=4.1.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.18.2" },
+    { name = "pre-commit", specifier = ">=4.3.0" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-mock", specifier = ">=3.15.1" },
+    { name = "pytest-unordered", specifier = ">=0.7.0" },
+    { name = "ruff", specifier = ">=0.14.2" },
+    { name = "testcontainers", specifier = "==4.12.0" },
+    { name = "types-pymysql", specifier = ">=1.1.0.20250916" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20250915" },
 ]
 
 [[package]]
@@ -829,73 +896,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/6e/371856a3fb9d31ca8dac321cda606860fa4548858c0cc45d9d1d4ca2628b/mypy_extensions-1.1.0.tar.gz", hash = "sha256:52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558", size = 6343, upload-time = "2025-04-22T14:54:24.164Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl", hash = "sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505", size = 4963, upload-time = "2025-04-22T14:54:22.983Z" },
-]
-
-[[package]]
-name = "nemory"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "asyncio" },
-    { name = "asyncpg" },
-    { name = "asyncpg-stubs" },
-    { name = "click" },
-    { name = "clickhouse-connect" },
-    { name = "duckdb" },
-    { name = "jinja2" },
-    { name = "mcp" },
-    { name = "mssql-python" },
-    { name = "pyathena" },
-    { name = "pydantic" },
-    { name = "pymysql" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "snowflake-connector-python" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-mock" },
-    { name = "pytest-unordered" },
-    { name = "ruff" },
-    { name = "testcontainers" },
-    { name = "types-pymysql" },
-    { name = "types-pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "asyncio", specifier = ">=4.0.0" },
-    { name = "asyncpg", specifier = ">=0.31.0" },
-    { name = "asyncpg-stubs", specifier = ">=0.31.1" },
-    { name = "click", specifier = ">=8.3.0" },
-    { name = "clickhouse-connect", specifier = ">=0.10.0" },
-    { name = "duckdb", specifier = ">=1.4.3" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "mcp", specifier = ">=1.23.3" },
-    { name = "mssql-python", specifier = ">=1.0.0" },
-    { name = "pyathena", specifier = ">=3.22.0" },
-    { name = "pydantic", specifier = ">=2.12.4" },
-    { name = "pymysql", specifier = ">=1.1.2" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "requests", specifier = ">=2.32.5" },
-    { name = "snowflake-connector-python", specifier = ">=4.1.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.18.2" },
-    { name = "pre-commit", specifier = ">=4.3.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-mock", specifier = ">=3.15.1" },
-    { name = "pytest-unordered", specifier = ">=0.7.0" },
-    { name = "ruff", specifier = ">=0.14.2" },
-    { name = "testcontainers", specifier = "==4.12.0" },
-    { name = "types-pymysql", specifier = ">=1.1.0.20250916" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20250915" },
 ]
 
 [[package]]

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from nemory.datasource_config.datasource_context import DatasourceContext
-from nemory.project.layout import get_output_dir
+from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine.project.layout import get_output_dir
 from tests.utils.project_creation import with_run_dir
 
 

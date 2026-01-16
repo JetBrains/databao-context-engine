@@ -1,7 +1,7 @@
 import pytest
 
-from nemory.storage.models import EmbeddingDTO
-from nemory.storage.exceptions.exceptions import IntegrityError
+from databao_context_engine.storage.exceptions.exceptions import IntegrityError
+from databao_context_engine.storage.models import EmbeddingDTO
 from tests.utils.factories import make_chunk
 
 
