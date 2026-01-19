@@ -7,13 +7,13 @@ import yaml
 
 from databao_context_engine.build_sources.internal import build_runner
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult
+from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.project.types import PreparedFile
 from databao_context_engine.services.run_name_policy import RunNamePolicy
 
 
 def _result(name="files/demo.md", typ="files/md"):
-    return BuildExecutionResult(
+    return BuiltDatasourceContext(
         datasource_id=name,
         datasource_type=typ,
         context_built_at=datetime.now(),

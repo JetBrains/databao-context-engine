@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult
+from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.datasource_config.datasource_context import get_context_header_for_datasource
 from databao_context_engine.project.layout import ALL_RESULTS_FILE_NAME, get_output_dir
 from databao_context_engine.project.types import DatasourceId
@@ -19,7 +19,7 @@ def create_run_dir(project_dir: Path, run_name: str) -> Path:
     return run_dir
 
 
-def export_build_result(run_dir: Path, result: BuildExecutionResult):
+def export_build_result(run_dir: Path, result: BuiltDatasourceContext):
     datasource_id = DatasourceId.from_string_repr(result.datasource_id)
     export_file_path = run_dir.joinpath(datasource_id.relative_path_to_context_file())
 
@@ -32,7 +32,7 @@ def export_build_result(run_dir: Path, result: BuildExecutionResult):
     logger.info(f"Exported result to {export_file_path.resolve()}")
 
 
-def append_result_to_all_results(run_dir: Path, result: BuildExecutionResult):
+def append_result_to_all_results(run_dir: Path, result: BuiltDatasourceContext):
     path = run_dir.joinpath(ALL_RESULTS_FILE_NAME)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as export_file:

@@ -6,13 +6,13 @@ from types import SimpleNamespace
 import pytest
 
 from databao_context_engine.build_sources.internal.build_service import BuildService
-from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult
+from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
 from databao_context_engine.project.types import PreparedDatasource, PreparedFile
 
 
 def mk_result(*, name="files/foo.md", typ="files/md", result=None):
-    return BuildExecutionResult(
+    return BuiltDatasourceContext(
         datasource_id=name,
         datasource_type=typ,
         context_built_at=datetime.now(),
@@ -81,7 +81,7 @@ def test_process_prepared_source_no_chunks_skips_write_and_embed(svc, repos, chu
 
     ds_repo.create.assert_not_called()
     chunk_embed_svc.embed_chunks.assert_not_called()
-    assert isinstance(out, BuildExecutionResult)
+    assert isinstance(out, BuiltDatasourceContext)
 
 
 def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, chunk_embed_svc, mocker, tmp_path):
