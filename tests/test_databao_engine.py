@@ -1,9 +1,7 @@
 import pytest
 
-from databao_context_engine.databao_engine import DatabaoContextEngine
-from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine import DatabaoContextEngine, Datasource, DatasourceContext, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.types import DatasourceId, Datasource
 from tests.utils.project_creation import with_config_file, with_run_dir
 
 
