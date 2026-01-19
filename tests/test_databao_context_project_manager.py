@@ -3,12 +3,14 @@ from pathlib import Path
 
 import pytest
 
-from databao_context_engine.build_sources.internal.build_runner import BuildContextResult
-from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
+from databao_context_engine import (
+    BuildContextResult,
+    ChunkEmbeddingMode,
+    DatabaoContextProjectManager,
+    DatasourceId,
+)
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import get_output_dir
-from databao_context_engine.project.types import DatasourceId
-from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 from tests.utils.dummy_build_plugin import load_dummy_plugins
 from tests.utils.project_creation import with_config_file, with_raw_source_file
 

@@ -8,8 +8,7 @@ from uuid import uuid4
 import duckdb
 import pytest
 
-from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
-from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
+from databao_context_engine import DatabaoContextProjectManager, ChunkEmbeddingMode
 from databao_context_engine.storage.migrate import migrate
 
 
