@@ -1,16 +1,19 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, overload
 
 from databao_context_engine.build_sources.public.api import BuildContextResult, build_all_datasources
-from databao_context_engine.datasource_config.add_config import create_datasource_config_file
+from databao_context_engine.datasource_config.add_config import (
+    create_datasource_config_file,
+    get_datasource_id_for_config_file,
+)
 from databao_context_engine.datasource_config.validate_config import (
     CheckDatasourceConnectionResult,
     validate_datasource_config,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.datasource_discovery import DatasourceId
-from databao_context_engine.project.layout import ensure_project_dir
+from databao_context_engine.project.layout import ensure_datasource_config_file_doesnt_exist, ensure_project_dir
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 
@@ -42,7 +45,11 @@ class DatabaoContextProjectManager:
         )
 
     def create_datasource_config(
-        self, datasource_type: DatasourceType, datasource_name: str, config_content: dict[str, Any]
+        self,
+        datasource_type: DatasourceType,
+        datasource_name: str,
+        config_content: dict[str, Any],
+        overwrite_existing: bool = False,
     ) -> DatasourceConfigFile:
         # TODO: Before creating the datasource, validate the config content based on which plugin will be used
         config_file_path = create_datasource_config_file(
@@ -50,9 +57,36 @@ class DatabaoContextProjectManager:
             datasource_type=datasource_type,
             datasource_name=datasource_name,
             config_content=config_content,
+            overwrite_existing=overwrite_existing,
         )
 
         return DatasourceConfigFile(
             datasource_id=DatasourceId.from_datasource_config_file_path(config_file_path),
             config_file_path=config_file_path,
         )
+
+    @overload
+    def is_datasource_config_existing(self, *, datasource_type: DatasourceType, datasource_name: str) -> bool: ...
+    @overload
+    def is_datasource_config_existing(self, *, datasource_id: DatasourceId) -> bool: ...
+
+    def is_datasource_config_existing(
+        self,
+        *,
+        datasource_type: DatasourceType | None = None,
+        datasource_name: str | None = None,
+        datasource_id: DatasourceId | None = None,
+    ) -> bool:
+        if datasource_type is not None and datasource_name is not None:
+            datasource_id = get_datasource_id_for_config_file(datasource_type, datasource_name)
+        elif datasource_id is None:
+            raise ValueError("Either datasource_id or both datasource_type and datasource_name must be provided")
+
+        try:
+            ensure_datasource_config_file_doesnt_exist(
+                project_dir=self.project_dir,
+                datasource_id=datasource_id,
+            )
+            return False
+        except ValueError:
+            return True

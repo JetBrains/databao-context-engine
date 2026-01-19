@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.project_config import ProjectConfig
+from databao_context_engine.project.types import DatasourceId
 
 SOURCE_FOLDER_NAME = "src"
 OUTPUT_FOLDER_NAME = "output"
@@ -62,29 +62,22 @@ def read_config_file(project_dir: Path) -> ProjectConfig:
     return ProjectConfig.from_file(get_config_file(project_dir))
 
 
-def _get_datasource_config_file(project_dir: Path, config_folder_name: str, datasource_name: str):
-    src_dir = get_source_dir(project_dir)
-
-    return src_dir.joinpath(config_folder_name).joinpath(f"{datasource_name}.yaml")
-
-
-def ensure_datasource_config_file_doesnt_exist(
-    project_dir: Path, config_folder_name: str, datasource_name: str
-) -> Path:
-    config_file = _get_datasource_config_file(project_dir, config_folder_name, datasource_name)
+def ensure_datasource_config_file_doesnt_exist(project_dir: Path, datasource_id: DatasourceId) -> Path:
+    config_file = get_source_dir(project_dir).joinpath(datasource_id.relative_path_to_config_file())
 
     if config_file.is_file():
-        raise ValueError(f"A config file already exists for {datasource_name} in {config_folder_name}")
+        raise ValueError(f"A config file already exists for {str(datasource_id)}")
 
     return config_file
 
 
 def create_datasource_config_file(
-    project_dir: Path, datasource_type: DatasourceType, datasource_name: str, config_content: str
+    project_dir: Path, datasource_id: DatasourceId, config_content: str, overwrite_existing: bool
 ) -> Path:
-    config_file = ensure_datasource_config_file_doesnt_exist(
-        project_dir, datasource_type.config_folder, datasource_name
-    )
+    if not overwrite_existing:
+        ensure_datasource_config_file_doesnt_exist(project_dir, datasource_id)
+
+    config_file = get_source_dir(project_dir).joinpath(datasource_id.relative_path_to_config_file())
     config_file.parent.mkdir(parents=True, exist_ok=True)
 
     config_file.write_text(config_content)
