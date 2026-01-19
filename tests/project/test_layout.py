@@ -19,5 +19,7 @@ def test_read_deprecated_config(tmp_path: Path):
 
     assert is_project_dir_valid(project_dir) is True
 
-    assert validate_project_dir(project_dir).config_file.name == DEPRECATED_CONFIG_FILE_NAME
+    validated_project = validate_project_dir(project_dir)
+    assert validated_project is not None
+    assert validated_project.config_file.name == DEPRECATED_CONFIG_FILE_NAME
     assert ensure_project_dir(project_dir).config_file.name == DEPRECATED_CONFIG_FILE_NAME
