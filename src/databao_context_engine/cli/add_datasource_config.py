@@ -5,22 +5,21 @@ from typing import Any
 
 import click
 
+from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
 from databao_context_engine.datasource_config.add_config import (
-    create_datasource_config_file,
     get_config_file_structure_for_datasource_type,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
 from databao_context_engine.plugins.plugin_loader import get_all_available_plugin_types
-from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.project.layout import (
     ensure_datasource_config_file_doesnt_exist,
-    ensure_project_dir,
 )
+from databao_context_engine.project.types import DatasourceId
 
 
 def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
-    ensure_project_dir(project_dir)
+    project_manager = DatabaoContextProjectManager(project_dir=project_dir)
 
     click.echo(
         f"We will guide you to add a new datasource in your Databao Context Engine project, at {project_dir.resolve()}"
@@ -33,11 +32,11 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
 
     config_content = _ask_for_config_details(datasource_type)
 
-    config_file_path = create_datasource_config_file(project_dir, datasource_type, datasource_name, config_content)
+    config_file = project_manager.create_datasource_config(datasource_type, datasource_name, config_content)
 
-    click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file_path}")
+    click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file.config_file_path}")
 
-    return DatasourceId.from_datasource_config_file_path(config_file_path)
+    return config_file.datasource_id
 
 
 def _ask_for_datasource_type() -> DatasourceType:
