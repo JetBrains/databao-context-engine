@@ -27,7 +27,8 @@ class ValidationStatus(Enum):
 
 
 @dataclass(kw_only=True)
-class ValidationResult:
+class CheckDatasourceConnectionResult:
+    datasource_id: DatasourceId
     validation_status: ValidationStatus
     summary: str | None
     full_message: str | None = None
@@ -44,7 +45,7 @@ class ValidationResult:
 
 def validate_datasource_config(
     project_dir: Path, *, datasource_ids: list[DatasourceId] | None = None
-) -> dict[DatasourceId, ValidationResult]:
+) -> dict[DatasourceId, CheckDatasourceConnectionResult]:
     ensure_project_dir(project_dir)
 
     if datasource_ids:
@@ -62,7 +63,8 @@ def validate_datasource_config(
         try:
             prepared_source = prepare_source(discovered_datasource)
         except Exception as e:
-            result[result_key] = ValidationResult(
+            result[result_key] = CheckDatasourceConnectionResult(
+                datasource_id=result_key,
                 validation_status=ValidationStatus.INVALID,
                 summary="Failed to prepare source",
                 full_message=str(e),
@@ -76,8 +78,10 @@ def validate_datasource_config(
                 prepared_source.datasource_type.full_type,
                 prepared_source.path,
             )
-            result[result_key] = ValidationResult(
-                validation_status=ValidationStatus.INVALID, summary="No compatible plugin found"
+            result[result_key] = CheckDatasourceConnectionResult(
+                datasource_id=result_key,
+                validation_status=ValidationStatus.INVALID,
+                summary="No compatible plugin found",
             )
             continue
 
@@ -90,32 +94,37 @@ def validate_datasource_config(
                     datasource_name=prepared_source.datasource_name,
                 )
 
-                result[result_key] = ValidationResult(validation_status=ValidationStatus.VALID, summary=None)
+                result[result_key] = CheckDatasourceConnectionResult(
+                    datasource_id=result_key, validation_status=ValidationStatus.VALID, summary=None
+                )
             except Exception as e:
                 logger.debug(
                     f"Connection failed for {prepared_source.datasource_name} with error: {str(e)}",
                     exc_info=True,
                     stack_info=True,
                 )
-                result[result_key] = get_validation_result_from_error(e)
+                result[result_key] = get_validation_result_from_error(result_key, e)
 
     return result
 
 
-def get_validation_result_from_error(e: Exception):
+def get_validation_result_from_error(datasource_id: DatasourceId, e: Exception):
     if isinstance(e, ValidationError):
-        return ValidationResult(
+        return CheckDatasourceConnectionResult(
+            datasource_id=datasource_id,
             validation_status=ValidationStatus.INVALID,
             summary="Config file is invalid",
             full_message=str(e),
         )
     elif isinstance(e, NotImplementedError | NotSupportedError):
-        return ValidationResult(
+        return CheckDatasourceConnectionResult(
+            datasource_id=datasource_id,
             validation_status=ValidationStatus.UNKNOWN,
             summary="Plugin doesn't support validating its config",
         )
     else:
-        return ValidationResult(
+        return CheckDatasourceConnectionResult(
+            datasource_id=datasource_id,
             validation_status=ValidationStatus.INVALID,
             summary="Connection with the datasource can not be established",
             full_message=str(e),

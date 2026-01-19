@@ -5,7 +5,7 @@ from typing import Literal
 import click
 from click import Context
 
-from databao_context_engine.cli.datasources import add_datasource_config_cli, validate_datasource_config_cli
+from databao_context_engine.cli.datasources import add_datasource_config_cli, check_datasource_connection_cli
 from databao_context_engine.cli.info import echo_info
 from databao_context_engine.config.logging import configure_logging
 from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
@@ -134,7 +134,7 @@ def check_datasource_config(ctx: Context, datasources_config_files: list[str] | 
         else None
     )
 
-    validate_datasource_config_cli(ctx.obj["project_dir"], datasource_ids=datasource_ids)
+    check_datasource_connection_cli(ctx.obj["project_dir"], datasource_ids=datasource_ids)
 
 
 @dce.command()

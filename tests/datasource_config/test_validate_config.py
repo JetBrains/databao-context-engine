@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from databao_context_engine.datasource_config.validate_config import (
-    ValidationResult,
+    CheckDatasourceConnectionResult,
     ValidationStatus,
     validate_datasource_config,
 )
@@ -97,8 +97,10 @@ def test_validate_datasource_config_with_valid_connections(project_path: Path):
     result = validate_datasource_config(project_path)
 
     assert result == {
-        DatasourceId.from_string_repr("dummy/valid.yaml"): ValidationResult(
-            validation_status=ValidationStatus.VALID, summary=None
+        DatasourceId.from_string_repr("dummy/valid.yaml"): CheckDatasourceConnectionResult(
+            datasource_id=DatasourceId.from_string_repr("dummy/valid.yaml"),
+            validation_status=ValidationStatus.VALID,
+            summary=None,
         ),
     }
 
@@ -168,8 +170,10 @@ def test_validate_datasource_config_with_single_filter(project_path: Path):
     )
 
     assert result == {
-        DatasourceId.from_string_repr("dummy/valid.yaml"): ValidationResult(
-            validation_status=ValidationStatus.VALID, summary=None
+        DatasourceId.from_string_repr("dummy/valid.yaml"): CheckDatasourceConnectionResult(
+            datasource_id=DatasourceId.from_string_repr("dummy/valid.yaml"),
+            validation_status=ValidationStatus.VALID,
+            summary=None,
         ),
     }
 
