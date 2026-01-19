@@ -142,6 +142,7 @@ def _create_property(
         required=annotation.required if annotation else is_property_required,
         default_value=default_value,
         nested_properties=nested_properties if nested_properties else None,
+        secret=annotation.secret if annotation else False,
     )
 
 

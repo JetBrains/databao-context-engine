@@ -23,6 +23,7 @@ class ConfigPropertyDefinition:
     property_type: type | None = str
     default_value: str | None = None
     nested_properties: list["ConfigPropertyDefinition"] | None = None
+    secret: bool = False
 
 
 @dataclass(kw_only=True)
@@ -30,6 +31,7 @@ class ConfigPropertyAnnotation:
     required: bool = False
     default_value: str | None = None
     ignored_for_config_wizard: bool = False
+    secret: bool = False
 
 
 @runtime_checkable

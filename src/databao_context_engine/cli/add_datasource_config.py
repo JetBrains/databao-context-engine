@@ -110,6 +110,7 @@ def _build_config_content_from_properties(
                 type=str,
                 default=default_value,
                 show_default=default_value is not None and default_value != "",
+                hide_input=config_file_property.secret,
             )
 
             if property_value.strip():
