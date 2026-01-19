@@ -11,20 +11,19 @@ CONFIG_FILE_NAME = "nemory.ini"
 ALL_RESULTS_FILE_NAME = "all_results.yaml"
 
 
-def ensure_project_dir(project_dir: Path, should_be_initialised: bool = True) -> Path:
+def ensure_project_dir(project_dir: Path) -> Path:
     if not project_dir.is_dir():
         raise ValueError(f"The current project directory is not valid: {project_dir.resolve()}")
 
-    if should_be_initialised:
-        if not get_config_file(project_dir).is_file():
-            raise ValueError(
-                f"The current project directory has not been initialised. It should contain a config file. [project_dir: {project_dir.resolve()}]"
-            )
+    if not get_config_file(project_dir).is_file():
+        raise ValueError(
+            f"The current project directory has not been initialised. It should contain a config file. [project_dir: {project_dir.resolve()}]"
+        )
 
-        if not get_source_dir(project_dir).is_dir():
-            raise ValueError(
-                f"The current project directory has not been initialised. It should contain a src directory. [project_dir: {project_dir.resolve()}]"
-            )
+    if not get_source_dir(project_dir).is_dir():
+        raise ValueError(
+            f"The current project directory has not been initialised. It should contain a src directory. [project_dir: {project_dir.resolve()}]"
+        )
 
     return project_dir
 
