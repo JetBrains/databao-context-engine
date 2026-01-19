@@ -19,7 +19,7 @@ def create_run_dir(project_dir: Path, run_name: str) -> Path:
     return run_dir
 
 
-def export_build_result(run_dir: Path, result: BuiltDatasourceContext):
+def export_build_result(run_dir: Path, result: BuiltDatasourceContext) -> Path:
     datasource_id = DatasourceId.from_string_repr(result.datasource_id)
     export_file_path = run_dir.joinpath(datasource_id.relative_path_to_context_file())
 
@@ -30,6 +30,8 @@ def export_build_result(run_dir: Path, result: BuiltDatasourceContext):
         write_yaml_to_stream(data=result, file_stream=export_file)
 
     logger.info(f"Exported result to {export_file_path.resolve()}")
+
+    return export_file_path
 
 
 def append_result_to_all_results(run_dir: Path, result: BuiltDatasourceContext):

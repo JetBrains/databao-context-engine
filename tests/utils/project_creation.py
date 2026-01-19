@@ -5,7 +5,12 @@ from typing import Any
 from databao_context_engine.datasource_config.datasource_context import DatasourceContext
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.types import DatasourceId
-from databao_context_engine.project.layout import create_datasource_config_file, get_output_dir, read_config_file
+from databao_context_engine.project.layout import (
+    create_datasource_config_file,
+    get_output_dir,
+    read_config_file,
+    get_source_dir,
+)
 from databao_context_engine.serialisation.yaml import to_yaml_string
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.repositories.factories import create_run_repository
@@ -18,6 +23,20 @@ def with_config_file(project_dir: Path, full_type: str, datasource_name: str, co
         datasource_name=datasource_name,
         config_content=to_yaml_string(config_content),
     )
+
+
+def with_raw_source_file(project_dir: Path, file_name: str, datasource_type: DatasourceType, file_content: str) -> Path:
+    file_path = (
+        get_source_dir(project_dir)
+        .joinpath(datasource_type.main_type)
+        .joinpath(file_name)
+        .with_suffix(f".{datasource_type.subtype}")
+    )
+
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text(file_content)
+
+    return file_path
 
 
 def with_run_dir(

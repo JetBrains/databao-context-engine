@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from databao_context_engine.build_sources.internal.build_runner import build
+from databao_context_engine.build_sources.internal.build_runner import BuildContextResult, build
 from databao_context_engine.llm.factory import (
     create_ollama_description_provider,
     create_ollama_embedding_provider,
@@ -19,7 +19,7 @@ from databao_context_engine.system.properties import get_db_path
 logger = logging.getLogger(__name__)
 
 
-def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddingMode):
+def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddingMode) -> list[BuildContextResult]:
     """
     Public build entrypoint
     - Instantiates the build service
@@ -44,7 +44,7 @@ def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddin
             chunk_embedding_mode=chunk_embedding_mode,
         )
         dce_config = read_config_file(project_dir)
-        build(
+        return build(
             project_dir=project_dir,
             build_service=build_service,
             project_id=str(dce_config.project_id),
