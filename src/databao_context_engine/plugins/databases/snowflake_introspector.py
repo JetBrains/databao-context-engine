@@ -1,22 +1,35 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Annotated
 
 import snowflake.connector
-from pydantic import Field
+from pydantic import BaseModel, Field
 from snowflake.connector import DictCursor
 
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
+class SnowflakeConnectionProperties(BaseModel):
+    account: Annotated[str, ConfigPropertyAnnotation(required=True)]
+    warehouse: int | None = None
+    database: str | None = None
+    user: str | None = None
+    role: str | None = None
+    additional_properties: dict[str, Any] = {}
+
+    def to_snowflake_kwargs(self) -> dict[str, Any]:
+        kwargs = self.model_dump(exclude={"additional_properties"}, exclude_none=True)
+        kwargs.update(self.additional_properties)
+        return kwargs
+
+
 class SnowflakeConfigFile(BaseDatabaseConfigFile):
     type: str = Field(default="databases/snowflake")
-    connection: dict[str, Any] = Field(
-        description="Connection parameters for Snowflake. It can contain any of the keys supported by the Snowflake connection library"
-    )
+    connection: SnowflakeConnectionProperties
 
 
 class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
@@ -28,11 +41,9 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
     def _connect(self, file_config: SnowflakeConfigFile):
         connection = file_config.connection
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
         snowflake.connector.paramstyle = "qmark"
         return snowflake.connector.connect(
-            **connection,
+            **connection.to_snowflake_kwargs(),
         )
 
     def _connect_to_catalog(self, file_config: SnowflakeConfigFile, catalog: str):
