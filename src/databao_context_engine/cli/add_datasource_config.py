@@ -10,6 +10,7 @@ from databao_context_engine.datasource_config.add_config import (
     get_config_file_structure_for_datasource_type,
 )
 from databao_context_engine.datasource_config.utils import get_datasource_id_from_config_file_path
+from databao_context_engine.introspection.property_extract import get_property_list_from_type
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
 from databao_context_engine.plugins.plugin_loader import get_all_available_plugin_types
@@ -80,12 +81,35 @@ def _ask_for_config_details(datasource_type: DatasourceType) -> dict[str, Any]:
 
 
 def _build_config_content_from_properties(
-    properties: list[ConfigPropertyDefinition], properties_prefix: str
+    properties: list[ConfigPropertyDefinition], properties_prefix: str, in_union: bool = False
 ) -> dict[str, Any]:
     config_content: dict[str, Any] = {}
     for config_file_property in properties:
         if config_file_property.property_key in ["type", "name"] and len(properties_prefix) == 0:
             # We ignore type and name properties as they've already been filled
+            continue
+        if in_union and config_file_property.property_key == "type":
+            continue
+
+        if config_file_property.union_types:
+            choices = {t.__name__: t for t in config_file_property.union_types}
+
+            chosen = click.prompt(
+                f"{properties_prefix}{config_file_property.property_key}.type?",
+                type=click.Choice(sorted(choices.keys())),
+            )
+
+            chosen_type = choices[chosen]
+
+            nested_props = get_property_list_from_type(chosen_type)
+            nested_content = _build_config_content_from_properties(
+                nested_props, f"{properties_prefix}{config_file_property.property_key}.", in_union=True
+            )
+
+            config_content[config_file_property.property_key] = {
+                "type": chosen,
+                **nested_content,
+            }
             continue
 
         if config_file_property.nested_properties is not None and len(config_file_property.nested_properties) > 0:

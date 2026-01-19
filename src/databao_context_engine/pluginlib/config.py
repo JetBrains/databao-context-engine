@@ -22,6 +22,7 @@ class ConfigPropertyDefinition:
     required: bool
     property_type: type | None = str
     default_value: str | None = None
+    union_types: tuple[type, ...] | None = None
     nested_properties: list["ConfigPropertyDefinition"] | None = None
     secret: bool = False
 

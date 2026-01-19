@@ -125,24 +125,40 @@ def _create_property(
 
     actual_property_type = _read_actual_property_type(property_type)
 
-    try:
-        nested_properties = _get_property_list_from_type(parent_type=actual_property_type, is_root_type=False)
-    except TypeError:
-        return None
+    required = annotation.required if annotation else is_property_required
+    secret = annotation.secret if annotation else False
 
-    default_value = compute_default_value(
-        annotation=annotation,
-        property_default=property_default,
-        has_nested_properties=nested_properties is not None and len(nested_properties) > 0,
-    )
+    union_types: tuple[type, ...] | None = None
+    nested_properties: list[ConfigPropertyDefinition] | None = None
+    resolved_type: type | None = None
+    default_value: str | None = None
+
+    if isinstance(actual_property_type, tuple):
+        union_types = actual_property_type
+    else:
+        try:
+            nested_properties = _get_property_list_from_type(
+                parent_type=actual_property_type,
+                is_root_type=False,
+            )
+        except TypeError:
+            return None
+
+        resolved_type = actual_property_type if not nested_properties else None
+        default_value = compute_default_value(
+            annotation=annotation,
+            property_default=property_default,
+            has_nested_properties=nested_properties is not None and len(nested_properties) > 0,
+        )
 
     return ConfigPropertyDefinition(
         property_key=property_name,
-        property_type=actual_property_type if not nested_properties else None,
-        required=annotation.required if annotation else is_property_required,
+        property_type=resolved_type,
+        required=required,
         default_value=default_value,
-        nested_properties=nested_properties if nested_properties else None,
-        secret=annotation.secret if annotation else False,
+        nested_properties=nested_properties or None,
+        union_types=union_types,
+        secret=secret,
     )
 
 
@@ -156,19 +172,16 @@ def _get_config_property_annotation(property_type) -> ConfigPropertyAnnotation |
     return None
 
 
-def _read_actual_property_type(property_type: type) -> type:
+def _read_actual_property_type(property_type: type) -> type | tuple[type, ...]:
     property_type_origin = get_origin(property_type)
 
     if property_type_origin is Annotated:
         return property_type.__origin__  # type: ignore[attr-defined]
     elif property_type_origin is Union or property_type_origin is types.UnionType:
-        type_args = property_type.__args__  # type: ignore[attr-defined]
-        if len(type_args) == 2 and type(None) in type_args:
-            # Uses the actual type T when the Union is "T | None" (or "None | T")
-            return next(arg for arg in type_args if arg is not None)
-        else:
-            # Ignoring Union types when it is not used as type | None as we wouldn't which type to pick
-            return type(None)
+        args = tuple(arg for arg in property_type.__args__ if arg is not type(None))
+        if len(args) == 1:
+            return args[0]  # T | None
+        return args
 
     return property_type
 
