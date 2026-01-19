@@ -32,12 +32,11 @@ def get_command_info(project_dir: Path) -> DceInfo:
 
 def _get_project_info(project_dir: Path) -> DceProjectInfo:
     project_layout = validate_project_dir(project_dir)
-    is_project_initialised = project_layout is not None
 
     return DceProjectInfo(
         project_path=project_dir,
-        is_initialised=is_project_initialised,
-        project_id=project_layout.read_config_file().project_id if is_project_initialised else None,
+        is_initialised=project_layout is not None,
+        project_id=project_layout.read_config_file().project_id if project_layout is not None else None,
     )
 
 
