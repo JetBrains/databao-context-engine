@@ -4,13 +4,13 @@ from typing import Any
 
 from databao_context_engine.datasource_config.datasource_context import DatasourceContext
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.project.layout import (
+    ProjectLayout,
     create_datasource_config_file,
     get_output_dir,
-    read_config_file,
     get_source_dir,
 )
+from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.serialisation.yaml import to_yaml_string
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.repositories.factories import create_run_repository
@@ -40,12 +40,15 @@ def with_raw_source_file(project_dir: Path, file_name: str, datasource_type: Dat
 
 
 def with_run_dir(
-    db_path: Path, project_dir: Path, datasource_contexts: list[DatasourceContext], started_at: datetime | None = None
+    db_path: Path,
+    project_layout: ProjectLayout,
+    datasource_contexts: list[DatasourceContext],
+    started_at: datetime | None = None,
 ) -> Path:
-    output_dir = get_output_dir(project_dir)
+    output_dir = get_output_dir(project_layout.project_dir)
     output_dir.mkdir(exist_ok=True)
 
-    project_id = str(read_config_file(project_dir).project_id)
+    project_id = str(project_layout.read_config_file().project_id)
 
     with open_duckdb_connection(db_path) as conn:
         run_repo = create_run_repository(conn)

@@ -1,14 +1,14 @@
 from pathlib import Path
 
-from databao_context_engine.project.layout import get_output_dir, read_config_file
+from databao_context_engine.project.layout import ProjectLayout, get_output_dir
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.repositories.factories import create_run_repository
 from databao_context_engine.storage.repositories.run_repository import RunRepository
 from databao_context_engine.system.properties import get_db_path
 
 
-def resolve_run_name(*, project_dir: Path, run_name: str | None) -> str:
-    project_id = str(read_config_file(project_dir).project_id)
+def resolve_run_name(*, project_layout: ProjectLayout, run_name: str | None) -> str:
+    project_id = str(project_layout.read_config_file().project_id)
 
     with open_duckdb_connection(get_db_path()) as conn:
         run_repository = create_run_repository(conn)

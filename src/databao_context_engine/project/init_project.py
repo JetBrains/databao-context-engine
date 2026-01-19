@@ -2,7 +2,13 @@ import shutil
 from enum import Enum
 from pathlib import Path
 
-from databao_context_engine.project.layout import get_config_file, get_examples_dir, get_logs_dir, get_source_dir
+from databao_context_engine.project.layout import (
+    get_config_file,
+    get_deprecated_config_file,
+    get_examples_dir,
+    get_logs_dir,
+    get_source_dir,
+)
 from databao_context_engine.project.project_config import ProjectConfig
 
 
@@ -29,8 +35,9 @@ def init_project_dir(project_dir: Path) -> Path:
 
 
 class _ProjectCreator:
-    def __init__(self, project_dir: Path) -> None:
+    def __init__(self, project_dir: Path):
         self.project_dir = project_dir
+        self.deprecated_config_file = get_deprecated_config_file(project_dir)
         self.config_file = get_config_file(project_dir)
         self.src_dir = get_source_dir(project_dir)
         self.examples_dir = get_examples_dir(project_dir)
@@ -56,7 +63,7 @@ class _ProjectCreator:
                 reason=InitErrorReason.PROJECT_DIR_NOT_DIRECTORY,
             )
 
-        if self.config_file.is_file():
+        if self.config_file.is_file() or self.deprecated_config_file.is_file():
             raise InitProjectError(
                 message=f"Can't initialise a Databao Context Engine project in a folder that already contains a config file. [project_dir: {self.project_dir.resolve()}]",
                 reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED,

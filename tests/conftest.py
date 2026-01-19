@@ -7,6 +7,7 @@ import duckdb
 import pytest
 
 from databao_context_engine.project.init_project import init_project_dir
+from databao_context_engine.project.layout import ProjectLayout, get_config_file
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.persistence_service import PersistenceService
 from databao_context_engine.services.run_name_policy import RunNamePolicy
@@ -118,3 +119,8 @@ def project_path(tmp_path) -> Path:
     init_project_dir(project_dir=tmp_project_dir)
 
     return tmp_project_dir
+
+
+@pytest.fixture
+def project_layout(project_path) -> ProjectLayout:
+    return ProjectLayout(project_dir=project_path, config_file=get_config_file(project_path))
