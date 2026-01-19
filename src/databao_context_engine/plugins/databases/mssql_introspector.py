@@ -1,21 +1,36 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Mapping, Annotated
 
 from mssql_python import connect  # type: ignore[import-untyped]
-from pydantic import Field
+from pydantic import Field, BaseModel
 
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema, DatabaseTable
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
+class MSSQLConnectionProperties(BaseModel):
+    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
+    port: int | None = None
+    instance_name: str | None = None
+    database: str | None = None
+    user: str | None = None
+    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+    encrypt: bool | None = None
+    additional_properties: dict[str, Any] = {}
+
+    def to_mssql_kwargs(self) -> dict[str, Any]:
+        kwargs = self.model_dump(exclude={"additional_properties"}, exclude_none=True)
+        kwargs.update(self.additional_properties)
+        return kwargs
+
+
 class MSSQLConfigFile(BaseDatabaseConfigFile):
     type: str = Field(default="databases/mssql")
-    connection: dict[str, Any] = Field(
-        description="Connection parameters for the Microsoft Server SQL database. It can contain any of the keys supported by the Microsoft Server connection library"
-    )
+    connection: MSSQLConnectionProperties
 
 
 class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
@@ -42,22 +57,16 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     def _connect(self, file_config: MSSQLConfigFile):
         connection = file_config.connection
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
-
-        connection_string = self._create_connection_string_for_config(connection)
+        connection_string = self._create_connection_string_for_config(connection.to_mssql_kwargs())
         return connect(connection_string)
 
     def _connect_to_catalog(self, file_config: MSSQLConfigFile, catalog: str):
-        base_cfg = file_config.connection or {}
-        cfg_for_db: dict[str, Any] = dict(base_cfg)
-        cfg_for_db["database"] = catalog
-
-        connection_string = self._create_connection_string_for_config(cfg_for_db)
-        return connect(connection_string)
+        cfg = file_config.model_copy(deep=True)
+        cfg.connection.database = catalog
+        return self._connect(cfg)
 
     def _get_catalogs(self, connection, file_config: MSSQLConfigFile) -> list[str]:
-        database = file_config.connection.get("database")
+        database = file_config.connection.database
         if isinstance(database, str) and database:
             return [database]
 

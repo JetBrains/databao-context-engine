@@ -1,21 +1,34 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Annotated
 
 import clickhouse_connect
-from pydantic import Field
+from pydantic import BaseModel, Field
 
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
+class ClickhouseConnectionProperties(BaseModel):
+    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
+    port: int | None = None
+    database: str | None = None
+    user: str | None = None
+    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+    additional_properties: dict[str, Any] = {}
+
+    def to_clickhouse_kwargs(self) -> dict[str, Any]:
+        kwargs = self.model_dump(exclude={"additional_properties"}, exclude_none=True)
+        kwargs.update(self.additional_properties)
+        return kwargs
+
+
 class ClickhouseConfigFile(BaseDatabaseConfigFile):
     type: str = Field(default="databases/clickhouse")
-    connection: dict[str, Any] = Field(
-        description="Connection parameters for the Clickhouse database. It can contain any of the keys supported by the Clickhouse connection library (see https://clickhouse.com/docs/integrations/language-clients/python/driver-api#connection-arguments)"
-    )
+    connection: ClickhouseConnectionProperties
 
 
 class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
@@ -24,11 +37,9 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
     supports_catalogs = True
 
     def _connect(self, file_config: ClickhouseConfigFile):
-        connection = file_config.connection
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
-
-        return clickhouse_connect.get_client(**connection)
+        return clickhouse_connect.get_client(
+            **file_config.connection.to_clickhouse_kwargs(),
+        )
 
     def _connect_to_catalog(self, file_config: ClickhouseConfigFile, catalog: str):
         return self._connect(file_config)
