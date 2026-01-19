@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from databao_context_engine.datasource_config.add_config import get_datasource_id_for_config_file
 from databao_context_engine.datasource_config.datasource_context import DatasourceContext
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import (
@@ -16,12 +17,18 @@ from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.repositories.factories import create_run_repository
 
 
-def with_config_file(project_dir: Path, full_type: str, datasource_name: str, config_content: dict[str, Any]) -> Path:
+def with_config_file(
+    project_dir: Path,
+    full_type: str,
+    datasource_name: str,
+    config_content: dict[str, Any],
+    overwrite_existing: bool = False,
+) -> Path:
     return create_datasource_config_file(
-        project_dir=project_dir,
-        datasource_type=DatasourceType(full_type=full_type),
-        datasource_name=datasource_name,
-        config_content=to_yaml_string(config_content),
+        project_dir,
+        get_datasource_id_for_config_file(DatasourceType(full_type=full_type), datasource_name),
+        to_yaml_string(config_content),
+        overwrite_existing=overwrite_existing,
     )
 
 
