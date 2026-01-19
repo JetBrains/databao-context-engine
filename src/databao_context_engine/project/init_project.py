@@ -22,69 +22,74 @@ class InitProjectError(Exception):
 
 
 def init_project_dir(project_dir: Path) -> Path:
-    _ensure_can_init_project(project_dir=project_dir)
-
-    _create_default_src_dir(project_dir=project_dir)
-    _create_logs_dir(project_dir=project_dir)
-    _create_examples_dir(project_dir=project_dir)
-    _create_dce_config_file(project_dir=project_dir)
+    project_creator = _ProjectCreator(project_dir=project_dir)
+    project_creator.create()
 
     return project_dir
 
 
-def _ensure_can_init_project(project_dir: Path) -> bool:
-    if not project_dir.exists():
-        raise InitProjectError(
-            message=f"{project_dir.resolve()} does not exist", reason=InitErrorReason.PROJECT_DIR_DOESNT_EXIST
-        )
+class _ProjectCreator:
+    def __init__(self, project_dir: Path) -> None:
+        self.project_dir = project_dir
+        self.config_file = get_config_file(project_dir)
+        self.src_dir = get_source_dir(project_dir)
+        self.examples_dir = get_examples_dir(project_dir)
+        self.logs_dir = get_logs_dir(project_dir)
 
-    if not project_dir.is_dir():
-        raise InitProjectError(
-            message=f"{project_dir.resolve()} is not a directory", reason=InitErrorReason.PROJECT_DIR_NOT_DIRECTORY
-        )
+    def create(self):
+        self.ensure_can_init_project()
 
-    if get_config_file(project_dir).is_file():
-        raise InitProjectError(
-            message=f"Can't initialise a Databao Context Engine project in a folder that already contains a config file. [project_dir: {project_dir.resolve()}]",
-            reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED,
-        )
+        self.create_default_src_dir()
+        self.create_logs_dir()
+        self.create_examples_dir()
+        self.create_dce_config_file()
 
-    if get_source_dir(project_dir).is_dir():
-        raise InitProjectError(
-            message=f"Can't initialise a Databao Context Engine project in a folder that already contains a src directory. [project_dir: {project_dir.resolve()}]",
-            reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED,
-        )
+    def ensure_can_init_project(self) -> bool:
+        if not self.project_dir.exists():
+            raise InitProjectError(
+                message=f"{self.project_dir.resolve()} does not exist", reason=InitErrorReason.PROJECT_DIR_DOESNT_EXIST
+            )
 
-    if get_examples_dir(project_dir).is_file():
-        raise InitProjectError(
-            message=f"Can't initialise a Databao Context Engine project in a folder that already contains an examples dir. [project_dir: {project_dir.resolve()}]",
-            reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED,
-        )
+        if not self.project_dir.is_dir():
+            raise InitProjectError(
+                message=f"{self.project_dir.resolve()} is not a directory",
+                reason=InitErrorReason.PROJECT_DIR_NOT_DIRECTORY,
+            )
 
-    return True
+        if self.config_file.is_file():
+            raise InitProjectError(
+                message=f"Can't initialise a Databao Context Engine project in a folder that already contains a config file. [project_dir: {self.project_dir.resolve()}]",
+                reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED,
+            )
 
+        if self.src_dir.is_dir():
+            raise InitProjectError(
+                message=f"Can't initialise a Databao Context Engine project in a folder that already contains a src directory. [project_dir: {self.project_dir.resolve()}]",
+                reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED,
+            )
 
-def _create_default_src_dir(project_dir: Path) -> None:
-    src_dir = get_source_dir(project_dir=project_dir)
-    src_dir.mkdir(parents=False, exist_ok=False)
+        if self.examples_dir.is_file():
+            raise InitProjectError(
+                message=f"Can't initialise a Databao Context Engine project in a folder that already contains an examples dir. [project_dir: {self.project_dir.resolve()}]",
+                reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED,
+            )
 
-    src_dir.joinpath("databases").mkdir(parents=False, exist_ok=False)
-    src_dir.joinpath("files").mkdir(parents=False, exist_ok=False)
+        return True
 
+    def create_default_src_dir(self) -> None:
+        self.src_dir.mkdir(parents=False, exist_ok=False)
 
-def _create_logs_dir(project_dir: Path) -> None:
-    get_logs_dir(project_dir).mkdir(exist_ok=True)
+        self.src_dir.joinpath("databases").mkdir(parents=False, exist_ok=False)
+        self.src_dir.joinpath("files").mkdir(parents=False, exist_ok=False)
 
+    def create_logs_dir(self) -> None:
+        self.logs_dir.mkdir(exist_ok=True)
 
-def _create_examples_dir(project_dir: Path) -> None:
-    examples_dir = get_examples_dir(project_dir)
-    examples_to_copy = Path(__file__).parent.joinpath("resources").joinpath("examples")
+    def create_examples_dir(self) -> None:
+        examples_to_copy = Path(__file__).parent.joinpath("resources").joinpath("examples")
 
-    shutil.copytree(str(examples_to_copy), str(examples_dir))
+        shutil.copytree(str(examples_to_copy), str(self.examples_dir))
 
-
-def _create_dce_config_file(project_dir: Path) -> None:
-    config_file = get_config_file(project_dir=project_dir)
-    config_file.touch()
-
-    ProjectConfig().save(config_file)
+    def create_dce_config_file(self) -> None:
+        self.config_file.touch()
+        ProjectConfig().save(self.config_file)
