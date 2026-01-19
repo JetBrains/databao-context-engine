@@ -5,12 +5,12 @@ from typing import Any, Mapping, Sequence
 import duckdb
 import pytest
 
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.plugins.databases.databases_types import (
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
+from databao_context_engine.plugins.databases.databases_types import (
     DatabaseIntrospectionResult,
 )
-from nemory.plugins.duckdb_db_plugin import DuckDbPlugin
+from databao_context_engine.plugins.duckdb_db_plugin import DuckDbPlugin
 from tests.plugins.database_contracts import (
     CheckConstraintExists,
     ColumnIs,
@@ -144,7 +144,7 @@ def duckdb_with_demo_schema(temp_duckdb_file: Path):
 def test_duckdb_plugin_introspection_demo_schema(duckdb_with_demo_schema: Path):
     plugin = DuckDbPlugin()
     config = _create_config_file_from_container(duckdb_with_demo_schema)
-    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name")
     assert isinstance(result, DatabaseIntrospectionResult)
 
     assert_contract(
@@ -239,7 +239,7 @@ def test_duckdb_exact_samples(duckdb_with_demo_schema: Path):
     with seed_rows(duckdb_with_demo_schema, "custom.users", rows):
         plugin = DuckDbPlugin()
         config = _create_config_file_from_container(duckdb_with_demo_schema)
-        result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
+        result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name")
         assert isinstance(result, DatabaseIntrospectionResult)
         assert_contract(
             result,
@@ -263,7 +263,7 @@ def test_duckdb_samples_in_big(duckdb_with_demo_schema: Path):
     ]
     with seed_rows(duckdb_with_demo_schema, "custom.users", rows):
         config = _create_config_file_from_container(duckdb_with_demo_schema)
-        result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name").result
+        result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name")
         assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(

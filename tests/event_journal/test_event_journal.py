@@ -5,27 +5,25 @@ from importlib.metadata import version
 
 import duckdb
 
-from nemory.event_journal.writer import get_journal_file, log_event
+from databao_context_engine.event_journal.writer import get_journal_file, log_event
 
 
 def write_test_events():
     for i in range(10):
         log_event(
             project_id=uuid.uuid1(),
-            nemory_version=version("nemory"),
+            dce_version=version("databao_context_engine"),
             event_type="test_event",
             сustom_field=f"event-{i}",
         )
 
 
-def test_reading_journal_with_duckdb(nemory_path):
+def test_reading_journal_with_duckdb(dce_path):
     write_test_events()
     with duckdb.connect() as conn:
         json_events: list = [
             json.loads(e)
-            for (e,) in conn.execute(
-                f"SELECT json FROM read_json_objects('{get_journal_file(nemory_path)}')"
-            ).fetchall()
+            for (e,) in conn.execute(f"SELECT json FROM read_json_objects('{get_journal_file(dce_path)}')").fetchall()
         ]
         json_events.sort(key=lambda e: datetime.fromisoformat(e["timestamp"]))
         assert len(json_events) == 10

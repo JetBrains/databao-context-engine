@@ -1,10 +1,10 @@
 import pytest
 
-from nemory.plugins.plugin_loader import (
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.plugins.plugin_loader import (
     DuplicatePluginTypeError,
     merge_plugins,
 )
-from nemory.pluginlib.build_plugin import DatasourceType
 
 
 class P1:

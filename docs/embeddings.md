@@ -7,56 +7,55 @@ The following diagrams document the way we build context, create and query embed
 title: Build Context
 ---
 sequenceDiagram
-    participant NemoryBuildCommand
+    participant DceBuildCommand
     participant BuildPlugin
     participant FileSystem
     
-    NemoryBuildCommand->>NemoryBuildCommand: Discover installed plugins
-    NemoryBuildCommand->>FileSystem: Iterate on config files in the src directory
+    DceBuildCommand->>DceBuildCommand: Discover installed plugins
+    DceBuildCommand->>FileSystem: Iterate on config files in the src directory
     activate FileSystem
     deactivate FileSystem
-    FileSystem-->NemoryBuildCommand: 
+    FileSystem-->DceBuildCommand: 
     loop for each config file
-        NemoryBuildCommand->>FileSystem: Parse the yaml file and read the source type
+        DceBuildCommand->>FileSystem: Parse the yaml file and read the source type
         activate FileSystem
         deactivate FileSystem
-        FileSystem-->NemoryBuildCommand: 
-        NemoryBuildCommand->>NemoryBuildCommand: Find the plugin<br/>for that source type
-        NemoryBuildCommand->>BuildPlugin: Execute the plugin for that config
+        FileSystem-->DceBuildCommand: 
+        DceBuildCommand->>DceBuildCommand: Find the plugin<br/>for that source type
+        DceBuildCommand->>BuildPlugin: Execute the plugin for that config
         activate BuildPlugin
-        BuildPlugin-->NemoryBuildCommand: Returns the build result for that source
+        BuildPlugin-->DceBuildCommand: Returns the build result for that source
         deactivate BuildPlugin
-        NemoryBuildCommand->>FileSystem: Write the output in a YAML file
-        Note over NemoryBuildCommand,FileSystem: Next step: Build Embeddings<br/>for this data source
+        DceBuildCommand->>FileSystem: Write the output in a YAML file
+        Note over DceBuildCommand,FileSystem: Next step: Build Embeddings<br/>for this data source
     end
 ```
-
 
 ```mermaid
 ---
 title: Build Embeddings for a data source
 ---
 sequenceDiagram
-    participant NemoryBuildCommand
+    participant DceBuildCommand
     participant BuildPlugin
     participant OllamaService
     participant DuckDB
     
-    Note over NemoryBuildCommand,DuckDB: Input: Build result for a data source
-    NemoryBuildCommand->>BuildPlugin: Get the list of chunks for the build result
-    activate NemoryBuildCommand
+    Note over DceBuildCommand,DuckDB: Input: Build result for a data source
+    DceBuildCommand->>BuildPlugin: Get the list of chunks for the build result
+    activate DceBuildCommand
     activate BuildPlugin
     deactivate BuildPlugin
-    BuildPlugin-->NemoryBuildCommand: 
-    NemoryBuildCommand->>OllamaService: Embed each chunk (create the vector representation)
+    BuildPlugin-->DceBuildCommand: 
+    DceBuildCommand->>OllamaService: Embed each chunk (create the vector representation)
     activate OllamaService
     deactivate OllamaService
-    OllamaService-->NemoryBuildCommand:  
-    NemoryBuildCommand->>DuckDB: Insert the embedded chunks, with their content
+    OllamaService-->DceBuildCommand:  
+    DceBuildCommand->>DuckDB: Insert the embedded chunks, with their content
     activate DuckDB
     deactivate DuckDB
-    DuckDB-->NemoryBuildCommand: 
-    deactivate NemoryBuildCommand
+    DuckDB-->DceBuildCommand: 
+    deactivate DceBuildCommand
 ```
 
 ```mermaid
@@ -64,27 +63,27 @@ sequenceDiagram
 title: Query Embeddings for a prompt
 ---
 sequenceDiagram
-    participant NemoryBuildCommand
+    participant DceBuildCommand
     participant OllamaService
     participant DuckDB
     participant FileSystem
     
     opt If no run-id provided
-        NemoryBuildCommand->>FileSystem: Find latest run directory
+        DceBuildCommand->>FileSystem: Find latest run directory
         activate FileSystem
         deactivate FileSystem
-        FileSystem-->NemoryBuildCommand: 
+        FileSystem-->DceBuildCommand: 
     end
-    NemoryBuildCommand->>DuckDB: Connect to the DB of the run
+    DceBuildCommand->>DuckDB: Connect to the DB of the run
     activate DuckDB
-    NemoryBuildCommand->>OllamaService: Embed the query prompt (create the vector representation)
+    DceBuildCommand->>OllamaService: Embed the query prompt (create the vector representation)
     activate OllamaService
     deactivate OllamaService
-    OllamaService-->NemoryBuildCommand: 
-    NemoryBuildCommand->>DuckDB: Find nearest chunks to the prompt, with their content
-    DuckDB-->NemoryBuildCommand: 
+    OllamaService-->DceBuildCommand: 
+    DceBuildCommand->>DuckDB: Find nearest chunks to the prompt, with their content
+    DuckDB-->DceBuildCommand: 
     deactivate DuckDB
-    NemoryBuildCommand->>NemoryBuildCommand: Concatenate<br/>all chunk content
+    DceBuildCommand->>DceBuildCommand: Concatenate<br/>all chunk content
 ```
 
 ```mermaid

@@ -1,22 +1,22 @@
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from nemory.build_sources.internal.build_service import BuildService
-from nemory.pluginlib.build_plugin import BuildExecutionResult, EmbeddableChunk, DatasourceType
-from nemory.project.types import PreparedDatasource, PreparedFile
+from databao_context_engine.build_sources.internal.build_service import BuildService
+from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult
+from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
+from databao_context_engine.project.types import PreparedDatasource, PreparedFile
 
 
-def mk_result(*, name="foo", typ="files/md", result=None):
+def mk_result(*, name="files/foo.md", typ="files/md", result=None):
     return BuildExecutionResult(
-        name=name,
-        type=typ,
-        description=None,
-        version=None,
-        executed_at=datetime.now(),
-        result=result if result is not None else {"ok": True},
+        datasource_id=name,
+        datasource_type=typ,
+        context_built_at=datetime.now(),
+        context=result if result is not None else {"ok": True},
     )
 
 
@@ -51,9 +51,9 @@ def test_start_run_calls_repo_and_returns_dto(svc, repos):
     dto = SimpleNamespace(run_id=123)
     run_repo.create.return_value = dto
 
-    out = svc.start_run(project_id="proj-1", nemory_version="1.2.3")
+    out = svc.start_run(project_id="proj-1", dce_version="1.2.3")
 
-    run_repo.create.assert_called_once_with(project_id="proj-1", nemory_version="1.2.3")
+    run_repo.create.assert_called_once_with(project_id="proj-1", dce_version="1.2.3")
     assert out is dto
 
 
@@ -72,10 +72,10 @@ def test_process_prepared_source_no_chunks_skips_write_and_embed(svc, repos, chu
     run_repo, ds_repo = repos
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "one.md", full_type="files/md")
+    prepared = mk_prepared(tmp_path / "src" / "files" / "one.md", full_type="files/md")
 
-    mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=mk_result())
-    plugin.divide_result_into_chunks.return_value = []
+    mocker.patch("databao_context_engine.build_sources.internal.build_service.execute", return_value=mk_result())
+    plugin.divide_context_into_chunks.return_value = []
 
     out = svc.process_prepared_source(run_id=7, prepared_source=prepared, plugin=plugin)
 
@@ -88,13 +88,13 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     run_repo, ds_repo = repos
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "two.md", full_type="files/md")
+    prepared = mk_prepared(tmp_path / "src" / "files" / "two.md", full_type="files/md")
 
-    result = mk_result(name="two", typ="files/md")
-    mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=result)
+    result = mk_result(name="files/two.md", typ="files/md", result={"context": "ok"})
+    mocker.patch("databao_context_engine.build_sources.internal.build_service.execute", return_value=result)
 
     chunks = [EmbeddableChunk("a", "A"), EmbeddableChunk("b", "B")]
-    plugin.divide_result_into_chunks.return_value = chunks
+    plugin.divide_context_into_chunks.return_value = chunks
 
     ds_row = SimpleNamespace(datasource_run_id=555)
     ds_repo.create.return_value = ds_row
@@ -111,7 +111,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, repos, c
     chunk_embed_svc.embed_chunks.assert_called_once_with(
         datasource_run_id=555,
         chunks=chunks,
-        result=repr(result.result),
+        result=f"context: ok{os.linesep}",
     )
     assert out is result
 
@@ -122,10 +122,10 @@ def test_process_prepared_source_uses_path_stem_when_result_id_missing(svc, repo
     plugin.name = "pluggy"
     prepared = mk_prepared(tmp_path / "src" / "databases" / "pg.yaml", full_type="databases/postgres")
 
-    res = mk_result(name="pg", typ="databases/postgres")
-    mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=res)
+    res = mk_result(name="databases/pg.yaml", typ="databases/postgres")
+    mocker.patch("databao_context_engine.build_sources.internal.build_service.execute", return_value=res)
 
-    plugin.divide_result_into_chunks.return_value = [EmbeddableChunk("e", "E")]
+    plugin.divide_context_into_chunks.return_value = [EmbeddableChunk("e", "E")]
 
     ds_row = SimpleNamespace(datasource_run_id=777)
     ds_repo.create.return_value = ds_row
@@ -140,9 +140,11 @@ def test_process_prepared_source_execute_error_bubbles_and_no_writes(svc, repos,
     run_repo, ds_repo = repos
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "boom.md", full_type="files/md")
+    prepared = mk_prepared(tmp_path / "src" / "files" / "boom.md", full_type="files/md")
 
-    mocker.patch("nemory.build_sources.internal.build_service.execute", side_effect=RuntimeError("exec-fail"))
+    mocker.patch(
+        "databao_context_engine.build_sources.internal.build_service.execute", side_effect=RuntimeError("exec-fail")
+    )
 
     with pytest.raises(RuntimeError):
         svc.process_prepared_source(run_id=1, prepared_source=prepared, plugin=plugin)
@@ -155,10 +157,10 @@ def test_process_prepared_source_embed_error_bubbles_after_row_creation(svc, rep
     run_repo, ds_repo = repos
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "md" / "x.md", full_type="files/md")
+    prepared = mk_prepared(tmp_path / "src" / "files" / "x.md", full_type="files/md")
 
-    mocker.patch("nemory.build_sources.internal.build_service.execute", return_value=mk_result())
-    plugin.divide_result_into_chunks.return_value = [EmbeddableChunk("x", "X")]
+    mocker.patch("databao_context_engine.build_sources.internal.build_service.execute", return_value=mk_result())
+    plugin.divide_context_into_chunks.return_value = [EmbeddableChunk("x", "X")]
 
     ds_repo.create.return_value = SimpleNamespace(datasource_run_id=42)
     chunk_embed_svc.embed_chunks.side_effect = RuntimeError("embed-fail")

@@ -6,35 +6,37 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from nemory.project.init_project import init_project_dir
-from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
-from nemory.services.persistence_service import PersistenceService
-from nemory.services.run_name_policy import RunNamePolicy
-from nemory.services.table_name_policy import TableNamePolicy
-from nemory.storage.migrate import migrate
-from nemory.storage.repositories.chunk_repository import ChunkRepository
-from nemory.storage.repositories.datasource_run_repository import DatasourceRunRepository
-from nemory.storage.repositories.embedding_model_registry_repository import EmbeddingModelRegistryRepository
-from nemory.storage.repositories.embedding_repository import EmbeddingRepository
-from nemory.storage.repositories.run_repository import RunRepository
-from nemory.system.properties import get_db_path
+from databao_context_engine.project.init_project import init_project_dir
+from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
+from databao_context_engine.services.persistence_service import PersistenceService
+from databao_context_engine.services.run_name_policy import RunNamePolicy
+from databao_context_engine.services.table_name_policy import TableNamePolicy
+from databao_context_engine.storage.migrate import migrate
+from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
+from databao_context_engine.storage.repositories.datasource_run_repository import DatasourceRunRepository
+from databao_context_engine.storage.repositories.embedding_model_registry_repository import (
+    EmbeddingModelRegistryRepository,
+)
+from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
+from databao_context_engine.storage.repositories.run_repository import RunRepository
+from databao_context_engine.system.properties import get_db_path
 
 
 @pytest.fixture(scope="session")
 def _template_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    template = tmp_path_factory.mktemp("db_template") / "nemory_template.duckdb"
+    template = tmp_path_factory.mktemp("db_template") / "dce_template.duckdb"
     migrate(template)
     return template
 
 
 @pytest.fixture()
-def nemory_path(mocker, tmp_path: Path):
-    mocker.patch("nemory.system.properties._nemory_path", new=tmp_path)
+def dce_path(mocker, tmp_path: Path):
+    mocker.patch("databao_context_engine.system.properties._dce_path", new=tmp_path)
     yield tmp_path
 
 
 @pytest.fixture
-def db_path(nemory_path: Path) -> Path:
+def db_path(dce_path: Path) -> Path:
     return get_db_path()
 
 

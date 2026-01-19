@@ -12,21 +12,19 @@ If you are going to push to the repository, please make sure to install git pre-
 
 # How to run?
 
-The project doesn't do much yet, it only exposes a nemory CLI, that has an info subcommand.
-
 You can run it with:
 
 ```bash
-  uv run nemory info
+  uv run dce info
 ```
 
 Not providing the `info` subcommand or using the `--help` flag will show the help screen for the command.
 
-## Using the nemory command directly
+## Using the dce command directly
 
-To be able to use the `nemory` command directly (without using `uv run` or `python`) there are two options.
+To be able to use the `dce` command directly (without using `uv run` or `python`) there are two options.
 
-### Installing nemory locally
+### Installing dce locally
 
 For that one needs to:
 
@@ -42,11 +40,11 @@ For that one needs to:
   uv tool install -e .
 ```
 
-This second step will install the `nemory` script on your machine and add it into your path.
+This second step will install the `dce` script on your machine and add it into your path.
 
-### Create nemory alias using nix
+### Create dce alias using nix
 
-This method will simply create a new shell environment with `nemory` alias. For that one needs to install `nix` package
+This method will simply create a new shell environment with `dce` alias. For that one needs to install `nix` package
 manager (https://nixos.org/download/). After that one could simply run in the project root
 
 ```bash
@@ -58,13 +56,13 @@ which is a short version of `$ nix-shell shell.nix`.
 Alternatively, one could specify the path to the project repository
 
 ```bash
-$ nix-shell {path_to_nemory_repository}
+$ nix-shell {path_to_dce_repository}
 ```
 
 After that, you can then directly use:
 
 ```bash
-  nemory --help
+  dce --help
 ```
 
 Note: when we actually release our built Python package, users that don't use `uv` will still be able to install the CLI
@@ -92,21 +90,24 @@ You can run the tests with:
 
 (there is currently one test succeeding and one test failing in the project)
 
-
 # Generating JSON Schemas for our plugin's config files
 
-To be able to build a datasource, each plugin requires a yaml config file that describes how to connect to the datasource, 
+To be able to build a datasource, each plugin requires a yaml config file that describes how to connect to the
+datasource,
 as well as other information needed to customise the plugin.
 
-To document what each config file should look like, we can generate a JSON schema describing the fields allowed in that file.
+To document what each config file should look like, we can generate a JSON schema describing the fields allowed in that
+file.
 
 You can generate all JSON schemas for all plugins by running:
+
 ```bash
   uv run generate_configs_schemas
 ```
 
 Some options can be provided to the command to choose which plugins to include or exclude from the generation.
 To see the options available, you can refer to the help:
+
 ```bash
   uv run generate_configs_schemas --help
 ```

@@ -7,7 +7,7 @@ from typing import Any, TypedDict
 
 from pydantic import BaseModel
 
-from nemory.serialisation.yaml import to_yaml_string, write_yaml_to_stream
+from databao_context_engine.serialisation.yaml import to_yaml_string, write_yaml_to_stream
 
 
 class PydanticClass(BaseModel):

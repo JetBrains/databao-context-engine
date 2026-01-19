@@ -3,7 +3,7 @@ import os
 import pytest
 import yaml
 
-from nemory.templating.renderer import UnknownEnvVarTemplateError, render_template
+from databao_context_engine.templating.renderer import UnknownEnvVarTemplateError, render_template
 
 
 def test_render_template__plain_yaml():

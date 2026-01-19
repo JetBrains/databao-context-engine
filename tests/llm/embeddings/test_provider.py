@@ -2,8 +2,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from nemory.llm.embeddings.ollama import OllamaEmbeddingProvider
-from nemory.llm.service import OllamaService
+from databao_context_engine.llm.embeddings.ollama import OllamaEmbeddingProvider
+from databao_context_engine.llm.service import OllamaService
 
 
 def test_embed_calls_service_and_returns_vec():

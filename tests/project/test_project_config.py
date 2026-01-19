@@ -1,7 +1,7 @@
 import uuid
 from pathlib import Path
 
-from nemory.project.project_config import ProjectConfig
+from databao_context_engine.project.project_config import ProjectConfig
 
 
 def test_project_config(tmp_path: Path) -> None:

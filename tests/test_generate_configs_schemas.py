@@ -1,13 +1,13 @@
 import pytest
 
-from nemory.plugins.plugin_loader import PluginList
-from nemory.generate_configs_schemas import _generate_json_schema_output_for_plugins
+from databao_context_engine.generate_configs_schemas import _generate_json_schema_output_for_plugins
+from databao_context_engine.plugins.plugin_loader import PluginList
 from tests.utils.dummy_build_plugin import (
     AdditionalDummyPlugin,
     DummyBuildDatasourcePlugin,
     DummyDefaultDatasourcePlugin,
-    load_dummy_plugins,
     DummyPluginWithNoConfigType,
+    load_dummy_plugins,
 )
 
 
@@ -15,7 +15,7 @@ def _patch_load_plugins(mocker, return_value: PluginList | None = None):
     if return_value is None:
         return_value = load_dummy_plugins(exclude_file_plugins=True)
 
-    mocker.patch("nemory.generate_configs_schemas.load_plugins", return_value=return_value)
+    mocker.patch("databao_context_engine.generate_configs_schemas.load_plugins", return_value=return_value)
 
 
 def test_generate_configs_schemas__all(mocker):

@@ -8,9 +8,9 @@ from uuid import uuid4
 import duckdb
 import pytest
 
-from nemory.build_sources.public.api import build_all_datasources
-from nemory.services.chunk_embedding_service import ChunkEmbeddingMode
-from nemory.storage.migrate import migrate
+from databao_context_engine.build_sources.public.api import build_all_datasources
+from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
+from databao_context_engine.storage.migrate import migrate
 
 
 @dataclass(frozen=True)
@@ -53,16 +53,16 @@ def project_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def db_path(tmp_path: Path) -> Path:
-    return tmp_path / "nemory_test.duckdb"
+    return tmp_path / "dce_test.duckdb"
 
 
 @pytest.fixture(autouse=True)
 def _force_test_db(monkeypatch, db_path: Path):
-    import nemory.build_sources.public.api as api_mod
-    import nemory.build_sources.internal.build_wiring as wiring_mod
+    import databao_context_engine.build_sources.internal.build_wiring as wiring_mod
+    import databao_context_engine.build_sources.public.api as api_mod
 
     monkeypatch.setattr(
-        "nemory.system.properties.get_db_path",
+        "databao_context_engine.system.properties.get_db_path",
         lambda *a, **k: db_path,
         raising=False,
     )
@@ -94,7 +94,7 @@ def fake_provider() -> _FakeProvider:
 @pytest.fixture
 def use_fake_provider(mocker, fake_provider):
     return mocker.patch(
-        "nemory.build_sources.internal.build_wiring.create_ollama_embedding_provider",
+        "databao_context_engine.build_sources.internal.build_wiring.create_ollama_embedding_provider",
         return_value=fake_provider,
     )
 
@@ -123,7 +123,7 @@ def test_e2e_build_with_fake_provider(
 def test_one_source_fails_but_others_succeed(
     mocker, project_dir, conn, run_repo, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
 ):
-    import nemory.build_sources.internal.plugin_execution as execmod
+    import databao_context_engine.build_sources.internal.plugin_execution as execmod
 
     original_execute = execmod.execute
 

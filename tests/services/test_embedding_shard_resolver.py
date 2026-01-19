@@ -1,7 +1,7 @@
 import pytest
 
-from nemory.services.embedding_shard_resolver import EmbeddingShardResolver
-from nemory.services.table_name_policy import TableNamePolicy
+from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
+from databao_context_engine.services.table_name_policy import TableNamePolicy
 
 
 def test_resolve_existing_returns_table_name_and_dimension(conn, registry_repo):

@@ -1,8 +1,10 @@
-import pytest
 import duckdb
+import pytest
 
-from nemory.storage.repositories.embedding_model_registry_repository import EmbeddingModelRegistryRepository
-from nemory.services.table_name_policy import TableNamePolicy
+from databao_context_engine.services.table_name_policy import TableNamePolicy
+from databao_context_engine.storage.repositories.embedding_model_registry_repository import (
+    EmbeddingModelRegistryRepository,
+)
 
 
 @pytest.fixture

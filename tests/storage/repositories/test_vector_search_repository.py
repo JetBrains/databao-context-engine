@@ -1,6 +1,6 @@
 import pytest
 
-from nemory.storage.repositories.vector_search_repository import VectorSearchRepository
+from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchRepository
 from tests.utils.factories import make_chunk, make_datasource_run, make_embedding
 
 DIM = 768

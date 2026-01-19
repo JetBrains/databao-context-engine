@@ -1,9 +1,9 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from nemory.pluginlib.build_plugin import DatasourceType
-from nemory.retrieve_embeddings.internal.retrieve_runner import retrieve
-from nemory.storage.repositories.vector_search_repository import VectorSearchResult
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.retrieve_embeddings.internal.retrieve_runner import retrieve
+from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
 
 
 def test_retrieve_without_export(capsys):
@@ -37,7 +37,9 @@ def test_retrieve_without_export(capsys):
     project_dir = Path("/project")
     run_name = "run-1"
 
-    with patch("nemory.retrieve_embeddings.internal.retrieve_runner.export_retrieve_results") as mock_export:
+    with patch(
+        "databao_context_engine.retrieve_embeddings.internal.retrieve_runner.export_retrieve_results"
+    ) as mock_export:
         result = retrieve(
             project_dir=project_dir,
             retrieve_service=service,
@@ -79,8 +81,10 @@ def test_retrieve_file_with_export(tmp_path, capsys):
     run_name = "run-123"
 
     with (
-        patch("nemory.retrieve_embeddings.internal.retrieve_runner.get_run_dir") as mock_get_run_dir,
-        patch("nemory.retrieve_embeddings.internal.retrieve_runner.export_retrieve_results") as mock_export,
+        patch("databao_context_engine.retrieve_embeddings.internal.retrieve_runner.get_run_dir") as mock_get_run_dir,
+        patch(
+            "databao_context_engine.retrieve_embeddings.internal.retrieve_runner.export_retrieve_results"
+        ) as mock_export,
     ):
         export_dir = tmp_path / "out"
         mock_get_run_dir.return_value = export_dir

@@ -1,5 +1,5 @@
 [project]
-name = "nemory"
+name = "databao_context_engine"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -12,7 +12,6 @@ dependencies = [
     "pymysql>=1.1.2",
     "clickhouse-connect>=0.10.0",
     "mcp>=1.23.3",
-    #    "pyodbc>=5.3.0",
     "pyathena>=3.22.0",
     "snowflake-connector-python>=4.1.0",
     "mssql-python>=1.0.0",
@@ -21,6 +20,8 @@ dependencies = [
     "asyncpg>=0.31.0",
     "asyncio>=4.0.0",
     "asyncpg-stubs>=0.31.1",
+    # indirect dependency. Added only to maintain a specific version (without security vulnerabilities)
+    "urllib3>=2.6.3",
 ]
 
 [build-system]
@@ -41,8 +42,8 @@ dev = [
 ]
 
 [project.scripts]
-nemory = "nemory.main:main"
-generate_configs_schemas = "nemory.generate_configs_schemas:main"
+dce = "databao_context_engine.main:main"
+generate_configs_schemas = "databao_context_engine.generate_configs_schemas:main"
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]

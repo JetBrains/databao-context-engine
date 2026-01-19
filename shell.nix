@@ -6,6 +6,6 @@ let
 in
 pkgs.mkShell {
   shellHook = ''
-    alias nemory='uv --project ${projectDir} run nemory'
+    alias dce='uv --project ${projectDir} run dce'
   '';
 }

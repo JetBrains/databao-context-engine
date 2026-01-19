@@ -1,9 +1,9 @@
-from nemory.plugins.databases.introspection_scope import (
+from databao_context_engine.plugins.databases.introspection_scope import (
     IntrospectionScope,
     ScopeExcludeRule,
     ScopeIncludeRule,
 )
-from nemory.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
+from databao_context_engine.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
 
 
 def test_no_scope_keeps_all_except_ignored():

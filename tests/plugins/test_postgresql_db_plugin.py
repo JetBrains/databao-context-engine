@@ -1,6 +1,5 @@
 import asyncio
 import contextlib
-from datetime import datetime
 from typing import Any, Mapping, Sequence
 
 import asyncpg
@@ -8,10 +7,13 @@ import pytest
 from pytest_unordered import unordered
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
-from nemory.pluginlib.build_plugin import BuildExecutionResult, DatasourceType, EmbeddableChunk
-from nemory.pluginlib.plugin_utils import execute_datasource_plugin
-from nemory.plugins.databases.database_chunker import DatabaseColumnChunkContent, DatabaseTableChunkContent
-from nemory.plugins.databases.databases_types import (
+from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
+from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
+from databao_context_engine.plugins.databases.database_chunker import (
+    DatabaseColumnChunkContent,
+    DatabaseTableChunkContent,
+)
+from databao_context_engine.plugins.databases.databases_types import (
     DatabaseCatalog,
     DatabaseColumn,
     DatabaseIntrospectionResult,
@@ -19,7 +21,7 @@ from nemory.plugins.databases.databases_types import (
     DatabaseSchema,
     DatabaseTable,
 )
-from nemory.plugins.postgresql_db_plugin import PostgresqlDbPlugin
+from databao_context_engine.plugins.postgresql_db_plugin import PostgresqlDbPlugin
 from tests.plugins.database_contracts import (
     CheckConstraintExists,
     ColumnIs,
@@ -143,13 +145,13 @@ def test_postgres_exact_samples(create_db_schema, postgres_container: PostgresCo
         ):
             plugin = PostgresqlDbPlugin()
             config_file = _create_config_file_from_container(postgres_container)
-            execution_result = execute_datasource_plugin(
+            result = execute_datasource_plugin(
                 plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
             )
-            assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+            assert isinstance(result, DatabaseIntrospectionResult)
 
             assert_contract(
-                execution_result.result,
+                result,
                 [
                     TableExists("test", schema_name, "products"),
                     SamplesEqual("test", schema_name, "products", rows=rows),
@@ -177,13 +179,13 @@ def test_postgres_samples_in_big(create_db_schema, postgres_container: PostgresC
             cleanup_tables=cleanup,
         ):
             config_file = _create_config_file_from_container(postgres_container)
-            execution_result = execute_datasource_plugin(
+            result = execute_datasource_plugin(
                 plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
             )
-            assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+            assert isinstance(result, DatabaseIntrospectionResult)
 
             assert_contract(
-                execution_result.result,
+                result,
                 [
                     TableExists("test", schema_name, "products"),
                     SamplesCountIs("test", schema_name, "products", count=limit),
@@ -211,12 +213,12 @@ def test_postgres_partitions(create_db_schema, postgres_container):
 
         config_file = _create_config_file_from_container(postgres_container)
 
-        execution_result = execute_datasource_plugin(
+        result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
 
         assert (
-            execution_result.result
+            result
             == DatabaseIntrospectionResult(
                 [
                     DatabaseCatalog(
@@ -255,42 +257,35 @@ def test_postgres_partitions(create_db_schema, postgres_container):
 def test_postgres_plugin_divide_into_chunks():
     plugin = PostgresqlDbPlugin()
 
-    input = BuildExecutionResult(
-        name="name",
-        type="databases/postgres",
-        description=None,
-        version=None,
-        executed_at=datetime.now(),
-        result=DatabaseIntrospectionResult(
-            catalogs=[
-                DatabaseCatalog(
-                    name="test",
-                    schemas=[
-                        DatabaseSchema(
-                            name="public",
-                            tables=[],
-                        ),
-                        DatabaseSchema(
-                            name="custom",
-                            tables=[
-                                DatabaseTable(
-                                    name="test",
-                                    description="best table",
-                                    columns=[
-                                        DatabaseColumn(name="id", type="int4", nullable=False),
-                                        DatabaseColumn(name="name", type="varchar", nullable=True),
-                                    ],
-                                    samples=[],
-                                )
-                            ],
-                        ),
-                    ],
-                )
-            ]
-        ),
+    input = DatabaseIntrospectionResult(
+        catalogs=[
+            DatabaseCatalog(
+                name="test",
+                schemas=[
+                    DatabaseSchema(
+                        name="public",
+                        tables=[],
+                    ),
+                    DatabaseSchema(
+                        name="custom",
+                        tables=[
+                            DatabaseTable(
+                                name="test",
+                                description="best table",
+                                columns=[
+                                    DatabaseColumn(name="id", type="int4", nullable=False),
+                                    DatabaseColumn(name="name", type="varchar", nullable=True),
+                                ],
+                                samples=[],
+                            )
+                        ],
+                    ),
+                ],
+            )
+        ]
     )
 
-    chunks = plugin.divide_result_into_chunks(input)
+    chunks = plugin.divide_context_into_chunks(input)
 
     assert len(chunks) == 3
     assert chunks == unordered(
@@ -468,13 +463,13 @@ def test_postgres_introspection_contract(create_db_schema, postgres_container: P
 
         plugin = PostgresqlDbPlugin()
         config_file = _create_config_file_from_container(postgres_container)
-        execution_result = execute_datasource_plugin(
+        result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
-        assert isinstance(execution_result.result, DatabaseIntrospectionResult)
+        assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(
-            execution_result.result,
+            result,
             [
                 TableExists("test", schema_name, "users"),
                 TableKindIs("test", schema_name, "users", "table"),
