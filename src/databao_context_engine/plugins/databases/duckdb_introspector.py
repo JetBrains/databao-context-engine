@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseTable
-from databao_context_engine.plugins.databases.table_builder import TableBuilder
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
+from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
 class DuckDBConfigFile(BaseDatabaseConfigFile):
@@ -42,16 +42,18 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(?)"
         return SQLQuery(sql, (catalogs,))
 
-    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
+    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if not schemas:
+            return []
+
         comps = self._component_queries()
         results: dict[str, list[dict]] = {cq: [] for cq in comps}
 
-        for cq, template_sql in comps.items():
-            sql = template_sql.replace("{SCHEMA}", self._quote_literal(schema))
-            rows = self._fetchall_dicts(connection, sql, None)
-            results[cq] = rows
+        for cq, sql in comps.items():
+            results[cq] = self._fetchall_dicts(connection, sql, (schemas,))
 
-        return TableBuilder.build_from_components(
+        return IntrospectionModelBuilder.build_schemas_from_components(
+            schemas=schemas,
             rels=results.get("relations", []),
             cols=results.get("columns", []),
             pk_cols=results.get("pk", []),
@@ -75,6 +77,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     def _sql_relations(self) -> str:
         return r"""
             SELECT
+                table_schema AS schema_name,
                 table_name,
                 CASE table_type
                     WHEN 'BASE TABLE' THEN 'table'
@@ -86,7 +89,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             FROM 
                 information_schema.tables
             WHERE 
-                table_schema = {SCHEMA}
+                table_schema = ANY(?)
             ORDER BY 
                 table_name; 
         """
@@ -94,6 +97,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     def _sql_columns(self) -> str:
         return r"""
             SELECT
+                c.table_schema AS schema_name,
                 c.table_name,
                 c.column_name,
                 c.ordinal_position AS ordinal_position,
@@ -108,8 +112,9 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             FROM 
                 information_schema.columns c
             WHERE 
-                c.table_schema = {SCHEMA}
+                c.table_schema = ANY(?)
             ORDER BY 
+                c.table_schema,
                 c.table_name, 
                 c.ordinal_position; 
         """
@@ -122,11 +127,12 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 FROM 
                     duckdb_constraints()
                 WHERE 
-                    schema_name = {SCHEMA}
+                    schema_name = ANY(?)
                     AND constraint_type = 'PRIMARY KEY'
             ),
             cols AS (
                 SELECT
+                    d.schema_name,
                     d.table_name,
                     d.constraint_name,
                     r.pos AS position,
@@ -136,6 +142,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                     range(1, length(d.constraint_column_names) + 1) AS r(pos)
             )
             SELECT
+                schema_name,
                 table_name,
                 constraint_name,
                 position,
@@ -143,6 +150,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             FROM 
                 cols
             ORDER BY
+                schema_name,
                 table_name, 
                 constraint_name, 
                 position;
@@ -156,11 +164,12 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 FROM 
                     duckdb_constraints()
                 WHERE 
-                    schema_name = {SCHEMA}
+                    schema_name = ANY(?)
                     AND constraint_type = 'UNIQUE'
             ),
             cols AS (
                 SELECT
+                    d.schema_name,
                     d.table_name,
                     d.constraint_name,
                     r.pos AS position,
@@ -170,6 +179,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                     range(1, length(d.constraint_column_names) + 1) AS r(pos)
             )
             SELECT
+                schema_name,
                 table_name,
                 constraint_name,
                 position,
@@ -177,6 +187,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             FROM 
                 cols
             ORDER BY
+                schema_name,
                 table_name, 
                 constraint_name, 
                 position;
@@ -185,6 +196,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     def _sql_checks(self) -> str:
         return r"""
             SELECT
+                d.schema_name,
                 d.table_name,
                 d.constraint_name,
                 d.expression        AS expression,
@@ -192,9 +204,10 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             FROM 
                 duckdb_constraints() AS d
             WHERE 
-                d.schema_name = {SCHEMA}
+                d.schema_name = ANY(?)
                 AND d.constraint_type = 'CHECK'
             ORDER BY 
+                d.schema_name, 
                 d.table_name, 
                 d.constraint_name; 
            """
@@ -207,7 +220,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 FROM 
                     duckdb_constraints()
                 WHERE 
-                    schema_name = {SCHEMA}
+                    schema_name = ANY(?)
                     AND constraint_type = 'FOREIGN KEY'
             ),
             cols AS (
@@ -244,6 +257,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                     information_schema.referential_constraints
             )
             SELECT
+                c.schema_name,
                 c.table_name,
                 c.constraint_name,
                 c.position,
@@ -259,6 +273,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 cols c JOIN ref r ON r.schema_name = c.schema_name AND r.constraint_name = c.constraint_name
             LEFT JOIN rules u ON u.schema_name = c.schema_name AND u.constraint_name = c.constraint_name
             ORDER BY 
+                c.schema_name, 
                 c.table_name, 
                 c.constraint_name, 
                 c.position;
@@ -268,6 +283,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         return r"""
             WITH idx AS (
                 SELECT
+                    schema_name,
                     table_name,
                     index_name,
                     is_unique,
@@ -275,9 +291,10 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 FROM 
                     duckdb_indexes()
                 WHERE 
-                    schema_name = {SCHEMA}
+                    schema_name = ANY(?)
             )
             SELECT
+                schema_name,
                 table_name,
                 index_name,
                 pos AS position,
@@ -287,6 +304,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 idx,
                 range(1, length(expr_list) + 1) AS r(pos)
             ORDER BY
+                schema_name, 
                 table_name,
                 index_name,
                 position;

@@ -7,8 +7,8 @@ from pydantic import Field
 
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseTable
-from databao_context_engine.plugins.databases.table_builder import TableBuilder
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
+from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
 class ClickhouseConfigFile(BaseDatabaseConfigFile):
@@ -48,14 +48,20 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             None,
         )
 
-    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
+    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if not schemas:
+            return []
+
+        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
+
         comps = self._component_queries()
         results: dict[str, list[dict]] = {cq: [] for cq in comps}
         for cq, template_sql in comps.items():
-            sql = template_sql.replace("{SCHEMA}", self._quote_literal(schema))
+            sql = template_sql.replace("{SCHEMAS}", schemas_sql)
             results[cq] = self._fetchall_dicts(connection, sql, None)
 
-        return TableBuilder.build_from_components(
+        return IntrospectionModelBuilder.build_schemas_from_components(
+            schemas=schemas,
             rels=results.get("relations", []),
             cols=results.get("columns", []),
             pk_cols=[],
@@ -71,6 +77,7 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
     def _sql_relations(self) -> str:
         return r"""
             SELECT
+                t.database AS schema_name,
                 t.name AS table_name,
                 multiIf(
                     t.engine = 'View', 'view',
@@ -94,7 +101,7 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             FROM 
                 system.tables t
             WHERE 
-                t.database = {SCHEMA}
+                t.database IN ({SCHEMAS})
             ORDER BY 
                 t.name
         """
@@ -102,6 +109,7 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
     def _sql_columns(self) -> str:
         return r"""
             SELECT
+                c.database AS schema_name,
                 c.table AS table_name,
                 c.name AS column_name,
                 c.position AS ordinal_position,
@@ -115,7 +123,7 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             FROM 
                 system.columns c
             WHERE 
-                c.database = {SCHEMA}
+                c.database IN ({SCHEMAS})
             ORDER BY 
                 c.table, 
                 c.position
@@ -124,6 +132,7 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
     def _sql_indexes(self) -> str:
         return r"""
             SELECT
+                i.database AS schema_name,
                 i.table AS table_name,
                 i.name AS index_name,
                 1 AS position,
@@ -134,7 +143,7 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             FROM 
                 system.data_skipping_indices i
             WHERE 
-                i.database = {SCHEMA}
+                i.database IN ({SCHEMAS})
             ORDER BY 
                 i.table, 
                 i.name
