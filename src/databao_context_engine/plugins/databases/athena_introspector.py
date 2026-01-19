@@ -1,22 +1,63 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Annotated, Union
 
 from pyathena import connect
 from pyathena.cursor import DictCursor
-from pydantic import Field
+from pydantic import BaseModel, Field
 
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
+class AwsProfileAuth(BaseModel):
+    type: str = "aws_profile"
+    profile_name: str
+
+
+class AwsIamAuth(BaseModel):
+    type: str = "aws_iam"
+    aws_access_key_id: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+    aws_secret_access_key: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+    session_token: str | None = None
+
+
+class AwsAssumeRoleAuth(BaseModel):
+    type: str = "assume_role"
+    role_arn: str | None = None
+    role_session_name: str | None = None
+    source_profile: str | None = None
+
+
+class AwsDefaultAuth(BaseModel):
+    # Uses environment variables, instance profile, ECS task role
+    type: str = "default"
+
+
+class AthenaConnectionProperties(BaseModel):
+    region_name: str
+    schema_name: str = "default"
+    work_group: str | None = None
+    s3_staging_dir: str | None = None
+    auth: Union[AwsIamAuth, AwsProfileAuth, AwsDefaultAuth, AwsAssumeRoleAuth]
+    additional_properties: dict[str, Any] = {}
+
+    def to_athena_kwargs(self) -> dict[str, Any]:
+        kwargs = self.model_dump(exclude={"additional_properties"}, exclude_none=True)
+        auth_fields = kwargs.pop("auth", {})
+        if isinstance(auth_fields, BaseModel):
+            auth_fields = auth_fields.model_dump(exclude={"type"}, exclude_none=True)
+        kwargs.update(auth_fields)
+        kwargs.update(self.additional_properties)
+        return kwargs
+
+
 class AthenaConfigFile(BaseDatabaseConfigFile):
     type: str = Field(default="databases/athena")
-    connection: dict[str, Any] = Field(
-        description="Connection parameters for the Athena database. It can contain any of the keys supported by the Athena connection library"
-    )
+    connection: AthenaConnectionProperties
 
 
 class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
@@ -26,11 +67,7 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
     supports_catalogs = True
 
     def _connect(self, file_config: AthenaConfigFile):
-        connection = file_config.connection
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
-
-        return connect(**connection, cursor_class=DictCursor)
+        return connect(**file_config.connection.to_athena_kwargs(), cursor_class=DictCursor)
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
         with connection.cursor() as cur:
