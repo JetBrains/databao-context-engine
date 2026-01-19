@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import duckdb
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.datasource_discovery import DatasourceId
+from databao_context_engine.project.types import DatasourceId
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -57,7 +57,7 @@ class VectorSearchRepository:
                 embeddable_text=row[1],
                 cosine_distance=row[2],
                 datasource_type=DatasourceType(full_type=row[3]),
-                datasource_id=row[4],
+                datasource_id=DatasourceId.from_string_repr(row[4]),
             )
             for row in rows
         ]

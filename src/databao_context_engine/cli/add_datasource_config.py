@@ -9,17 +9,17 @@ from databao_context_engine.datasource_config.add_config import (
     create_datasource_config_file,
     get_config_file_structure_for_datasource_type,
 )
-from databao_context_engine.datasource_config.utils import get_datasource_id_from_config_file_path
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
 from databao_context_engine.plugins.plugin_loader import get_all_available_plugin_types
+from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.project.layout import (
     ensure_datasource_config_file_doesnt_exist,
     ensure_project_dir,
 )
 
 
-def add_datasource_config_interactive(project_dir: Path) -> str:
+def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
     ensure_project_dir(project_dir)
 
     click.echo(
@@ -37,7 +37,7 @@ def add_datasource_config_interactive(project_dir: Path) -> str:
 
     click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file_path}")
 
-    return get_datasource_id_from_config_file_path(project_dir, config_file_path)
+    return DatasourceId.from_datasource_config_file_path(config_file_path)
 
 
 def _ask_for_datasource_type() -> DatasourceType:
