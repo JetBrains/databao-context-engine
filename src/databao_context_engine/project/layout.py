@@ -30,12 +30,6 @@ def ensure_project_dir(project_dir: Path) -> ProjectLayout:
     return _ProjectValidator(project_dir).ensure_project_dir_valid()
 
 
-def create_project_dir(project_dir: Path) -> Path:
-    project_dir.mkdir(parents=True, exist_ok=False)
-
-    return project_dir
-
-
 def is_project_dir_valid(project_dir: Path) -> bool:
     return validate_project_dir(project_dir) is not None
 
