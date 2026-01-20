@@ -64,7 +64,7 @@ class DatabaoContextEngine:
         # TODO: Remove the need for a run_name
 
         results = retrieve_embeddings(
-            project_dir=self.project_dir,
+            project_layout=self.project_layout,
             retrieve_text=retrieve_text,
             run_name=run_name,
             limit=limit,
