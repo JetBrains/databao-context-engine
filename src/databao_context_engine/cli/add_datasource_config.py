@@ -5,14 +5,12 @@ from typing import Any
 
 import click
 
-from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
+from databao_context_engine import DatabaoContextProjectManager, DatasourceId, DatasourceType
 from databao_context_engine.datasource_config.add_config import (
     get_config_file_structure_for_datasource_type,
 )
-from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
 from databao_context_engine.plugins.plugin_loader import get_all_available_plugin_types
-from databao_context_engine.project.types import DatasourceId
 
 
 def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
