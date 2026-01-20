@@ -10,8 +10,9 @@ from databao_context_engine.datasource_config.datasource_context import (
     get_datasource_context,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.datasource_discovery import Datasource, DatasourceId, get_datasource_list
+from databao_context_engine.project.datasource_discovery import get_datasource_list
 from databao_context_engine.project.layout import ensure_project_dir
+from databao_context_engine.project.types import Datasource, DatasourceId
 from databao_context_engine.retrieve_embeddings.public.api import retrieve_embeddings
 
 
@@ -27,7 +28,7 @@ class DatabaoContextEngine:
     project_dir: Path
 
     def __init__(self, project_dir: Path) -> None:
-        ensure_project_dir(project_dir=project_dir)
+        self.project_layout = ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
 
     def get_datasource_list(self) -> list[Datasource]:
@@ -35,10 +36,12 @@ class DatabaoContextEngine:
         return get_datasource_list(self.project_dir)
 
     def get_datasource_context(self, datasource_id: DatasourceId, run_name: str | None = None) -> DatasourceContext:
-        return get_datasource_context(project_dir=self.project_dir, datasource_id=datasource_id, run_name=run_name)
+        return get_datasource_context(
+            project_layout=self.project_layout, datasource_id=datasource_id, run_name=run_name
+        )
 
     def get_all_contexts(self, run_name: str | None = None) -> list[DatasourceContext]:
-        return get_all_contexts(project_dir=self.project_dir, run_name=run_name)
+        return get_all_contexts(project_layout=self.project_layout, run_name=run_name)
 
     def get_all_contexts_formatted(self, run_name: str | None = None) -> str:
         all_contexts = self.get_all_contexts(run_name=run_name)
@@ -61,7 +64,7 @@ class DatabaoContextEngine:
         # TODO: Remove the need for a run_name
 
         results = retrieve_embeddings(
-            project_dir=self.project_dir,
+            project_layout=self.project_layout,
             retrieve_text=retrieve_text,
             run_name=run_name,
             limit=limit,

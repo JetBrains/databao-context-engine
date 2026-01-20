@@ -3,7 +3,7 @@ from importlib.metadata import version
 from pathlib import Path
 from uuid import UUID
 
-from databao_context_engine.project.layout import is_project_dir_valid, read_config_file
+from databao_context_engine.project.layout import validate_project_dir
 from databao_context_engine.system.properties import get_dce_path
 
 
@@ -22,7 +22,7 @@ class DceInfo:
     project_info: DceProjectInfo
 
 
-def get_command_info(project_dir: Path) -> DceInfo:
+def get_databao_context_engine_info(project_dir: Path) -> DceInfo:
     return DceInfo(
         version=get_dce_version(),
         dce_path=get_dce_path(),
@@ -31,12 +31,12 @@ def get_command_info(project_dir: Path) -> DceInfo:
 
 
 def _get_project_info(project_dir: Path) -> DceProjectInfo:
-    is_project_initialised = is_project_dir_valid(project_dir)
+    project_layout = validate_project_dir(project_dir)
 
     return DceProjectInfo(
         project_path=project_dir,
-        is_initialised=is_project_initialised,
-        project_id=read_config_file(project_dir).project_id if is_project_initialised else None,
+        is_initialised=project_layout is not None,
+        project_id=project_layout.read_config_file().project_id if project_layout is not None else None,
     )
 
 

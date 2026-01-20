@@ -3,50 +3,53 @@ from pathlib import Path
 
 import click
 
-from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
-from databao_context_engine.datasource_config.validate_config import (
-    ValidationResult,
-    ValidationStatus,
-    validate_datasource_config,
+from databao_context_engine import (
+    CheckDatasourceConnectionResult,
+    DatabaoContextProjectManager,
+    DatasourceConnectionStatus,
+    DatasourceId,
 )
+from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
 
 
 def add_datasource_config_cli(project_dir: Path) -> None:
-    datasource_config_file = add_datasource_config_interactive(project_dir)
+    datasource_id = add_datasource_config_interactive(project_dir)
 
     if click.confirm("\nDo you want to check the connection to this new datasource?"):
-        validate_datasource_config_cli(project_dir, datasource_config_files=[datasource_config_file])
+        check_datasource_connection_cli(project_dir, datasource_ids=[datasource_id])
 
 
-def validate_datasource_config_cli(project_dir: Path, *, datasource_config_files: list[str] | None) -> None:
-    results = validate_datasource_config(project_dir, datasource_config_files=datasource_config_files)
+def check_datasource_connection_cli(project_dir: Path, *, datasource_ids: list[DatasourceId] | None) -> None:
+    results = DatabaoContextProjectManager(project_dir=project_dir).check_datasource_connection(
+        datasource_ids=datasource_ids
+    )
 
-    _print_datasource_validation_results(results)
+    _print_check_datasource_connection_results(results)
 
 
-def _print_datasource_validation_results(results: dict[str, ValidationResult]) -> None:
+def _print_check_datasource_connection_results(results: list[CheckDatasourceConnectionResult]) -> None:
     if len(results) > 0:
-        valid_datasources = {
-            key: value for key, value in results.items() if value.validation_status == ValidationStatus.VALID
-        }
-        invalid_datasources = {
-            key: value for key, value in results.items() if value.validation_status == ValidationStatus.INVALID
-        }
-        unknown_datasources = {
-            key: value for key, value in results.items() if value.validation_status == ValidationStatus.UNKNOWN
-        }
+        valid_datasources = [
+            result for result in results if result.connection_status == DatasourceConnectionStatus.VALID
+        ]
+        invalid_datasources = [
+            result for result in results if result.connection_status == DatasourceConnectionStatus.INVALID
+        ]
+        unknown_datasources = [
+            result for result in results if result.connection_status == DatasourceConnectionStatus.UNKNOWN
+        ]
 
         # Print all errors
-        for datasource_path, validation_result in invalid_datasources.items():
+        for check_result in invalid_datasources:
             click.echo(
-                f"Error for datasource {datasource_path}:{os.linesep}{validation_result.full_message}{os.linesep}"
+                f"Error for datasource {str(check_result.datasource_id)}:{os.linesep}{check_result.full_message}{os.linesep}"
             )
 
         results_summary = (
             os.linesep.join(
                 [
-                    f"{datasource_path}: {validation_result.format(show_summary_only=True)}"
-                    for datasource_path, validation_result in results.items()
+                    f"{str(check_result.datasource_id)}: {check_result.format(show_summary_only=True)}"
+                    for check_result in results
                 ]
             )
             if results

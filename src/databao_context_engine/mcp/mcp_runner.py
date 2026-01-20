@@ -15,8 +15,8 @@ def run_mcp_server(
     host: str | None = None,
     port: int | None = None,
 ) -> None:
-    ensure_project_dir(project_dir=project_dir)
-    resolved_run_name = resolve_run_name(project_dir=project_dir, run_name=run_name)
+    project_layout = ensure_project_dir(project_dir=project_dir)
+    resolved_run_name = resolve_run_name(project_layout=project_layout, run_name=run_name)
 
     logger.info(f"Using {resolved_run_name} from project {project_dir.resolve()}")
 

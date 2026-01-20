@@ -1,16 +1,15 @@
 from datetime import datetime, timedelta
-from pathlib import Path
 
-from databao_context_engine.project.layout import get_output_dir, read_config_file
+from databao_context_engine.project.layout import ProjectLayout, get_output_dir
 from databao_context_engine.project.runs import resolve_run_name_from_repo
 from databao_context_engine.storage.repositories.run_repository import RunRepository
 
 
-def test_get_latest_run_dir__with_multiple_run_dirs(project_path: Path, run_repo: RunRepository):
-    output_path = get_output_dir(project_path)
+def test_get_latest_run_dir__with_multiple_run_dirs(project_layout: ProjectLayout, run_repo: RunRepository):
+    output_path = get_output_dir(project_layout.project_dir)
     output_path.mkdir()
 
-    project_id = str(read_config_file(project_path).project_id)
+    project_id = str(project_layout.read_config_file().project_id)
 
     most_recent_date = datetime.now()
     most_recent_run = run_repo.create(project_id=project_id, dce_version="1.0", started_at=most_recent_date)

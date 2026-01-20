@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult, execute
+from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext, execute
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
@@ -47,7 +47,7 @@ class BuildService:
         run_id: int,
         prepared_source: PreparedDatasource,
         plugin: BuildPlugin,
-    ) -> BuildExecutionResult:
+    ) -> BuiltDatasourceContext:
         """
         Process a single source.
 

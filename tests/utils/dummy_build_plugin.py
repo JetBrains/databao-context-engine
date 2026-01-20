@@ -108,7 +108,7 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
         return {"ok": True}
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
-        return []
+        return [EmbeddableChunk(embeddable_text="Dummy chunk", content="Dummy content")]
 
 
 class DummyFilePlugin(BuildFilePlugin):

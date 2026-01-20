@@ -5,22 +5,17 @@ from typing import Any
 
 import click
 
+from databao_context_engine import DatabaoContextProjectManager, DatasourceId
 from databao_context_engine.datasource_config.add_config import (
-    create_datasource_config_file,
     get_config_file_structure_for_datasource_type,
 )
-from databao_context_engine.datasource_config.utils import get_datasource_id_from_config_file_path
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition, ConfigUnionPropertyDefinition
 from databao_context_engine.plugins.plugin_loader import get_all_available_plugin_types
-from databao_context_engine.project.layout import (
-    ensure_datasource_config_file_doesnt_exist,
-    ensure_project_dir,
-)
 
 
-def add_datasource_config_interactive(project_dir: Path) -> str:
-    ensure_project_dir(project_dir)
+def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
+    project_manager = DatabaoContextProjectManager(project_dir=project_dir)
 
     click.echo(
         f"We will guide you to add a new datasource in your Databao Context Engine project, at {project_dir.resolve()}"
@@ -29,15 +24,25 @@ def add_datasource_config_interactive(project_dir: Path) -> str:
     datasource_type = _ask_for_datasource_type()
     datasource_name = click.prompt("Datasource name?", type=str)
 
-    ensure_datasource_config_file_doesnt_exist(project_dir, datasource_type.config_folder, datasource_name)
+    is_datasource_existing = project_manager.datasource_config_exists(
+        datasource_type=datasource_type, datasource_name=datasource_name
+    )
+    if is_datasource_existing:
+        click.confirm(
+            f"A config file already exists for this datasource ({datasource_type.config_folder}/{datasource_name}). Do you want to overwrite it?",
+            abort=True,
+            default=False,
+        )
 
     config_content = _ask_for_config_details(datasource_type)
 
-    config_file_path = create_datasource_config_file(project_dir, datasource_type, datasource_name, config_content)
+    config_file = project_manager.create_datasource_config(
+        datasource_type, datasource_name, config_content, overwrite_existing=True
+    )
 
-    click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file_path}")
+    click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file.config_file_path}")
 
-    return get_datasource_id_from_config_file_path(project_dir, config_file_path)
+    return config_file.datasource_id
 
 
 def _ask_for_datasource_type() -> DatasourceType:

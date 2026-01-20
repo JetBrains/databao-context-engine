@@ -8,15 +8,15 @@ from databao_context_engine.build_sources.internal.export_results import (
     create_run_dir,
     export_build_result,
 )
-from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult
+from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext
 
 
 def _run_dir(tmp_path: Path) -> Path:
     return tmp_path.joinpath("output").joinpath("run-2025-11-13T10:50:15")
 
 
-def _make_result(*, id: str, full_type: str, payload: object) -> BuildExecutionResult:
-    return BuildExecutionResult(
+def _make_result(*, id: str, full_type: str, payload: object) -> BuiltDatasourceContext:
+    return BuiltDatasourceContext(
         datasource_id=id,
         datasource_type=full_type,
         context_built_at=datetime.now(),
