@@ -15,7 +15,7 @@ from databao_context_engine.project.datasource_discovery import (
     prepare_source,
 )
 from databao_context_engine.project.layout import ensure_project_dir
-from databao_context_engine.project.types import PreparedConfig, DatasourceId
+from databao_context_engine.project.types import DatasourceId, PreparedConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class CheckDatasourceConnectionResult:
         return formatted_string
 
 
-def validate_datasource_config(
+def check_datasource_connection(
     project_dir: Path, *, datasource_ids: list[DatasourceId] | None = None
 ) -> dict[DatasourceId, CheckDatasourceConnectionResult]:
     ensure_project_dir(project_dir)

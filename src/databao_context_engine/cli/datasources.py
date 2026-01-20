@@ -5,7 +5,7 @@ import click
 
 from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
 from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
-from databao_context_engine.datasource_config.validate_config import (
+from databao_context_engine.datasource_config.check_config import (
     CheckDatasourceConnectionResult,
     ValidationStatus,
 )

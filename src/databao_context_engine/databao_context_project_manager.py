@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from databao_context_engine.build_sources.public.api import BuildContextResult, build_all_datasources
-from databao_context_engine.datasource_config.validate_config import (
+from databao_context_engine.datasource_config.check_config import (
     CheckDatasourceConnectionResult,
-    validate_datasource_config,
+    check_datasource_connection as check_datasource_connection_internal,
 )
 from databao_context_engine.project.datasource_discovery import DatasourceId
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
@@ -25,6 +25,6 @@ class DatabaoContextProjectManager:
         self, datasource_ids: list[DatasourceId] | None
     ) -> list[CheckDatasourceConnectionResult]:
         return sorted(
-            validate_datasource_config(project_dir=self.project_dir, datasource_ids=datasource_ids).values(),
+            check_datasource_connection_internal(project_dir=self.project_dir, datasource_ids=datasource_ids).values(),
             key=lambda result: str(result.datasource_id),
         )
