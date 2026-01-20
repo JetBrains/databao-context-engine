@@ -8,8 +8,8 @@ from databao_context_engine import (
     ChunkEmbeddingMode,
     DatabaoContextProjectManager,
     DatasourceId,
+    DatasourceType,
 )
-from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import get_output_dir
 from tests.utils.dummy_build_plugin import load_dummy_plugins
 from tests.utils.project_creation import with_config_file, with_raw_source_file
