@@ -10,9 +10,8 @@ from databao_context_engine.datasource_config.add_config import (
     get_config_file_structure_for_datasource_type,
 )
 from databao_context_engine.datasource_config.utils import get_datasource_id_from_config_file_path
-from databao_context_engine.introspection.property_extract import get_property_list_from_type
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
+from databao_context_engine.pluginlib.config import ConfigPropertyDefinition, ConfigUnionPropertyDefinition
 from databao_context_engine.plugins.plugin_loader import get_all_available_plugin_types
 from databao_context_engine.project.layout import (
     ensure_datasource_config_file_doesnt_exist,
@@ -91,8 +90,8 @@ def _build_config_content_from_properties(
         if in_union and config_file_property.property_key == "type":
             continue
 
-        if config_file_property.union_types:
-            choices = {t.__name__: t for t in config_file_property.union_types}
+        if isinstance(config_file_property, ConfigUnionPropertyDefinition):
+            choices = {t.__name__: t for t in config_file_property.types}
 
             chosen = click.prompt(
                 f"{properties_prefix}{config_file_property.property_key}.type?",
@@ -101,7 +100,7 @@ def _build_config_content_from_properties(
 
             chosen_type = choices[chosen]
 
-            nested_props = get_property_list_from_type(chosen_type)
+            nested_props = config_file_property.type_properties[chosen_type]
             nested_content = _build_config_content_from_properties(
                 nested_props, f"{properties_prefix}{config_file_property.property_key}.", in_union=True
             )

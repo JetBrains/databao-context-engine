@@ -5,7 +5,12 @@ from typing import Annotated, Any, ForwardRef, Union, get_origin, get_type_hints
 from pydantic import BaseModel, _internal
 from pydantic_core import PydanticUndefinedType
 
-from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation, ConfigPropertyDefinition
+from databao_context_engine.pluginlib.config import (
+    ConfigPropertyAnnotation,
+    ConfigPropertyDefinition,
+    ConfigUnionPropertyDefinition,
+    ConfigSinglePropertyDefinition,
+)
 
 
 def get_property_list_from_type(root_type: type) -> list[ConfigPropertyDefinition]:
@@ -128,13 +133,25 @@ def _create_property(
     required = annotation.required if annotation else is_property_required
     secret = annotation.secret if annotation else False
 
-    union_types: tuple[type, ...] | None = None
-    nested_properties: list[ConfigPropertyDefinition] | None = None
-    resolved_type: type | None = None
-    default_value: str | None = None
-
     if isinstance(actual_property_type, tuple):
-        union_types = actual_property_type
+        type_properties: dict[type, list[ConfigPropertyDefinition]] = {}
+
+        for union_type in actual_property_type:
+            try:
+                nested_props = _get_property_list_from_type(
+                    parent_type=union_type,
+                    is_root_type=False,
+                )
+            except TypeError:
+                nested_props = []
+
+            type_properties[union_type] = nested_props
+
+        return ConfigUnionPropertyDefinition(
+            property_key=property_name,
+            types=actual_property_type,
+            type_properties=type_properties,
+        )
     else:
         try:
             nested_properties = _get_property_list_from_type(
@@ -151,15 +168,14 @@ def _create_property(
             has_nested_properties=nested_properties is not None and len(nested_properties) > 0,
         )
 
-    return ConfigPropertyDefinition(
-        property_key=property_name,
-        property_type=resolved_type,
-        required=required,
-        default_value=default_value,
-        nested_properties=nested_properties or None,
-        union_types=union_types,
-        secret=secret,
-    )
+        return ConfigSinglePropertyDefinition(
+            property_key=property_name,
+            property_type=resolved_type,
+            required=required,
+            default_value=default_value,
+            nested_properties=nested_properties or None,
+            secret=secret,
+        )
 
 
 def _get_config_property_annotation(property_type) -> ConfigPropertyAnnotation | None:
