@@ -25,7 +25,7 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
     datasource_type = _ask_for_datasource_type()
     datasource_name = click.prompt("Datasource name?", type=str)
 
-    is_datasource_existing = project_manager.is_datasource_config_existing(
+    is_datasource_existing = project_manager.datasource_config_exists(
         datasource_type=datasource_type, datasource_name=datasource_name
     )
     if is_datasource_existing:

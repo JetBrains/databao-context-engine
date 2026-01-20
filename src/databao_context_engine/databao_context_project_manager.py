@@ -66,11 +66,11 @@ class DatabaoContextProjectManager:
         )
 
     @overload
-    def is_datasource_config_existing(self, *, datasource_type: DatasourceType, datasource_name: str) -> bool: ...
+    def datasource_config_exists(self, *, datasource_type: DatasourceType, datasource_name: str) -> bool: ...
     @overload
-    def is_datasource_config_existing(self, *, datasource_id: DatasourceId) -> bool: ...
+    def datasource_config_exists(self, *, datasource_id: DatasourceId) -> bool: ...
 
-    def is_datasource_config_existing(
+    def datasource_config_exists(
         self,
         *,
         datasource_type: DatasourceType | None = None,
