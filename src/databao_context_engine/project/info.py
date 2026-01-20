@@ -22,7 +22,7 @@ class DceInfo:
     project_info: DceProjectInfo
 
 
-def get_command_info(project_dir: Path) -> DceInfo:
+def get_databao_context_engine_info(project_dir: Path) -> DceInfo:
     return DceInfo(
         version=get_dce_version(),
         dce_path=get_dce_path(),
