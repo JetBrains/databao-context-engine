@@ -107,7 +107,6 @@ def _build_config_content_from_properties(
             )
 
             config_content[config_file_property.property_key] = {
-                "type": chosen,
                 **nested_content,
             }
             continue

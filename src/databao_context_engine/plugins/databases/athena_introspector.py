@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Annotated, Union
+from typing import Any, Annotated
 
 from pyathena import connect
 from pyathena.cursor import DictCursor
@@ -42,14 +42,12 @@ class AthenaConnectionProperties(BaseModel):
     schema_name: str = "default"
     work_group: str | None = None
     s3_staging_dir: str | None = None
-    auth: Union[AwsIamAuth, AwsProfileAuth, AwsDefaultAuth, AwsAssumeRoleAuth]
+    auth: AwsIamAuth | AwsProfileAuth | AwsDefaultAuth | AwsAssumeRoleAuth
     additional_properties: dict[str, Any] = {}
 
     def to_athena_kwargs(self) -> dict[str, Any]:
-        kwargs = self.model_dump(exclude={"additional_properties"}, exclude_none=True)
+        kwargs = self.model_dump(exclude={"additional_properties", {"auth": {"type"}}}, exclude_none=True)
         auth_fields = kwargs.pop("auth", {})
-        if isinstance(auth_fields, BaseModel):
-            auth_fields = auth_fields.model_dump(exclude={"type"}, exclude_none=True)
         kwargs.update(auth_fields)
         kwargs.update(self.additional_properties)
         return kwargs
