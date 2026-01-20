@@ -3,13 +3,13 @@ from pathlib import Path
 
 import click
 
-from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
-from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
-from databao_context_engine.datasource_config.check_config import (
+from databao_context_engine import (
     CheckDatasourceConnectionResult,
-    ValidationStatus,
+    DatabaoContextProjectManager,
+    DatasourceConnectionStatus,
+    DatasourceId,
 )
-from databao_context_engine.project.types import DatasourceId
+from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
 
 
 def add_datasource_config_cli(project_dir: Path) -> None:
@@ -29,9 +29,15 @@ def check_datasource_connection_cli(project_dir: Path, *, datasource_ids: list[D
 
 def _print_check_datasource_connection_results(results: list[CheckDatasourceConnectionResult]) -> None:
     if len(results) > 0:
-        valid_datasources = [result for result in results if result.validation_status == ValidationStatus.VALID]
-        invalid_datasources = [result for result in results if result.validation_status == ValidationStatus.INVALID]
-        unknown_datasources = [result for result in results if result.validation_status == ValidationStatus.UNKNOWN]
+        valid_datasources = [
+            result for result in results if result.connection_status == DatasourceConnectionStatus.VALID
+        ]
+        invalid_datasources = [
+            result for result in results if result.connection_status == DatasourceConnectionStatus.INVALID
+        ]
+        unknown_datasources = [
+            result for result in results if result.connection_status == DatasourceConnectionStatus.UNKNOWN
+        ]
 
         # Print all errors
         for check_result in invalid_datasources:

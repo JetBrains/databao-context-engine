@@ -5,7 +5,7 @@ import pytest
 
 from databao_context_engine.datasource_config.check_config import (
     CheckDatasourceConnectionResult,
-    ValidationStatus,
+    DatasourceConnectionStatus,
     check_datasource_connection,
 )
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
@@ -99,7 +99,7 @@ def test_check_datasource_connection_with_valid_connections(project_path: Path):
     assert result == {
         DatasourceId.from_string_repr("dummy/valid.yaml"): CheckDatasourceConnectionResult(
             datasource_id=DatasourceId.from_string_repr("dummy/valid.yaml"),
-            validation_status=ValidationStatus.VALID,
+            connection_status=DatasourceConnectionStatus.VALID,
             summary=None,
         ),
     }
@@ -172,7 +172,7 @@ def test_check_datasource_connection_with_single_filter(project_path: Path):
     assert result == {
         DatasourceId.from_string_repr("dummy/valid.yaml"): CheckDatasourceConnectionResult(
             datasource_id=DatasourceId.from_string_repr("dummy/valid.yaml"),
-            validation_status=ValidationStatus.VALID,
+            connection_status=DatasourceConnectionStatus.VALID,
             summary=None,
         ),
     }
