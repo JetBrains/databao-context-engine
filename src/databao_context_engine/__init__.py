@@ -6,8 +6,10 @@ from databao_context_engine.datasource_config.check_config import (
     DatasourceConnectionStatus,
 )
 from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine.init_project import init_dce_project, init_or_get_dce_project
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.info import DceInfo, get_databao_context_engine_info
+from databao_context_engine.project.init_project import InitErrorReason, InitProjectError
 from databao_context_engine.project.types import Datasource, DatasourceId
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
@@ -26,4 +28,8 @@ __all__ = [
     "DatasourceType",
     "get_databao_context_engine_info",
     "DceInfo",
+    "init_dce_project",
+    "init_or_get_dce_project",
+    "InitErrorReason",
+    "InitProjectError",
 ]
