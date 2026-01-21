@@ -33,8 +33,9 @@ class DatabaoContextProjectManager:
     def build_context(
         self, datasource_ids: list[DatasourceId] | None, chunk_embedding_mode: ChunkEmbeddingMode
     ) -> list[BuildContextResult]:
-        # TODO: Filter which datasources to build by datasource_ids
-        return build_all_datasources(project_dir=self.project_dir, chunk_embedding_mode=chunk_embedding_mode)
+        return build_all_datasources(
+            project_dir=self.project_dir, chunk_embedding_mode=chunk_embedding_mode, datasource_ids=datasource_ids
+        )
 
     def check_datasource_connection(
         self, datasource_ids: list[DatasourceId] | None

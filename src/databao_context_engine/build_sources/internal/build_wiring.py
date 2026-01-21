@@ -9,6 +9,7 @@ from databao_context_engine.llm.factory import (
 )
 from databao_context_engine.project.info import get_dce_version
 from databao_context_engine.project.layout import ensure_project_dir
+from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 from databao_context_engine.services.factories import (
     create_build_service,
@@ -19,7 +20,9 @@ from databao_context_engine.system.properties import get_db_path
 logger = logging.getLogger(__name__)
 
 
-def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddingMode) -> list[BuildContextResult]:
+def build_all_datasources(
+    project_dir: Path, chunk_embedding_mode: ChunkEmbeddingMode, datasource_ids: list[DatasourceId] | None = None
+) -> list[BuildContextResult]:
     """
     Public build entrypoint
     - Instantiates the build service
@@ -49,4 +52,5 @@ def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddin
             build_service=build_service,
             project_id=str(dce_config.project_id),
             dce_version=get_dce_version(),
+            datasource_ids=datasource_ids,
         )

@@ -11,7 +11,11 @@ from databao_context_engine.build_sources.internal.export_results import (
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import load_plugins
-from databao_context_engine.project.datasource_discovery import discover_datasources, prepare_source
+from databao_context_engine.project.datasource_discovery import (
+    discover_datasources,
+    get_datasource_descriptors,
+    prepare_source,
+)
 from databao_context_engine.project.types import DatasourceId
 
 logger = logging.getLogger(__name__)
@@ -31,6 +35,7 @@ def build(
     build_service: BuildService,
     project_id: str,
     dce_version: str,
+    datasource_ids: list[DatasourceId] | None = None,
 ) -> list[BuildContextResult]:
     """
     Build entrypoint.
@@ -42,11 +47,15 @@ def build(
     """
     plugins = load_plugins()
 
-    datasources = discover_datasources(project_dir)
+    if datasource_ids:
+        logger.info(f"Building datasource(s): {datasource_ids}")
+        datasources = get_datasource_descriptors(project_dir, datasource_ids)
+    else:
+        datasources = discover_datasources(project_dir)
 
-    if not datasources:
-        logger.info("No sources discovered under %s", project_dir)
-        return []
+        if not datasources:
+            logger.info("No sources discovered under %s", project_dir)
+            return []
 
     run = None
     run_dir = None

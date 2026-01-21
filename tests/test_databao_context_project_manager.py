@@ -50,9 +50,69 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
         datasource_type=DatasourceType(full_type="files/dummy"),
         file_content="Content of my dummy file",
     )
+    with_config_file(
+        project_dir=project_manager.project_dir,
+        full_type="dummy/dummy_default",
+        datasource_name="my_second_dummy_data",
+        config_content={"type": "dummy_default", "name": "my_second_dummy_data"},
+    )
 
     result = project_manager.build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
+    )
+
+    assert len(result) == 3
+    assert_build_context_result(
+        result[0],
+        project_manager.project_dir,
+        datasource_id=DatasourceId.from_string_repr("dummy/my_dummy_data.yaml"),
+        datasource_type=DatasourceType(full_type="dummy/dummy_default"),
+        context_file_relative_path="dummy/my_dummy_data.yaml",
+    )
+    assert_build_context_result(
+        result[1],
+        project_manager.project_dir,
+        datasource_id=DatasourceId.from_string_repr("dummy/my_second_dummy_data.yaml"),
+        datasource_type=DatasourceType(full_type="dummy/dummy_default"),
+        context_file_relative_path="dummy/my_second_dummy_data.yaml",
+    )
+    assert_build_context_result(
+        result[2],
+        project_manager.project_dir,
+        datasource_id=DatasourceId.from_string_repr("files/my_dummy_file.dummy"),
+        datasource_type=DatasourceType(full_type="files/dummy"),
+        context_file_relative_path="files/my_dummy_file.dummy.yaml",
+    )
+
+
+def test_databao_context_project_manager__build_custom_datasource_ids(project_path, create_db):
+    project_manager = DatabaoContextProjectManager(project_dir=project_path)
+
+    with_config_file(
+        project_dir=project_manager.project_dir,
+        full_type="dummy/dummy_default",
+        datasource_name="my_dummy_data",
+        config_content={"type": "dummy_default", "name": "my_dummy_data"},
+    )
+    with_config_file(
+        project_dir=project_manager.project_dir,
+        full_type="dummy/dummy_default",
+        datasource_name="my_second_dummy_data",
+        config_content={"type": "dummy_default", "name": "my_second_dummy_data"},
+    )
+    with_raw_source_file(
+        project_dir=project_manager.project_dir,
+        file_name="my_dummy_file",
+        datasource_type=DatasourceType(full_type="files/dummy"),
+        file_content="Content of my dummy file",
+    )
+
+    result = project_manager.build_context(
+        datasource_ids=[
+            DatasourceId.from_string_repr("files/my_dummy_file.dummy"),
+            DatasourceId.from_string_repr("dummy/my_dummy_data.yaml"),
+        ],
+        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     )
 
     assert len(result) == 2
