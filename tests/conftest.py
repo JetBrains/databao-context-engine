@@ -9,16 +9,13 @@ import pytest
 from databao_context_engine.project.init_project import init_project_dir
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.persistence_service import PersistenceService
-from databao_context_engine.services.run_name_policy import RunNamePolicy
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 from databao_context_engine.storage.migrate import migrate
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
-from databao_context_engine.storage.repositories.datasource_run_repository import DatasourceRunRepository
 from databao_context_engine.storage.repositories.embedding_model_registry_repository import (
     EmbeddingModelRegistryRepository,
 )
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
-from databao_context_engine.storage.repositories.run_repository import RunRepository
 from databao_context_engine.system.properties import get_db_path
 
 
@@ -37,11 +34,12 @@ def dce_path(mocker, tmp_path: Path):
 
 @pytest.fixture
 def db_path(dce_path: Path) -> Path:
-    return get_db_path()
+    return get_db_path(dce_path)
 
 
 @pytest.fixture
 def create_db(_template_db: Path, db_path: Path) -> None:
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(_template_db, db_path)
 
 
@@ -53,16 +51,6 @@ def conn(db_path, create_db):
         yield conn
     finally:
         conn.close()
-
-
-@pytest.fixture
-def run_repo(conn) -> RunRepository:
-    return RunRepository(conn, run_name_policy=RunNamePolicy())
-
-
-@pytest.fixture
-def datasource_run_repo(conn) -> DatasourceRunRepository:
-    return DatasourceRunRepository(conn)
 
 
 @pytest.fixture

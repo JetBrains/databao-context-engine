@@ -24,7 +24,7 @@ class PersistenceService:
         self._dim = dim
 
     def write_chunks_and_embeddings(
-        self, *, datasource_run_id: int, chunk_embeddings: list[ChunkEmbedding], table_name: str
+        self, *, chunk_embeddings: list[ChunkEmbedding], table_name: str, full_type: str, datasource_id: str
     ):
         """
         Atomically persist chunks and their vectors.
@@ -36,21 +36,17 @@ class PersistenceService:
         with transaction(self._conn):
             for chunk_embedding in chunk_embeddings:
                 chunk_dto = self.create_chunk(
-                    datasource_run_id=datasource_run_id,
-                    embeddable_text=chunk_embedding.chunk.embeddable_text,
-                    display_text=chunk_embedding.display_text,
-                    generated_description=chunk_embedding.generated_description,
+                    full_type=full_type,
+                    datasource_id=datasource_id,
+                    display_text=chunk_embedding.display_text or chunk_embedding.chunk.embeddable_text,
                 )
                 self.create_embedding(table_name=table_name, chunk_id=chunk_dto.chunk_id, vec=chunk_embedding.vec)
 
-    def create_chunk(
-        self, *, datasource_run_id: int, embeddable_text: str, display_text: str, generated_description: str
-    ) -> ChunkDTO:
+    def create_chunk(self, *, full_type: str, datasource_id: str, display_text: str) -> ChunkDTO:
         return self._chunk_repo.create(
-            datasource_run_id=datasource_run_id,
-            embeddable_text=embeddable_text,
+            full_type=full_type,
+            datasource_id=datasource_id,
             display_text=display_text,
-            generated_description=generated_description,
         )
 
     def create_embedding(self, *, table_name: str, chunk_id: int, vec: Sequence[float]):

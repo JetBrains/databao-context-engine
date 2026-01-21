@@ -10,7 +10,6 @@ from databao_context_engine.project.types import DatasourceId
 @dataclass(kw_only=True, frozen=True)
 class VectorSearchResult:
     display_text: str
-    embeddable_text: str
     cosine_distance: float
     datasource_type: DatasourceType
     datasource_id: DatasourceId
@@ -23,7 +22,7 @@ class VectorSearchRepository:
         self._conn = conn
 
     def get_display_texts_by_similarity(
-        self, *, table_name: str, run_id: int, retrieve_vec: Sequence[float], dimension: int, limit: int
+        self, *, table_name: str, retrieve_vec: Sequence[float], dimension: int, limit: int
     ) -> list[VectorSearchResult]:
         """
         Read only similarity search on a specific embedding shard table.
@@ -32,32 +31,28 @@ class VectorSearchRepository:
         rows = self._conn.execute(
             f"""
             SELECT
-                COALESCE(c.display_text, c.embeddable_text) AS display_text,
-                c.embeddable_text AS embeddable_text,
+                COALESCE(c.display_text) AS display_text,
                 array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) AS cosine_distance,
-                dr.full_type,
-                dr.source_id,
+                c.full_type,
+                c.datasource_id,
             FROM
                 {table_name} e
                 JOIN chunk c ON e.chunk_id = c.chunk_id
-                JOIN datasource_run dr ON c.datasource_run_id = dr.datasource_run_id
             WHERE
-                dr.run_id = ?
-                AND cosine_distance < ?
+                cosine_distance < ?
             ORDER BY
                 array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) ASC
             LIMIT ?
             """,
-            [list(retrieve_vec), run_id, self._DEFAULT_DISTANCE_THRESHOLD, list(retrieve_vec), limit],
+            [list(retrieve_vec), self._DEFAULT_DISTANCE_THRESHOLD, list(retrieve_vec), limit],
         ).fetchall()
 
         return [
             VectorSearchResult(
                 display_text=row[0],
-                embeddable_text=row[1],
-                cosine_distance=row[2],
-                datasource_type=DatasourceType(full_type=row[3]),
-                datasource_id=DatasourceId.from_string_repr(row[4]),
+                cosine_distance=row[1],
+                datasource_type=DatasourceType(full_type=row[2]),
+                datasource_id=DatasourceId.from_string_repr(row[3]),
             )
             for row in rows
         ]

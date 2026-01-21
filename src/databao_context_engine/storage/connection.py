@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def open_duckdb_connection(db_path: str | Path | None = None):
+def open_duckdb_connection(db_path: str | Path):
     """
     Open a DuckDB connection with vector search enabled and close on exist.
     Loads the vss extension and enables HNSW experimental persistence.
@@ -18,7 +18,7 @@ def open_duckdb_connection(db_path: str | Path | None = None):
     Usage:
         with open_duckdb_connection() as conn:
     """
-    path = str(db_path or get_db_path())
+    path = str(db_path)
     conn = duckdb.connect(path)
     logger.debug(f"Connected to DuckDB database at {path}")
 

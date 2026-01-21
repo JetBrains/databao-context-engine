@@ -36,13 +36,13 @@ class DatabaoContextEngine:
         return get_datasource_list(self.project_dir)
 
     def get_datasource_context(self, datasource_id: DatasourceId, run_name: str | None = None) -> DatasourceContext:
-        return get_datasource_context(project_dir=self.project_dir, datasource_id=datasource_id, run_name=run_name)
+        return get_datasource_context(project_dir=self.project_dir, datasource_id=datasource_id)
 
-    def get_all_contexts(self, run_name: str | None = None) -> list[DatasourceContext]:
-        return get_all_contexts(project_dir=self.project_dir, run_name=run_name)
+    def get_all_contexts(self) -> list[DatasourceContext]:
+        return get_all_contexts(project_dir=self.project_dir)
 
-    def get_all_contexts_formatted(self, run_name: str | None = None) -> str:
-        all_contexts = self.get_all_contexts(run_name=run_name)
+    def get_all_contexts_formatted(self) -> str:
+        all_contexts = self.get_all_contexts()
 
         all_results = os.linesep.join(
             [f"{get_context_header_for_datasource(context.datasource_id)}{context.context}" for context in all_contexts]
@@ -53,7 +53,6 @@ class DatabaoContextEngine:
     def search_context(
         self,
         retrieve_text: str,
-        run_name: str | None,
         limit: int | None,
         export_to_file: bool,
         datasource_ids: list[DatasourceId] | None = None,
@@ -64,7 +63,6 @@ class DatabaoContextEngine:
         results = retrieve_embeddings(
             project_dir=self.project_dir,
             retrieve_text=retrieve_text,
-            run_name=run_name,
             limit=limit,
             export_to_file=export_to_file,
         )

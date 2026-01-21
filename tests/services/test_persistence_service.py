@@ -10,13 +10,9 @@ import pytest
 
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.services.models import ChunkEmbedding
-from databao_context_engine.storage.exceptions.exceptions import IntegrityError
-from tests.utils.factories import make_datasource_run
 
 
-def test_write_chunks_and_embeddings(
-    persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, table_name
-):
+def test_write_chunks_and_embeddings(persistence, chunk_repo, embedding_repo, table_name):
     chunks = [EmbeddableChunk("A", "a"), EmbeddableChunk("B", "b"), EmbeddableChunk("C", "c")]
     chunk_embeddings = [
         ChunkEmbedding(chunk=chunks[0], vec=_vec(0.0), display_text=chunks[0].content, generated_description="g1"),
@@ -24,48 +20,26 @@ def test_write_chunks_and_embeddings(
         ChunkEmbedding(chunk=chunks[2], vec=_vec(2.0), display_text=chunks[2].content, generated_description="g3"),
     ]
 
-    datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
-
     persistence.write_chunks_and_embeddings(
-        datasource_run_id=datasource_run.datasource_run_id, chunk_embeddings=chunk_embeddings, table_name=table_name
+        chunk_embeddings=chunk_embeddings, table_name=table_name, full_type="files/md", datasource_id="123"
     )
 
-    saved = [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id]
-    assert [c.embeddable_text for c in saved] == ["C", "B", "A"]
+    saved = chunk_repo.list()
+    assert [c.display_text for c in saved] == ["c", "b", "a"]
 
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3
     assert rows[0].vec[0] in (0.0, 1.0, 2.0)
 
 
-def test_empty_pairs_raises_value_error(persistence, run_repo, datasource_run_repo, table_name):
-    datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
-
+def test_empty_pairs_raises_value_error(persistence, table_name):
     with pytest.raises(ValueError):
         persistence.write_chunks_and_embeddings(
-            datasource_run_id=datasource_run.datasource_run_id, chunk_embeddings=[], table_name=table_name
+            chunk_embeddings=[], table_name=table_name, full_type="files/md", datasource_id="123"
         )
 
 
-def test_invalid_fk_rolls_back_entire_batch(persistence, chunk_repo, embedding_repo, table_name):
-    pairs = [
-        ChunkEmbedding(chunk=EmbeddableChunk("X", "x"), vec=_vec(0.0), display_text="x", generated_description="g1"),
-    ]
-
-    with pytest.raises(IntegrityError):
-        persistence.write_chunks_and_embeddings(
-            datasource_run_id=9_999_999, chunk_embeddings=pairs, table_name=table_name
-        )
-
-    assert chunk_repo.list() == []
-    assert embedding_repo.list(table_name=table_name) == []
-
-
-def test_mid_batch_failure_rolls_back(
-    persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, monkeypatch, table_name
-):
-    datasource_run = make_datasource_run(run_repo=run_repo, datasource_run_repo=datasource_run_repo)
-
+def test_mid_batch_failure_rolls_back(persistence, chunk_repo, embedding_repo, monkeypatch, table_name):
     pairs = [
         ChunkEmbedding(EmbeddableChunk("A", "a"), _vec(0.0), display_text="a", generated_description="a"),
         ChunkEmbedding(EmbeddableChunk("B", "b"), _vec(1.0), display_text="b", generated_description="b"),
@@ -85,24 +59,14 @@ def test_mid_batch_failure_rolls_back(
 
     with pytest.raises(RuntimeError):
         persistence.write_chunks_and_embeddings(
-            datasource_run_id=datasource_run.datasource_run_id, chunk_embeddings=pairs, table_name=table_name
+            chunk_embeddings=pairs, table_name=table_name, full_type="files/md", datasource_id="123"
         )
 
-    assert [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id] == []
+    assert chunk_repo.list() == []
     assert embedding_repo.list(table_name=table_name) == []
 
 
-def test_write_chunks_and_embeddings_with_complex_content(
-    persistence, run_repo, datasource_run_repo, chunk_repo, embedding_repo, table_name
-):
-    datasource_run = make_datasource_run(
-        run_repo=run_repo,
-        datasource_run_repo=datasource_run_repo,
-        plugin="test-plugin",
-        source_id="src-1",
-        storage_directory="/tmp",
-    )
-
+def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_repo, embedding_repo, table_name):
     class Status(Enum):
         ACTIVE = "active"
         DISABLED = "disabled"
@@ -167,15 +131,12 @@ def test_write_chunks_and_embeddings_with_complex_content(
     ]
 
     persistence.write_chunks_and_embeddings(
-        datasource_run_id=datasource_run.datasource_run_id,
-        chunk_embeddings=pairs,
-        table_name=table_name,
+        chunk_embeddings=pairs, table_name=table_name, full_type="files/md", datasource_id="123"
     )
 
-    saved = [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id]
+    saved = chunk_repo.list()
     assert len(saved) == len(complex_items)
     saved_sorted = sorted(saved, key=lambda c: c.chunk_id)
-    assert [c.embeddable_text for c in saved_sorted] == [et for et, _ in complex_items]
     assert all(isinstance(c.display_text, str) and len(c.display_text) > 0 for c in saved_sorted)
 
     rows = embedding_repo.list(table_name=table_name)

@@ -5,8 +5,8 @@ from databao_context_engine.storage.models import EmbeddingDTO
 from tests.utils.factories import make_chunk
 
 
-def test_create_and_get(embedding_repo, chunk_repo, datasource_run_repo, run_repo, table_name):
-    chunk = make_chunk(run_repo, datasource_run_repo, chunk_repo)
+def test_create_and_get(embedding_repo, chunk_repo, table_name):
+    chunk = make_chunk(chunk_repo)
     created = embedding_repo.create(chunk_id=chunk.chunk_id, table_name=table_name, vec=_vec(0.0))
 
     assert isinstance(created, EmbeddingDTO)
@@ -21,8 +21,8 @@ def test_get_missing_returns_none(embedding_repo, table_name):
     assert embedding_repo.get(table_name=table_name, chunk_id=999_999) is None
 
 
-def test_update_vec(embedding_repo, chunk_repo, datasource_run_repo, run_repo, table_name):
-    chunk = make_chunk(run_repo, datasource_run_repo, chunk_repo)
+def test_update_vec(embedding_repo, chunk_repo, table_name):
+    chunk = make_chunk(chunk_repo)
     emb = embedding_repo.create(chunk_id=chunk.chunk_id, table_name=table_name, vec=_vec(0.0))
 
     updated_vec = _vec(9.9)
@@ -37,8 +37,8 @@ def test_update_missing_returns_none(embedding_repo, table_name):
     assert embedding_repo.update(table_name=table_name, chunk_id=424242, vec=_vec(0.0)) is None
 
 
-def test_delete(embedding_repo, chunk_repo, datasource_run_repo, run_repo, table_name):
-    chunk = make_chunk(run_repo, datasource_run_repo, chunk_repo)
+def test_delete(embedding_repo, chunk_repo, table_name):
+    chunk = make_chunk(chunk_repo)
     embedding_repo.create(chunk_id=chunk.chunk_id, table_name=table_name, vec=_vec(0.0))
 
     deleted = embedding_repo.delete(chunk_id=chunk.chunk_id, table_name=table_name)
@@ -50,11 +50,11 @@ def test_delete_missing_returns_zero(embedding_repo, table_name):
     assert embedding_repo.delete(table_name=table_name, chunk_id=424242) == 0
 
 
-def test_list(embedding_repo, chunk_repo, datasource_run_repo, run_repo, table_name):
-    s1 = make_chunk(run_repo, datasource_run_repo, chunk_repo, embeddable_text="e1", display_text="d1")
+def test_list(embedding_repo, chunk_repo, table_name):
+    s1 = make_chunk(chunk_repo, full_type="type/f", datasource_id="some-id", display_text="d1")
     e1 = embedding_repo.create(table_name=table_name, chunk_id=s1.chunk_id, vec=_vec(1.0))
 
-    s2 = make_chunk(run_repo, datasource_run_repo, chunk_repo, embeddable_text="e2", display_text="d2")
+    s2 = make_chunk(chunk_repo, full_type="type/f", datasource_id="some-id", display_text="d2")
     e2 = embedding_repo.create(table_name=table_name, chunk_id=s2.chunk_id, vec=_vec(2.0))
 
     rows = embedding_repo.list(table_name=table_name)

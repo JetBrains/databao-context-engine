@@ -26,12 +26,10 @@ class McpServer:
     def __init__(
         self,
         project_dir: Path,
-        run_name: str,
         host: str | None = None,
         port: int | None = None,
     ):
         self._databao_context_engine = DatabaoContextEngine(project_dir)
-        self._run_name = run_name
 
         self._mcp_server = self._create_mcp_server(host, port)
 
@@ -43,7 +41,7 @@ class McpServer:
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
         def all_results_tool():
-            return run_all_results_tool(self._databao_context_engine, self._run_name)
+            return run_all_results_tool(self._databao_context_engine)
 
         @mcp.tool(
             description="Retrieve the context built from various resources, including databases, dbt tools, plain and structured files, to retrieve relevant information",
@@ -52,7 +50,6 @@ class McpServer:
         def retrieve_tool(text: str, limit: int | None):
             return run_retrieve_tool(
                 databao_context_engine=self._databao_context_engine,
-                run_name=self._run_name,
                 text=text,
                 limit=limit or 50,
             )

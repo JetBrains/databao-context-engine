@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from databao_context_engine.project.runs import get_run_dir, resolve_run_name
+from databao_context_engine.project.layout import get_output_dir
 from databao_context_engine.project.types import DatasourceId
 
 
@@ -13,24 +13,22 @@ class DatasourceContext:
     context: str
 
 
-def get_datasource_context(
-    project_dir: Path, datasource_id: DatasourceId, run_name: str | None = None
-) -> DatasourceContext:
-    run_dir = _resolve_run_dir(project_dir, run_name)
+def get_datasource_context(project_dir: Path, datasource_id: DatasourceId) -> DatasourceContext:
+    output_dir = get_output_dir(project_dir=project_dir)
 
-    context_path = run_dir.joinpath(datasource_id.relative_path_to_context_file())
+    context_path = output_dir.joinpath(datasource_id.relative_path_to_context_file())
     if not context_path.is_file():
-        raise ValueError(f"Context file not found for datasource {str(datasource_id)} in run {run_dir.name}")
+        raise ValueError(f"Context file not found for datasource {str(datasource_id)}")
 
     context = context_path.read_text()
     return DatasourceContext(datasource_id=datasource_id, context=context)
 
 
-def get_all_contexts(project_dir: Path, run_name: str | None = None) -> list[DatasourceContext]:
-    run_dir = _resolve_run_dir(project_dir, run_name)
+def get_all_contexts(project_dir: Path) -> list[DatasourceContext]:
+    output_dir = get_output_dir(project_dir=project_dir)
 
     result = []
-    for main_type_dir in sorted((p for p in run_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
+    for main_type_dir in sorted((p for p in output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
         for context_path in sorted(
             (p for p in main_type_dir.iterdir() if p.suffix in [".yaml", ".yml"]), key=lambda p: p.name.lower()
         ):
@@ -47,13 +45,3 @@ def get_all_contexts(project_dir: Path, run_name: str | None = None) -> list[Dat
 
 def get_context_header_for_datasource(datasource_id: DatasourceId) -> str:
     return f"# ===== {str(datasource_id)} ====={os.linesep}"
-
-
-def _resolve_run_dir(project_dir: Path, run_name: str | None) -> Path:
-    resolved_run_name = resolve_run_name(project_dir=project_dir, run_name=run_name)
-
-    run_dir = get_run_dir(project_dir=project_dir, run_name=resolved_run_name)
-    if not run_dir.is_dir():
-        raise ValueError(f"Run {resolved_run_name} does not exist at {run_dir.resolve()}")
-
-    return run_dir

@@ -10,7 +10,7 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 
 from databao_context_engine.mcp.mcp_runner import run_mcp_server
-from tests.mcp.conftest import ProjectWithRuns
+from tests.mcp.conftest import Project
 from tests.utils.environment import env_variable
 
 set_start_method("spawn")
@@ -25,7 +25,6 @@ def anyio_backend(request):
 async def run_mcp_server_stdio_test(
     project_dir: Path,
     dce_path: Path,
-    run_name: str | None = None,
 ):
     """
     Runs an MCP Server integration test by:
@@ -33,8 +32,7 @@ async def run_mcp_server_stdio_test(
     2. Creating a client connecting with the MCP Server
     3. Yielding the MCP client session for the test to run
     """
-    mcp_args = ["--run-name", run_name] if run_name else []
-    mcp_args += ["--transport", "stdio"]
+    mcp_args = ["--transport", "stdio"]
     async with stdio_client(
         StdioServerParameters(
             command="uv",
@@ -54,7 +52,6 @@ async def run_mcp_server_stdio_test(
 async def run_mcp_server_http_test(
     project_dir: Path,
     dce_path: Path,
-    run_name: str | None = None,
     host: str | None = None,
     port: int | None = None,
 ):
@@ -64,7 +61,7 @@ async def run_mcp_server_http_test(
     2. Creating a client connecting with the MCP Server (we're retrying 5 times to wait for the server to be up and running)
     3. Yielding the MCP client session for the test to run
     """
-    server_process = Process(target=run_mcp_server, args=(project_dir, run_name, "streamable-http", host, port))
+    server_process = Process(target=run_mcp_server, args=(project_dir, "streamable-http", host, port))
     with env_variable("DATABAO_CONTEXT_ENGINE_PATH", str(dce_path.resolve())):
         server_process.start()
 
@@ -121,8 +118,8 @@ def _is_connection_error(e: Exception) -> bool:
 
 
 @pytest.mark.anyio
-async def test_run_mcp_server__list_tools(dce_path: Path, project_with_runs: ProjectWithRuns):
-    async with run_mcp_server_stdio_test(project_with_runs.project_dir, dce_path=dce_path) as session:
+async def test_run_mcp_server__list_tools(dce_path: Path, project: Project):
+    async with run_mcp_server_stdio_test(project.project_dir, dce_path=dce_path) as session:
         # List available tools
         tools = await session.list_tools()
         assert len(tools.tools) == 2
@@ -130,50 +127,17 @@ async def test_run_mcp_server__list_tools(dce_path: Path, project_with_runs: Pro
 
 
 @pytest.mark.anyio
-async def test_run_mcp_server__all_results_tool_with_no_run_name(dce_path: Path, project_with_runs: ProjectWithRuns):
-    async with run_mcp_server_stdio_test(project_with_runs.project_dir, dce_path=dce_path) as session:
+async def test_run_mcp_server__all_results_tool(dce_path: Path, project: Project):
+    async with run_mcp_server_stdio_test(project.project_dir, dce_path=dce_path) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
-        run_contexts = next(
-            iter(sorted(project_with_runs.runs, key=lambda run: run.run_name, reverse=True))
-        ).datasource_contexts
-        assert all(context.context in all_results.content[0].text for context in run_contexts)
 
-        # Make sure the result only contains the contexts from the run
-        all_contexts = {context for run in project_with_runs.runs for context in run.datasource_contexts}
-        absent_context_in_run = all_contexts - set(run_contexts)
-        assert all(context.context not in all_results.content[0].text for context in absent_context_in_run)
+        assert all(context.context in all_results.content[0].text for context in project.output.datasource_contexts)
 
 
 @pytest.mark.anyio
-async def test_run_mcp_server__all_results_tool_with_run_name(dce_path: Path, project_with_runs: ProjectWithRuns):
-    run_name = project_with_runs.runs[2].run_dir.name
-
-    async with run_mcp_server_stdio_test(
-        project_with_runs.project_dir, dce_path=dce_path, run_name=run_name
-    ) as session:
-        all_results = await session.call_tool(name="all_results_tool", arguments={})
-
-        run_contexts = next(run for run in project_with_runs.runs if run.run_dir.name == run_name).datasource_contexts
-        assert all(context.context in all_results.content[0].text for context in run_contexts)
-
-        # Make sure the result only contains the contexts from the run
-        all_contexts = {context for run in project_with_runs.runs for context in run.datasource_contexts}
-        absent_context_in_run = all_contexts - set(run_contexts)
-        assert all(context.context not in all_results.content[0].text for context in absent_context_in_run)
-
-
-@pytest.mark.anyio
-async def test_run_mcp_server__with_custom_host_and_port(dce_path: Path, project_with_runs: ProjectWithRuns):
+async def test_run_mcp_server__with_custom_host_and_port(dce_path: Path, project: Project):
     async with run_mcp_server_http_test(
-        project_dir=project_with_runs.project_dir, dce_path=dce_path, host="localhost", port=8001
+        project_dir=project.project_dir, dce_path=dce_path, host="localhost", port=8001
     ) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
-        run_contexts = next(
-            iter(sorted(project_with_runs.runs, key=lambda run: run.run_name, reverse=True))
-        ).datasource_contexts
-        assert all(context.context in all_results.content[0].text for context in run_contexts)
-
-        # Make sure the result only contains the contexts from the run
-        all_contexts = {context for run in project_with_runs.runs for context in run.datasource_contexts}
-        absent_context_in_run = all_contexts - set(run_contexts)
-        assert all(context.context not in all_results.content[0].text for context in absent_context_in_run)
+        assert all(context.context in all_results.content[0].text for context in project.output.datasource_contexts)

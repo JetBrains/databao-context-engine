@@ -28,10 +28,9 @@ class DatasourceRunDTO:
 @dataclass(frozen=True)
 class ChunkDTO:
     chunk_id: int
-    datasource_run_id: int
-    embeddable_text: str
+    full_type: str
+    datasource_id: str
     display_text: Optional[str]
-    generated_description: str
     created_at: datetime
 
 

@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from databao_context_engine.project.runs import get_run_dir
+from databao_context_engine.project.layout import get_output_dir
 from databao_context_engine.retrieve_embeddings.internal.export_results import export_retrieve_results
 from databao_context_engine.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
@@ -15,17 +15,13 @@ def retrieve(
     retrieve_service: RetrieveService,
     project_id: str,
     text: str,
-    run_name: str | None,
     limit: int | None,
     export_to_file: bool,
 ) -> list[VectorSearchResult]:
-    resolved_run_name = retrieve_service.resolve_run_name(project_id=project_id, run_name=run_name)
-    retrieve_results = retrieve_service.retrieve(
-        project_id=project_id, text=text, run_name=resolved_run_name, limit=limit
-    )
+    retrieve_results = retrieve_service.retrieve(project_id=project_id, text=text, limit=limit)
 
     if export_to_file:
-        export_directory = get_run_dir(project_dir=project_dir, run_name=resolved_run_name)
+        export_directory = get_output_dir(project_dir)
 
         display_texts = [result.display_text for result in retrieve_results]
         export_file = export_retrieve_results(export_directory, display_texts)
