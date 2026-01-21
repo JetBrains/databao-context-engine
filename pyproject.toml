@@ -55,3 +55,4 @@ ignore_missing_imports = true
 
 [tool.pytest]
 addopts = ["--import-mode=importlib"]
+strict = true
