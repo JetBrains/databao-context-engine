@@ -74,7 +74,7 @@ def get_datasource_descriptors(project_dir: Path, datasource_ids: list[Datasourc
         raise ValueError(f"src directory does not exist in {project_dir}")
 
     datasources: list[DatasourceDescriptor] = []
-    for datasource_id in datasource_ids:
+    for datasource_id in sorted(datasource_ids, key=lambda id: str(id)):
         config_file_path = src.joinpath(datasource_id.relative_path_to_config_file())
         if not config_file_path.is_file():
             raise ValueError(f"Datasource config file not found: {config_file_path}")
