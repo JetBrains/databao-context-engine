@@ -7,6 +7,7 @@ from databao_context_engine import (
     BuildContextResult,
     ChunkEmbeddingMode,
     DatabaoContextProjectManager,
+    Datasource,
     DatasourceId,
     DatasourceType,
 )
@@ -23,6 +24,42 @@ def patch_load_plugins(mocker):
 @pytest.fixture(autouse=True)
 def use_test_db(create_db):
     pass
+
+
+def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
+    datasource_list = DatabaoContextProjectManager(project_dir=project_path).get_configured_datasource_list()
+
+    assert datasource_list == []
+
+
+def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path):
+    databao_context_engine = DatabaoContextProjectManager(project_dir=project_path)
+    with_config_file(
+        project_dir=databao_context_engine.project_dir,
+        full_type="full/any",
+        datasource_name="a",
+        config_content={"type": "any", "name": "a"},
+    )
+    with_config_file(
+        project_dir=databao_context_engine.project_dir,
+        full_type="other/type",
+        datasource_name="b",
+        config_content={"type": "type", "name": "b"},
+    )
+    with_config_file(
+        project_dir=databao_context_engine.project_dir,
+        full_type="full/type2",
+        datasource_name="c",
+        config_content={"type": "type2", "name": "c"},
+    )
+
+    datasource_list = databao_context_engine.get_configured_datasource_list()
+
+    assert datasource_list == [
+        Datasource(id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="full/any")),
+        Datasource(id=DatasourceId.from_string_repr("full/c.yaml"), type=DatasourceType(full_type="full/type2")),
+        Datasource(id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="other/type")),
+    ]
 
 
 def test_databao_context_project_manager__build_with_no_datasource(project_path):
