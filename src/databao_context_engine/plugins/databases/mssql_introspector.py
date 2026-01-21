@@ -19,7 +19,7 @@ class MSSQLConnectionProperties(BaseModel):
     database: str | None = None
     user: str | None = None
     password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
-    encrypt: bool | None = None
+    encrypt: str | None = None
     additional_properties: dict[str, Any] = {}
 
     def to_mssql_kwargs(self) -> dict[str, Any]:
