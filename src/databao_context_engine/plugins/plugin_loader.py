@@ -67,22 +67,28 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     from databao_context_engine.plugins.athena_db_plugin import AthenaDbPlugin
     from databao_context_engine.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
     from databao_context_engine.plugins.duckdb_db_plugin import DuckDbPlugin
-    from databao_context_engine.plugins.mssql_db_plugin import MSSQLDbPlugin
     from databao_context_engine.plugins.mysql_db_plugin import MySQLDbPlugin
     from databao_context_engine.plugins.parquet_plugin import ParquetPlugin
     from databao_context_engine.plugins.postgresql_db_plugin import PostgresqlDbPlugin
     from databao_context_engine.plugins.snowflake_db_plugin import SnowflakeDbPlugin
 
+    dynamically_imported = []
+    try:
+        from databao_context_engine.plugins.mssql_db_plugin import MSSQLDbPlugin
+
+        dynamically_imported += [MSSQLDbPlugin()]
+    except ImportError:
+        pass
+
     return [
         AthenaDbPlugin(),
         ClickhouseDbPlugin(),
         DuckDbPlugin(),
-        MSSQLDbPlugin(),
         MySQLDbPlugin(),
         PostgresqlDbPlugin(),
         SnowflakeDbPlugin(),
         ParquetPlugin(),
-    ]
+    ] + dynamically_imported
 
 
 def _load_external_plugins(exclude_file_plugins: bool = False) -> list[BuildPlugin]:

@@ -433,13 +433,17 @@ dependencies = [
     { name = "duckdb" },
     { name = "jinja2" },
     { name = "mcp" },
-    { name = "mssql-python" },
     { name = "pyathena" },
     { name = "pydantic" },
     { name = "pymysql" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "snowflake-connector-python" },
+]
+
+[package.optional-dependencies]
+mssql = [
+    { name = "mssql-python" },
 ]
 
 [package.dev-dependencies]
@@ -465,7 +469,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.4.3" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "mcp", specifier = ">=1.23.3" },
-    { name = "mssql-python", specifier = ">=1.0.0" },
+    { name = "mssql-python", marker = "extra == 'mssql'", specifier = ">=1.0.0" },
     { name = "pyathena", specifier = ">=3.22.0" },
     { name = "pydantic", specifier = ">=2.12.4" },
     { name = "pymysql", specifier = ">=1.1.2" },
@@ -473,6 +477,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.5" },
     { name = "snowflake-connector-python", specifier = ">=4.1.0" },
 ]
+provides-extras = ["mssql"]
 
 [package.metadata.requires-dev]
 dev = [
