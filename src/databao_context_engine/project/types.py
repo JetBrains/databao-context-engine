@@ -127,6 +127,25 @@ class DatasourceId:
             config_file_suffix=datasource_config_file.suffix,
         )
 
+    @classmethod
+    def from_datasource_context_file_path(cls, datasource_context_file: Path):
+        """
+        Creates a DatasourceId from a context file path.
+
+        This factory handles the case where the context was generated from a raw file rather than from a config.
+        In that case, the context file name will look like "<my_datasource_name>.<raw_file_extension>.yaml"
+        """
+        if len(datasource_context_file.suffixes) > 1 and datasource_context_file.suffix == ".yaml":
+            # If there is more than 1 suffix, we remove the latest suffix (.yaml) to keep only the actual datasource file suffix
+            context_file_name_without_yaml_extension = datasource_context_file.name[: -len(".yaml")]
+            datasource_context_file = datasource_context_file.with_name(context_file_name_without_yaml_extension)
+
+        return DatasourceId(
+            datasource_config_folder=datasource_context_file.parent.name,
+            datasource_name=datasource_context_file.stem,
+            config_file_suffix=datasource_context_file.suffix,
+        )
+
 
 @dataclass
 class Datasource:

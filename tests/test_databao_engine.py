@@ -95,12 +95,14 @@ def test_databao_engine__get_all_contexts(project_path, db_path, create_db):
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
+            DatasourceContext(datasource_id=DatasourceId.from_string_repr("files/d.txt.yaml"), context="Context for d"),
         ],
     )
 
     result = databao_context_engine.get_all_contexts()
 
     assert result == [
+        DatasourceContext(datasource_id=DatasourceId.from_string_repr("files/d.txt"), context="Context for d"),
         DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
         DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
         DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),

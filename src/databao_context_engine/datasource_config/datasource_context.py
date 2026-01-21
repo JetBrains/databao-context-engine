@@ -37,8 +37,7 @@ def get_all_contexts(project_layout: ProjectLayout, run_name: str | None = None)
         ):
             result.append(
                 DatasourceContext(
-                    # FIXME: The extension will always be yaml here even if the datasource is a file with a different extension
-                    datasource_id=DatasourceId.from_datasource_config_file_path(context_path),
+                    datasource_id=DatasourceId.from_datasource_context_file_path(context_path),
                     context=context_path.read_text(),
                 )
             )
