@@ -44,7 +44,7 @@ dce = "databao_context_engine.main:main"
 generate_configs_schemas = "databao_context_engine.generate_configs_schemas:main"
 
 [tool.uv]
-override-dependencies = ["urllib3>=2.6.3"]
+override-dependencies = ["urllib3>=2.6.3", "filelock>=3.20.3"]
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]
