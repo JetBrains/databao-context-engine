@@ -40,13 +40,20 @@ class AwsDefaultAuth(BaseModel):
 class AthenaConnectionProperties(BaseModel):
     region_name: str
     schema_name: str = "default"
+    catalog: str | None = "awsdatacatalog"
     work_group: str | None = None
     s3_staging_dir: str | None = None
     auth: AwsIamAuth | AwsProfileAuth | AwsDefaultAuth | AwsAssumeRoleAuth
     additional_properties: dict[str, Any] = {}
 
     def to_athena_kwargs(self) -> dict[str, Any]:
-        kwargs = self.model_dump(exclude={"additional_properties", {"auth": {"type"}}}, exclude_none=True)
+        kwargs = self.model_dump(
+            exclude={
+                "additional_properties": True,
+                "auth": {"type"},
+            },
+            exclude_none=True,
+        )
         auth_fields = kwargs.pop("auth", {})
         kwargs.update(auth_fields)
         kwargs.update(self.additional_properties)
@@ -73,7 +80,7 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
             return cur.fetchall()
 
     def _get_catalogs(self, connection, file_config: AthenaConfigFile) -> list[str]:
-        catalog = file_config.connection.get("catalog", self._resolve_pseudo_catalog_name(file_config))
+        catalog = file_config.connection.catalog or self._resolve_pseudo_catalog_name(file_config)
         return [catalog]
 
     def _connect_to_catalog(self, file_config: AthenaConfigFile, catalog: str):

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from pytest_unordered import unordered
 
 from databao_context_engine.introspection.property_extract import get_property_list_from_type
-from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation, ConfigPropertyDefinition
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation, ConfigSinglePropertyDefinition
 
 
 class TestSubclass:
@@ -64,49 +64,51 @@ def test_get_property_list_from_type__with_dataclass():
     property_list = get_property_list_from_type(TestDataclass)
 
     assert property_list == unordered(
-        ConfigPropertyDefinition(property_key="a", required=False, property_type=int, default_value="1"),
-        ConfigPropertyDefinition(property_key="b", required=False, property_type=float, default_value="3.14"),
-        ConfigPropertyDefinition(
+        ConfigSinglePropertyDefinition(property_key="a", required=False, property_type=int, default_value="1"),
+        ConfigSinglePropertyDefinition(property_key="b", required=False, property_type=float, default_value="3.14"),
+        ConfigSinglePropertyDefinition(
             property_key="complex",
             required=True,
             property_type=None,
             nested_properties=[
-                ConfigPropertyDefinition(property_key="union_type", required=False, property_type=str),
-                ConfigPropertyDefinition(property_key="other_property", required=False, property_type=float),
-                ConfigPropertyDefinition(property_key="uuid", required=False, property_type=UUID),
+                ConfigSinglePropertyDefinition(property_key="union_type", required=False, property_type=str),
+                ConfigSinglePropertyDefinition(property_key="other_property", required=False, property_type=float),
+                ConfigSinglePropertyDefinition(property_key="uuid", required=False, property_type=UUID),
             ],
         ),
-        ConfigPropertyDefinition(property_key="required", required=True, property_type=datetime),
-        ConfigPropertyDefinition(
+        ConfigSinglePropertyDefinition(property_key="required", required=True, property_type=datetime),
+        ConfigSinglePropertyDefinition(
             property_key="with_default_value", required=False, default_value="2025-12-04", property_type=date
         ),
-        ConfigPropertyDefinition(
+        ConfigSinglePropertyDefinition(
             property_key="optional_subclass",
             required=True,
             property_type=None,
             nested_properties=[
-                ConfigPropertyDefinition(
+                ConfigSinglePropertyDefinition(
                     property_key="nested_subclass",
                     required=False,
                     property_type=None,
                     nested_properties=[
-                        ConfigPropertyDefinition(property_key="some_property", required=True, property_type=bool)
+                        ConfigSinglePropertyDefinition(property_key="some_property", required=True, property_type=bool)
                     ],
                 ),
-                ConfigPropertyDefinition(property_key="other_property", required=False, property_type=float),
-                ConfigPropertyDefinition(property_key="uuid", required=False, property_type=UUID),
-                ConfigPropertyDefinition(
+                ConfigSinglePropertyDefinition(property_key="other_property", required=False, property_type=float),
+                ConfigSinglePropertyDefinition(property_key="uuid", required=False, property_type=UUID),
+                ConfigSinglePropertyDefinition(
                     property_key="nested_pydantic_model",
                     required=False,
                     property_type=None,
                     nested_properties=[
-                        ConfigPropertyDefinition(property_key="regular_property", required=True, property_type=str),
-                        ConfigPropertyDefinition(
+                        ConfigSinglePropertyDefinition(
+                            property_key="regular_property", required=True, property_type=str
+                        ),
+                        ConfigSinglePropertyDefinition(
                             property_key="nested_model",
                             required=True,
                             property_type=None,
                             nested_properties=[
-                                ConfigPropertyDefinition(
+                                ConfigSinglePropertyDefinition(
                                     property_key="my_property",
                                     required=False,
                                     property_type=str,
@@ -149,34 +151,34 @@ class DataclassWithAllCases:
 def test_get_property_list__from_dataclass():
     assert get_property_list_from_type(DataclassWithAllCases) == unordered(
         [
-            ConfigPropertyDefinition(property_key="regular_property", required=True, property_type=int),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(property_key="regular_property", required=True, property_type=int),
+            ConfigSinglePropertyDefinition(
                 property_key="regular_property_with_default", required=False, property_type=bool, default_value="True"
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_field_default", required=False, property_type=bool, default_value="False"
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default", required=True, property_type=bool, default_value="True"
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default_and_default",
                 required=False,
                 property_type=bool,
                 default_value="True",
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default_and_field_default",
                 required=False,
                 property_type=bool,
                 default_value="True",
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_string_type",
                 required=True,
                 property_type=str,
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_union_type_as_string",
                 required=True,
                 property_type=int,
@@ -202,41 +204,41 @@ class BaseModelWithAllCases(BaseModel):
 def test_get_property_list__from_pydantic_base_model():
     assert get_property_list_from_type(BaseModelWithAllCases) == unordered(
         [
-            ConfigPropertyDefinition(property_key="regular_property", required=True, property_type=str),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(property_key="regular_property", required=True, property_type=str),
+            ConfigSinglePropertyDefinition(
                 property_key="regular_property_with_default", required=False, property_type=bool, default_value="False"
             ),
-            ConfigPropertyDefinition(property_key="property_with_field_info", required=True, property_type=int),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(property_key="property_with_field_info", required=True, property_type=int),
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_field_default",
                 required=False,
                 property_type=int,
                 default_value="1",
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default",
                 required=True,
                 property_type=int,
                 default_value="1",
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default_and_default",
                 required=False,
                 property_type=int,
                 default_value="1",
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default_and_field_default",
                 required=False,
                 property_type=int,
                 default_value="1",
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_string_type",
                 required=True,
                 property_type=str,
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="property_with_union_type_as_string",
                 required=True,
                 property_type=float,

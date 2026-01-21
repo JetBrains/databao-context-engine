@@ -1,6 +1,6 @@
 import types
 from dataclasses import MISSING, fields, is_dataclass
-from typing import Annotated, Any, ForwardRef, Union, get_origin, get_type_hints
+from typing import Annotated, Any, ForwardRef, Union, get_origin, get_type_hints, get_args
 
 from pydantic import BaseModel, _internal
 from pydantic_core import PydanticUndefinedType
@@ -128,15 +128,15 @@ def _create_property(
     if annotation is not None and annotation.ignored_for_config_wizard:
         return None
 
-    actual_property_type = _read_actual_property_type(property_type)
+    actual_property_types = _read_actual_property_type(property_type)
 
     required = annotation.required if annotation else is_property_required
     secret = annotation.secret if annotation else False
 
-    if isinstance(actual_property_type, tuple):
+    if len(actual_property_types) > 1:
         type_properties: dict[type, list[ConfigPropertyDefinition]] = {}
 
-        for union_type in actual_property_type:
+        for union_type in actual_property_types:
             try:
                 nested_props = _get_property_list_from_type(
                     parent_type=union_type,
@@ -149,10 +149,11 @@ def _create_property(
 
         return ConfigUnionPropertyDefinition(
             property_key=property_name,
-            types=actual_property_type,
+            types=actual_property_types,
             type_properties=type_properties,
         )
     else:
+        actual_property_type = actual_property_types[0]
         try:
             nested_properties = _get_property_list_from_type(
                 parent_type=actual_property_type,
@@ -188,18 +189,16 @@ def _get_config_property_annotation(property_type) -> ConfigPropertyAnnotation |
     return None
 
 
-def _read_actual_property_type(property_type: type) -> type | tuple[type, ...]:
+def _read_actual_property_type(property_type: type) -> tuple[type, ...]:
     property_type_origin = get_origin(property_type)
 
     if property_type_origin is Annotated:
-        return property_type.__origin__  # type: ignore[attr-defined]
-    elif property_type_origin is Union or property_type_origin is types.UnionType:
-        args = tuple(arg for arg in property_type.__args__ if arg is not type(None))
-        if len(args) == 1:
-            return args[0]  # T | None
+        return _read_actual_property_type(property_type.__origin__)  # type: ignore[attr-defined]
+    elif property_type_origin in (Union, types.UnionType):
+        args = tuple(arg for arg in get_args(property_type) if arg is not type(None))
         return args
 
-    return property_type
+    return (property_type,)
 
 
 def compute_default_value(

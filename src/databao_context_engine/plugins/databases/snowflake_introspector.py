@@ -52,7 +52,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         return snowflake.connector.connect(**cfg)
 
     def _get_catalogs(self, connection, file_config: SnowflakeConfigFile) -> list[str]:
-        database = file_config.connection.get("database")
+        database = file_config.connection.database
         if database:
             return [database]
 

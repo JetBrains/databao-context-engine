@@ -31,7 +31,7 @@ class ConfigSinglePropertyDefinition:
     required: bool
     property_type: type | None = str
     default_value: str | None = None
-    nested_properties: list["ConfigPropertyDefinition"] | None = None
+    nested_properties: list[ConfigPropertyDefinition] | None = None
     secret: bool = False
 
 
