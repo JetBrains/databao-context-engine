@@ -4,7 +4,7 @@ from databao_context_engine import DatabaoContextEngine
 
 
 def run_retrieve_tool(
-    *, databao_context_engine: DatabaoContextEngine, run_name: str, text: str, limit: int | None = None
+    *, databao_context_engine: DatabaoContextEngine, run_name: str | None, text: str, limit: int | None = None
 ) -> str:
     """
     Execute the retrieve flow for MCP and return the matching display texts

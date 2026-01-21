@@ -26,7 +26,7 @@ class McpServer:
     def __init__(
         self,
         project_dir: Path,
-        run_name: str,
+        run_name: str | None,
         host: str | None = None,
         port: int | None = None,
     ):

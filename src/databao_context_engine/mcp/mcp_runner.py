@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 
 from databao_context_engine.mcp.mcp_server import McpServer, McpTransport
-from databao_context_engine.project.layout import ensure_project_dir
-from databao_context_engine.project.runs import resolve_run_name
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +13,4 @@ def run_mcp_server(
     host: str | None = None,
     port: int | None = None,
 ) -> None:
-    project_layout = ensure_project_dir(project_dir=project_dir)
-    resolved_run_name = resolve_run_name(project_layout=project_layout, run_name=run_name)
-
-    logger.info(f"Using {resolved_run_name} from project {project_dir.resolve()}")
-
-    McpServer(project_dir, resolved_run_name, host, port).run(transport)
+    McpServer(project_dir, run_name, host, port).run(transport)
