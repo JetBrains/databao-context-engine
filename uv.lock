@@ -6,6 +6,9 @@ resolution-markers = [
     "python_full_version < '3.14'",
 ]
 
+[manifest]
+overrides = [{ name = "urllib3", specifier = ">=2.6.3" }]
+
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -434,7 +437,6 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "snowflake-connector-python" },
-    { name = "urllib3" },
 ]
 
 [package.dev-dependencies]
@@ -467,7 +469,6 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "snowflake-connector-python", specifier = ">=4.1.0" },
-    { name = "urllib3", specifier = ">=2.6.3" },
 ]
 
 [package.metadata.requires-dev]
@@ -1460,6 +1461,7 @@ dependencies = [
     { name = "sortedcontainers" },
     { name = "tomlkit" },
     { name = "typing-extensions" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/68/c1/18da1939b7a47fafd5f634550ebd2727c461ab4511943dd9aadf02b66c49/snowflake_connector_python-4.1.0.tar.gz", hash = "sha256:340dd870b30eaad38ec3f944b19c346811f2afac7aedaeab431e1909aec13650", size = 820557, upload-time = "2025-11-19T13:17:15.813Z" }
 wheels = [

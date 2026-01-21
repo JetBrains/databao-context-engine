@@ -20,8 +20,6 @@ dependencies = [
     "asyncpg>=0.31.0",
     "asyncio>=4.0.0",
     "asyncpg-stubs>=0.31.1",
-    # indirect dependency. Added only to maintain a specific version (without security vulnerabilities)
-    "urllib3>=2.6.3",
 ]
 
 [build-system]
@@ -44,6 +42,9 @@ dev = [
 [project.scripts]
 dce = "databao_context_engine.main:main"
 generate_configs_schemas = "databao_context_engine.generate_configs_schemas:main"
+
+[tool.uv]
+override-dependencies = ["urllib3>=2.6.3"]
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]
