@@ -477,7 +477,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.5" },
     { name = "snowflake-connector-python", specifier = ">=4.1.0" },
 ]
-provides-extras = ["mssql"]
+provides-extras = ["recommended", "mssql"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -20,8 +20,15 @@ dependencies = [
     "asyncio>=4.0.0",
     "asyncpg-stubs>=0.31.1",
 ]
+default-optional-dependency-keys = [
+    "recommended",
+]
+
 
 [project.optional-dependencies]
+recommended = [
+    # todo add postgres and maybe mysql?
+]
 mssql = [
     "mssql-python>=1.0.0"
 ]
@@ -60,3 +67,6 @@ ignore_missing_imports = true
 [tool.pytest]
 addopts = ["--import-mode=importlib"]
 strict = true
+markers = [
+    "recommended_extras: marks tests which are supposed to be run only with recommended set of extras",
+]
