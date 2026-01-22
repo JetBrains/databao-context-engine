@@ -33,7 +33,7 @@ class RetrieveService:
 
         retrieve_vec: Sequence[float] = self._provider.embed(text)
 
-        logger.debug(f"Retrieving display texts \nTODO: fix log message\n in table {table_name}")
+        logger.debug(f"Retrieving display texts in table {table_name}")
 
         search_results = self._vector_search_repo.get_display_texts_by_similarity(
             table_name=table_name,
@@ -42,13 +42,13 @@ class RetrieveService:
             limit=limit,
         )
 
-        logger.debug(f"Retrieved {len(search_results)} display texts for \nTODO: fix log msg\n in table {table_name}")
+        logger.debug(f"Retrieved {len(search_results)} display texts in table {table_name}")
 
         if logger.isEnabledFor(logging.DEBUG):
             closest_result = min(search_results, key=lambda result: result.cosine_distance)
-            logger.debug(f"Best result: ({closest_result.cosine_distance}, {closest_result.display_text})")
+            logger.debug(f"Best result: ({closest_result.cosine_distance}, {closest_result.embeddable_text})")
 
             farthest_result = max(search_results, key=lambda result: result.cosine_distance)
-            logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.display_text})")
+            logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
 
         return search_results

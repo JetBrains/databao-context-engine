@@ -10,6 +10,7 @@ from databao_context_engine.project.types import DatasourceId
 @dataclass(kw_only=True, frozen=True)
 class VectorSearchResult:
     display_text: str
+    embeddable_text: str
     cosine_distance: float
     datasource_type: DatasourceType
     datasource_id: DatasourceId
@@ -31,7 +32,8 @@ class VectorSearchRepository:
         rows = self._conn.execute(
             f"""
             SELECT
-                COALESCE(c.display_text) AS display_text,
+                COALESCE(c.display_text, c.embeddable_text) AS display_text,
+                c.embeddable_text,
                 array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) AS cosine_distance,
                 c.full_type,
                 c.datasource_id,
@@ -50,9 +52,10 @@ class VectorSearchRepository:
         return [
             VectorSearchResult(
                 display_text=row[0],
-                cosine_distance=row[1],
-                datasource_type=DatasourceType(full_type=row[2]),
-                datasource_id=DatasourceId.from_string_repr(row[3]),
+                embeddable_text=row[1],
+                cosine_distance=row[2],
+                datasource_type=DatasourceType(full_type=row[3]),
+                datasource_id=DatasourceId.from_string_repr(row[4]),
             )
             for row in rows
         ]

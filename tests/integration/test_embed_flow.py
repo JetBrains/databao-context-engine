@@ -37,6 +37,7 @@ def test_embed_flow_persists_chunks_and_embeddings(
     chunks = chunk_repo.list()
     assert len(chunks) == 3
     assert [s.display_text for s in chunks] == ["Gamma", "Beta", "Alpha"]
+    assert [s.embeddable_text for s in chunks] == ["gamma", "beta", "alpha"]
 
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3

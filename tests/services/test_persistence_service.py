@@ -26,6 +26,7 @@ def test_write_chunks_and_embeddings(persistence, chunk_repo, embedding_repo, ta
 
     saved = chunk_repo.list()
     assert [c.display_text for c in saved] == ["c", "b", "a"]
+    assert [c.embeddable_text for c in saved] == ["C", "B", "A"]
 
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3
@@ -138,6 +139,7 @@ def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_rep
     assert len(saved) == len(complex_items)
     saved_sorted = sorted(saved, key=lambda c: c.chunk_id)
     assert all(isinstance(c.display_text, str) and len(c.display_text) > 0 for c in saved_sorted)
+    assert [c.embeddable_text for c in saved_sorted] == [et for et, _ in complex_items]
 
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == len(complex_items)

@@ -38,14 +38,16 @@ class PersistenceService:
                 chunk_dto = self.create_chunk(
                     full_type=full_type,
                     datasource_id=datasource_id,
-                    display_text=chunk_embedding.display_text or chunk_embedding.chunk.embeddable_text,
+                    embeddable_text=chunk_embedding.chunk.embeddable_text,
+                    display_text=chunk_embedding.display_text,
                 )
                 self.create_embedding(table_name=table_name, chunk_id=chunk_dto.chunk_id, vec=chunk_embedding.vec)
 
-    def create_chunk(self, *, full_type: str, datasource_id: str, display_text: str) -> ChunkDTO:
+    def create_chunk(self, *, full_type: str, datasource_id: str, embeddable_text: str, display_text: str) -> ChunkDTO:
         return self._chunk_repo.create(
             full_type=full_type,
             datasource_id=datasource_id,
+            embeddable_text=embeddable_text,
             display_text=display_text,
         )
 

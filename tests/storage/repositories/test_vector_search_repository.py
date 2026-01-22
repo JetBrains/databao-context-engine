@@ -18,6 +18,7 @@ def test_similarity_returns_display_and_distance(
         chunk_repo,
         full_type="f/type",
         datasource_id="databases/test_clickhouse_db.yml",
+        embeddable_text="raw embeddable",
         display_text="nice description",
     )
     make_embedding(
@@ -42,6 +43,7 @@ def test_similarity_returns_display_and_distance(
     assert len(results) == 1
     r = results[0]
     assert r.display_text == "nice description"
+    assert r.embeddable_text == "raw embeddable"
     assert r.datasource_type == DatasourceType.from_main_and_subtypes("f", "type")
     assert r.datasource_id == DatasourceId.from_string_repr("databases/test_clickhouse_db.yml")
     assert r.cosine_distance == pytest.approx(0.0, abs=1e-6)
@@ -58,6 +60,7 @@ def test_limit_is_applied(
             chunk_repo,
             full_type="f/type",
             datasource_id="databases/test_clickhouse_db.yml",
+            embeddable_text=f"e{i}",
             display_text=f"c{i}",
         )
         make_embedding(

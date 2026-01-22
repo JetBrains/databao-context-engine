@@ -51,10 +51,10 @@ def test_delete_missing_returns_zero(embedding_repo, table_name):
 
 
 def test_list(embedding_repo, chunk_repo, table_name):
-    s1 = make_chunk(chunk_repo, full_type="type/f", datasource_id="some-id", display_text="d1")
+    s1 = make_chunk(chunk_repo, full_type="type/f", datasource_id="some-id", embeddable_text="e1", display_text="d1")
     e1 = embedding_repo.create(table_name=table_name, chunk_id=s1.chunk_id, vec=_vec(1.0))
 
-    s2 = make_chunk(chunk_repo, full_type="type/f", datasource_id="some-id", display_text="d2")
+    s2 = make_chunk(chunk_repo, full_type="type/f", datasource_id="some-id", embeddable_text="e2", display_text="d2")
     e2 = embedding_repo.create(table_name=table_name, chunk_id=s2.chunk_id, vec=_vec(2.0))
 
     rows = embedding_repo.list(table_name=table_name)

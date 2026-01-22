@@ -71,26 +71,6 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, chunk_em
     assert out is result
 
 
-# TODO: It feels like this test should go. Not sure yet
-# def test_process_prepared_source_uses_path_stem_when_result_id_missing(svc, chunk_embed_svc, mocker, tmp_path):
-#     plugin = mocker.Mock(name="Plugin")
-#     plugin.name = "pluggy"
-#     prepared = mk_prepared(tmp_path / "src" / "databases" / "pg.yaml", full_type="databases/postgres")
-#
-#     res = mk_result(name="databases/pg.yaml", typ="databases/postgres")
-#     mocker.patch("databao_context_engine.build_sources.internal.build_service.execute", return_value=res)
-#
-#     plugin.divide_context_into_chunks.return_value = [EmbeddableChunk("e", "E")]
-#
-#     ds_row = SimpleNamespace(datasource_run_id=777)
-#     ds_repo.create.return_value = ds_row
-#
-#     svc.process_prepared_source(run_id=1, prepared_source=prepared, plugin=plugin)
-#
-#     assert ds_repo.create.call_args.kwargs["source_id"] == "databases/pg.yaml"
-#     assert ds_repo.create.call_args.kwargs["storage_directory"] == str(prepared.path.parent)
-
-
 def test_process_prepared_source_execute_error_bubbles_and_no_writes(svc, chunk_embed_svc, mocker, tmp_path):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"

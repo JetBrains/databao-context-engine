@@ -81,6 +81,9 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
     assert reg.table_name == expected_table
     assert reg.dim == embedding_provider.dim
 
+    saved = chunk_repo.list()
+    assert [c.embeddable_text for c in saved] == ["C", "B", "A"]
+
     rows = embedding_repo.list(table_name=expected_table)
     assert len(rows) == 3
 

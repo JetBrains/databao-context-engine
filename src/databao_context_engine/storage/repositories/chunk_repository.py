@@ -16,19 +16,20 @@ class ChunkRepository:
         *,
         full_type: str,
         datasource_id: str,
+        embeddable_text: str,
         display_text: Optional[str],
     ) -> ChunkDTO:
         try:
             row = self._conn.execute(
                 """
             INSERT INTO
-                chunk(full_type, datasource_id, display_text)
+                chunk(full_type, datasource_id, embeddable_text, display_text)
             VALUES
-                (?, ?, ?)
+                (?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [full_type, datasource_id, display_text],
+                [full_type, datasource_id, embeddable_text, display_text],
             ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
@@ -56,6 +57,7 @@ class ChunkRepository:
         *,
         full_type: Optional[str] = None,
         datasource_id: Optional[str] = None,
+        embeddable_text: Optional[str] = None,
         display_text: Optional[str] = None,
     ) -> Optional[ChunkDTO]:
         sets: list[Any] = []
@@ -67,6 +69,9 @@ class ChunkRepository:
         if datasource_id is not None:
             sets.append("datasource_id = ?")
             params.append(datasource_id)
+        if embeddable_text is not None:
+            sets.append("embeddable_text = ?")
+            params.append(embeddable_text)
         if display_text is not None:
             sets.append("display_text = ?")
             params.append(display_text)
@@ -118,11 +123,12 @@ class ChunkRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> ChunkDTO:
-        chunk_id, full_type, datasource_id, display_text, created_at = row
+        chunk_id, full_type, datasource_id, embeddable_text, display_text, created_at = row
         return ChunkDTO(
             chunk_id=int(chunk_id),
             full_type=full_type,
             datasource_id=datasource_id,
+            embeddable_text=embeddable_text,
             display_text=display_text,
             created_at=created_at,
         )

@@ -23,12 +23,14 @@ def test_retrieve_returns_results():
     expected = [
         VectorSearchResult(
             display_text="a",
+            embeddable_text="a",
             cosine_distance=0.5,
             datasource_type=DatasourceType(full_type="full/type"),
             datasource_id="full/a",
         ),
         VectorSearchResult(
             display_text="b",
+            embeddable_text="b",
             cosine_distance=0.51,
             datasource_type=DatasourceType(full_type="full/type"),
             datasource_id="full/b",
@@ -74,12 +76,14 @@ def test_retrieve_uses_run_name_if_provided():
     vector_search_repo.get_display_texts_by_similarity.return_value = [
         VectorSearchResult(
             display_text="a",
+            embeddable_text="a",
             cosine_distance=0.5,
             datasource_type=DatasourceType(full_type="full/type"),
             datasource_id="full/a",
         ),
         VectorSearchResult(
             display_text="b",
+            embeddable_text="b",
             cosine_distance=0.51,
             datasource_type=DatasourceType(full_type="full/type"),
             datasource_id="full/b",
@@ -108,6 +112,7 @@ def test_retrieve_honors_limit():
     expected = [
         VectorSearchResult(
             display_text="x",
+            embeddable_text="x",
             cosine_distance=0.5,
             datasource_type=DatasourceType(full_type="full/type"),
             datasource_id="full/x",
