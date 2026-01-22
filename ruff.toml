@@ -2,3 +2,34 @@
 extend = "pyproject.toml"
 # But use a different line length.
 line-length = 120
+
+[lint]
+extend-select = [
+    # pydoclint
+    "DOC",
+    # pydocstyle
+    "D",
+]
+ignore = [
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+]
+preview = true
+
+[lint.pydocstyle]
+# Use Google-style docstrings.
+convention = "google"
+
+[lint.pydoclint]
+# Skip docstrings which fit on a single line.
+ignore-one-line-docstrings = true
+
+[lint.per-file-ignores]
+# Ignore `D` and "DOC" rules everywhere except for the `src/` directory.
+"!src/**.py" = ["D", "DOC"]

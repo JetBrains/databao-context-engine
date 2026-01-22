@@ -121,9 +121,11 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
 
     @abstractmethod
     def _connect_to_catalog(self, file_config: T, catalog: str):
-        """Return a connection scoped to `catalog`. For engines that
-        don’t need a new connection, return a connection with the
-        session set/USE’d to that catalog."""
+        """Return a connection scoped to `catalog`.
+
+        For engines that don’t need a new connection, return a connection with the
+        session set/USE’d to that catalog.
+        """
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         raise NotImplementedError

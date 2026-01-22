@@ -49,14 +49,15 @@ ARTIFACTS: dict[str, ArtifactInfo] = {
 
 
 def resolve_ollama_bin() -> str:
-    """
-    Decide which `ollama` binary to use, in this order:
+    """Decide which `ollama` binary to use.
 
+    Here is the priority order:
     1. DCE_OLLAMA_BIN env var, if set and exists
     2. `ollama` found on PATH
     3. Managed installation under MANAGED_OLLAMA_BIN
 
-    Returns the full path to the binary
+    Returns:
+        The full path to the binary
     """
     override = os.environ.get("DCE_OLLAMA_BIN")
     if override:
@@ -76,9 +77,7 @@ def resolve_ollama_bin() -> str:
 
 
 def _detect_platform() -> str:
-    """
-    Return one of: 'darwin', 'linux-amd64', 'linux-arm64', 'windows-amd64', 'windows-arm64'.
-    """
+    """Return one of: 'darwin', 'linux-amd64', 'linux-arm64', 'windows-amd64', 'windows-arm64'."""
     os_name = sys.platform.lower()
     arch = (os.uname().machine if hasattr(os, "uname") else "").lower()
 
@@ -97,9 +96,7 @@ def _detect_platform() -> str:
 
 
 def _download_to_temp(url: str) -> Path:
-    """
-    Download to a temporary file and return its path.
-    """
+    """Download to a temporary file and return its path."""
     import urllib.request
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="ollama-download-"))
@@ -114,9 +111,7 @@ def _download_to_temp(url: str) -> Path:
 
 
 def _verify_sha256(path: Path, expected_hex: str) -> None:
-    """
-    Verify SHA-256 of path matches expected_hex
-    """
+    """Verify SHA-256 of path matches expected_hex."""
     h = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -127,9 +122,7 @@ def _verify_sha256(path: Path, expected_hex: str) -> None:
 
 
 def _extract_archive(archive: Path, target_dir: Path) -> None:
-    """
-    Extract archive into target_dir.
-    """
+    """Extract archive into target_dir."""
     name = archive.name.lower()
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -144,9 +137,7 @@ def _extract_archive(archive: Path, target_dir: Path) -> None:
 
 
 def _ensure_executable(path: Path) -> None:
-    """
-    Mark path as executable
-    """
+    """Mark path as executable."""
     try:
         mode = path.stat().st_mode
         path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -155,8 +146,7 @@ def _ensure_executable(path: Path) -> None:
 
 
 def install_ollama_to(target: Path) -> None:
-    """
-    Ensure an Ollama binary exists.
+    """Ensure an Ollama binary exist.
 
     If it doesn't exist, this will:
     - detect OS
@@ -164,6 +154,9 @@ def install_ollama_to(target: Path) -> None:
     - verify its SHA-256 checksum
     - extract into the installation directory
     - make the binary executable
+
+    Raises:
+        RuntimeError: If the user's platform is not supported
     """
     target = target.expanduser()
     if target.parent.name == "bin":

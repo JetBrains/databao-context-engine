@@ -20,10 +20,13 @@ logger = logging.getLogger(__name__)
 
 
 def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddingMode) -> list[BuildContextResult]:
-    """
-    Public build entrypoint
+    """Build the context for all datasources in the project.
+
     - Instantiates the build service
     - Delegates the actual build logic to the build runner
+
+    Returns:
+        A list of all the contexts built.
     """
     project_layout = ensure_project_dir(project_dir)
 

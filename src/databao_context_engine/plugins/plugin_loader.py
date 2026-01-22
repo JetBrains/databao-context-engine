@@ -15,9 +15,7 @@ class DuplicatePluginTypeError(RuntimeError):
 
 
 def load_plugins(exclude_file_plugins: bool = False) -> dict[DatasourceType, BuildPlugin]:
-    """
-    Loads both builtin and external plugins and merges them into one list
-    """
+    """Load both builtin and external plugins and merges them into one list."""
     builtin_plugins = _load_builtin_plugins(exclude_file_plugins)
     external_plugins = _load_external_plugins(exclude_file_plugins)
     plugins = _merge_plugins(builtin_plugins, external_plugins)
@@ -45,9 +43,7 @@ def _load_builtin_file_plugins() -> list[BuildFilePlugin]:
 
 
 def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
-    """
-    Statically register built-in plugins
-    """
+    """Statically register built-in plugins."""
     from databao_context_engine.plugins.athena_db_plugin import AthenaDbPlugin
     from databao_context_engine.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
     from databao_context_engine.plugins.duckdb_db_plugin import DuckDbPlugin
@@ -78,17 +74,13 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
 
 
 def _load_external_plugins(exclude_file_plugins: bool = False) -> list[BuildPlugin]:
-    """
-    Discover external plugins via entry points
-    """
+    """Discover external plugins via entry points."""
     # TODO: implement external plugin loading
     return []
 
 
 def _merge_plugins(*plugin_lists: list[BuildPlugin]) -> dict[DatasourceType, BuildPlugin]:
-    """
-    Merge multiple plugin maps
-    """
+    """Merge multiple plugin maps."""
     registry: dict[DatasourceType, BuildPlugin] = {}
     for plugins in plugin_lists:
         for plugin in plugins:
