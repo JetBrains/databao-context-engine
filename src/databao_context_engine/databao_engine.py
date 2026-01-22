@@ -8,10 +8,10 @@ from databao_context_engine.datasource_config.datasource_context import (
     get_all_contexts,
     get_context_header_for_datasource,
     get_datasource_context,
+    get_introspected_datasource_list,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.datasource_discovery import get_datasource_list
-from databao_context_engine.project.layout import ensure_project_dir
+from databao_context_engine.project.layout import ensure_project_dir, ProjectLayout
 from databao_context_engine.project.types import Datasource, DatasourceId
 from databao_context_engine.retrieve_embeddings.public.api import retrieve_embeddings
 
@@ -26,14 +26,14 @@ class ContextSearchResult:
 
 class DatabaoContextEngine:
     project_dir: Path
+    project_layout: ProjectLayout
 
     def __init__(self, project_dir: Path) -> None:
         self.project_layout = ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
 
-    def get_datasource_list(self) -> list[Datasource]:
-        # TODO: Should this return the list of built datasources rather than the list of datasources within the src folder?
-        return get_datasource_list(self.project_dir)
+    def get_introspected_datasource_list(self, run_name: str | None = None) -> list[Datasource]:
+        return get_introspected_datasource_list(self.project_layout, run_name=run_name)
 
     def get_datasource_context(self, datasource_id: DatasourceId, run_name: str | None = None) -> DatasourceContext:
         return get_datasource_context(
