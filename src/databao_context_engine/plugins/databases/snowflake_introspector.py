@@ -1,22 +1,57 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Annotated
 
 import snowflake.connector
-from pydantic import Field
+from pydantic import BaseModel, Field
 from snowflake.connector import DictCursor
 
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
+class SnowflakePasswordAuth(BaseModel):
+    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+
+
+class SnowflakeKeyPairAuth(BaseModel):
+    private_key_file: str | None = None
+    private_key_file_pwd: str | None = None
+    private_key: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+
+
+class SnowflakeSSOAuth(BaseModel):
+    authenticator: str = Field(description='e.g. "externalbrowser"')
+
+
+class SnowflakeConnectionProperties(BaseModel):
+    account: Annotated[str, ConfigPropertyAnnotation(required=True)]
+    warehouse: str | None = None
+    database: str | None = None
+    user: str | None = None
+    role: str | None = None
+    auth: SnowflakePasswordAuth | SnowflakeKeyPairAuth | SnowflakeSSOAuth
+    additional_properties: dict[str, Any] = {}
+
+    def to_snowflake_kwargs(self) -> dict[str, Any]:
+        kwargs = self.model_dump(
+            exclude={
+                "additional_properties": True,
+            },
+            exclude_none=True,
+        )
+        auth_fields = kwargs.pop("auth", {})
+        kwargs.update(auth_fields)
+        kwargs.update(self.additional_properties)
+        return kwargs
+
+
 class SnowflakeConfigFile(BaseDatabaseConfigFile):
     type: str = Field(default="databases/snowflake")
-    connection: dict[str, Any] = Field(
-        description="Connection parameters for Snowflake. It can contain any of the keys supported by the Snowflake connection library"
-    )
+    connection: SnowflakeConnectionProperties
 
 
 class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
@@ -28,11 +63,9 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
     def _connect(self, file_config: SnowflakeConfigFile):
         connection = file_config.connection
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
         snowflake.connector.paramstyle = "qmark"
         return snowflake.connector.connect(
-            **connection,
+            **connection.to_snowflake_kwargs(),
         )
 
     def _connect_to_catalog(self, file_config: SnowflakeConfigFile, catalog: str):
@@ -41,7 +74,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         return snowflake.connector.connect(**cfg)
 
     def _get_catalogs(self, connection, file_config: SnowflakeConfigFile) -> list[str]:
-        database = file_config.connection.get("database")
+        database = file_config.connection.database
         if database:
             return [database]
 

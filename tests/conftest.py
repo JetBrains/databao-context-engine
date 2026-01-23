@@ -22,6 +22,23 @@ from databao_context_engine.storage.repositories.embedding_repository import Emb
 from databao_context_engine.storage.repositories.run_repository import RunRepository
 from databao_context_engine.system.properties import get_db_path
 
+RUN_RECOMMENDED_EXTRAS_OPTION = "--run-recommended-extras"
+
+
+def pytest_addoption(parser):
+    parser.addoption(RUN_RECOMMENDED_EXTRAS_OPTION, action="store_true", default=False, help="run slow tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption(RUN_RECOMMENDED_EXTRAS_OPTION):
+        # --run_recommended_extras given in cli: do not skip recommended_extras tests
+        return
+    # dynamically at pytest.mark.skip annotation to tests marked with recommended_extras
+    skip_recommended_extras = pytest.mark.skip(reason=f"need {RUN_RECOMMENDED_EXTRAS_OPTION} option to run")
+    for item in items:
+        if "recommended_extras" in item.keywords:
+            item.add_marker(skip_recommended_extras)
+
 
 @pytest.fixture(scope="session")
 def _template_db(tmp_path_factory: pytest.TempPathFactory) -> Path:

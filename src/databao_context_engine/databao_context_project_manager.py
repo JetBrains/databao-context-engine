@@ -9,11 +9,14 @@ from databao_context_engine.datasource_config.add_config import (
 )
 from databao_context_engine.datasource_config.check_config import (
     CheckDatasourceConnectionResult,
+)
+from databao_context_engine.datasource_config.check_config import (
     check_datasource_connection as check_datasource_connection_internal,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.datasource_discovery import DatasourceId
+from databao_context_engine.project.datasource_discovery import get_datasource_list
 from databao_context_engine.project.layout import ensure_datasource_config_file_doesnt_exist, ensure_project_dir
+from databao_context_engine.project.types import Datasource, DatasourceId
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 
@@ -29,6 +32,9 @@ class DatabaoContextProjectManager:
     def __init__(self, project_dir: Path) -> None:
         ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
+
+    def get_configured_datasource_list(self) -> list[Datasource]:
+        return get_datasource_list(self.project_dir)
 
     def build_context(
         self, datasource_ids: list[DatasourceId] | None, chunk_embedding_mode: ChunkEmbeddingMode

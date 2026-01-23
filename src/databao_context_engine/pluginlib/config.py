@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
@@ -17,12 +19,23 @@ class DuckDBSecret(BaseModel):
 
 
 @dataclass(kw_only=True)
-class ConfigPropertyDefinition:
+class ConfigUnionPropertyDefinition:
+    property_key: str
+    types: tuple[type, ...]
+    type_properties: dict[type, list[ConfigPropertyDefinition]]
+
+
+@dataclass(kw_only=True)
+class ConfigSinglePropertyDefinition:
     property_key: str
     required: bool
     property_type: type | None = str
     default_value: str | None = None
-    nested_properties: list["ConfigPropertyDefinition"] | None = None
+    nested_properties: list[ConfigPropertyDefinition] | None = None
+    secret: bool = False
+
+
+ConfigPropertyDefinition = ConfigSinglePropertyDefinition | ConfigUnionPropertyDefinition
 
 
 @dataclass(kw_only=True)
@@ -30,6 +43,7 @@ class ConfigPropertyAnnotation:
     required: bool = False
     default_value: str | None = None
     ignored_for_config_wizard: bool = False
+    secret: bool = False
 
 
 @runtime_checkable

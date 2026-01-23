@@ -1,7 +1,7 @@
 import pytest
 
+from databao_context_engine import BuildPlugin, DatasourceType
 from databao_context_engine.generate_configs_schemas import _generate_json_schema_output_for_plugins
-from databao_context_engine.plugins.plugin_loader import PluginList
 from tests.utils.dummy_build_plugin import (
     AdditionalDummyPlugin,
     DummyBuildDatasourcePlugin,
@@ -11,7 +11,7 @@ from tests.utils.dummy_build_plugin import (
 )
 
 
-def _patch_load_plugins(mocker, return_value: PluginList | None = None):
+def _patch_load_plugins(mocker, return_value: dict[DatasourceType, BuildPlugin] | None = None):
     if return_value is None:
         return_value = load_dummy_plugins(exclude_file_plugins=True)
 

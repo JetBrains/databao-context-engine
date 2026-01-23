@@ -45,15 +45,13 @@ class ChunkEmbeddingService:
             raise ValueError("A DescriptionProvider must be provided when generating descriptions")
 
     def embed_chunks(self, *, datasource_run_id: int, chunks: list[EmbeddableChunk], result: str) -> None:
-        """
-        Turn plugin chunks into persisted chunks and embeddings
+        """Turn plugin chunks into persisted chunks and embeddings.
 
         Flow:
         1) Embed each chunk into an embedded vector
         2) Get or create embedding table for the appropriate model and embedding dimensions
         3) Persist chunks and embeddings vectors in a single transaction
         """
-
         if not chunks:
             return
 

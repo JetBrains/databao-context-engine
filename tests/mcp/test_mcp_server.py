@@ -27,8 +27,7 @@ async def run_mcp_server_stdio_test(
     dce_path: Path,
     run_name: str | None = None,
 ):
-    """
-    Runs an MCP Server integration test by:
+    """Runs an MCP Server integration test by:
     1. Spawning a new process to run the MCP server in stdio mode
     2. Creating a client connecting with the MCP Server
     3. Yielding the MCP client session for the test to run
@@ -58,8 +57,7 @@ async def run_mcp_server_http_test(
     host: str | None = None,
     port: int | None = None,
 ):
-    """
-    Runs a MCP Server integration test by:
+    """Runs a MCP Server integration test by:
     1. Spawning a new process to run the MCP server in streamable-http mode
     2. Creating a client connecting with the MCP Server (we're retrying 5 times to wait for the server to be up and running)
     3. Yielding the MCP client session for the test to run
