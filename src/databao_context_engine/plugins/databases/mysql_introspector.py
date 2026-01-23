@@ -1,17 +1,32 @@
-from typing import Any, Mapping
+from typing import Any, Annotated
 
 import pymysql
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pymysql.constants import CLIENT
 
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema, DatabaseTable
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
+class MySQLConnectionProperties(BaseModel):
+    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
+    port: int | None = None
+    database: str | None = None
+    user: str | None = None
+    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+    additional_properties: dict[str, Any] = {}
+
+    def to_pymysql_kwargs(self) -> dict[str, Any]:
+        kwargs = self.model_dump(exclude={"additional_properties"}, exclude_none=True)
+        kwargs.update(self.additional_properties)
+        return kwargs
+
+
 class MySQLConfigFile(BaseDatabaseConfigFile):
-    connection: dict[str, Any]
+    connection: MySQLConnectionProperties
     type: str = Field(default="databases/mysql")
 
 
@@ -21,20 +36,16 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     supports_catalogs = True
 
     def _connect(self, file_config: MySQLConfigFile):
-        connection = file_config.connection
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
-
         return pymysql.connect(
-            **connection,
+            **file_config.connection.to_pymysql_kwargs(),
             cursorclass=pymysql.cursors.DictCursor,
             client_flag=CLIENT.MULTI_STATEMENTS | CLIENT.MULTI_RESULTS,
         )
 
     def _connect_to_catalog(self, file_config: MySQLConfigFile, catalog: str):
-        cfg = dict(file_config.connection or {})
-        cfg["database"] = catalog
-        return self._connect(MySQLConfigFile(connection=cfg))
+        cfg = file_config.model_copy(deep=True)
+        cfg.connection.database = catalog
+        return self._connect(cfg)
 
     def _get_catalogs(self, connection, file_config: MySQLConfigFile) -> list[str]:
         with connection.cursor() as cur:

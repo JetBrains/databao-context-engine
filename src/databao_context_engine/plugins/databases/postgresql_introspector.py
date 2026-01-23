@@ -16,7 +16,7 @@ class PostgresConnectionProperties(BaseModel):
     port: int | None = None
     database: str | None = None
     user: str | None = None
-    password: str | None = None
+    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
     additional_properties: dict[str, Any] = {}
 
 
