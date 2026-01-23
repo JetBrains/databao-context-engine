@@ -14,6 +14,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass(eq=True, frozen=True)
 class DatasourceContext:
+    """A generated Context for a Datasource.
+
+    Attributes:
+        datasource_id: The id of the datasource.
+        context: The context generated for the datasource.
+    """
+
     datasource_id: DatasourceId
     # TODO: Read the context as a BuildExecutionResult instead of a Yaml string?
     context: str

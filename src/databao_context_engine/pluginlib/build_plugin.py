@@ -81,6 +81,12 @@ BuildPlugin = BuildDatasourcePlugin | BuildFilePlugin
 
 @dataclass(kw_only=True, frozen=True)
 class DatasourceType:
+    """The type of a Datasource.
+
+    Attributes:
+        full_type: The full type of the datasource, in the format `<main_type>/<subtype>`.
+    """
+
     full_type: str
 
     def __post_init__(self):
@@ -90,16 +96,28 @@ class DatasourceType:
 
     @property
     def main_type(self) -> str:
+        """The main type of the datasource, aka the folder in which the config or raw file is located."""
         return self.full_type.split("/")[0]
 
     @property
     def config_folder(self) -> str:
+        """The folder in which the config or raw file is located. This is equivalent to `main_type`."""
         return self.main_type
 
     @property
     def subtype(self) -> str:
+        """The subtype of the datasource. This is the actual type declared in the config file or the raw file's extension."""
         return self.full_type.split("/")[1]
 
     @staticmethod
     def from_main_and_subtypes(main_type: str, subtype: str) -> "DatasourceType":
+        """Create a DatasourceType from its main type and subtype.
+
+        Args:
+            main_type: The main type (aka config folder) of the datasource.
+            subtype: The subtype of the datasource.
+
+        Returns:
+            A DatasourceType instance with the specified main type and subtype.
+        """
         return DatasourceType(full_type=f"{main_type}/{subtype}")

@@ -13,12 +13,21 @@ from databao_context_engine.project.project_config import ProjectConfig
 
 
 class InitErrorReason(Enum):
+    """Reasons for which project initialisation can fail."""
+
     PROJECT_DIR_DOESNT_EXIST = "PROJECT_DIR_DOESNT_EXIST"
     PROJECT_DIR_NOT_DIRECTORY = "PROJECT_DIR_NOT_DIRECTORY"
     PROJECT_DIR_ALREADY_INITIALISED = "PROJECT_DIR_ALREADY_INITIALISED"
 
 
 class InitProjectError(Exception):
+    """Raised when a project can't be initialised.
+
+    Attributes:
+        message: The error message.
+        reason: The reason for the initialisation failure.
+    """
+
     reason: InitErrorReason
 
     def __init__(self, reason: InitErrorReason, message: str | None):
