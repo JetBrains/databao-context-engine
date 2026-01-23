@@ -40,7 +40,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
-    "pre-commit>=4.3.0",
+    "pre-commit>=4.5.1",
     "pytest>=8.4.2",
     "pytest-unordered>=0.7.0",
     "ruff>=0.14.2",
@@ -55,7 +55,7 @@ dce = "databao_context_engine.main:main"
 generate_configs_schemas = "databao_context_engine.generate_configs_schemas:main"
 
 [tool.uv]
-override-dependencies = ["urllib3>=2.6.3", "filelock>=3.20.3"]
+override-dependencies = ["urllib3>=2.6.3", "filelock>=3.20.3", "virtualenv>=20.36.1"]
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]
