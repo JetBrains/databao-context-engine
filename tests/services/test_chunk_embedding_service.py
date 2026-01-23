@@ -30,7 +30,7 @@ def test_noop_on_empty_chunks(persistence, resolver, chunk_repo, embedding_repo,
     embedding_provider.model_id = "model:v1"
     embedding_provider.dim = 768
 
-    service.embed_chunks(chunks=[], result="", full_type="databases/some", datasource_id="test.yml")
+    service.embed_chunks(chunks=[], result="", full_type="databases/some", datasource_id="databases/test.yml")
 
     assert chunk_repo.list() == []
     assert registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id) is None

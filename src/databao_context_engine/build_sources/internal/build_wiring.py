@@ -35,7 +35,8 @@ def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddin
     # This will need to change in the future when we can pick which datasources to build
     db_path = get_db_path(project_dir)
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    db_path.unlink(missing_ok=True)
+    if db_path.exists():
+        db_path.unlink()
 
     with open_duckdb_connection(db_path) as conn:
         migrate(db_path)

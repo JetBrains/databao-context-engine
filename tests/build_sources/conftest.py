@@ -23,7 +23,7 @@ def stub_sources(mocker):
 
 
 @pytest.fixture
-def fake_output_dir(mocker, tmp_path: Path):
+def fake_output_dir(tmp_path: Path):
     return tmp_path / "output"
 
 
