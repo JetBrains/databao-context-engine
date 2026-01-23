@@ -48,7 +48,6 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     from databao_context_engine.plugins.mysql_db_plugin import MySQLDbPlugin
     from databao_context_engine.plugins.parquet_plugin import ParquetPlugin
     from databao_context_engine.plugins.postgresql_db_plugin import PostgresqlDbPlugin
-    from databao_context_engine.plugins.snowflake_db_plugin import SnowflakeDbPlugin
 
     # optional plugins are added to the python environment via extras
     optional_plugins: list[BuildDatasourcePlugin] = []
@@ -73,11 +72,17 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     except ImportError:
         pass
 
+    try:
+        from databao_context_engine.plugins.snowflake_db_plugin import SnowflakeDbPlugin
+
+        optional_plugins.append(SnowflakeDbPlugin())
+    except ImportError:
+        pass
+
     required_plugins: list[BuildDatasourcePlugin] = [
         DuckDbPlugin(),
         MySQLDbPlugin(),
         PostgresqlDbPlugin(),
-        SnowflakeDbPlugin(),
         ParquetPlugin(),
     ]
     return required_plugins + optional_plugins
