@@ -18,7 +18,7 @@ def test_databao_engine__get_datasource_list_with_no_datasources(project_path, d
 
     with_run_dir(
         db_path,
-        databao_context_engine.project_layout,
+        databao_context_engine._project_layout,
         [],
     )
 
@@ -50,7 +50,7 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
 
     with_run_dir(
         db_path,
-        databao_context_engine.project_layout,
+        databao_context_engine._project_layout,
         [
             DatasourceContext(
                 datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
@@ -80,7 +80,7 @@ def test_databao_engine__get_datasource_context(project_path, db_path, create_db
 
     with_run_dir(
         db_path,
-        databao_context_engine.project_layout,
+        databao_context_engine._project_layout,
         [
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
@@ -100,7 +100,7 @@ def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_p
 
     with_run_dir(
         db_path,
-        databao_context_engine.project_layout,
+        databao_context_engine._project_layout,
         [
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
@@ -117,7 +117,7 @@ def test_databao_engine__get_all_contexts(project_path, db_path, create_db):
 
     with_run_dir(
         db_path,
-        databao_context_engine.project_layout,
+        databao_context_engine._project_layout,
         [
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
@@ -141,7 +141,7 @@ def test_databao_engine__get_all_contexts_formatted(project_path, db_path, creat
 
     with_run_dir(
         db_path,
-        databao_context_engine.project_layout,
+        databao_context_engine._project_layout,
         [
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),

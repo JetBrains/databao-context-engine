@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, overload
 
 from databao_context_engine.build_sources.public.api import BuildContextResult, build_all_datasources
+from databao_context_engine.databao_engine import DatabaoContextEngine
 from databao_context_engine.datasource_config.add_config import (
     create_datasource_config_file,
     get_datasource_id_for_config_file,
@@ -37,13 +38,15 @@ class DatabaoContextProjectManager:
         return get_datasource_list(self.project_dir)
 
     def build_context(
-        self, datasource_ids: list[DatasourceId] | None, chunk_embedding_mode: ChunkEmbeddingMode
+        self,
+        datasource_ids: list[DatasourceId] | None = None,
+        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     ) -> list[BuildContextResult]:
         # TODO: Filter which datasources to build by datasource_ids
         return build_all_datasources(project_dir=self.project_dir, chunk_embedding_mode=chunk_embedding_mode)
 
     def check_datasource_connection(
-        self, datasource_ids: list[DatasourceId] | None
+        self, datasource_ids: list[DatasourceId] | None = None
     ) -> list[CheckDatasourceConnectionResult]:
         return sorted(
             check_datasource_connection_internal(project_dir=self.project_dir, datasource_ids=datasource_ids).values(),
@@ -96,3 +99,11 @@ class DatabaoContextProjectManager:
             return False
         except ValueError:
             return True
+
+    def get_engine_for_project(self) -> DatabaoContextEngine:
+        """Instantiate a DatabaoContextEngine for the project.
+
+        Returns:
+            A DatabaoContextEngine instance for the project.
+        """
+        return DatabaoContextEngine(project_dir=self.project_dir)

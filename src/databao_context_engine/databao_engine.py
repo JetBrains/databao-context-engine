@@ -26,22 +26,22 @@ class ContextSearchResult:
 
 class DatabaoContextEngine:
     project_dir: Path
-    project_layout: ProjectLayout
+    _project_layout: ProjectLayout
 
     def __init__(self, project_dir: Path) -> None:
-        self.project_layout = ensure_project_dir(project_dir=project_dir)
+        self._project_layout = ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
 
     def get_introspected_datasource_list(self, run_name: str | None = None) -> list[Datasource]:
-        return get_introspected_datasource_list(self.project_layout, run_name=run_name)
+        return get_introspected_datasource_list(self._project_layout, run_name=run_name)
 
     def get_datasource_context(self, datasource_id: DatasourceId, run_name: str | None = None) -> DatasourceContext:
         return get_datasource_context(
-            project_layout=self.project_layout, datasource_id=datasource_id, run_name=run_name
+            project_layout=self._project_layout, datasource_id=datasource_id, run_name=run_name
         )
 
     def get_all_contexts(self, run_name: str | None = None) -> list[DatasourceContext]:
-        return get_all_contexts(project_layout=self.project_layout, run_name=run_name)
+        return get_all_contexts(project_layout=self._project_layout, run_name=run_name)
 
     def get_all_contexts_formatted(self, run_name: str | None = None) -> str:
         all_contexts = self.get_all_contexts(run_name=run_name)
@@ -55,16 +55,16 @@ class DatabaoContextEngine:
     def search_context(
         self,
         retrieve_text: str,
-        run_name: str | None,
-        limit: int | None,
-        export_to_file: bool,
+        run_name: str | None = None,
+        limit: int | None = None,
+        export_to_file: bool = False,
         datasource_ids: list[DatasourceId] | None = None,
     ) -> list[ContextSearchResult]:
         # TODO: Filter with datasource_ids
         # TODO: Remove the need for a run_name
 
         results = retrieve_embeddings(
-            project_layout=self.project_layout,
+            project_layout=self._project_layout,
             retrieve_text=retrieve_text,
             run_name=run_name,
             limit=limit,
