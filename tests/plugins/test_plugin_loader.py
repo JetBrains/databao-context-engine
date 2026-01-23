@@ -3,7 +3,7 @@ import pytest
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import (
     DuplicatePluginTypeError,
-    merge_plugins,
+    _merge_plugins,
 )
 
 
@@ -29,7 +29,7 @@ class P3Overlap:
 
 
 def test_merge_plugins():
-    reg = merge_plugins([P1()], [P2()])
+    reg = _merge_plugins([P1()], [P2()])
     assert set(reg.keys()) == {
         DatasourceType(full_type="files/md"),
         DatasourceType(full_type="databases/pg"),
@@ -41,7 +41,7 @@ def test_merge_plugins():
 
 def test_merge_plugins_duplicate_raises():
     with pytest.raises(DuplicatePluginTypeError) as e:
-        merge_plugins([P1()], [P3Overlap()])
+        _merge_plugins([P1()], [P3Overlap()])
     msg = str(e.value)
     assert "files/md" in msg
     assert "P1" in msg or "p1" in msg
