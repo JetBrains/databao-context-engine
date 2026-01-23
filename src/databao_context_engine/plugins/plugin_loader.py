@@ -71,6 +71,7 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     from databao_context_engine.plugins.parquet_plugin import ParquetPlugin
     from databao_context_engine.plugins.postgresql_db_plugin import PostgresqlDbPlugin
     from databao_context_engine.plugins.snowflake_db_plugin import SnowflakeDbPlugin
+    from databao_context_engine.plugins.sqlite_db_plugin import SQLiteDbPlugin
 
     # optional plugins are added to the python environment via extras
     optional_plugins: list[BuildDatasourcePlugin] = []
@@ -89,6 +90,7 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
         PostgresqlDbPlugin(),
         SnowflakeDbPlugin(),
         ParquetPlugin(),
+        SQLiteDbPlugin(),
     ]
     return required_plugins + optional_plugins
 
