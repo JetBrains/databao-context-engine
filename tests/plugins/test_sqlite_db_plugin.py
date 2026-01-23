@@ -8,8 +8,8 @@ import pytest
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.sqlite_db_plugin import SQLiteDbPlugin
 from tests.plugins.database_contracts import (
-    CheckConstraintExists,
     ColumnIs,
     ForeignKeyExists,
     IndexExists,
@@ -21,12 +21,13 @@ from tests.plugins.database_contracts import (
     UniqueConstraintExists,
     assert_contract,
 )
-from databao_context_engine.plugins.sqlite_db_plugin import SQLiteDbPlugin
+
 
 @pytest.fixture
 def temp_sqlite_file(tmp_path: Path):
     db_file = tmp_path / "test_db.sqlite"
     yield db_file
+
 
 def execute_sqlite_queries(db_file: Path, *queries: str):
     conn = sqlite3.connect(database=str(db_file))
@@ -37,6 +38,7 @@ def execute_sqlite_queries(db_file: Path, *queries: str):
                 conn.execute(q)
     finally:
         conn.close()
+
 
 @contextlib.contextmanager
 def seed_rows_sqlite(db_file: Path, table: str, rows: Sequence[Mapping[str, Any]]):
@@ -60,6 +62,7 @@ def seed_rows_sqlite(db_file: Path, table: str, rows: Sequence[Mapping[str, Any]
         conn.execute(f"DELETE FROM {table}")
         conn.commit()
         conn.close()
+
 
 @pytest.fixture
 def sqlite_with_demo_schema(temp_sqlite_file: Path):
@@ -139,11 +142,13 @@ def sqlite_with_demo_schema(temp_sqlite_file: Path):
     )
     return temp_sqlite_file
 
+
 def _create_config_file_from_sqlite(sqlite_path: Path) -> Mapping[str, Any]:
     return {
         "type": "databases/sqlite",
         "connection": dict(database=str(sqlite_path)),
     }
+
 
 def test_sqlite_plugin_introspection_demo_schema(sqlite_with_demo_schema: Path):
     plugin = SQLiteDbPlugin()
@@ -195,7 +200,9 @@ def test_sqlite_plugin_introspection_demo_schema(sqlite_with_demo_schema: Path):
                 ref_table="main.users",
                 ref_columns=["user_id"],
             ),
-            IndexExists("default", "main", "orders", name="idx_orders_user_placed_at", columns=["user_id", "placed_at"]),
+            IndexExists(
+                "default", "main", "orders", name="idx_orders_user_placed_at", columns=["user_id", "placed_at"]
+            ),
             TableExists("default", "main", "order_items"),
             TableKindIs("default", "main", "order_items", "table"),
             PrimaryKeyIs("default", "main", "order_items", ["order_id", "product_id"]),
@@ -224,6 +231,7 @@ def test_sqlite_plugin_introspection_demo_schema(sqlite_with_demo_schema: Path):
             ColumnIs("default", "main", "recent_paid_orders", "amount_cents"),
         ],
     )
+
 
 def test_sqlite_exact_samples(sqlite_with_demo_schema: Path):
     rows = [

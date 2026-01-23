@@ -24,7 +24,7 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
     def _connect(self, file_config: SQLiteConfigFile):
         database_path = str(file_config.connection.database)
         conn = sqlite3.connect(database_path)
-        conn.text_factory = str  # TODO: understand why
+        conn.text_factory = str
         return conn
 
     def _connect_to_catalog(self, file_config: SQLiteConfigFile, catalog: str):
