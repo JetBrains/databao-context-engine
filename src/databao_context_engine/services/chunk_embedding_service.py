@@ -46,10 +46,11 @@ class ChunkEmbeddingService:
 
     def embed_chunks(self, *, chunks: list[EmbeddableChunk], result: str, full_type: str, datasource_id: str) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
+
         Flow:
-        1) Embed each chunk into an embedded vector
-        2) Get or create embedding table for the appropriate model and embedding dimensions
-        3) Persist chunks and embeddings vectors in a single transaction
+        1) Embed each chunk into an embedded vector.
+        2) Get or create embedding table for the appropriate model and embedding dimensions.
+        3) Persist chunks and embeddings vectors in a single transaction.
         """
         if not chunks:
             return

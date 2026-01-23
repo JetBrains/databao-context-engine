@@ -19,9 +19,6 @@ from databao_context_engine.cli.info import echo_info
 from databao_context_engine.config.logging import configure_logging
 from databao_context_engine.llm.install import resolve_ollama_bin
 from databao_context_engine.mcp.mcp_runner import McpTransport, run_mcp_server
-from databao_context_engine.project.init_project import InitErrorReason, InitProjectError
-from databao_context_engine.project.types import DatasourceId
-from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 
 @click.group()

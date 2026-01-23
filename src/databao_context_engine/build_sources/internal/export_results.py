@@ -33,6 +33,7 @@ def append_result_to_all_results(output_dir: Path, result: BuiltDatasourceContex
         write_yaml_to_stream(data=result, file_stream=export_file)
         export_file.write("\n")
 
+
 # Here temporarily because it needs to be reset between runs.
 # A subsequent PR will remove the existence of the all_results file
 def reset_all_results(output_dir: Path):
