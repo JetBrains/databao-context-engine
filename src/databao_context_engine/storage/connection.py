@@ -1,8 +1,10 @@
 import logging
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 import duckdb
+from _duckdb import DuckDBPyConnection
 
 from databao_context_engine.system.properties import get_db_path
 
@@ -10,13 +12,17 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def open_duckdb_connection(db_path: str | Path | None = None):
-    """
-    Open a DuckDB connection with vector search enabled and close on exist.
-    Loads the vss extension and enables HNSW experimental persistence.
+def open_duckdb_connection(db_path: str | Path | None = None) -> Iterator[DuckDBPyConnection]:
+    """Open a DuckDB connection with vector search enabled and close on exist.
+
+    It also loads the vss extension and enables HNSW experimental persistence on the DuckDB.
 
     Usage:
         with open_duckdb_connection() as conn:
+
+    Yields:
+        The opened DuckDB connection.
+
     """
     path = str(db_path or get_db_path())
     conn = duckdb.connect(path)

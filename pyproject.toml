@@ -1,6 +1,6 @@
 [project]
-name = "databao_context_engine"
-version = "0.1.0"
+name = "databao-context-engine"
+version = "0.1.2"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -14,14 +14,23 @@ dependencies = [
     "mcp>=1.23.3",
     "pyathena>=3.22.0",
     "snowflake-connector-python>=4.1.0",
-    "mssql-python>=1.0.0",
     "pydantic>=2.12.4",
     "jinja2>=3.1.6",
     "asyncpg>=0.31.0",
     "asyncio>=4.0.0",
     "asyncpg-stubs>=0.31.1",
-    # indirect dependency. Added only to maintain a specific version (without security vulnerabilities)
-    "urllib3>=2.6.3",
+]
+default-optional-dependency-keys = [
+    "recommended",
+]
+
+
+[project.optional-dependencies]
+recommended = [
+    # todo add postgres and maybe mysql?
+]
+mssql = [
+    "mssql-python>=1.0.0"
 ]
 
 [build-system]
@@ -45,6 +54,9 @@ dev = [
 dce = "databao_context_engine.main:main"
 generate_configs_schemas = "databao_context_engine.generate_configs_schemas:main"
 
+[tool.uv]
+override-dependencies = ["urllib3>=2.6.3", "filelock>=3.20.3"]
+
 [tool.uv.build-backend]
 source-exclude = ["tests"]
 
@@ -54,3 +66,7 @@ ignore_missing_imports = true
 
 [tool.pytest]
 addopts = ["--import-mode=importlib"]
+strict = true
+markers = [
+    "recommended_extras: marks tests which are supposed to be run only with recommended set of extras",
+]

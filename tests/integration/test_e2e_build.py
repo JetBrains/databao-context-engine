@@ -71,8 +71,8 @@ def _force_test_db(monkeypatch, db_path: Path):
 
 @pytest.fixture
 def conn(db_path: Path):
-    """
-    Open a connection to the SAME db file the app will use (db_path).
+    """Open a connection to the SAME db file the app will use (db_path).
+
     Run migrations and load extensions so repo assertions work.
     """
     migrate(db_path)

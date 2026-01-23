@@ -38,8 +38,7 @@ PreparedDatasource = PreparedConfig | PreparedFile
 
 @dataclass(kw_only=True, frozen=True, eq=True)
 class DatasourceId:
-    """
-    The ID of a datasource. The ID is the path to the datasource's config file relative to the src folder in the project.
+    """The ID of a datasource. The ID is the path to the datasource's config file relative to the src folder in the project.
 
     e.g: "databases/my_postgres_datasource.yaml"
 
@@ -78,16 +77,14 @@ class DatasourceId:
         return str(self.relative_path_to_config_file())
 
     def relative_path_to_config_file(self) -> Path:
-        """
-        Returns a path to the config file for this datasource.
+        """Return a path to the config file for this datasource.
 
         The returned path is relative to the src folder in the project.
         """
         return Path(self.datasource_config_folder).joinpath(self.datasource_name + self.config_file_suffix)
 
     def relative_path_to_context_file(self) -> Path:
-        """
-        Returns a path to the config file for this datasource.
+        """Return a path to the config file for this datasource.
 
         The returned path is relative to an output run folder in the project.
         """
@@ -97,13 +94,19 @@ class DatasourceId:
         return Path(self.datasource_config_folder).joinpath(self.datasource_name + suffix)
 
     @classmethod
-    def from_string_repr(cls, datasource_id_as_string: str):
-        """
-        Creates a DatasourceId from a string representation.
+    def from_string_repr(cls, datasource_id_as_string: str) -> "DatasourceId":
+        """Create a DatasourceId from a string representation.
 
-        The string representation of a DatasourceId is the path to the datasource's config file relative to the src folder in the project.
+        Args:
+            datasource_id_as_string: The string representation of a DatasourceId.
+                This is the path to the datasource's config file relative to the src folder in the project.
+                (e.g. "databases/my_postgres_datasource.yaml")
 
-        e.g: "databases/my_postgres_datasource.yaml"
+        Returns:
+            The DatasourceId instance created from the string representation.
+
+        Raises:
+            ValueError: If the string representation is invalid (e.g. too many parent folders).
         """
         config_file_path = Path(datasource_id_as_string)
 
@@ -115,16 +118,44 @@ class DatasourceId:
         return DatasourceId.from_datasource_config_file_path(config_file_path)
 
     @classmethod
-    def from_datasource_config_file_path(cls, datasource_config_file: Path):
-        """
-        Creates a DatasourceId from a config file path.
+    def from_datasource_config_file_path(cls, datasource_config_file: Path) -> "DatasourceId":
+        """Create a DatasourceId from a config file path.
 
-        The `datasource_config_file` path provided can either be the config file path relative to the src folder or the full path to the config file.
+        Args:
+            datasource_config_file: The path to the datasource config file.
+                This path can either be the config file path relative to the src folder or the full path to the config file.
+
+        Returns:
+            The DatasourceId instance created from the config file path.
         """
         return DatasourceId(
             datasource_config_folder=datasource_config_file.parent.name,
             datasource_name=datasource_config_file.stem,
             config_file_suffix=datasource_config_file.suffix,
+        )
+
+    @classmethod
+    def from_datasource_context_file_path(cls, datasource_context_file: Path) -> "DatasourceId":
+        """Create a DatasourceId from a context file path.
+
+        This factory handles the case where the context was generated from a raw file rather than from a config.
+        In that case, the context file name will look like "<my_datasource_name>.<raw_file_extension>.yaml"
+
+        Args:
+            datasource_context_file: The path to the datasource context file.
+
+        Returns:
+            The DatasourceId instance created from the context file path.
+        """
+        if len(datasource_context_file.suffixes) > 1 and datasource_context_file.suffix == ".yaml":
+            # If there is more than 1 suffix, we remove the latest suffix (.yaml) to keep only the actual datasource file suffix
+            context_file_name_without_yaml_extension = datasource_context_file.name[: -len(".yaml")]
+            datasource_context_file = datasource_context_file.with_name(context_file_name_without_yaml_extension)
+
+        return DatasourceId(
+            datasource_config_folder=datasource_context_file.parent.name,
+            datasource_name=datasource_context_file.stem,
+            config_file_suffix=datasource_context_file.suffix,
         )
 
 

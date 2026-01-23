@@ -26,9 +26,11 @@ class PersistenceService:
     def write_chunks_and_embeddings(
         self, *, datasource_run_id: int, chunk_embeddings: list[ChunkEmbedding], table_name: str
     ):
-        """
-        Atomically persist chunks and their vectors.
-        Returns the number of embeddings written.
+        """Atomically persist chunks and their vectors.
+
+        Raises:
+            ValueError: If chunk_embeddings is an empty list.
+
         """
         if not chunk_embeddings:
             raise ValueError("chunk_embeddings must be a non-empty list")

@@ -55,19 +55,14 @@ def dce(ctx: Context, verbose: bool, quiet: bool, project_dir: str | None) -> No
 @dce.command()
 @click.pass_context
 def info(ctx: Context) -> None:
-    """
-    Display system-wide information
-    """
-
+    """Display system-wide information."""
     echo_info(ctx.obj["project_dir"])
 
 
 @dce.command()
 @click.pass_context
 def init(ctx: Context) -> None:
-    """
-    Create an empty Databao Context Engine project
-    """
+    """Create an empty Databao Context Engine project."""
     project_dir = ctx.obj["project_dir"]
     try:
         init_dce_project(project_dir=project_dir)
@@ -97,17 +92,14 @@ def init(ctx: Context) -> None:
 
 @dce.group()
 def datasource() -> None:
-    """
-    Manage datasource configurations
-    """
+    """Manage datasource configurations."""
     pass
 
 
 @datasource.command(name="add")
 @click.pass_context
 def add_datasource_config(ctx: Context) -> None:
-    """
-    Add a new datasource configuration.
+    """Add a new datasource configuration.
 
     The command will ask all relevant information for that datasource and save it in your Databao Context Engine project.
     """
@@ -122,15 +114,13 @@ def add_datasource_config(ctx: Context) -> None:
 )
 @click.pass_context
 def check_datasource_config(ctx: Context, datasources_config_files: list[str] | None) -> None:
-    """
-    Check whether a datasource configuration is valid.
+    """Check whether a datasource configuration is valid.
 
     The configuration is considered as valid if a connection with the datasource can be established.
 
     By default, all datasources declared in the project will be checked.
     You can explicitely list which datasources to validate by using the [DATASOURCES_CONFIG_FILES] argument. Each argument must be the path to the file within the src folder (e.g: my-folder/my-config.yaml)
     """
-
     datasource_ids = (
         [DatasourceId.from_string_repr(datasource_config_file) for datasource_config_file in datasources_config_files]
         if datasources_config_files is not None
@@ -157,8 +147,7 @@ def build(
         "embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"
     ],
 ) -> None:
-    """
-    Build context for all datasources
+    """Build context for all datasources.
 
     The output of the build command will be saved in a "run" folder in the output directory.
 
@@ -204,9 +193,7 @@ def retrieve(
     limit: int | None,
     output_format: Literal["file", "streamed"],
 ) -> None:
-    """
-    Search the project's built context for the most relevant chunks.
-    """
+    """Search the project's built context for the most relevant chunks."""
     text = " ".join(retrieve_text)
 
     databao_engine = DatabaoContextEngine(project_dir=ctx.obj["project_dir"])
@@ -248,9 +235,7 @@ def retrieve(
 )
 @click.pass_context
 def mcp(ctx: Context, run_name: str | None, host: str | None, port: int | None, transport: McpTransport) -> None:
-    """
-    Run Databao Context Engine's MCP server
-    """
+    """Run Databao Context Engine's MCP server."""
     if transport == "stdio":
         configure_logging(verbose=False, quiet=True, project_dir=ctx.obj["project_dir"])
     run_mcp_server(project_dir=ctx.obj["project_dir"], run_name=run_name, transport=transport, host=host, port=port)

@@ -13,9 +13,7 @@ from databao_context_engine.project.types import PreparedConfig, PreparedDatasou
 
 @dataclass()
 class BuiltDatasourceContext:
-    """
-    Dataclass defining the result of building a datasource's context.
-    """
+    """Dataclass defining the result of building a datasource's context."""
 
     datasource_id: str
     """
@@ -53,9 +51,7 @@ def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Bui
 
 
 def _execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Any:
-    """
-    Run a prepared source through the plugin
-    """
+    """Run a prepared source through the plugin."""
     if isinstance(prepared_datasource, PreparedConfig):
         ds_plugin = cast(BuildDatasourcePlugin, plugin)
 
