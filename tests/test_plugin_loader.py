@@ -13,10 +13,7 @@ from tests.utils.dummy_build_plugin import (
 
 @pytest.fixture(autouse=True)
 def plugin_loader_under_test():
-    plugin_loader = DatabaoContextPluginLoader()
-    plugin_loader._all_plugins_by_type = load_dummy_plugins()
-
-    return plugin_loader
+    return DatabaoContextPluginLoader(plugins_by_type=load_dummy_plugins())
 
 
 def test_databao_context_plugin_loader__get_all_supported_datasource_types(plugin_loader_under_test):

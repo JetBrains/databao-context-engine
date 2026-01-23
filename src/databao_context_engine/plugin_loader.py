@@ -12,8 +12,8 @@ from databao_context_engine.plugins.plugin_loader import (
 
 
 class DatabaoContextPluginLoader:
-    def __init__(self):
-        self._all_plugins_by_type = load_plugins()
+    def __init__(self, plugins_by_type: dict[DatasourceType, BuildPlugin] | None = None):
+        self._all_plugins_by_type = load_plugins() if plugins_by_type is None else plugins_by_type
 
     def get_all_supported_datasource_types(self, exclude_file_plugins: bool = False) -> set[DatasourceType]:
         if exclude_file_plugins:
