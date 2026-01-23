@@ -418,7 +418,6 @@ version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "asyncpg" },
-    { name = "asyncpg-stubs" },
     { name = "click" },
     { name = "duckdb" },
     { name = "jinja2" },
@@ -445,6 +444,7 @@ snowflake = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "asyncpg-stubs" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -459,7 +459,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.31.0" },
-    { name = "asyncpg-stubs", specifier = ">=0.31.1" },
     { name = "click", specifier = ">=8.3.0" },
     { name = "clickhouse-connect", marker = "extra == 'clickhouse'", specifier = ">=0.10.0" },
     { name = "duckdb", specifier = ">=1.4.3" },
@@ -477,6 +476,7 @@ provides-extras = ["recommended", "mssql", "clickhouse", "athena", "snowflake"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "asyncpg-stubs", specifier = ">=0.31.1" },
     { name = "mypy", specifier = ">=1.18.2" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pytest", specifier = ">=9.0.2" },
