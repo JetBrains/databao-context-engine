@@ -1,15 +1,35 @@
 from databao_context_engine.introspection.property_extract import get_property_list_from_type
-from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
+from databao_context_engine.pluginlib.build_plugin import (
+    BuildDatasourcePlugin,
+    BuildFilePlugin,
+    BuildPlugin,
+    DatasourceType,
+)
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition, CustomiseConfigProperties
-from databao_context_engine.plugins.plugin_loader import get_all_available_plugin_types, get_plugin_for_type
+from databao_context_engine.plugins.plugin_loader import (
+    load_plugins,
+)
 
 
 class DatabaoContextPluginLoader:
+    def __init__(self):
+        self._all_plugins_by_type = load_plugins()
+
     def get_all_supported_datasource_types(self, exclude_file_plugins: bool = False) -> set[DatasourceType]:
-        return get_all_available_plugin_types(exclude_file_plugins=exclude_file_plugins)
+        if exclude_file_plugins:
+            return {
+                datasource_type
+                for (datasource_type, plugin) in self._all_plugins_by_type.items()
+                if not isinstance(plugin, BuildFilePlugin)
+            }
+        else:
+            return set(self._all_plugins_by_type.keys())
 
     def get_plugin_for_datasource_type(self, datasource_type: DatasourceType) -> BuildPlugin:
-        return get_plugin_for_type(datasource_type)
+        if datasource_type not in self._all_plugins_by_type:
+            raise ValueError(f"No plugin found for type '{datasource_type.full_type}'")
+
+        return self._all_plugins_by_type[datasource_type]
 
     def get_config_file_type_for_datasource_type(self, datasource_type: DatasourceType) -> type:
         plugin = self.get_plugin_for_datasource_type(datasource_type)
