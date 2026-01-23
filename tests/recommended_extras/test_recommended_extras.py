@@ -12,7 +12,6 @@ def test_default_plugins_loaded():
     plugins = load_plugins()
     assert {
         "jetbrains/athena",
-        "jetbrains/clickhouse",
         "jetbrains/duckdb",
         "jetbrains/mysql",
         "jetbrains/postgres",

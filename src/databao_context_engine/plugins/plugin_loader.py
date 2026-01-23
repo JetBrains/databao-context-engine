@@ -45,7 +45,6 @@ def _load_builtin_file_plugins() -> list[BuildFilePlugin]:
 def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     """Statically register built-in plugins."""
     from databao_context_engine.plugins.athena_db_plugin import AthenaDbPlugin
-    from databao_context_engine.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
     from databao_context_engine.plugins.duckdb_db_plugin import DuckDbPlugin
     from databao_context_engine.plugins.mysql_db_plugin import MySQLDbPlugin
     from databao_context_engine.plugins.parquet_plugin import ParquetPlugin
@@ -61,9 +60,15 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     except ImportError:
         pass
 
+    try:
+        from databao_context_engine.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
+
+        optional_plugins.append(ClickhouseDbPlugin())
+    except ImportError:
+        pass
+
     required_plugins: list[BuildDatasourcePlugin] = [
         AthenaDbPlugin(),
-        ClickhouseDbPlugin(),
         DuckDbPlugin(),
         MySQLDbPlugin(),
         PostgresqlDbPlugin(),
