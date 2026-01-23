@@ -27,12 +27,14 @@ class BuildService:
         prepared_source: PreparedDatasource,
         plugin: BuildPlugin,
     ) -> BuiltDatasourceContext:
-        """
-        Process a single source.
+        """Process a single source to build its context.
 
         1) Execute the plugin
         2) Divide the results into chunks
         3) Embed and persist the chunks
+
+        Returns:
+            The built context.
         """
         result = execute(prepared_source, plugin)
 

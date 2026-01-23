@@ -25,10 +25,7 @@ class VectorSearchRepository:
     def get_display_texts_by_similarity(
         self, *, table_name: str, retrieve_vec: Sequence[float], dimension: int, limit: int
     ) -> list[VectorSearchResult]:
-        """
-        Read only similarity search on a specific embedding shard table.
-        Returns the display text for the closest matches in a given run
-        """
+        """Read only similarity search on a specific embedding shard table."""
         rows = self._conn.execute(
             f"""
             SELECT

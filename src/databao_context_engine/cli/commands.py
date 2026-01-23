@@ -5,15 +5,21 @@ from typing import Literal
 import click
 from click import Context
 
-from databao_context_engine.cli.datasources import add_datasource_config_cli, validate_datasource_config_cli
+from databao_context_engine import (
+    ChunkEmbeddingMode,
+    DatabaoContextEngine,
+    DatabaoContextProjectManager,
+    DatasourceId,
+    InitErrorReason,
+    InitProjectError,
+    init_dce_project,
+)
+from databao_context_engine.cli.datasources import add_datasource_config_cli, check_datasource_connection_cli
 from databao_context_engine.cli.info import echo_info
 from databao_context_engine.config.logging import configure_logging
-from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
-from databao_context_engine.databao_engine import DatabaoContextEngine
 from databao_context_engine.llm.install import resolve_ollama_bin
 from databao_context_engine.mcp.mcp_runner import McpTransport, run_mcp_server
-from databao_context_engine.project.init_project import InitErrorReason, InitProjectError, init_project_dir
-from databao_context_engine.project.layout import create_project_dir
+from databao_context_engine.project.init_project import InitErrorReason, InitProjectError
 from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
@@ -49,30 +55,25 @@ def dce(ctx: Context, verbose: bool, quiet: bool, project_dir: str | None) -> No
 @dce.command()
 @click.pass_context
 def info(ctx: Context) -> None:
-    """
-    Display system-wide information
-    """
-
+    """Display system-wide information."""
     echo_info(ctx.obj["project_dir"])
 
 
 @dce.command()
 @click.pass_context
 def init(ctx: Context) -> None:
-    """
-    Create an empty Databao Context Engine project
-    """
+    """Create an empty Databao Context Engine project."""
     project_dir = ctx.obj["project_dir"]
     try:
-        init_project_dir(project_dir=project_dir)
+        init_dce_project(project_dir=project_dir)
     except InitProjectError as e:
         if e.reason == InitErrorReason.PROJECT_DIR_DOESNT_EXIST:
             if click.confirm(
                 f"The directory {ctx.obj['project_dir'].resolve()} does not exist. Do you want to create it?",
                 default=True,
             ):
-                create_project_dir(project_dir=project_dir)
-                init_project_dir(project_dir=project_dir)
+                project_dir.mkdir(parents=True, exist_ok=False)
+                init_dce_project(project_dir=project_dir)
             else:
                 return
         else:
@@ -91,17 +92,14 @@ def init(ctx: Context) -> None:
 
 @dce.group()
 def datasource() -> None:
-    """
-    Manage datasource configurations
-    """
+    """Manage datasource configurations."""
     pass
 
 
 @datasource.command(name="add")
 @click.pass_context
 def add_datasource_config(ctx: Context) -> None:
-    """
-    Add a new datasource configuration.
+    """Add a new datasource configuration.
 
     The command will ask all relevant information for that datasource and save it in your Databao Context Engine project.
     """
@@ -116,22 +114,20 @@ def add_datasource_config(ctx: Context) -> None:
 )
 @click.pass_context
 def check_datasource_config(ctx: Context, datasources_config_files: list[str] | None) -> None:
-    """
-    Check whether a datasource configuration is valid.
+    """Check whether a datasource configuration is valid.
 
     The configuration is considered as valid if a connection with the datasource can be established.
 
     By default, all datasources declared in the project will be checked.
     You can explicitely list which datasources to validate by using the [DATASOURCES_CONFIG_FILES] argument. Each argument must be the path to the file within the src folder (e.g: my-folder/my-config.yaml)
     """
-
     datasource_ids = (
         [DatasourceId.from_string_repr(datasource_config_file) for datasource_config_file in datasources_config_files]
         if datasources_config_files is not None
         else None
     )
 
-    validate_datasource_config_cli(ctx.obj["project_dir"], datasource_ids=datasource_ids)
+    check_datasource_connection_cli(ctx.obj["project_dir"], datasource_ids=datasource_ids)
 
 
 @dce.command()
@@ -151,8 +147,7 @@ def build(
         "embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"
     ],
 ) -> None:
-    """
-    Build context for all datasources in /src
+    """Build context for all datasources.
 
     The output of the build command will be saved in the output directory.
 
@@ -191,9 +186,7 @@ def retrieve(
     limit: int | None,
     output_format: Literal["file", "streamed"],
 ) -> None:
-    """
-    Search the project's built context for the most relevant chunks.
-    """
+    """Search the project's built context for the most relevant chunks."""
     text = " ".join(retrieve_text)
 
     databao_engine = DatabaoContextEngine(project_dir=ctx.obj["project_dir"])
@@ -229,9 +222,7 @@ def retrieve(
 )
 @click.pass_context
 def mcp(ctx: Context, host: str | None, port: int | None, transport: McpTransport) -> None:
-    """
-    Run Databao Context Engine's MCP server
-    """
+    """Run Databao Context Engine's MCP server."""
     if transport == "stdio":
         configure_logging(verbose=False, quiet=True, project_dir=ctx.obj["project_dir"])
     run_mcp_server(project_dir=ctx.obj["project_dir"], transport=transport, host=host, port=port)

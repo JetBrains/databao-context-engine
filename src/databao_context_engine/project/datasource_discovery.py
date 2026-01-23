@@ -41,13 +41,18 @@ def get_datasource_list(project_dir: Path) -> list[Datasource]:
 
 
 def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
-    """
-    Scan the project's src/ directory and return all discovered sources.
+    """Scan the project's src/ directory and return all discovered sources.
 
     Rules:
         - Each first-level directory under src/ is treated as a main_type
         - Unsupported or unreadable entries are skipped.
         - The returned list is sorted by directory and then filename
+
+    Returns:
+        A list of DatasourceDescriptor instances representing the discovered datasources.
+
+    Raises:
+        ValueError: If the src directory does not exist in the project directory.
     """
     src = get_source_dir(project_dir)
     if not src.exists() or not src.is_dir():
@@ -74,7 +79,7 @@ def get_datasource_descriptors(project_dir: Path, datasource_ids: list[Datasourc
         raise ValueError(f"src directory does not exist in {project_dir}")
 
     datasources: list[DatasourceDescriptor] = []
-    for datasource_id in datasource_ids:
+    for datasource_id in sorted(datasource_ids, key=lambda id: str(id)):
         config_file_path = src.joinpath(datasource_id.relative_path_to_config_file())
         if not config_file_path.is_file():
             raise ValueError(f"Datasource config file not found: {config_file_path}")
@@ -87,9 +92,7 @@ def get_datasource_descriptors(project_dir: Path, datasource_ids: list[Datasourc
 
 
 def load_datasource_descriptor(path: Path) -> DatasourceDescriptor | None:
-    """
-    Load a single file with src/<parent_name>/ into a DatasourceDescriptor
-    """
+    """Load a single file with src/<parent_name>/ into a DatasourceDescriptor."""
     if not path.is_file():
         return None
 
@@ -110,9 +113,7 @@ def load_datasource_descriptor(path: Path) -> DatasourceDescriptor | None:
 
 
 def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
-    """
-    Convert a discovered datasource into a prepared datasource ready for plugin execution
-    """
+    """Convert a discovered datasource into a prepared datasource ready for plugin execution."""
     if datasource.kind is DatasourceKind.FILE:
         file_subtype = datasource.path.suffix.lower().lstrip(".")
         return PreparedFile(

@@ -10,17 +10,14 @@ from databao_context_engine.plugins.databases.introspection_scope import (
 
 @dataclass(frozen=True)
 class ScopeSelection:
-    """
-    The final catalog+schema scope to introspect.
-    """
+    """The final catalog+schema scope to introspect."""
 
     catalogs: list[str]
     schemas_per_catalog: dict[str, list[str]]
 
 
 class IntrospectionScopeMatcher:
-    """
-    Applies include/exclude rules (glob matching, case-insensitive) to a discovered set of catalogs/schemas.
+    """Applies include/exclude rules (glob matching, case-insensitive) to a discovered set of catalogs/schemas.
 
     Semantics:
     - If include is empty => start from "everything"

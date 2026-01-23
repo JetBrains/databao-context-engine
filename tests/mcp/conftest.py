@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from databao_context_engine import DatasourceContext, DatasourceId
-from databao_context_engine.project.layout import get_output_dir
+from databao_context_engine.project.layout import ProjectLayout, get_output_dir
 from tests.utils.project_creation import with_output
 
 
@@ -21,8 +21,8 @@ class Project:
 
 
 @pytest.fixture
-def project(create_db, project_path: Path, db_path: Path) -> Project:
-    output_dir = get_output_dir(project_path)
+def project(create_db, project_layout: ProjectLayout, db_path: Path) -> Project:
+    output_dir = get_output_dir(project_layout.project_dir)
     output_dir.mkdir()
 
     datasource_contexts = [
@@ -36,7 +36,7 @@ def project(create_db, project_path: Path, db_path: Path) -> Project:
         ),
     ]
 
-    output_dir = with_output(project_path, datasource_contexts)
+    output_dir = with_output(project_layout, datasource_contexts)
     output = Output(output_dir=output_dir, datasource_contexts=datasource_contexts)
 
-    return Project(project_dir=project_path, output=output)
+    return Project(project_dir=project_layout.project_dir, output=output)
