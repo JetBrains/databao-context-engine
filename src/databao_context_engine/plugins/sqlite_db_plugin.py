@@ -3,7 +3,7 @@ from databao_context_engine.plugins.databases.sqlite_introspector import SQLiteC
 
 
 class SQLiteDbPlugin(BaseDatabasePlugin[SQLiteConfigFile]):
-    id = "jetbrains/sqline"
+    id = "jetbrains/sqlite"
     name = "SQLite Plugin"
     supported = {"databases/sqlite"}
     config_file_type = SQLiteConfigFile
