@@ -16,5 +16,6 @@ def test_default_plugins_loaded():
         "jetbrains/postgres",
         "jetbrains/snowflake",
         "jetbrains/parquet",
+        "jetbrains/sqlite",
         "jetbrains/unstructured_files",
     } == {plugin.id for plugin in plugins.values()}
