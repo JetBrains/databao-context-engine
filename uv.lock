@@ -423,7 +423,6 @@ dependencies = [
     { name = "duckdb" },
     { name = "jinja2" },
     { name = "mcp" },
-    { name = "pyathena" },
     { name = "pydantic" },
     { name = "pymysql" },
     { name = "pyyaml" },
@@ -432,6 +431,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+athena = [
+    { name = "pyathena" },
+]
 clickhouse = [
     { name = "clickhouse-connect" },
 ]
@@ -462,14 +464,14 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "mcp", specifier = ">=1.23.3" },
     { name = "mssql-python", marker = "extra == 'mssql'", specifier = ">=1.0.0" },
-    { name = "pyathena", specifier = ">=3.22.0" },
+    { name = "pyathena", marker = "extra == 'athena'", specifier = ">=3.25.0" },
     { name = "pydantic", specifier = ">=2.12.4" },
     { name = "pymysql", specifier = ">=1.1.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "snowflake-connector-python", specifier = ">=4.1.0" },
 ]
-provides-extras = ["recommended", "mssql", "clickhouse"]
+provides-extras = ["recommended", "mssql", "clickhouse", "athena"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -964,7 +966,7 @@ wheels = [
 
 [[package]]
 name = "pyathena"
-version = "3.22.0"
+version = "3.25.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -973,9 +975,9 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/84/8e23900d7dec48b48681f6ea435016990c4038c66ba7db0bed82c469dd83/pyathena-3.22.0.tar.gz", hash = "sha256:80f10ca0410beb80c93446baec15dd22ceb5bd0804bfe1aa544c3225bdfd8a81", size = 87015, upload-time = "2025-11-17T13:52:32.769Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/42/9ce83fa64fdf607b5a792683ab5b41bec4ecfe846b132b0505f05b19054d/pyathena-3.25.0.tar.gz", hash = "sha256:60e735613454671353f88a9adaf647f10c1dc10da674919a0d5993392b05b7ab", size = 114304, upload-time = "2026-01-16T07:46:28.753Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/55/0cf7be399d2cb4eb36399e4ba3defdd89b1c25831c26b8c6d6bb136c49fa/pyathena-3.22.0-py3-none-any.whl", hash = "sha256:a60d25e8918833218f952606d4fc96ab25623eff550415e245b58896f145d6c8", size = 112248, upload-time = "2025-11-17T13:52:31.171Z" },
+    { url = "https://files.pythonhosted.org/packages/81/5d/4ac280ac9168d6a14c99a4324a9615cd4f19e9c76ecb2fa92a475f34b8b2/pyathena-3.25.0-py3-none-any.whl", hash = "sha256:01df17f0063cfcb7ca322cfdd0385e15f3387975cbed0836897191063c1792a2", size = 153364, upload-time = "2026-01-16T07:46:26.222Z" },
 ]
 
 [[package]]

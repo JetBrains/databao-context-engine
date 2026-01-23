@@ -11,7 +11,6 @@ dependencies = [
     "requests>=2.32.5",
     "pymysql>=1.1.2",
     "mcp>=1.23.3",
-    "pyathena>=3.22.0",
     "snowflake-connector-python>=4.1.0",
     "pydantic>=2.12.4",
     "jinja2>=3.1.6",
@@ -32,6 +31,9 @@ mssql = [
 ]
 clickhouse = [
     "clickhouse-connect>=0.10.0"
+]
+athena = [
+    "pyathena>=3.25.0"
 ]
 
 [build-system]
