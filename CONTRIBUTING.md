@@ -122,6 +122,8 @@ install `nix` package manager (https://nixos.org/download/). After that one coul
 $ nix-shell {path_to_dce_repository}
 ```
 
+This will make sure `dce` command is available in the current terminal session.
+
 ## Testing
 
 For testing we use `uv` and `pytest` framework. `uv` manages environments and dependencies automatically. Currently,
