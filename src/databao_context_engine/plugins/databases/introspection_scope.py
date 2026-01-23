@@ -6,10 +6,11 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class ScopeIncludeRule(BaseModel):
-    """
-    Allowlist selector.
-    - catalog: optional glob pattern
-    - schemas: optional list of glob patterns (string also accepted and normalized to a list)
+    """Allowlist selector.
+
+    Attributes:
+        catalog: optional glob pattern
+        schemas: optional list of glob patterns (string also accepted and normalized to a list)
 
     A rule must specify at least one of: catalog, schemas.
     """
@@ -36,11 +37,12 @@ class ScopeIncludeRule(BaseModel):
 
 
 class ScopeExcludeRule(BaseModel):
-    """
-    Denylist selector.
-    - catalog: optional glob pattern
-    - schemas: optional list of glob patterns (string also accepted)
-    - except_schemas: optional list of glob patterns (string also accepted)
+    """Denylist selector.
+
+    Attributes:
+        catalog: optional glob pattern
+        schemas: optional list of glob patterns (string also accepted)
+        except_schemas: optional list of glob patterns (string also accepted)
 
     If a target matches the rule but also matches except_schemas, it is NOT excluded by this rule.
     """

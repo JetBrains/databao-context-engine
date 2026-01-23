@@ -32,13 +32,18 @@ def build(
     project_id: str,
     dce_version: str,
 ) -> list[BuildContextResult]:
-    """
-    Build entrypoint.
+    """Build the context for all datasources in the project.
+
+    Unless you already have access to BuildService, this should not be called directly.
+    Instead, internal callers should go through the build_wiring module or directly use DatabaoContextProjectManager.build_context().
 
     1) Load available plugins
     2) Discover sources
     3) Create a run
     4) For each source, call process_source
+
+    Returns:
+        A list of all the contexts built.
     """
     plugins = load_plugins()
 

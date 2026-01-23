@@ -5,9 +5,7 @@ from typing import Any, Protocol, runtime_checkable
 
 @dataclass
 class EmbeddableChunk:
-    """
-    A chunk that will be embedded as a vector and used when searching context from a given AI prompt
-    """
+    """A chunk that will be embedded as a vector and used when searching context from a given AI prompt."""
 
     embeddable_text: str
     """
@@ -48,19 +46,19 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
     """
 
     def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> None:
-        """
-        Checks whether the configuration to the datasource is working.
+        """Check whether the configuration to the datasource is working.
 
         The function is expected to succeed without a result if the connection is working.
         If something is wrong with the connection, the function should raise an Exception
+
+        Raises:
+            NotSupportedError: If the plugin doesn't support this method.
         """
         raise NotSupportedError("This method is not implemented for this plugin")
 
 
 class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):
-    """
-    Use this as a base class for plugins that don't need a specific config file type.
-    """
+    """Use this as a base class for plugins that don't need a specific config file type."""
 
     config_file_type: type[dict[str, Any]] = dict[str, Any]
 
@@ -75,7 +73,7 @@ class BuildFilePlugin(BaseBuildPlugin, Protocol):
 
 
 class NotSupportedError(RuntimeError):
-    """Exception raised by methods not supported by a plugin"""
+    """Exception raised by methods not supported by a plugin."""
 
 
 BuildPlugin = BuildDatasourcePlugin | BuildFilePlugin

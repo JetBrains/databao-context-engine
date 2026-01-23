@@ -5,22 +5,26 @@ from typing import Any
 
 import click
 
-from databao_context_engine import DatabaoContextProjectManager, DatasourceId, DatasourceType
-from databao_context_engine.datasource_config.add_config import (
-    get_config_file_structure_for_datasource_type,
+from databao_context_engine import (
+    DatabaoContextPluginLoader,
+    DatabaoContextProjectManager,
+    DatasourceId,
+    DatasourceType,
+    ConfigPropertyDefinition,
 )
-from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
-from databao_context_engine.plugins.plugin_loader import get_all_available_plugin_types
 
 
 def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
     project_manager = DatabaoContextProjectManager(project_dir=project_dir)
+    plugin_loader = DatabaoContextPluginLoader()
 
     click.echo(
         f"We will guide you to add a new datasource in your Databao Context Engine project, at {project_dir.resolve()}"
     )
 
-    datasource_type = _ask_for_datasource_type()
+    datasource_type = _ask_for_datasource_type(
+        plugin_loader.get_all_supported_datasource_types(exclude_file_plugins=True)
+    )
     datasource_name = click.prompt("Datasource name?", type=str)
 
     is_datasource_existing = project_manager.datasource_config_exists(
@@ -33,7 +37,9 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
             default=False,
         )
 
-    config_content = _ask_for_config_details(datasource_type)
+    config_content = _ask_for_config_details(
+        plugin_loader.get_config_file_structure_for_datasource_type(datasource_type)
+    )
 
     config_file = project_manager.create_datasource_config(
         datasource_type, datasource_name, config_content, overwrite_existing=True
@@ -44,10 +50,8 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
     return config_file.datasource_id
 
 
-def _ask_for_datasource_type() -> DatasourceType:
-    supported_types_by_folder = _group_supported_types_by_folder(
-        get_all_available_plugin_types(exclude_file_plugins=True)
-    )
+def _ask_for_datasource_type(supported_datasource_types: set[DatasourceType]) -> DatasourceType:
+    supported_types_by_folder = _group_supported_types_by_folder(supported_datasource_types)
 
     all_config_folders = sorted(supported_types_by_folder.keys())
     config_folder = click.prompt(
@@ -68,9 +72,7 @@ def _ask_for_datasource_type() -> DatasourceType:
     return DatasourceType.from_main_and_subtypes(config_folder, config_type)
 
 
-def _ask_for_config_details(datasource_type: DatasourceType) -> dict[str, Any]:
-    config_file_structure = get_config_file_structure_for_datasource_type(datasource_type)
-
+def _ask_for_config_details(config_file_structure: list[ConfigPropertyDefinition]) -> dict[str, Any]:
     # Adds a new line before asking for the config values specific to the plugin
     click.echo("")
 

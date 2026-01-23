@@ -14,7 +14,7 @@ from tests.utils.project_creation import with_config_file
 
 @pytest.fixture(autouse=True)
 def patch_load_plugins(mocker):
-    mocker.patch("databao_context_engine.plugins.plugin_loader.load_plugins", new=load_dummy_plugins)
+    mocker.patch("databao_context_engine.plugin_loader.load_plugins", new=load_dummy_plugins)
 
 
 def test_add_datasource_config__with_no_custom_properties(project_path: Path):
