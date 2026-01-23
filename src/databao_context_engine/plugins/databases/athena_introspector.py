@@ -14,19 +14,16 @@ from databao_context_engine.plugins.databases.introspection_model_builder import
 
 
 class AwsProfileAuth(BaseModel):
-    type: str = "aws_profile"
     profile_name: str
 
 
 class AwsIamAuth(BaseModel):
-    type: str = "aws_iam"
     aws_access_key_id: Annotated[str, ConfigPropertyAnnotation(secret=True)]
     aws_secret_access_key: Annotated[str, ConfigPropertyAnnotation(secret=True)]
     session_token: str | None = None
 
 
 class AwsAssumeRoleAuth(BaseModel):
-    type: str = "assume_role"
     role_arn: str | None = None
     role_session_name: str | None = None
     source_profile: str | None = None
@@ -34,7 +31,7 @@ class AwsAssumeRoleAuth(BaseModel):
 
 class AwsDefaultAuth(BaseModel):
     # Uses environment variables, instance profile, ECS task role
-    type: str = "default"
+    pass
 
 
 class AthenaConnectionProperties(BaseModel):
@@ -50,7 +47,6 @@ class AthenaConnectionProperties(BaseModel):
         kwargs = self.model_dump(
             exclude={
                 "additional_properties": True,
-                "auth": {"type"},
             },
             exclude_none=True,
         )
