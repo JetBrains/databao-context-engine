@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass(eq=True, frozen=True)
 class DatasourceContext:
+    """A generated Context for a Datasource.
+
+    Attributes:
+        datasource_id: The id of the datasource.
+        context: The context generated for the datasource.
+    """
+
     datasource_id: DatasourceId
     # TODO: Read the context as a BuildExecutionResult instead of a Yaml string?
     context: str
@@ -53,8 +60,8 @@ def get_introspected_datasource_list(project_layout: ProjectLayout, *, run_name:
     return result
 
 
-def get_datasource_context(project_dir: Path, datasource_id: DatasourceId) -> DatasourceContext:
-    output_dir = get_output_dir(project_dir=project_dir)
+def get_datasource_context(project_layout: ProjectLayout, datasource_id: DatasourceId) -> DatasourceContext:
+    output_dir = get_output_dir(project_dir=project_layout.project_dir)
 
     context_path = output_dir.joinpath(datasource_id.relative_path_to_context_file())
     if not context_path.is_file():

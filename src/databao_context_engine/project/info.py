@@ -9,6 +9,14 @@ from databao_context_engine.system.properties import get_dce_path
 
 @dataclass(kw_only=True, frozen=True)
 class DceProjectInfo:
+    """Information about a Databao Context Engine project.
+
+    Attributes:
+        project_path: The root directory of the Databao Context Engine project.
+        is_initialised: Whether the project has been initialised.
+        project_id: The UUID of the project, or None if the project has not been initialised.
+    """
+
     project_path: Path
     is_initialised: bool
     project_id: UUID | None
@@ -16,6 +24,14 @@ class DceProjectInfo:
 
 @dataclass(kw_only=True, frozen=True)
 class DceInfo:
+    """Information about the current Databao Context Engine installation and project.
+
+    Attributes:
+        version: The version of the databao_context_engine package installed on the system.
+        dce_path: The path where databao_context_engine stores its global data.
+        project_info: Information about the Databao Context Engine project.
+    """
+
     version: str
     dce_path: Path
 
@@ -23,6 +39,14 @@ class DceInfo:
 
 
 def get_databao_context_engine_info(project_dir: Path) -> DceInfo:
+    """Return information about the current Databao Context Engine installation and project.
+
+    Args:
+        project_dir: The root directory of the Databao Context Project.
+
+    Returns:
+        A DceInfo instance containing information about the Databao Context Engine installation and project.
+    """
     return DceInfo(
         version=get_dce_version(),
         dce_path=get_dce_path(),
@@ -41,4 +65,9 @@ def _get_project_info(project_dir: Path) -> DceProjectInfo:
 
 
 def get_dce_version() -> str:
+    """Return the installed version of the databao_context_engine package.
+
+    Returns:
+        The installed version of the databao_context_engine package.
+    """
     return version("databao_context_engine")

@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class DatasourceConnectionStatus(Enum):
+    """Status of the connection to a datasource."""
+
     VALID = "Valid"
     INVALID = "Invalid"
     UNKNOWN = "Unknown"
@@ -28,6 +30,15 @@ class DatasourceConnectionStatus(Enum):
 
 @dataclass(kw_only=True)
 class CheckDatasourceConnectionResult:
+    """Result of checking the connection status of a datasource.
+
+    Attributes:
+        datasource_id: The id of the datasource.
+        connection_status: The connection status of the datasource.
+        summary: A summary of the connection status' error, or None if the connection is valid.
+        full_message: A detailed message about the connection status' error, or None if the connection is valid.
+    """
+
     datasource_id: DatasourceId
     connection_status: DatasourceConnectionStatus
     summary: str | None

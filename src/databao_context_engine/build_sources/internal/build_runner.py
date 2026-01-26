@@ -20,6 +20,15 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class BuildContextResult:
+    """Result of a single datasource context build.
+
+    Attributes:
+        datasource_id: The id of the datasource.
+        datasource_type: The type of the datasource.
+        context_built_at: The timestamp when the context was built.
+        context_file_path: The path to the generated context file.
+    """
+
     datasource_id: DatasourceId
     datasource_type: DatasourceType
     context_built_at: datetime
