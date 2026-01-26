@@ -36,9 +36,7 @@ class OllamaService:
         return [float(x) for x in vec]
 
     def describe(self, *, model: str, text: str, context: str) -> str:
-        """
-        Ask Ollama to generate a short description for `text`
-        """
+        """Ask Ollama to generate a short description for `text`."""
         prompt = self._build_description_prompt(text=text, context=context)
 
         payload: dict[str, Any] = {"model": model, "prompt": prompt, "stream": False, "options": {"temperature": 0.1}}

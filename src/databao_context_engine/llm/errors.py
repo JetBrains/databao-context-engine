@@ -3,14 +3,8 @@ class OllamaError(Exception):
 
 
 class OllamaTransientError(OllamaError):
-    """
-    Errors that are likely temporary (network issues, timeouts, 5xx, etc.).
-    Typically worth retrying.
-    """
+    """Errors that are likely temporary (network issues, timeouts, 5xx, etc.), typically worth retrying."""
 
 
 class OllamaPermanentError(OllamaError):
-    """
-    Errors that are unlikely to succeed on retry without changing inputs
-    or configuration (4xx, bad response schema, etc.).
-    """
+    """Errors that are unlikely to succeed on retry without changing inputs or configuration (4xx, bad response schema, etc.)."""

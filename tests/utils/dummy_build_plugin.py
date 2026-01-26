@@ -15,6 +15,7 @@ from databao_context_engine.pluginlib.config import (
     ConfigPropertyAnnotation,
     ConfigPropertyDefinition,
     CustomiseConfigProperties,
+    ConfigSinglePropertyDefinition,
 )
 
 
@@ -108,7 +109,7 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
         return {"ok": True}
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
-        return []
+        return [EmbeddableChunk(embeddable_text="Dummy chunk", content="Dummy content")]
 
 
 class DummyFilePlugin(BuildFilePlugin):
@@ -160,22 +161,24 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigP
 
     def get_config_file_properties(self) -> list[ConfigPropertyDefinition]:
         return [
-            ConfigPropertyDefinition(property_key="float_property", required=True, property_type=float),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(property_key="float_property", required=True, property_type=float),
+            ConfigSinglePropertyDefinition(
                 property_key="nested_with_only_optionals",
                 required=False,
                 property_type=None,
                 nested_properties=[
-                    ConfigPropertyDefinition(property_key="optional_field", required=False, property_type=uuid.UUID),
-                    ConfigPropertyDefinition(property_key="nested_field", required=False),
+                    ConfigSinglePropertyDefinition(
+                        property_key="optional_field", required=False, property_type=uuid.UUID
+                    ),
+                    ConfigSinglePropertyDefinition(property_key="nested_field", required=False),
                 ],
             ),
-            ConfigPropertyDefinition(
+            ConfigSinglePropertyDefinition(
                 property_key="nested_dict",
                 required=True,
                 nested_properties=[
-                    ConfigPropertyDefinition(property_key="other_nested_property", required=False),
-                    ConfigPropertyDefinition(
+                    ConfigSinglePropertyDefinition(property_key="other_nested_property", required=False),
+                    ConfigSinglePropertyDefinition(
                         property_key="optional_with_default",
                         required=False,
                         property_type=int,

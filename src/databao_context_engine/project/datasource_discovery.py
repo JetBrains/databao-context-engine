@@ -1,11 +1,9 @@
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from databao_context_engine.datasource_config.utils import get_datasource_id_from_config_file_path
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import get_source_dir
 from databao_context_engine.project.types import (
@@ -14,18 +12,12 @@ from databao_context_engine.project.types import (
     PreparedConfig,
     PreparedDatasource,
     PreparedFile,
+    DatasourceId,
+    Datasource,
 )
 from databao_context_engine.templating.renderer import render_template
 
 logger = logging.getLogger(__name__)
-
-DatasourceId = str
-
-
-@dataclass
-class Datasource:
-    id: DatasourceId
-    type: DatasourceType
 
 
 def get_datasource_list(project_dir: Path) -> list[Datasource]:
@@ -40,7 +32,7 @@ def get_datasource_list(project_dir: Path) -> list[Datasource]:
 
         result.append(
             Datasource(
-                id=get_datasource_id_from_config_file_path(project_dir, discovered_datasource.path),
+                id=DatasourceId.from_datasource_config_file_path(discovered_datasource.path),
                 type=prepared_source.datasource_type,
             )
         )
@@ -49,13 +41,18 @@ def get_datasource_list(project_dir: Path) -> list[Datasource]:
 
 
 def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
-    """
-    Scan the project's src/ directory and return all discovered sources.
+    """Scan the project's src/ directory and return all discovered sources.
 
     Rules:
         - Each first-level directory under src/ is treated as a main_type
         - Unsupported or unreadable entries are skipped.
         - The returned list is sorted by directory and then filename
+
+    Returns:
+        A list of DatasourceDescriptor instances representing the discovered datasources.
+
+    Raises:
+        ValueError: If the src directory does not exist in the project directory.
     """
     src = get_source_dir(project_dir)
     if not src.exists() or not src.is_dir():
@@ -76,22 +73,14 @@ def _is_datasource_file(p: Path) -> bool:
     return p.is_file() and not p.suffix.endswith("~")
 
 
-def get_datasource_descriptors(project_dir: Path, datasource_config_files: list[str]):
+def get_datasource_descriptors(project_dir: Path, datasource_ids: list[DatasourceId]):
     src = get_source_dir(project_dir)
     if not src.exists() or not src.is_dir():
         raise ValueError(f"src directory does not exist in {project_dir}")
 
     datasources: list[DatasourceDescriptor] = []
-    for datasource_config_file in datasource_config_files:
-        config_segments = datasource_config_file.split("/")
-        if len(config_segments) != 2:
-            raise ValueError(
-                f"Invalid datasource config file path: {datasource_config_file}. The path must be relative to the src folder (e.g: my-folder/my-config.yaml)"
-            )
-
-        main_type, datasource_name = config_segments
-
-        config_file_path = src.joinpath(main_type, datasource_name)
+    for datasource_id in sorted(datasource_ids, key=lambda id: str(id)):
+        config_file_path = src.joinpath(datasource_id.relative_path_to_config_file())
         if not config_file_path.is_file():
             raise ValueError(f"Datasource config file not found: {config_file_path}")
 
@@ -103,9 +92,7 @@ def get_datasource_descriptors(project_dir: Path, datasource_config_files: list[
 
 
 def load_datasource_descriptor(path: Path) -> DatasourceDescriptor | None:
-    """
-    Load a single file with src/<parent_name>/ into a DatasourceDescriptor
-    """
+    """Load a single file with src/<parent_name>/ into a DatasourceDescriptor."""
     if not path.is_file():
         return None
 
@@ -126,9 +113,7 @@ def load_datasource_descriptor(path: Path) -> DatasourceDescriptor | None:
 
 
 def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
-    """
-    Convert a discovered datasource into a prepared datasource ready for plugin execution
-    """
+    """Convert a discovered datasource into a prepared datasource ready for plugin execution."""
     if datasource.kind is DatasourceKind.FILE:
         file_subtype = datasource.path.suffix.lower().lstrip(".")
         return PreparedFile(

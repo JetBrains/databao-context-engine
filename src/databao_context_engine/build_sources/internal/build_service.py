@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from databao_context_engine.build_sources.internal.plugin_execution import BuildExecutionResult, execute
+from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext, execute
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
@@ -30,15 +30,11 @@ class BuildService:
         self._chunk_embedding_service = chunk_embedding_service
 
     def start_run(self, *, project_id: str, dce_version: str) -> RunDTO:
-        """
-        Create a new run row and return (run_id, started_at).
-        """
+        """Create a new run row and return (run_id, started_at)."""
         return self._run_repo.create(project_id=project_id, dce_version=dce_version)
 
     def finalize_run(self, *, run_id: int):
-        """
-        Mark the run as complete (sets ended_at).
-        """
+        """Mark the run as complete (sets ended_at)."""
         self._run_repo.update(run_id=run_id, ended_at=datetime.now())
 
     def process_prepared_source(
@@ -47,13 +43,15 @@ class BuildService:
         run_id: int,
         prepared_source: PreparedDatasource,
         plugin: BuildPlugin,
-    ) -> BuildExecutionResult:
-        """
-        Process a single source.
+    ) -> BuiltDatasourceContext:
+        """Process a single source to build its context.
 
         1) Execute the plugin
         2) Divide the results into chunks
         3) Embed and persist the chunks
+
+        Returns:
+            The built context.
         """
         result = execute(prepared_source, plugin)
 

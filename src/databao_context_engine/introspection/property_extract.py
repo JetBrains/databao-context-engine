@@ -1,11 +1,16 @@
 import types
 from dataclasses import MISSING, fields, is_dataclass
-from typing import Annotated, Any, ForwardRef, Union, get_origin, get_type_hints
+from typing import Annotated, Any, ForwardRef, Union, get_origin, get_type_hints, get_args
 
 from pydantic import BaseModel, _internal
 from pydantic_core import PydanticUndefinedType
 
-from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation, ConfigPropertyDefinition
+from databao_context_engine.pluginlib.config import (
+    ConfigPropertyAnnotation,
+    ConfigPropertyDefinition,
+    ConfigUnionPropertyDefinition,
+    ConfigSinglePropertyDefinition,
+)
 
 
 def get_property_list_from_type(root_type: type) -> list[ConfigPropertyDefinition]:
@@ -123,26 +128,55 @@ def _create_property(
     if annotation is not None and annotation.ignored_for_config_wizard:
         return None
 
-    actual_property_type = _read_actual_property_type(property_type)
+    actual_property_types = _read_actual_property_type(property_type)
 
-    try:
-        nested_properties = _get_property_list_from_type(parent_type=actual_property_type, is_root_type=False)
-    except TypeError:
-        return None
+    required = annotation.required if annotation else is_property_required
+    secret = annotation.secret if annotation else False
 
-    default_value = compute_default_value(
-        annotation=annotation,
-        property_default=property_default,
-        has_nested_properties=nested_properties is not None and len(nested_properties) > 0,
-    )
+    if len(actual_property_types) > 1:
+        type_properties: dict[type, list[ConfigPropertyDefinition]] = {}
 
-    return ConfigPropertyDefinition(
-        property_key=property_name,
-        property_type=actual_property_type if not nested_properties else None,
-        required=annotation.required if annotation else is_property_required,
-        default_value=default_value,
-        nested_properties=nested_properties if nested_properties else None,
-    )
+        for union_type in actual_property_types:
+            try:
+                nested_props = _get_property_list_from_type(
+                    parent_type=union_type,
+                    is_root_type=False,
+                )
+            except TypeError:
+                nested_props = []
+
+            type_properties[union_type] = nested_props
+
+        return ConfigUnionPropertyDefinition(
+            property_key=property_name,
+            types=actual_property_types,
+            type_properties=type_properties,
+        )
+    else:
+        actual_property_type = actual_property_types[0]
+        try:
+            nested_properties = _get_property_list_from_type(
+                parent_type=actual_property_type,
+                is_root_type=False,
+            )
+        except TypeError:
+            return None
+
+        resolved_type = actual_property_type if not nested_properties else None
+        default_value = compute_default_value(
+            annotation=annotation,
+            property_default=property_default,
+            has_nested_properties=nested_properties is not None and len(nested_properties) > 0,
+        )
+
+        return ConfigSinglePropertyDefinition(
+            property_key=property_name,
+            property_type=resolved_type,
+            required=required,
+            default_value=default_value,
+            nested_properties=nested_properties or None,
+            secret=secret,
+        )
 
 
 def _get_config_property_annotation(property_type) -> ConfigPropertyAnnotation | None:
@@ -155,21 +189,16 @@ def _get_config_property_annotation(property_type) -> ConfigPropertyAnnotation |
     return None
 
 
-def _read_actual_property_type(property_type: type) -> type:
+def _read_actual_property_type(property_type: type) -> tuple[type, ...]:
     property_type_origin = get_origin(property_type)
 
     if property_type_origin is Annotated:
-        return property_type.__origin__  # type: ignore[attr-defined]
-    elif property_type_origin is Union or property_type_origin is types.UnionType:
-        type_args = property_type.__args__  # type: ignore[attr-defined]
-        if len(type_args) == 2 and type(None) in type_args:
-            # Uses the actual type T when the Union is "T | None" (or "None | T")
-            return next(arg for arg in type_args if arg is not None)
-        else:
-            # Ignoring Union types when it is not used as type | None as we wouldn't which type to pick
-            return type(None)
+        return _read_actual_property_type(property_type.__origin__)  # type: ignore[attr-defined]
+    elif property_type_origin in (Union, types.UnionType):
+        args = tuple(arg for arg in get_args(property_type) if arg is not type(None))
+        return args
 
-    return property_type
+    return (property_type,)
 
 
 def compute_default_value(

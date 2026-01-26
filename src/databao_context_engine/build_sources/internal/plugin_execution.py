@@ -8,14 +8,12 @@ from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin, execute_file_plugin
-from databao_context_engine.project.types import PreparedConfig, PreparedDatasource
+from databao_context_engine.project.types import PreparedConfig, PreparedDatasource, DatasourceId
 
 
 @dataclass()
-class BuildExecutionResult:
-    """
-    Dataclass defining the result of building a datasource's context.
-    """
+class BuiltDatasourceContext:
+    """Dataclass defining the result of building a datasource's context."""
 
     datasource_id: str
     """
@@ -39,13 +37,13 @@ class BuildExecutionResult:
     """
 
 
-def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuildExecutionResult:
+def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
     built_context = _execute(prepared_datasource, plugin)
 
-    datasource_id = str(prepared_datasource.path.relative_to(prepared_datasource.path.parent.parent))
+    datasource_id = DatasourceId.from_datasource_config_file_path(prepared_datasource.path)
 
-    return BuildExecutionResult(
-        datasource_id=datasource_id,
+    return BuiltDatasourceContext(
+        datasource_id=str(datasource_id),
         datasource_type=prepared_datasource.datasource_type.full_type,
         context_built_at=datetime.now(),
         context=built_context,
@@ -53,9 +51,7 @@ def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Bui
 
 
 def _execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Any:
-    """
-    Run a prepared source through the plugin
-    """
+    """Run a prepared source through the plugin."""
     if isinstance(prepared_datasource, PreparedConfig):
         ds_plugin = cast(BuildDatasourcePlugin, plugin)
 

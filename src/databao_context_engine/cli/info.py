@@ -4,11 +4,11 @@ from pathlib import Path
 
 import click
 
-from databao_context_engine.project.info import DceInfo, get_command_info
+from databao_context_engine import DceInfo, get_databao_context_engine_info
 
 
 def echo_info(project_dir: Path) -> None:
-    click.echo(_generate_info_string(get_command_info(project_dir=project_dir)))
+    click.echo(_generate_info_string(get_databao_context_engine_info(project_dir=project_dir)))
 
 
 def _generate_info_string(command_info: DceInfo) -> str:
@@ -23,10 +23,10 @@ def _generate_info_string(command_info: DceInfo) -> str:
 
     info_lines.append("")
 
-    if command_info.project_info.is_initialised:
+    if command_info.project_info.is_initialized:
         info_lines.append(f"Project dir: {command_info.project_info.project_path.resolve()}")
         info_lines.append(f"Project ID: {str(command_info.project_info.project_id)}")
     else:
-        info_lines.append(f"Project not initialised at {command_info.project_info.project_path.resolve()}")
+        info_lines.append(f"Project not initialized at {command_info.project_info.project_path.resolve()}")
 
     return os.linesep.join(info_lines)

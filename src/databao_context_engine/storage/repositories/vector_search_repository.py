@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import duckdb
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.datasource_discovery import DatasourceId
+from databao_context_engine.project.types import DatasourceId
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -25,10 +25,7 @@ class VectorSearchRepository:
     def get_display_texts_by_similarity(
         self, *, table_name: str, run_id: int, retrieve_vec: Sequence[float], dimension: int, limit: int
     ) -> list[VectorSearchResult]:
-        """
-        Read only similarity search on a specific embedding shard table.
-        Returns the display text for the closest matches in a given run
-        """
+        """Read only similarity search on a specific embedding shard table."""
         rows = self._conn.execute(
             f"""
             SELECT
@@ -57,7 +54,7 @@ class VectorSearchRepository:
                 embeddable_text=row[1],
                 cosine_distance=row[2],
                 datasource_type=DatasourceType(full_type=row[3]),
-                datasource_id=row[4],
+                datasource_id=DatasourceId.from_string_repr(row[4]),
             )
             for row in rows
         ]

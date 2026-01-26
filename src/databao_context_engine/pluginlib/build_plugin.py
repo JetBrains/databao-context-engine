@@ -5,9 +5,7 @@ from typing import Any, Protocol, runtime_checkable
 
 @dataclass
 class EmbeddableChunk:
-    """
-    A chunk that will be embedded as a vector and used when searching context from a given AI prompt
-    """
+    """A chunk that will be embedded as a vector and used when searching context from a given AI prompt."""
 
     embeddable_text: str
     """
@@ -48,19 +46,19 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
     """
 
     def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> None:
-        """
-        Checks whether the configuration to the datasource is working.
+        """Check whether the configuration to the datasource is working.
 
         The function is expected to succeed without a result if the connection is working.
         If something is wrong with the connection, the function should raise an Exception
+
+        Raises:
+            NotSupportedError: If the plugin doesn't support this method.
         """
         raise NotSupportedError("This method is not implemented for this plugin")
 
 
 class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):
-    """
-    Use this as a base class for plugins that don't need a specific config file type.
-    """
+    """Use this as a base class for plugins that don't need a specific config file type."""
 
     config_file_type: type[dict[str, Any]] = dict[str, Any]
 
@@ -75,7 +73,7 @@ class BuildFilePlugin(BaseBuildPlugin, Protocol):
 
 
 class NotSupportedError(RuntimeError):
-    """Exception raised by methods not supported by a plugin"""
+    """Exception raised by methods not supported by a plugin."""
 
 
 BuildPlugin = BuildDatasourcePlugin | BuildFilePlugin
@@ -83,6 +81,12 @@ BuildPlugin = BuildDatasourcePlugin | BuildFilePlugin
 
 @dataclass(kw_only=True, frozen=True)
 class DatasourceType:
+    """The type of a Datasource.
+
+    Attributes:
+        full_type: The full type of the datasource, in the format `<main_type>/<subtype>`.
+    """
+
     full_type: str
 
     def __post_init__(self):
@@ -92,16 +96,28 @@ class DatasourceType:
 
     @property
     def main_type(self) -> str:
+        """The main type of the datasource, aka the folder in which the config or raw file is located."""
         return self.full_type.split("/")[0]
 
     @property
     def config_folder(self) -> str:
+        """The folder in which the config or raw file is located. This is equivalent to `main_type`."""
         return self.main_type
 
     @property
     def subtype(self) -> str:
+        """The subtype of the datasource. This is the actual type declared in the config file or the raw file's extension."""
         return self.full_type.split("/")[1]
 
     @staticmethod
     def from_main_and_subtypes(main_type: str, subtype: str) -> "DatasourceType":
+        """Create a DatasourceType from its main type and subtype.
+
+        Args:
+            main_type: The main type (aka config folder) of the datasource.
+            subtype: The subtype of the datasource.
+
+        Returns:
+            A DatasourceType instance with the specified main type and subtype.
+        """
         return DatasourceType(full_type=f"{main_type}/{subtype}")

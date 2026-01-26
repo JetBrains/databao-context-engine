@@ -14,7 +14,7 @@ def test_similarity_returns_display_and_distance(
     embedding_repo,
     table_name,
 ):
-    ds_run = make_datasource_run(run_repo, datasource_run_repo, source_id="src-1")
+    ds_run = make_datasource_run(run_repo, datasource_run_repo, source_id="folder/name2.yaml")
     chunk = make_chunk(
         run_repo,
         datasource_run_repo,
@@ -60,7 +60,7 @@ def test_limit_is_applied(
     embedding_repo,
     table_name,
 ):
-    ds = make_datasource_run(run_repo, datasource_run_repo, source_id="src-limit")
+    ds = make_datasource_run(run_repo, datasource_run_repo, source_id="folder/limit.yaml")
 
     for i in range(3):
         chunk = make_chunk(

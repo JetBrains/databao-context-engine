@@ -1,22 +1,57 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Annotated
 
 import snowflake.connector
-from pydantic import Field
+from pydantic import BaseModel, Field
 from snowflake.connector import DictCursor
 
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseTable
-from databao_context_engine.plugins.databases.table_builder import TableBuilder
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
+from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
+
+
+class SnowflakePasswordAuth(BaseModel):
+    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+
+
+class SnowflakeKeyPairAuth(BaseModel):
+    private_key_file: str | None = None
+    private_key_file_pwd: str | None = None
+    private_key: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+
+
+class SnowflakeSSOAuth(BaseModel):
+    authenticator: str = Field(description='e.g. "externalbrowser"')
+
+
+class SnowflakeConnectionProperties(BaseModel):
+    account: Annotated[str, ConfigPropertyAnnotation(required=True)]
+    warehouse: str | None = None
+    database: str | None = None
+    user: str | None = None
+    role: str | None = None
+    auth: SnowflakePasswordAuth | SnowflakeKeyPairAuth | SnowflakeSSOAuth
+    additional_properties: dict[str, Any] = {}
+
+    def to_snowflake_kwargs(self) -> dict[str, Any]:
+        kwargs = self.model_dump(
+            exclude={
+                "additional_properties": True,
+            },
+            exclude_none=True,
+        )
+        auth_fields = kwargs.pop("auth", {})
+        kwargs.update(auth_fields)
+        kwargs.update(self.additional_properties)
+        return kwargs
 
 
 class SnowflakeConfigFile(BaseDatabaseConfigFile):
     type: str = Field(default="databases/snowflake")
-    connection: dict[str, Any] = Field(
-        description="Connection parameters for Snowflake. It can contain any of the keys supported by the Snowflake connection library"
-    )
+    connection: SnowflakeConnectionProperties
 
 
 class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
@@ -28,11 +63,9 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
     def _connect(self, file_config: SnowflakeConfigFile):
         connection = file_config.connection
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
         snowflake.connector.paramstyle = "qmark"
         return snowflake.connector.connect(
-            **connection,
+            **connection.to_snowflake_kwargs(),
         )
 
     def _connect_to_catalog(self, file_config: SnowflakeConfigFile, catalog: str):
@@ -41,7 +74,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         return snowflake.connector.connect(**cfg)
 
     def _get_catalogs(self, connection, file_config: SnowflakeConfigFile) -> list[str]:
-        database = file_config.connection.get("database")
+        database = file_config.connection.database
         if database:
             return [database]
 
@@ -56,13 +89,22 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             parts.append(f"SELECT schema_name, catalog_name FROM {catalog}.information_schema.schemata")
         return SQLQuery(" UNION ALL ".join(parts), None)
 
-    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
-        comps = self._component_queries(catalog, schema)
+    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if not schemas:
+            return []
+
+        comps = self._component_queries(catalog, schemas)
 
         statements = [c["sql"].rstrip().rstrip(";") for c in comps]
         batch_sql = ";\n".join(statements)
 
-        results: dict[str, list[dict]] = {c["name"]: [] for c in comps if c["name"]}
+        results: dict[str, list[dict]] = {
+            "relations": [],
+            "columns": [],
+            "pk": [],
+            "fks": [],
+            "uq": [],
+        }
 
         with connection.cursor(DictCursor) as cur:
             cur.execute(batch_sql, num_statements=len(statements))
@@ -73,7 +115,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                 rows = self._lower_keys(cur.fetchall()) if cur.description else []
 
                 if name:
-                    results[name] = rows
+                    results[name].extend(rows)
 
                 if ix < len(comps):
                     ok = cur.nextset()
@@ -82,34 +124,37 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                             f"Snowflake multi-statement batch ended early after component #{ix} '{name}'"
                         )
 
-        return TableBuilder.build_from_components(
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
+        return IntrospectionModelBuilder.build_schemas_from_components(
+            schemas=schemas,
+            rels=results["relations"],
+            cols=results["columns"],
+            pk_cols=results["pk"],
+            uq_cols=results["uq"],
             checks=[],
-            fk_cols=results.get("fks", []),
+            fk_cols=results["fks"],
             idx_cols=[],
         )
 
-    def _component_queries(self, catalog: str, schema: str) -> list[dict]:
+    def _component_queries(self, catalog: str, schemas: list[str]) -> list[dict]:
+        schemas_in = ", ".join(self._quote_literal(s) for s in schemas)
+
         return [
-            {"name": "relations", "sql": self._sql_relations(catalog, schema)},
-            {"name": "columns", "sql": self._sql_columns(catalog, schema)},
-            {"name": None, "sql": self._sql_pk_show(catalog, schema)},
-            {"name": "pk", "sql": self._sql_pk_select()},
-            {"name": None, "sql": self._sql_fk_show(catalog, schema)},
-            {"name": "fks", "sql": self._sql_fk_select()},
-            {"name": None, "sql": self._sql_uq_show(catalog, schema)},
-            {"name": "uq", "sql": self._sql_uq_select()},
+            {"name": "relations", "sql": self._sql_relations(catalog, schemas_in)},
+            {"name": "columns", "sql": self._sql_columns(catalog, schemas_in)},
+            {"name": None, "sql": self._sql_pk_show(catalog)},
+            {"name": "pk", "sql": self._sql_pk_select(schemas_in)},
+            {"name": None, "sql": self._sql_fk_show(catalog)},
+            {"name": "fks", "sql": self._sql_fk_select(schemas_in)},
+            {"name": None, "sql": self._sql_uq_show(catalog)},
+            {"name": "uq", "sql": self._sql_uq_select(schemas_in)},
         ]
 
-    def _sql_relations(self, catalog: str, schema: str) -> str:
+    def _sql_relations(self, catalog: str, schemas_in: str) -> str:
         isq = self._qual_is(catalog)
-        schema_lit = self._quote_literal(schema)
 
         return f"""
             SELECT
+                t.TABLE_SCHEMA AS "schema_name",
                 t.TABLE_NAME AS "table_name",
                 CASE t.TABLE_TYPE
                     WHEN 'BASE TABLE'        THEN 'table'
@@ -122,17 +167,18 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             FROM 
                 {isq}.TABLES AS t
             WHERE 
-                t.TABLE_SCHEMA = {schema_lit}
+                t.TABLE_SCHEMA IN ({schemas_in})
             ORDER BY 
+                t.TABLE_SCHEMA,
                 t.TABLE_NAME
         """
 
-    def _sql_columns(self, catalog: str, schema: str) -> str:
+    def _sql_columns(self, catalog: str, schemas_in: str) -> str:
         isq = self._qual_is(catalog)
-        schema_lit = self._quote_literal(schema)
 
         return f"""
             SELECT
+            c.TABLE_SCHEMA AS "schema_name",
                 c.TABLE_NAME       AS "table_name",
                 c.COLUMN_NAME      AS "column_name",
                 c.ORDINAL_POSITION AS "ordinal_position",
@@ -144,40 +190,45 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             FROM 
                 {isq}.COLUMNS AS c
             WHERE 
-                c.TABLE_SCHEMA = {schema_lit}
+                c.TABLE_SCHEMA IN ({schemas_in})
             ORDER BY 
+                c.TABLE_SCHEMA,
                 c.TABLE_NAME, 
                 c.ORDINAL_POSITION
         """
 
-    def _sql_pk_show(self, catalog: str, schema: str) -> str:
+    def _sql_pk_show(self, catalog: str) -> str:
         return f"""
-            SHOW PRIMARY KEYS IN SCHEMA {self._quote_ident(catalog)}.{self._quote_ident(schema)}
+            SHOW PRIMARY KEYS IN DATABASE {self._quote_ident(catalog)}
         """
 
-    def _sql_pk_select(self) -> str:
-        return """
+    def _sql_pk_select(self, schemas_in: str) -> str:
+        return f"""
                SELECT
+                   "schema_name" AS schema_name,
                    "table_name" AS table_name,
                    "constraint_name"   AS constraint_name,
                    "column_name"       AS column_name,
                    "key_sequence"::INT AS position
                FROM 
                    TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+               WHERE
+                    "schema_name" IN ({schemas_in})
                ORDER BY 
                    table_name, 
                    constraint_name, 
                    position
                """
 
-    def _sql_fk_show(self, catalog: str, schema: str) -> str:
+    def _sql_fk_show(self, catalog: str) -> str:
         return f"""
-            SHOW IMPORTED KEYS IN SCHEMA {self._quote_ident(catalog)}.{self._quote_ident(schema)}
+            SHOW IMPORTED KEYS IN DATABASE {self._quote_ident(catalog)}
         """
 
-    def _sql_fk_select(self) -> str:
-        return """
+    def _sql_fk_select(self, schemas_in: str) -> str:
+        return f"""
                SELECT
+                   "fk_schema_name"     AS "schema_name",
                    "fk_table_name"      AS "table_name",
                    "fk_name"            AS "constraint_name",
                    "key_sequence"::INT  AS "position",
@@ -191,38 +242,45 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                    NULL::BOOLEAN        AS "validated"
                FROM 
                    TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+               WHERE
+                   "fk_schema_name" IN ({schemas_in})
                ORDER BY 
+                   "schema_name",
                    "table_name", 
                    "constraint_name", 
                    "position"
                """
 
-    def _sql_uq_show(self, catalog: str, schema: str) -> str:
+    def _sql_uq_show(self, catalog: str) -> str:
         return f"""
-            SHOW UNIQUE KEYS IN SCHEMA {self._quote_ident(catalog)}.{self._quote_ident(schema)}
+            SHOW UNIQUE KEYS IN DATABASE {self._quote_ident(catalog)}
         """
 
-    def _sql_uq_select(self) -> str:
-        return """
+    def _sql_uq_select(self, schemas_in: str) -> str:
+        return f"""
                SELECT
+                   "schema_name"       AS "schema_name",
                    "table_name"        AS "table_name",
                    "constraint_name"   AS "constraint_name",
                    "column_name"       AS "column_name",
                    "key_sequence"::INT AS "position"
                FROM 
                    TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+               WHERE
+                   "schema_name" IN ({schemas_in})
                ORDER BY 
+                   "schema_name",
                    "table_name", 
                    "constraint_name", 
                    "position"
                """
 
-    def _sql_checks(self, catalog: str, schema: str) -> str:
+    def _sql_checks(self, catalog: str, schemas_in: str) -> str:
         isq = self._qual_is(catalog)
-        schema_lit = self._quote_literal(schema)
 
         return f"""
             SELECT
+                tc.TABLE_SCHEMA    AS "schema_name",
                 tc.TABLE_NAME      AS "table_name",
                 tc.CONSTRAINT_NAME AS "constraint_name",
                 NULL::VARCHAR      AS "expression",
@@ -230,9 +288,10 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             FROM 
                 {isq}.TABLE_CONSTRAINTS AS tc
             WHERE 
-                tc.TABLE_SCHEMA = {schema_lit}
+                tc.TABLE_SCHEMA IN ({schemas_in})
                 AND tc.CONSTRAINT_TYPE = 'CHECK'
             ORDER BY 
+                tc.TABLE_SCHEMA, 
                 tc.TABLE_NAME, 
                 tc.CONSTRAINT_NAME
         """

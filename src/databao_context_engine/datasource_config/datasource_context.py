@@ -1,49 +1,90 @@
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from databao_context_engine.datasource_config.utils import (
-    get_datasource_id_from_main_type_and_file_name,
-)
-from databao_context_engine.project.datasource_discovery import DatasourceId
+import yaml
+
+from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.project.runs import get_run_dir, resolve_run_name
+from databao_context_engine.project.types import Datasource, DatasourceId, DatasourceType
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(eq=True, frozen=True)
 class DatasourceContext:
+    """A generated Context for a Datasource.
+
+    Attributes:
+        datasource_id: The id of the datasource.
+        context: The context generated for the datasource.
+    """
+
     datasource_id: DatasourceId
     # TODO: Read the context as a BuildExecutionResult instead of a Yaml string?
     context: str
 
 
-def get_datasource_context(
-    project_dir: Path, datasource_id: DatasourceId, run_name: str | None = None
-) -> DatasourceContext:
-    run_dir = _resolve_run_dir(project_dir, run_name)
+def _read_datasource_type_from_context_file(context_path: Path) -> DatasourceType:
+    with context_path.open("r") as context_file:
+        type_key = "datasource_type"
+        for line in context_file:
+            if line.startswith(f"{type_key}: "):
+                datasource_type = yaml.safe_load(line)[type_key]
+                return DatasourceType(full_type=datasource_type)
 
-    context_path = run_dir.joinpath(datasource_id).with_suffix(".yaml")
+    raise ValueError(f"Could not find type in context file {context_path}")
+
+
+def get_introspected_datasource_list(project_layout: ProjectLayout, *, run_name: str | None = None) -> list[Datasource]:
+    run_dir = _resolve_run_dir(project_layout, run_name)
+
+    result = []
+    for main_type_dir in sorted((p for p in run_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
+        for context_path in sorted(
+            (p for p in main_type_dir.iterdir() if p.suffix in [".yaml", ".yml"]), key=lambda p: p.name.lower()
+        ):
+            try:
+                result.append(
+                    Datasource(
+                        id=DatasourceId.from_datasource_config_file_path(context_path),
+                        type=_read_datasource_type_from_context_file(context_path),
+                    )
+                )
+            except ValueError as e:
+                logger.debug(str(e), exc_info=True, stack_info=True)
+                logger.warning(
+                    f"Ignoring introspected datasource: Failed to read datasource_type from context file at {context_path.resolve()}"
+                )
+
+    return result
+
+
+def get_datasource_context(
+    project_layout: ProjectLayout, datasource_id: DatasourceId, run_name: str | None = None
+) -> DatasourceContext:
+    run_dir = _resolve_run_dir(project_layout, run_name)
+
+    context_path = run_dir.joinpath(datasource_id.relative_path_to_context_file())
     if not context_path.is_file():
-        raise ValueError(f"Context file not found for datasource {datasource_id} in run {run_dir.name}")
+        raise ValueError(f"Context file not found for datasource {str(datasource_id)} in run {run_dir.name}")
 
     context = context_path.read_text()
     return DatasourceContext(datasource_id=datasource_id, context=context)
 
 
-def get_all_contexts(project_dir: Path, run_name: str | None = None) -> list[DatasourceContext]:
-    run_dir = _resolve_run_dir(project_dir, run_name)
+def get_all_contexts(project_layout: ProjectLayout, run_name: str | None = None) -> list[DatasourceContext]:
+    run_dir = _resolve_run_dir(project_layout, run_name)
 
     result = []
     for main_type_dir in sorted((p for p in run_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
-        datasource_main_type = main_type_dir.name
         for context_path in sorted(
             (p for p in main_type_dir.iterdir() if p.suffix in [".yaml", ".yml"]), key=lambda p: p.name.lower()
         ):
             result.append(
                 DatasourceContext(
-                    # FIXME: The extension will always be yaml here even if the datasource is a file with a different extension
-                    datasource_id=get_datasource_id_from_main_type_and_file_name(
-                        datasource_main_type, context_path.name
-                    ),
+                    datasource_id=DatasourceId.from_datasource_context_file_path(context_path),
                     context=context_path.read_text(),
                 )
             )
@@ -52,13 +93,13 @@ def get_all_contexts(project_dir: Path, run_name: str | None = None) -> list[Dat
 
 
 def get_context_header_for_datasource(datasource_id: DatasourceId) -> str:
-    return f"# ===== {datasource_id} ====={os.linesep}"
+    return f"# ===== {str(datasource_id)} ====={os.linesep}"
 
 
-def _resolve_run_dir(project_dir: Path, run_name: str | None) -> Path:
-    resolved_run_name = resolve_run_name(project_dir=project_dir, run_name=run_name)
+def _resolve_run_dir(project_layout: ProjectLayout, run_name: str | None) -> Path:
+    resolved_run_name = resolve_run_name(project_layout=project_layout, run_name=run_name)
 
-    run_dir = get_run_dir(project_dir=project_dir, run_name=resolved_run_name)
+    run_dir = get_run_dir(project_dir=project_layout.project_dir, run_name=resolved_run_name)
     if not run_dir.is_dir():
         raise ValueError(f"Run {resolved_run_name} does not exist at {run_dir.resolve()}")
 

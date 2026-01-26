@@ -356,7 +356,7 @@ def _create_config_file_from_container(clickhouse: ClickHouseContainer) -> Mappi
         "connection": {
             "host": clickhouse.get_container_host_ip(),
             "port": int(clickhouse.get_exposed_port(HTTP_PORT)),
-            # TODO now this parameter is not used in introspections, worth checking if that is expected behaviour
+            # TODO now this parameter is not used in introspections, worth checking if that is expected behavior
             "database": clickhouse.dbname,
             "username": clickhouse.username,
             "password": clickhouse.password,

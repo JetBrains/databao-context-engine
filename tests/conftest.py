@@ -7,6 +7,7 @@ import duckdb
 import pytest
 
 from databao_context_engine.project.init_project import init_project_dir
+from databao_context_engine.project.layout import ProjectLayout, get_config_file
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.persistence_service import PersistenceService
 from databao_context_engine.services.run_name_policy import RunNamePolicy
@@ -20,6 +21,23 @@ from databao_context_engine.storage.repositories.embedding_model_registry_reposi
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
 from databao_context_engine.storage.repositories.run_repository import RunRepository
 from databao_context_engine.system.properties import get_db_path
+
+RUN_RECOMMENDED_EXTRAS_OPTION = "--run-recommended-extras"
+
+
+def pytest_addoption(parser):
+    parser.addoption(RUN_RECOMMENDED_EXTRAS_OPTION, action="store_true", default=False, help="run slow tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption(RUN_RECOMMENDED_EXTRAS_OPTION):
+        # --run_recommended_extras given in cli: do not skip recommended_extras tests
+        return
+    # dynamically at pytest.mark.skip annotation to tests marked with recommended_extras
+    skip_recommended_extras = pytest.mark.skip(reason=f"need {RUN_RECOMMENDED_EXTRAS_OPTION} option to run")
+    for item in items:
+        if "recommended_extras" in item.keywords:
+            item.add_marker(skip_recommended_extras)
 
 
 @pytest.fixture(scope="session")
@@ -118,3 +136,8 @@ def project_path(tmp_path) -> Path:
     init_project_dir(project_dir=tmp_project_dir)
 
     return tmp_project_dir
+
+
+@pytest.fixture
+def project_layout(project_path) -> ProjectLayout:
+    return ProjectLayout(project_dir=project_path, config_file=get_config_file(project_path))

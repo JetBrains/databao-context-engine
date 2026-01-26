@@ -1,21 +1,36 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Mapping, Annotated
 
 from mssql_python import connect  # type: ignore[import-untyped]
-from pydantic import Field
+from pydantic import Field, BaseModel
 
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseTable
-from databao_context_engine.plugins.databases.table_builder import TableBuilder
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema, DatabaseTable
+from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
+
+
+class MSSQLConnectionProperties(BaseModel):
+    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
+    port: int | None = None
+    instance_name: str | None = None
+    database: str | None = None
+    user: str | None = None
+    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+    encrypt: str | None = None
+    additional_properties: dict[str, Any] = {}
+
+    def to_mssql_kwargs(self) -> dict[str, Any]:
+        kwargs = self.model_dump(exclude={"additional_properties"}, exclude_none=True)
+        kwargs.update(self.additional_properties)
+        return kwargs
 
 
 class MSSQLConfigFile(BaseDatabaseConfigFile):
     type: str = Field(default="databases/mssql")
-    connection: dict[str, Any] = Field(
-        description="Connection parameters for the Microsoft Server SQL database. It can contain any of the keys supported by the Microsoft Server connection library"
-    )
+    connection: MSSQLConnectionProperties
 
 
 class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
@@ -42,22 +57,16 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     def _connect(self, file_config: MSSQLConfigFile):
         connection = file_config.connection
-        if not isinstance(connection, Mapping):
-            raise ValueError("Invalid YAML config: 'connection' must be a mapping of connection parameters")
-
-        connection_string = self._create_connection_string_for_config(connection)
+        connection_string = self._create_connection_string_for_config(connection.to_mssql_kwargs())
         return connect(connection_string)
 
     def _connect_to_catalog(self, file_config: MSSQLConfigFile, catalog: str):
-        base_cfg = file_config.connection or {}
-        cfg_for_db: dict[str, Any] = dict(base_cfg)
-        cfg_for_db["database"] = catalog
-
-        connection_string = self._create_connection_string_for_config(cfg_for_db)
-        return connect(connection_string)
+        cfg = file_config.model_copy(deep=True)
+        cfg.connection.database = catalog
+        return self._connect(cfg)
 
     def _get_catalogs(self, connection, file_config: MSSQLConfigFile) -> list[str]:
-        database = file_config.connection.get("database")
+        database = file_config.connection.database
         if isinstance(database, str) and database:
             return [database]
 
@@ -75,6 +84,51 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
         return SQLQuery(" UNION ALL ".join(parts), None)
 
     _USE_BATCH = True
+
+    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if not schemas:
+            return []
+
+        comps = self._component_queries()
+
+        values = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
+        batch_prefix = "SET NOCOUNT ON; SET XACT_ABORT ON;"
+        schema_table = f"DECLARE @schemas TABLE (name sysname);\nINSERT INTO @schemas (name) VALUES {values};"
+
+        batch = (
+            batch_prefix
+            + "\n"
+            + schema_table
+            + "\n"
+            + ";\n".join(sql.strip().rstrip(";") for sql in comps.values())
+            + ";"
+        )
+
+        results: dict[str, list[dict]] = {name: [] for name in comps}
+        with connection.cursor() as cur:
+            cur.execute(batch)
+            for ix, name in enumerate(comps.keys(), start=1):
+                rows: list[dict] = []
+                if cur.description:
+                    cols = [c[0].lower() for c in cur.description]
+                    rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+                results[name] = rows
+
+                if ix < len(comps):
+                    ok = cur.nextset()
+                    if not ok:
+                        raise RuntimeError(f"Batch ended early after component #{ix} '{name}'")
+
+        return IntrospectionModelBuilder.build_schemas_from_components(
+            schemas=schemas,
+            rels=results.get("relations", []),
+            cols=results.get("columns", []),
+            pk_cols=results.get("pk", []),
+            uq_cols=results.get("uq", []),
+            checks=results.get("checks", []),
+            fk_cols=results.get("fks", []),
+            idx_cols=results.get("idx", []),
+        )
 
     def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
         comps = self._component_queries()
@@ -101,7 +155,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                     if not ok:
                         raise RuntimeError(f"Batch ended early after component #{ix} '{name}'")
 
-        return TableBuilder.build_from_components(
+        return IntrospectionModelBuilder.build_tables_from_components(
             rels=results.get("relations", []),
             cols=results.get("columns", []),
             pk_cols=results.get("pk", []),
@@ -125,6 +179,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     def _sql_relations(self) -> str:
         return r"""
             SELECT
+                s.name AS schema_name,
                 t.name AS table_name,
                 'table' AS kind,
                 CAST(ep.value AS nvarchar(4000)) AS description
@@ -134,11 +189,12 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 LEFT JOIN sys.extended_properties ep 
                           ON ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
             UNION ALL
             SELECT
-                v.name                    AS table_name,
-                'view'                    AS kind,
+                s.name AS schema_name,
+                v.name AS table_name,
+                'view' AS kind,
                 CAST(ep.value AS nvarchar(4000)) AS description
             FROM 
                 sys.views v
@@ -146,9 +202,10 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 LEFT JOIN sys.extended_properties ep 
                           ON ep.major_id = v.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
             UNION ALL
             SELECT
+                s.name AS schema_name,
                 et.name AS table_name,
                 'external_table' AS kind,
                 CAST(ep.value AS nvarchar(4000)) AS description
@@ -158,7 +215,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 LEFT JOIN sys.extended_properties ep 
                           ON ep.major_id = et.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
             ORDER BY 
                 table_name;
         """
@@ -167,6 +224,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     def _sql_columns(self) -> str:
         return r"""
             SELECT
+                s.name AS schema_name,
                 o.name AS table_name,
                 c.name AS column_name,
                 c.column_id AS ordinal_position,
@@ -195,7 +253,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                 LEFT JOIN sys.extended_properties ep ON ep.class = 1 AND ep.major_id = c.object_id AND ep.minor_id = c.column_id AND ep.name = 'MS_Description'
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
             ORDER BY 
                 o.name, 
                 c.column_id;
@@ -204,6 +262,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     def _sql_primary_keys(self) -> str:
         return r"""
             SELECT
+                s.name AS schema_name,
                 t.name AS table_name,
                 kc.name AS constraint_name,
                 c.name AS column_name,
@@ -215,7 +274,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id AND ic.is_included_column = 0
                 JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
                 AND kc.type = 'PK'
             ORDER BY 
                 t.name, 
@@ -226,6 +285,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     def _sql_uniques(self) -> str:
         return r"""
             SELECT
+                s.name AS schema_name,
                 t.name AS table_name,
                 kc.name AS constraint_name,
                 c.name AS column_name,
@@ -237,7 +297,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id AND ic.is_included_column = 0
                 JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
                 AND kc.type = 'UQ'
             ORDER BY 
                 t.name, 
@@ -248,6 +308,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     def _sql_checks(self) -> str:
         return r"""
             SELECT
+                s.name AS schema_name,
                 t.name AS table_name,
                 cc.name AS constraint_name,
                 CAST(cc.definition AS nvarchar(4000)) AS expression,
@@ -260,7 +321,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.tables t ON t.object_id = cc.parent_object_id
                 JOIN sys.schemas s ON s.schema_id = t.schema_id
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
             ORDER BY 
                 t.name, 
                 cc.name;
@@ -269,6 +330,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     def _sql_foreign_keys(self) -> str:
         return r"""
             SELECT
+                s.name AS schema_name,
                 t.name AS table_name,
                 fk.name AS constraint_name,
                 fkc.constraint_column_id AS position,
@@ -290,7 +352,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.columns pc ON pc.object_id = fkc.parent_object_id    AND pc.column_id = fkc.parent_column_id
                 JOIN sys.columns rc ON rc.object_id = fkc.referenced_object_id AND rc.column_id = fkc.referenced_column_id
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
             ORDER BY 
                 t.name, 
                 fk.name, 
@@ -301,6 +363,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     def _sql_indexes(self) -> str:
         return r"""
             SELECT
+                s.name AS schema_name,
                 t.name AS table_name,
                 i.name AS index_name,
                 ic.key_ordinal AS position,
@@ -320,7 +383,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
                 JOIN sys.columns c   ON c.object_id = ic.object_id AND c.column_id = ic.column_id
             WHERE 
-                s.name = {SCHEMA}
+                s.name IN (SELECT name FROM @schemas)
                 AND i.is_primary_key = 0
                 AND i.is_unique_constraint = 0
                 AND ic.is_included_column = 0

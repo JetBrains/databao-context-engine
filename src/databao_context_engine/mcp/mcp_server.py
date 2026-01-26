@@ -6,7 +6,7 @@ from typing import Literal
 from mcp.server import FastMCP
 from mcp.types import ToolAnnotations
 
-from databao_context_engine.databao_engine import DatabaoContextEngine
+from databao_context_engine import DatabaoContextEngine
 from databao_context_engine.mcp.all_results_tool import run_all_results_tool
 from databao_context_engine.mcp.retrieve_tool import run_retrieve_tool
 
@@ -26,7 +26,7 @@ class McpServer:
     def __init__(
         self,
         project_dir: Path,
-        run_name: str,
+        run_name: str | None,
         host: str | None = None,
         port: int | None = None,
     ):
