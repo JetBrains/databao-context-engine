@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.retrieve_embeddings.internal.retrieve_runner import retrieve
+from databao_context_engine.retrieve_embeddings.retrieve_runner import retrieve
 from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
 
 
@@ -35,9 +35,7 @@ def test_retrieve_without_export(capsys):
 
     project_dir = Path("/project")
 
-    with patch(
-        "databao_context_engine.retrieve_embeddings.internal.retrieve_runner.export_retrieve_results"
-    ) as mock_export:
+    with patch("databao_context_engine.retrieve_embeddings.retrieve_runner.export_retrieve_results") as mock_export:
         result = retrieve(
             project_dir=project_dir,
             retrieve_service=service,
@@ -76,12 +74,8 @@ def test_retrieve_file_with_export(tmp_path, capsys):
     project_dir = tmp_path
 
     with (
-        patch(
-            "databao_context_engine.retrieve_embeddings.internal.retrieve_runner.get_output_dir"
-        ) as mock_get_output_dir,
-        patch(
-            "databao_context_engine.retrieve_embeddings.internal.retrieve_runner.export_retrieve_results"
-        ) as mock_export,
+        patch("databao_context_engine.retrieve_embeddings.retrieve_runner.get_output_dir") as mock_get_output_dir,
+        patch("databao_context_engine.retrieve_embeddings.retrieve_runner.export_retrieve_results") as mock_export,
     ):
         export_dir = tmp_path / "out"
         mock_get_output_dir.return_value = export_dir

@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 
 from databao_context_engine.project.layout import get_output_dir
-from databao_context_engine.retrieve_embeddings.internal.export_results import export_retrieve_results
-from databao_context_engine.retrieve_embeddings.internal.retrieve_service import RetrieveService
+from databao_context_engine.retrieve_embeddings.export_results import export_retrieve_results
+from databao_context_engine.retrieve_embeddings.retrieve_service import RetrieveService
 from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.retrieve_embeddings.internal.retrieve_service import RetrieveService
+from databao_context_engine.retrieve_embeddings.retrieve_service import RetrieveService
 from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
 
 

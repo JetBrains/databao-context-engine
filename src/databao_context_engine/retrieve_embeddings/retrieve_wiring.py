@@ -1,6 +1,6 @@
 from databao_context_engine.llm.factory import create_ollama_embedding_provider, create_ollama_service
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
-from databao_context_engine.retrieve_embeddings.internal.retrieve_runner import retrieve
+from databao_context_engine.retrieve_embeddings.retrieve_runner import retrieve
 from databao_context_engine.services.factories import create_retrieve_service
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult

@@ -3,7 +3,7 @@ from _duckdb import DuckDBPyConnection
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
-from databao_context_engine.retrieve_embeddings.internal.retrieve_service import RetrieveService
+from databao_context_engine.retrieve_embeddings.retrieve_service import RetrieveService
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode, ChunkEmbeddingService
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.persistence_service import PersistenceService
