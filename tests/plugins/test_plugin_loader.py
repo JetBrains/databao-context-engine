@@ -51,18 +51,7 @@ def test_merge_plugins_duplicate_raises():
 
 
 def test_loaded_plugins_no_extra():
-    p = subprocess.Popen(
-        ["uv", "run", "--isolated", "--extra", "recommended", "-s", "tests/plugins/get_loaded_plugins.py"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    lines = []
-    for line in p.stdout.readlines():
-        lines.append(line.decode())
-    exit_code = p.wait()
-    assert exit_code == 0, lines
-    output = "\n".join(lines)
-    plugin_ids = eval(output)
+    plugin_ids = load_plugin_ids("--extra", "recommended")
     assert plugin_ids == {
         "jetbrains/duckdb",
         "jetbrains/mysql",
@@ -70,3 +59,36 @@ def test_loaded_plugins_no_extra():
         "jetbrains/parquet",
         "jetbrains/unstructured_files",
     }
+
+
+def test_loaded_plugins_all_extras():
+    plugin_ids = load_plugin_ids("--all-extras")
+    assert plugin_ids == {
+        "jetbrains/athena",
+        "jetbrains/clickhouse",
+        "jetbrains/duckdb",
+        "jetbrains/mssql",
+        "jetbrains/mysql",
+        "jetbrains/postgres",
+        "jetbrains/snowflake",
+        "jetbrains/parquet",
+        "jetbrains/unstructured_files",
+    }
+
+
+def load_plugin_ids(*uv_extra_args) -> list[str]:
+    p = subprocess.Popen(
+        ["uv", "run", "--isolated"] + list(uv_extra_args) + ["-s", "tests/plugins/get_loaded_plugins.py"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    lines = []
+
+    assert p.stdout is not None
+    for line in p.stdout.readlines():
+        lines.append(line.decode())
+    exit_code = p.wait()
+    assert exit_code == 0, lines
+    output = "\n".join(lines)
+    plugin_ids = eval(output)
+    return plugin_ids
