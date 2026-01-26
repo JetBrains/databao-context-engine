@@ -61,7 +61,7 @@ def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
     datasources: list[DatasourceDescriptor] = []
     for main_dir in sorted((p for p in src.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
         for path in sorted((p for p in main_dir.iterdir() if _is_datasource_file(p)), key=lambda p: p.name.lower()):
-            datasource = load_datasource_descriptor(path)
+            datasource = _load_datasource_descriptor(path)
             if datasource is not None:
                 datasources.append(datasource)
 
@@ -84,14 +84,14 @@ def get_datasource_descriptors(project_dir: Path, datasource_ids: list[Datasourc
         if not config_file_path.is_file():
             raise ValueError(f"Datasource config file not found: {config_file_path}")
 
-        datasource = load_datasource_descriptor(config_file_path)
+        datasource = _load_datasource_descriptor(config_file_path)
         if datasource is not None:
             datasources.append(datasource)
 
     return datasources
 
 
-def load_datasource_descriptor(path: Path) -> DatasourceDescriptor | None:
+def _load_datasource_descriptor(path: Path) -> DatasourceDescriptor | None:
     """Load a single file with src/<parent_name>/ into a DatasourceDescriptor."""
     if not path.is_file():
         return None

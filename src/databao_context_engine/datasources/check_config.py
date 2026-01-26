@@ -114,12 +114,12 @@ def check_datasource_connection(
                     exc_info=True,
                     stack_info=True,
                 )
-                result[result_key] = get_validation_result_from_error(result_key, e)
+                result[result_key] = _get_validation_result_from_error(result_key, e)
 
     return result
 
 
-def get_validation_result_from_error(datasource_id: DatasourceId, e: Exception):
+def _get_validation_result_from_error(datasource_id: DatasourceId, e: Exception):
     if isinstance(e, ValidationError):
         return CheckDatasourceConnectionResult(
             datasource_id=datasource_id,
