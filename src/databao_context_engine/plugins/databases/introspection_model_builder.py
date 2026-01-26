@@ -5,13 +5,13 @@ from databao_context_engine.plugins.databases.databases_types import (
     CheckConstraint,
     DatabaseColumn,
     DatabasePartitionInfo,
+    DatabaseSchema,
     DatabaseTable,
     DatasetKind,
     ForeignKey,
     ForeignKeyColumnMap,
     Index,
     KeyConstraint,
-    DatabaseSchema,
 )
 
 

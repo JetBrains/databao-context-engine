@@ -1,6 +1,6 @@
 import types
 from dataclasses import MISSING, fields, is_dataclass
-from typing import Annotated, Any, ForwardRef, Union, get_origin, get_type_hints, get_args
+from typing import Annotated, Any, ForwardRef, Union, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel, _internal
 from pydantic_core import PydanticUndefinedType
@@ -8,8 +8,8 @@ from pydantic_core import PydanticUndefinedType
 from databao_context_engine.pluginlib.config import (
     ConfigPropertyAnnotation,
     ConfigPropertyDefinition,
-    ConfigUnionPropertyDefinition,
     ConfigSinglePropertyDefinition,
+    ConfigUnionPropertyDefinition,
 )
 
 

@@ -9,6 +9,7 @@ extend-select = [
     "DOC",
     # pydocstyle
     "D",
+    "I",
 ]
 ignore = [
     "D100",
