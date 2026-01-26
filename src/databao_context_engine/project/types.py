@@ -43,6 +43,11 @@ class DatasourceId:
     e.g: "databases/my_postgres_datasource.yaml"
 
     Use the provided factory methods `from_string_repr` and `from_datasource_config_file_path` to create a DatasourceId, rather than its constructor.
+
+    Attributes:
+        datasource_config_folder: The folder where the datasource's config file is located.
+        datasource_name: The name of the datasource.
+        config_file_suffix: The suffix of the config (or raw) file.
     """
 
     datasource_config_folder: str
@@ -80,6 +85,9 @@ class DatasourceId:
         """Return a path to the config file for this datasource.
 
         The returned path is relative to the src folder in the project.
+
+        Returns:
+            The path to the config file relative to the src folder in the project.
         """
         return Path(self.datasource_config_folder).joinpath(self.datasource_name + self.config_file_suffix)
 
@@ -87,6 +95,9 @@ class DatasourceId:
         """Return a path to the config file for this datasource.
 
         The returned path is relative to an output run folder in the project.
+
+        Returns:
+            The path to the context file relative to the output folder in the project.
         """
         # Keep the suffix in the filename if this datasource is a raw file, to handle multiple files with the same name and different extensions
         suffix = ".yaml" if self.config_file_suffix == ".yaml" else (self.config_file_suffix + ".yaml")
@@ -161,5 +172,12 @@ class DatasourceId:
 
 @dataclass
 class Datasource:
+    """A datasource contained in the project.
+
+    Attributes:
+        id: The unique identifier of the datasource.
+        type: The type of the datasource.
+    """
+
     id: DatasourceId
     type: DatasourceType
