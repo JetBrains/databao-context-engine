@@ -55,8 +55,6 @@ def test_build_returns_early_when_no_sources(stub_sources, stub_plugins, mock_bu
     build_runner.build(
         project_dir=tmp_path,
         build_service=mock_build_service,
-        project_id="proj",
-        dce_version="v1",
     )
     mock_build_service.start_run.assert_not_called()
 
@@ -69,7 +67,7 @@ def test_build_skips_source_without_plugin(
     stub_plugins({})
     stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=datasources.path)])
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", dce_version="v1")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service)
     mock_build_service.start_run.assert_not_called()
     mock_build_service.process_prepared_source.assert_not_called()
     mock_build_service.finalize_run.assert_not_called()
@@ -88,7 +86,7 @@ def test_build_processes_file_source_and_exports(
 
     mock_build_service.process_prepared_source.return_value = _result(name="files/one.md", typ="files/md")
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", dce_version="v1")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service)
 
     mock_build_service.process_prepared_source.assert_called_once()
 
@@ -107,6 +105,6 @@ def test_build_continues_on_service_exception(stub_sources, stub_plugins, stub_p
 
     mock_build_service.process_prepared_source.side_effect = [RuntimeError("boom"), _result(name="files/b.md")]
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", dce_version="v1")
+    build_runner.build(project_dir=tmp_path, build_service=mock_build_service)
 
     assert mock_build_service.process_prepared_source.call_count == 2

@@ -39,8 +39,6 @@ def build(
     project_dir: Path,
     *,
     build_service: BuildService,
-    project_id: str,
-    dce_version: str,
 ) -> list[BuildContextResult]:
     """Build the context for all datasources in the project.
 
