@@ -13,7 +13,7 @@ from databao_context_engine import (
 )
 from databao_context_engine.project.layout import get_output_dir
 from tests.utils.dummy_build_plugin import load_dummy_plugins
-from tests.utils.project_creation import with_config_file, with_raw_source_file
+from tests.utils.project_creation import given_datasource_config_file, given_raw_source_file
 
 
 @pytest.fixture(autouse=True)
@@ -34,19 +34,19 @@ def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
 
 def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path):
     databao_context_engine = DatabaoContextProjectManager(project_dir=project_path)
-    with_config_file(
+    given_datasource_config_file(
         project_dir=databao_context_engine.project_dir,
         full_type="full/any",
         datasource_name="a",
         config_content={"type": "any", "name": "a"},
     )
-    with_config_file(
+    given_datasource_config_file(
         project_dir=databao_context_engine.project_dir,
         full_type="other/type",
         datasource_name="b",
         config_content={"type": "type", "name": "b"},
     )
-    with_config_file(
+    given_datasource_config_file(
         project_dir=databao_context_engine.project_dir,
         full_type="full/type2",
         datasource_name="c",
@@ -75,13 +75,13 @@ def test_databao_context_project_manager__build_with_no_datasource(project_path)
 def test_databao_context_project_manager__build_with_multiple_datasource(project_path, create_db):
     project_manager = DatabaoContextProjectManager(project_dir=project_path)
 
-    with_config_file(
+    given_datasource_config_file(
         project_dir=project_manager.project_dir,
         full_type="dummy/dummy_default",
         datasource_name="my_dummy_data",
         config_content={"type": "dummy_default", "name": "my_dummy_data"},
     )
-    with_raw_source_file(
+    given_raw_source_file(
         project_dir=project_manager.project_dir,
         file_name="my_dummy_file",
         datasource_type=DatasourceType(full_type="files/dummy"),
