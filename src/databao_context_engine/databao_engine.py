@@ -11,7 +11,7 @@ from databao_context_engine.datasource_config.datasource_context import (
     get_introspected_datasource_list,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.layout import ensure_project_dir, ProjectLayout
+from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
 from databao_context_engine.project.types import Datasource, DatasourceId
 from databao_context_engine.retrieve_embeddings.public.api import retrieve_embeddings
 
@@ -76,9 +76,7 @@ class DatabaoContextEngine:
         Returns:
             The context for this datasource.
         """
-        return get_datasource_context(
-            project_layout=self._project_layout, datasource_id=datasource_id, run_name=run_name
-        )
+        return get_datasource_context(project_layout=self._project_layout, datasource_id=datasource_id)
 
     def get_all_contexts(self, run_name: str | None = None) -> list[DatasourceContext]:
         """Return all contexts generated in the project.
@@ -86,10 +84,10 @@ class DatabaoContextEngine:
         Returns:
              A list of all contexts generated in the project.
         """
-        return get_all_contexts(project_layout=self._project_layout, run_name=run_name)
+        return get_all_contexts(project_layout=self._project_layout)
 
-    def get_all_contexts_formatted(self, run_name: str | None = None) -> str:
-        all_contexts = self.get_all_contexts(run_name=run_name)
+    def get_all_contexts_formatted(self) -> str:
+        all_contexts = self.get_all_contexts()
 
         all_results = os.linesep.join(
             [f"{get_context_header_for_datasource(context.datasource_id)}{context.context}" for context in all_contexts]
@@ -100,7 +98,6 @@ class DatabaoContextEngine:
     def search_context(
         self,
         retrieve_text: str,
-        run_name: str | None = None,
         limit: int | None = None,
         export_to_file: bool = False,
         datasource_ids: list[DatasourceId] | None = None,
@@ -109,7 +106,6 @@ class DatabaoContextEngine:
 
         Args:
             retrieve_text: The text to search for in the contexts.
-            run_name: The name of the run to use to read the contexts. If none is provided, the latest run will be used.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
             export_to_file: Whether the results should be exported to a file as a side-effect. If True, the results will be exported in a file in the run directory.
             datasource_ids: Not Implemented yet: providing this argument changes nothing to the search
@@ -118,13 +114,11 @@ class DatabaoContextEngine:
             A list of the results found for the search, sorted by distance.
         """
         # TODO: Filter with datasource_ids
-        # TODO: Remove the need for a run_name
         # TODO: When no run_name is required, we can extract the "export_to_file" side-effect and let the caller (the CLI) do it themselves
 
         results = retrieve_embeddings(
             project_layout=self._project_layout,
             retrieve_text=retrieve_text,
-            run_name=run_name,
             limit=limit,
             export_to_file=export_to_file,
         )

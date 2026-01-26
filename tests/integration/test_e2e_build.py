@@ -99,17 +99,13 @@ def use_fake_provider(mocker, fake_provider):
 
 
 def test_e2e_build_with_fake_provider(
-    project_dir, db_path, conn, run_repo, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
+    project_dir, db_path, conn, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
 ):
     result = DatabaoContextProjectManager(project_dir=project_dir).build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
     assert len(result) == 1
-
-    runs = run_repo.list()
-    assert len(runs) == 1
-    assert runs[0].ended_at is not None
 
     chunks = chunk_repo.list()
     assert len(chunks) >= 1
@@ -124,7 +120,7 @@ def test_e2e_build_with_fake_provider(
 
 
 def test_one_source_fails_but_others_succeed(
-    mocker, project_dir, conn, run_repo, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
+    mocker, project_dir, conn, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
 ):
     import databao_context_engine.build_sources.internal.plugin_execution as execmod
 
@@ -142,9 +138,6 @@ def test_one_source_fails_but_others_succeed(
     )
 
     assert len(result) == 1
-
-    runs = run_repo.list()
-    assert len(runs) == 1 and runs[0].ended_at is not None
 
     chunks = chunk_repo.list()
     assert len(chunks) >= 1

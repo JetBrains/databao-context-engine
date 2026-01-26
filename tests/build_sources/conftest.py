@@ -23,10 +23,8 @@ def stub_sources(mocker):
 
 
 @pytest.fixture
-def fake_run_dir(mocker, tmp_path: Path):
-    path = tmp_path / "out" / "run-1"
-    mocker.patch.object(build_runner, "create_run_dir", return_value=path)
-    return path
+def fake_output_dir(tmp_path: Path):
+    return tmp_path / "output"
 
 
 @pytest.fixture

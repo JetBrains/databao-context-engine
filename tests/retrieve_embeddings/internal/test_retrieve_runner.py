@@ -32,10 +32,8 @@ def test_retrieve_without_export(capsys):
         ),
     ]
     service.retrieve.return_value = expected
-    service.resolve_run_name.return_value = "run-1"
 
     project_dir = Path("/project")
-    run_name = "run-1"
 
     with patch(
         "databao_context_engine.retrieve_embeddings.internal.retrieve_runner.export_retrieve_results"
@@ -45,12 +43,11 @@ def test_retrieve_without_export(capsys):
             retrieve_service=service,
             project_id="proj-123",
             text="hello",
-            run_name=run_name,
             limit=5,
             export_to_file=False,
         )
 
-    service.retrieve.assert_called_once_with(project_id="proj-123", text="hello", run_name=run_name, limit=5)
+    service.retrieve.assert_called_once_with(project_id="proj-123", text="hello", limit=5)
 
     mock_export.assert_not_called()
 
@@ -75,30 +72,27 @@ def test_retrieve_file_with_export(tmp_path, capsys):
             datasource_id="full/y",
         ),
     ]
-    service.resolve_run_name.return_value = "run-123"
 
     project_dir = tmp_path
-    run_name = "run-123"
 
     with (
-        patch("databao_context_engine.retrieve_embeddings.internal.retrieve_runner.get_run_dir") as mock_get_run_dir,
+        patch(
+            "databao_context_engine.retrieve_embeddings.internal.retrieve_runner.get_output_dir"
+        ) as mock_get_output_dir,
         patch(
             "databao_context_engine.retrieve_embeddings.internal.retrieve_runner.export_retrieve_results"
         ) as mock_export,
     ):
         export_dir = tmp_path / "out"
-        mock_get_run_dir.return_value = export_dir
+        mock_get_output_dir.return_value = export_dir
 
         retrieve(
             project_dir=project_dir,
             retrieve_service=service,
             project_id="proj-123",
             text="hello",
-            run_name=run_name,
             limit=10,
             export_to_file=True,
         )
-
-    mock_get_run_dir.assert_called_once_with(project_dir=project_dir, run_name=run_name)
 
     mock_export.assert_called_once_with(export_dir, ["x", "y"])

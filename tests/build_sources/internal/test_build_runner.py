@@ -9,7 +9,6 @@ from databao_context_engine.build_sources.internal import build_runner
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.project.types import PreparedFile
-from databao_context_engine.services.run_name_policy import RunNamePolicy
 
 
 def _result(name="files/demo.md", typ="files/md"):
@@ -24,9 +23,6 @@ def _result(name="files/demo.md", typ="files/md"):
 @pytest.fixture
 def mock_build_service(mocker):
     svc = mocker.Mock(name="BuildService")
-    svc.start_run.return_value = SimpleNamespace(
-        run_id=1, run_name=RunNamePolicy().build(run_started_at=datetime.now())
-    )
     return svc
 
 
@@ -54,7 +50,7 @@ def _read_all_results(path: Path):
             return [yaml.safe_load(fh)]
 
 
-def test_build_returns_early_when_no_sources(stub_sources, stub_plugins, mock_build_service, fake_run_dir, tmp_path):
+def test_build_returns_early_when_no_sources(stub_sources, stub_plugins, mock_build_service, tmp_path):
     stub_sources([])
     build_runner.build(
         project_dir=tmp_path,
@@ -66,7 +62,7 @@ def test_build_returns_early_when_no_sources(stub_sources, stub_plugins, mock_bu
 
 
 def test_build_skips_source_without_plugin(
-    stub_sources, stub_plugins, stub_prepare, mock_build_service, fake_run_dir, tmp_path
+    stub_sources, stub_plugins, stub_prepare, mock_build_service, tmp_path, fake_output_dir
 ):
     datasources = SimpleNamespace(path=tmp_path / "src" / "files" / "one.md")
     stub_sources([datasources])
@@ -78,12 +74,12 @@ def test_build_skips_source_without_plugin(
     mock_build_service.process_prepared_source.assert_not_called()
     mock_build_service.finalize_run.assert_not_called()
 
-    exports = list(fake_run_dir.glob("*.yaml"))
+    exports = list(fake_output_dir.glob("*.yaml"))
     assert not any(p.name != "all_results.yaml" for p in exports)
 
 
 def test_build_processes_file_source_and_exports(
-    stub_sources, stub_plugins, stub_prepare, mock_build_service, fake_run_dir, tmp_path
+    stub_sources, stub_plugins, stub_prepare, mock_build_service, tmp_path
 ):
     src = SimpleNamespace(path=tmp_path / "src" / "files" / "one.md")
     stub_sources([src])
@@ -94,14 +90,10 @@ def test_build_processes_file_source_and_exports(
 
     build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", dce_version="v1")
 
-    mock_build_service.start_run.assert_called_once()
     mock_build_service.process_prepared_source.assert_called_once()
-    mock_build_service.finalize_run.assert_called_once()
 
 
-def test_build_continues_on_service_exception(
-    stub_sources, stub_plugins, stub_prepare, mock_build_service, fake_run_dir, tmp_path
-):
+def test_build_continues_on_service_exception(stub_sources, stub_plugins, stub_prepare, mock_build_service, tmp_path):
     s1 = SimpleNamespace(path=tmp_path / "src" / "files" / "a.md")
     s2 = SimpleNamespace(path=tmp_path / "src" / "files" / "b.md")
     stub_sources([s1, s2])
@@ -118,4 +110,3 @@ def test_build_continues_on_service_exception(
     build_runner.build(project_dir=tmp_path, build_service=mock_build_service, project_id="proj", dce_version="v1")
 
     assert mock_build_service.process_prepared_source.call_count == 2
-    mock_build_service.finalize_run.assert_called_once()

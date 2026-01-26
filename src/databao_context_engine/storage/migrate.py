@@ -8,12 +8,10 @@ from typing import LiteralString
 
 import duckdb
 
-from databao_context_engine.system.properties import get_db_path
-
 logger = logging.getLogger(__name__)
 
 
-def migrate(db_path: str | Path | None = None, migration_files: list[Path] | None = None) -> None:
+def migrate(db_path: str | Path, migration_files: list[Path] | None = None) -> None:
     if migration_files is None:
         migration_files = [
             migration
@@ -21,7 +19,7 @@ def migrate(db_path: str | Path | None = None, migration_files: list[Path] | Non
             if isinstance(migration, Path) and ".sql" == migration.suffix
         ]
 
-    db = Path(db_path or get_db_path()).expanduser().resolve()
+    db = Path(db_path).expanduser().resolve()
     db.parent.mkdir(parents=True, exist_ok=True)
     logger.debug("Running migrations on database: %s", db)
 

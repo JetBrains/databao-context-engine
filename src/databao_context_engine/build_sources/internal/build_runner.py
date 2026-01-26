@@ -6,12 +6,13 @@ from pathlib import Path
 from databao_context_engine.build_sources.internal.build_service import BuildService
 from databao_context_engine.build_sources.internal.export_results import (
     append_result_to_all_results,
-    create_run_dir,
     export_build_result,
+    reset_all_results,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import load_plugins
 from databao_context_engine.project.datasource_discovery import discover_datasources, prepare_source
+from databao_context_engine.project.layout import get_output_dir
 from databao_context_engine.project.types import DatasourceId
 
 logger = logging.getLogger(__name__)
@@ -62,11 +63,9 @@ def build(
         logger.info("No sources discovered under %s", project_dir)
         return []
 
-    run = None
-    run_dir = None
-
     number_of_failed_builds = 0
     build_result = []
+    reset_all_results(get_output_dir(project_dir))
     for discovered_datasource in datasources:
         try:
             prepared_source = prepare_source(discovered_datasource)
@@ -85,19 +84,15 @@ def build(
                 number_of_failed_builds += 1
                 continue
 
-            if run is None or run_dir is None:
-                # Initialiase the run as soon as we found a source
-                run = build_service.start_run(project_id=project_id, dce_version=dce_version)
-                run_dir = create_run_dir(project_dir, run.run_name)
-
             result = build_service.process_prepared_source(
-                run_id=run.run_id,
                 prepared_source=prepared_source,
                 plugin=plugin,
             )
 
-            context_file_path = export_build_result(run_dir, result)
-            append_result_to_all_results(run_dir, result)
+            output_dir = get_output_dir(project_dir)
+
+            context_file_path = export_build_result(output_dir, result)
+            append_result_to_all_results(output_dir, result)
 
             build_result.append(
                 BuildContextResult(
@@ -112,9 +107,6 @@ def build(
             logger.info(f"Failed to build source at ({discovered_datasource.path}): {str(e)}")
 
             number_of_failed_builds += 1
-
-    if run is not None:
-        build_service.finalize_run(run_id=run.run_id)
 
     logger.debug(
         "Successfully built %d datasources. %s",

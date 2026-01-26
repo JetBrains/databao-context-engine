@@ -6,13 +6,11 @@ from typing import Iterator
 import duckdb
 from _duckdb import DuckDBPyConnection
 
-from databao_context_engine.system.properties import get_db_path
-
 logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def open_duckdb_connection(db_path: str | Path | None = None) -> Iterator[DuckDBPyConnection]:
+def open_duckdb_connection(db_path: str | Path) -> Iterator[DuckDBPyConnection]:
     """Open a DuckDB connection with vector search enabled and close on exist.
 
     It also loads the vss extension and enables HNSW experimental persistence on the DuckDB.
@@ -24,7 +22,7 @@ def open_duckdb_connection(db_path: str | Path | None = None) -> Iterator[DuckDB
         The opened DuckDB connection.
 
     """
-    path = str(db_path or get_db_path())
+    path = str(db_path)
     conn = duckdb.connect(path)
     logger.debug(f"Connected to DuckDB database at {path}")
 
