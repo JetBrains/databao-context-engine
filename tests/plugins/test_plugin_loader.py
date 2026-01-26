@@ -1,3 +1,5 @@
+import subprocess
+
 import pytest
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
@@ -46,3 +48,25 @@ def test_merge_plugins_duplicate_raises():
     assert "files/md" in msg
     assert "P1" in msg or "p1" in msg
     assert "P3Overlap" in msg
+
+
+def test_loaded_plugins_no_extra():
+    p = subprocess.Popen(
+        ["uv", "run", "--isolated", "--extra", "recommended", "-s", "tests/plugins/get_loaded_plugins.py"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    lines = []
+    for line in p.stdout.readlines():
+        lines.append(line.decode())
+    exit_code = p.wait()
+    assert exit_code == 0, lines
+    output = "\n".join(lines)
+    plugin_ids = eval(output)
+    assert plugin_ids == {
+        "jetbrains/duckdb",
+        "jetbrains/mysql",
+        "jetbrains/postgres",
+        "jetbrains/parquet",
+        "jetbrains/unstructured_files",
+    }

@@ -72,6 +72,3 @@ ignore_missing_imports = true
 [tool.pytest]
 addopts = ["--import-mode=importlib"]
 strict = true
-markers = [
-    "recommended_extras: marks tests which are supposed to be run only with recommended set of extras",
-]
