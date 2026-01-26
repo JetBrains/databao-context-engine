@@ -27,7 +27,7 @@ class MySQLConnectionProperties(BaseModel):
 
 class MySQLConfigFile(BaseDatabaseConfigFile):
     connection: MySQLConnectionProperties
-    type: str = Field(default="databases/mysql")
+    type: str = Field(default="mysql")
 
 
 class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):

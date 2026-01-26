@@ -27,7 +27,7 @@ class ClickhouseConnectionProperties(BaseModel):
 
 
 class ClickhouseConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/clickhouse")
+    type: str = Field(default="clickhouse")
     connection: ClickhouseConnectionProperties
 
 

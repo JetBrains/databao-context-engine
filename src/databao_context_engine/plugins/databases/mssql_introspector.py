@@ -29,7 +29,7 @@ class MSSQLConnectionProperties(BaseModel):
 
 
 class MSSQLConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/mssql")
+    type: str = Field(default="mssql")
     connection: MSSQLConnectionProperties
 
 

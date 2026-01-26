@@ -50,7 +50,7 @@ class SnowflakeConnectionProperties(BaseModel):
 
 
 class SnowflakeConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/snowflake")
+    type: str = Field(default="snowflake")
     connection: SnowflakeConnectionProperties
 
 
