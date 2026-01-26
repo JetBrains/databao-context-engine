@@ -2,8 +2,8 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.project.project_config import ProjectConfig
-from databao_context_engine.project.types import DatasourceId
 
 SOURCE_FOLDER_NAME = "src"
 OUTPUT_FOLDER_NAME = "output"

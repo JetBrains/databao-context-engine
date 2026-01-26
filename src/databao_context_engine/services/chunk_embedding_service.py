@@ -5,7 +5,7 @@ from typing import cast
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
-from databao_context_engine.serialisation.yaml import to_yaml_string
+from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.models import ChunkEmbedding
 from databao_context_engine.services.persistence_service import PersistenceService
@@ -57,24 +57,24 @@ class ChunkEmbeddingService:
         if self._chunk_embedding_mode.should_generate_description() and description_provider is None:
             raise ValueError("A DescriptionProvider must be provided when generating descriptions")
 
-    def embed_chunks(self, *, datasource_run_id: int, chunks: list[EmbeddableChunk], result: str) -> None:
+    def embed_chunks(self, *, chunks: list[EmbeddableChunk], result: str, full_type: str, datasource_id: str) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
         Flow:
-        1) Embed each chunk into an embedded vector
-        2) Get or create embedding table for the appropriate model and embedding dimensions
-        3) Persist chunks and embeddings vectors in a single transaction
+        1) Embed each chunk into an embedded vector.
+        2) Get or create embedding table for the appropriate model and embedding dimensions.
+        3) Persist chunks and embeddings vectors in a single transaction.
         """
         if not chunks:
             return
 
         logger.debug(
-            f"Embedding {len(chunks)} chunks for datasource run {datasource_run_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
+            f"Embedding {len(chunks)} chunks for datasource {datasource_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
         )
 
         enriched_embeddings: list[ChunkEmbedding] = []
         for chunk in chunks:
-            chunk_display_text = to_yaml_string(chunk.content)
+            chunk_display_text = chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)
 
             generated_description = ""
             match self._chunk_embedding_mode:
@@ -109,7 +109,8 @@ class ChunkEmbeddingService:
         )
 
         self._persistence_service.write_chunks_and_embeddings(
-            datasource_run_id=datasource_run_id,
             chunk_embeddings=enriched_embeddings,
             table_name=table_name,
+            full_type=full_type,
+            datasource_id=datasource_id,
         )

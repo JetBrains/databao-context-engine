@@ -10,34 +10,14 @@ from databao_context_engine.project.init_project import init_project_dir
 from databao_context_engine.project.layout import ProjectLayout, get_config_file
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.persistence_service import PersistenceService
-from databao_context_engine.services.run_name_policy import RunNamePolicy
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 from databao_context_engine.storage.migrate import migrate
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
-from databao_context_engine.storage.repositories.datasource_run_repository import DatasourceRunRepository
 from databao_context_engine.storage.repositories.embedding_model_registry_repository import (
     EmbeddingModelRegistryRepository,
 )
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
-from databao_context_engine.storage.repositories.run_repository import RunRepository
 from databao_context_engine.system.properties import get_db_path
-
-RUN_RECOMMENDED_EXTRAS_OPTION = "--run-recommended-extras"
-
-
-def pytest_addoption(parser):
-    parser.addoption(RUN_RECOMMENDED_EXTRAS_OPTION, action="store_true", default=False, help="run slow tests")
-
-
-def pytest_collection_modifyitems(config, items):
-    if config.getoption(RUN_RECOMMENDED_EXTRAS_OPTION):
-        # --run_recommended_extras given in cli: do not skip recommended_extras tests
-        return
-    # dynamically at pytest.mark.skip annotation to tests marked with recommended_extras
-    skip_recommended_extras = pytest.mark.skip(reason=f"need {RUN_RECOMMENDED_EXTRAS_OPTION} option to run")
-    for item in items:
-        if "recommended_extras" in item.keywords:
-            item.add_marker(skip_recommended_extras)
 
 
 @pytest.fixture(scope="session")
@@ -55,11 +35,12 @@ def dce_path(mocker, tmp_path: Path):
 
 @pytest.fixture
 def db_path(dce_path: Path) -> Path:
-    return get_db_path()
+    return get_db_path(dce_path)
 
 
 @pytest.fixture
 def create_db(_template_db: Path, db_path: Path) -> None:
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(_template_db, db_path)
 
 
@@ -71,16 +52,6 @@ def conn(db_path, create_db):
         yield conn
     finally:
         conn.close()
-
-
-@pytest.fixture
-def run_repo(conn) -> RunRepository:
-    return RunRepository(conn, run_name_policy=RunNamePolicy())
-
-
-@pytest.fixture
-def datasource_run_repo(conn) -> DatasourceRunRepository:
-    return DatasourceRunRepository(conn)
 
 
 @pytest.fixture

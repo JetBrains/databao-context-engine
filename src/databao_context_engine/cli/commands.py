@@ -19,7 +19,6 @@ from databao_context_engine.cli.info import echo_info
 from databao_context_engine.config.logging import configure_logging
 from databao_context_engine.llm.install import resolve_ollama_bin
 from databao_context_engine.mcp.mcp_runner import McpTransport, run_mcp_server
-from databao_context_engine.storage.migrate import migrate
 
 
 @click.group()
@@ -48,8 +47,6 @@ def dce(ctx: Context, verbose: bool, quiet: bool, project_dir: str | None) -> No
     ctx.obj["verbose"] = verbose
     ctx.obj["quiet"] = quiet
     ctx.obj["project_dir"] = project_path
-
-    migrate()
 
 
 @dce.command()
@@ -149,7 +146,7 @@ def build(
 ) -> None:
     """Build context for all datasources.
 
-    The output of the build command will be saved in a "run" folder in the output directory.
+    The output of the build command will be saved in the output directory.
 
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
@@ -165,12 +162,6 @@ def build(
     "retrieve-text",
     nargs=-1,
     required=True,
-)
-@click.option(
-    "-r",
-    "--run-name",
-    type=click.STRING,
-    help="Build run to use (the run folder name). Defaults to the latest run in the project.",
 )
 @click.option(
     "-l",
@@ -189,7 +180,6 @@ def build(
 def retrieve(
     ctx: Context,
     retrieve_text: tuple[str, ...],
-    run_name: str | None,
     limit: int | None,
     output_format: Literal["file", "streamed"],
 ) -> None:
@@ -199,7 +189,7 @@ def retrieve(
     databao_engine = DatabaoContextEngine(project_dir=ctx.obj["project_dir"])
 
     retrieve_results = databao_engine.search_context(
-        retrieve_text=text, run_name=run_name, limit=limit, export_to_file=output_format == "file"
+        retrieve_text=text, limit=limit, export_to_file=output_format == "file"
     )
 
     if output_format == "streamed":
@@ -208,12 +198,6 @@ def retrieve(
 
 
 @dce.command()
-@click.option(
-    "-r",
-    "--run-name",
-    type=click.STRING,
-    help="Name of the build run you want to use (aka. the name of the run folder in your project's output). Defaults to the latest one in the project.",
-)
 @click.option(
     "-H",
     "--host",
@@ -234,8 +218,8 @@ def retrieve(
     help="Transport to use. Defaults to stdio",
 )
 @click.pass_context
-def mcp(ctx: Context, run_name: str | None, host: str | None, port: int | None, transport: McpTransport) -> None:
+def mcp(ctx: Context, host: str | None, port: int | None, transport: McpTransport) -> None:
     """Run Databao Context Engine's MCP server."""
     if transport == "stdio":
         configure_logging(verbose=False, quiet=True, project_dir=ctx.obj["project_dir"])
-    run_mcp_server(project_dir=ctx.obj["project_dir"], run_name=run_name, transport=transport, host=host, port=port)
+    run_mcp_server(project_dir=ctx.obj["project_dir"], transport=transport, host=host, port=port)

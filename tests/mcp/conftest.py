@@ -1,30 +1,27 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine import DatasourceContext, DatasourceId
 from databao_context_engine.project.layout import ProjectLayout, get_output_dir
-from databao_context_engine.project.types import DatasourceId
-from tests.utils.project_creation import with_run_dir
+from tests.utils.project_creation import with_output
 
 
 @dataclass(kw_only=True, frozen=True)
-class Run:
-    run_dir: Path
-    run_name: str
+class Output:
+    output_dir: Path
     datasource_contexts: list[DatasourceContext]
 
 
 @dataclass(kw_only=True)
-class ProjectWithRuns:
+class Project:
     project_dir: Path
-    runs: list[Run]
+    output: Output
 
 
 @pytest.fixture
-def project_with_runs(create_db, project_layout: ProjectLayout, db_path: Path) -> ProjectWithRuns:
+def project(create_db, project_layout: ProjectLayout, db_path: Path) -> Project:
     output_dir = get_output_dir(project_layout.project_dir)
     output_dir.mkdir()
 
@@ -39,16 +36,7 @@ def project_with_runs(create_db, project_layout: ProjectLayout, db_path: Path) -
         ),
     ]
 
-    run_1_contexts = datasource_contexts[0:1]
-    run_1_dir = with_run_dir(db_path, project_layout, run_1_contexts, datetime.now() - timedelta(days=10))
-    run_1 = Run(run_dir=run_1_dir, run_name=run_1_dir.name, datasource_contexts=run_1_contexts)
+    output_dir = with_output(project_layout, datasource_contexts)
+    output = Output(output_dir=output_dir, datasource_contexts=datasource_contexts)
 
-    run_2_contexts = datasource_contexts
-    run_2_dir = with_run_dir(db_path, project_layout, run_2_contexts, datetime.now())
-    run_2 = Run(run_dir=run_2_dir, run_name=run_2_dir.name, datasource_contexts=run_2_contexts)
-
-    run_3_contexts = datasource_contexts[1:2]
-    run_3_dir = with_run_dir(db_path, project_layout, run_3_contexts, datetime.now() - timedelta(days=3))
-    run_3 = Run(run_dir=run_3_dir, run_name=run_3_dir.name, datasource_contexts=run_3_contexts)
-
-    return ProjectWithRuns(project_dir=project_layout.project_dir, runs=[run_1, run_2, run_3])
+    return Project(project_dir=project_layout.project_dir, output=output)

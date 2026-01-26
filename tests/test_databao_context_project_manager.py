@@ -18,7 +18,7 @@ from tests.utils.project_creation import with_config_file, with_raw_source_file
 
 @pytest.fixture(autouse=True)
 def patch_load_plugins(mocker):
-    mocker.patch("databao_context_engine.build_sources.internal.build_runner.load_plugins", new=load_dummy_plugins)
+    mocker.patch("databao_context_engine.build_sources.build_runner.load_plugins", new=load_dummy_plugins)
 
 
 @pytest.fixture(autouse=True)

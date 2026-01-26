@@ -21,7 +21,7 @@ class PostgresConnectionProperties(BaseModel):
 
 
 class PostgresConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/postgres")
+    type: str = Field(default="postgres")
     connection: PostgresConnectionProperties
 
 

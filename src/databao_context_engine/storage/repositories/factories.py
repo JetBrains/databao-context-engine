@@ -1,22 +1,11 @@
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 
-from databao_context_engine.services.run_name_policy import RunNamePolicy
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
-from databao_context_engine.storage.repositories.datasource_run_repository import DatasourceRunRepository
 from databao_context_engine.storage.repositories.embedding_model_registry_repository import (
     EmbeddingModelRegistryRepository,
 )
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
-from databao_context_engine.storage.repositories.run_repository import RunRepository
 from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchRepository
-
-
-def create_run_repository(conn: DuckDBPyConnection) -> RunRepository:
-    return RunRepository(conn, run_name_policy=RunNamePolicy())
-
-
-def create_datasource_run_repository(conn: DuckDBPyConnection) -> DatasourceRunRepository:
-    return DatasourceRunRepository(conn)
 
 
 def create_chunk_repository(conn: DuckDBPyConnection) -> ChunkRepository:

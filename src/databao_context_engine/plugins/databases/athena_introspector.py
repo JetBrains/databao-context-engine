@@ -57,7 +57,7 @@ class AthenaConnectionProperties(BaseModel):
 
 
 class AthenaConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/athena")
+    type: str = Field(default="athena")
     connection: AthenaConnectionProperties
 
 

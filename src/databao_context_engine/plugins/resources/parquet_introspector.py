@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from urllib.parse import urlparse
 
 import duckdb
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 from pydantic import BaseModel, Field
 
 from databao_context_engine.pluginlib.config import DuckDBSecret
@@ -18,9 +18,8 @@ logger = logging.getLogger(__name__)
 
 class ParquetConfigFile(BaseModel):
     name: str | None = Field(default=None)
-    type: str = Field(default=parquet_type)
+    type: str = Field(default="parquet")
     url: str = Field(
-        default=type,
         description="Parquet resource location. Should be a valid URL or a path to a local file. "
         "Examples: s3://your_bucket/file.parquet, s3://your-bucket/*.parquet, https://some.url/some_file.parquet, ~/path_to/file.parquet",
     )

@@ -1,11 +1,12 @@
-from databao_context_engine.build_sources.internal.build_runner import BuildContextResult
+from databao_context_engine.build_sources import BuildContextResult
+from databao_context_engine.databao_context_engine import ContextSearchResult, DatabaoContextEngine
 from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager, DatasourceConfigFile
-from databao_context_engine.databao_engine import ContextSearchResult, DatabaoContextEngine
-from databao_context_engine.datasource_config.check_config import (
+from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
     DatasourceConnectionStatus,
 )
-from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine.datasources.datasource_context import DatasourceContext
+from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.init_project import init_dce_project, init_or_get_dce_project
 from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.pluginlib.build_plugin import (
@@ -17,7 +18,6 @@ from databao_context_engine.pluginlib.build_plugin import (
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
 from databao_context_engine.project.info import DceInfo, get_databao_context_engine_info
 from databao_context_engine.project.init_project import InitErrorReason, InitProjectError
-from databao_context_engine.project.types import Datasource, DatasourceId
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 __all__ = [
