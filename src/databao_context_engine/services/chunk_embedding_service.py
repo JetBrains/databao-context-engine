@@ -5,7 +5,7 @@ from typing import cast
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
-from databao_context_engine.serialisation.yaml import to_yaml_string
+from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.models import ChunkEmbedding
 from databao_context_engine.services.persistence_service import PersistenceService

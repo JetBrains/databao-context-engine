@@ -11,7 +11,7 @@ from databao_context_engine.project.layout import (
     get_source_dir,
 )
 from databao_context_engine.project.types import DatasourceId
-from databao_context_engine.serialisation.yaml import to_yaml_string
+from databao_context_engine.serialization.yaml import to_yaml_string
 
 
 def with_config_file(

@@ -7,7 +7,7 @@ from click.testing import CliRunner
 
 from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
 from databao_context_engine.project.layout import get_source_dir
-from databao_context_engine.serialisation.yaml import to_yaml_string
+from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.dummy_build_plugin import load_dummy_plugins
 from tests.utils.project_creation import with_config_file
 

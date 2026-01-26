@@ -2,7 +2,7 @@ import pytest
 
 from databao_context_engine import DatabaoContextEngine, Datasource, DatasourceContext, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.serialisation.yaml import to_yaml_string
+from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.project_creation import with_config_file, with_output
 
 

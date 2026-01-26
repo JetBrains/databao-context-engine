@@ -6,7 +6,7 @@ from databao_context_engine.project.layout import (
     create_datasource_config_file as create_datasource_config_file_internal,
 )
 from databao_context_engine.project.types import DatasourceId
-from databao_context_engine.serialisation.yaml import to_yaml_string
+from databao_context_engine.serialization.yaml import to_yaml_string
 
 
 def create_datasource_config_file(

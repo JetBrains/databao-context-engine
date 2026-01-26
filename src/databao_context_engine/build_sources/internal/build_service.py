@@ -7,7 +7,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
 from databao_context_engine.project.types import PreparedDatasource
-from databao_context_engine.serialisation.yaml import to_yaml_string
+from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 
 logger = logging.getLogger(__name__)
