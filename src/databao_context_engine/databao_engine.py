@@ -58,27 +58,26 @@ class DatabaoContextEngine:
         self._project_layout = ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
 
-    def get_introspected_datasource_list(self, run_name: str | None = None) -> list[Datasource]:
+    def get_introspected_datasource_list(self) -> list[Datasource]:
         """Return the list of datasources for which a context is available.
 
         Returns:
             A list of the datasources for which a context is available.
         """
-        return get_introspected_datasource_list(self._project_layout, run_name=run_name)
+        return get_introspected_datasource_list(self._project_layout)
 
-    def get_datasource_context(self, datasource_id: DatasourceId, run_name: str | None = None) -> DatasourceContext:
+    def get_datasource_context(self, datasource_id: DatasourceId) -> DatasourceContext:
         """Return the context available for a given datasource.
 
         Args:
             datasource_id: The ID of the datasource.
-            run_name: The name of the run to use to read the context. If none is provided, the latest run will be used.
 
         Returns:
             The context for this datasource.
         """
         return get_datasource_context(project_layout=self._project_layout, datasource_id=datasource_id)
 
-    def get_all_contexts(self, run_name: str | None = None) -> list[DatasourceContext]:
+    def get_all_contexts(self) -> list[DatasourceContext]:
         """Return all contexts generated in the project.
 
         Returns:

@@ -36,7 +36,7 @@ def _read_datasource_type_from_context_file(context_path: Path) -> DatasourceTyp
     raise ValueError(f"Could not find type in context file {context_path}")
 
 
-def get_introspected_datasource_list(project_layout: ProjectLayout, *, run_name: str | None = None) -> list[Datasource]:
+def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
     output_dir = get_output_dir(project_dir=project_layout.project_dir)
 
     result = []
