@@ -193,10 +193,10 @@ def test_datasource_id__relative_path_to_context_file_from_raw_file():
     assert result == Path("parent/my_datasource.txt.yaml")
 
 
-def test_datasource_id__serialise_and_deserialise():
+def test_datasource_id__serialize_and_deserialize():
     input = "parent/my_datasource.yaml"
 
-    deserialised = DatasourceId.from_string_repr("parent/my_datasource.yaml")
+    deserialized = DatasourceId.from_string_repr("parent/my_datasource.yaml")
 
-    assert str(deserialised) == input
-    assert DatasourceId.from_string_repr(str(deserialised)) == deserialised
+    assert str(deserialized) == input
+    assert DatasourceId.from_string_repr(str(deserialized)) == deserialized

@@ -6,30 +6,30 @@ from databao_context_engine.project.layout import is_project_dir_valid
 
 
 def init_dce_project(project_dir: Path) -> DatabaoContextProjectManager:
-    """Initialise a Databao Context project in the given directory.
+    """Initialize a Databao Context project in the given directory.
 
     Args:
-        project_dir: The directory where the project should be initialised.
+        project_dir: The directory where the project should be initialized.
 
     Returns:
-        A DatabaoContextProjectManager for the initialised project.
+        A DatabaoContextProjectManager for the initialized project.
 
     Raises:
-        InitProjectError: If the project could not be initialised.
+        InitProjectError: If the project could not be initialized.
     """
     try:
-        initialised_project_dir = init_project_dir(project_dir=project_dir)
+        initialized_project_dir = init_project_dir(project_dir=project_dir)
 
-        return DatabaoContextProjectManager(project_dir=initialised_project_dir)
+        return DatabaoContextProjectManager(project_dir=initialized_project_dir)
     except InitProjectError as e:
         raise e
 
 
 def init_or_get_dce_project(project_dir: Path) -> DatabaoContextProjectManager:
-    """Initialise a Databao Context project in the given directory or get a DatabaoContextProjectManager for the project if it already exists.
+    """Initialize a Databao Context project in the given directory or get a DatabaoContextProjectManager for the project if it already exists.
 
     Args:
-        project_dir: The directory where the project should be initialised if it doesn't exist yet..
+        project_dir: The directory where the project should be initialized if it doesn't exist yet..
 
     Returns:
         A DatabaoContextProjectManager for the project in project_dir.

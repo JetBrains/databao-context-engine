@@ -38,7 +38,7 @@ class DatabaoContextProjectManager:
     """Project Manager for Databao Context Projects.
 
     This project manager is responsible for configuring and building a Databao Context Project.
-    The project_dir should already have been initialised before a Project manager can be used.
+    The project_dir should already have been initialized before a Project manager can be used.
 
     Attributes:
         project_dir: The root directory of the Databao Context Project.
@@ -47,7 +47,7 @@ class DatabaoContextProjectManager:
     project_dir: Path
 
     def __init__(self, project_dir: Path) -> None:
-        """Initialise the DatabaoContextProjectManager.
+        """Initialize the DatabaoContextProjectManager.
 
         Args:
             project_dir: The root directory of the Databao Context Project.

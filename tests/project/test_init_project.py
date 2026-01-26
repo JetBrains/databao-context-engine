@@ -66,7 +66,7 @@ def test_init_project_dir_fails_when_dir_already_has_a_config(tmp_path: Path, co
     with pytest.raises(InitProjectError) as e:
         init_project_dir(project_dir=project_dir)
 
-    assert e.value.reason == InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED
+    assert e.value.reason == InitErrorReason.PROJECT_DIR_ALREADY_INITIALIZED
 
 
 def test_init_project_dir_fails_when_dir_already_has_a_src_dir(tmp_path: Path):
@@ -82,4 +82,4 @@ def test_init_project_dir_fails_when_dir_already_has_a_src_dir(tmp_path: Path):
     with pytest.raises(InitProjectError) as e:
         init_project_dir(project_dir=project_dir)
 
-    assert e.value.reason == InitErrorReason.PROJECT_DIR_ALREADY_INITIALISED
+    assert e.value.reason == InitErrorReason.PROJECT_DIR_ALREADY_INITIALIZED

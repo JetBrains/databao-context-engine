@@ -13,12 +13,12 @@ class DceProjectInfo:
 
     Attributes:
         project_path: The root directory of the Databao Context Engine project.
-        is_initialised: Whether the project has been initialised.
-        project_id: The UUID of the project, or None if the project has not been initialised.
+        is_initialized: Whether the project has been initialized.
+        project_id: The UUID of the project, or None if the project has not been initialized.
     """
 
     project_path: Path
-    is_initialised: bool
+    is_initialized: bool
     project_id: UUID | None
 
 
@@ -59,7 +59,7 @@ def _get_project_info(project_dir: Path) -> DceProjectInfo:
 
     return DceProjectInfo(
         project_path=project_dir,
-        is_initialised=project_layout is not None,
+        is_initialized=project_layout is not None,
         project_id=project_layout.read_config_file().project_id if project_layout is not None else None,
     )
 

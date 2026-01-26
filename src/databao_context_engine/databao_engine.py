@@ -49,7 +49,7 @@ class DatabaoContextEngine:
     _project_layout: ProjectLayout
 
     def __init__(self, project_dir: Path) -> None:
-        """Initialise the DatabaoContextEngine.
+        """Initialize the DatabaoContextEngine.
 
         Args:
             project_dir: The root directory of the Databao Context Project.

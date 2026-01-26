@@ -15,7 +15,7 @@ class DatabaoContextPluginLoader:
     """Loader for plugins installed in the current environment."""
 
     def __init__(self, plugins_by_type: dict[DatasourceType, BuildPlugin] | None = None):
-        """Initialise the DatabaoContextEngine.
+        """Initialize the DatabaoContextEngine.
 
         Args:
             plugins_by_type: Override the list of plugins loaded from the environment.
