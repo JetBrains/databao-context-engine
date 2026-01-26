@@ -1,4 +1,4 @@
-from databao_context_engine.build_sources.build_runner import BuildContextResult
+from databao_context_engine.build_sources import BuildContextResult
 from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager, DatasourceConfigFile
 from databao_context_engine.databao_engine import ContextSearchResult, DatabaoContextEngine
 from databao_context_engine.datasource_config.check_config import (

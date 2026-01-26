@@ -13,7 +13,7 @@ from databao_context_engine.datasource_config.datasource_context import (
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
 from databao_context_engine.project.types import Datasource, DatasourceId
-from databao_context_engine.retrieve_embeddings.retrieve_wiring import retrieve_embeddings
+from databao_context_engine.retrieve_embeddings import retrieve_embeddings
 
 
 @dataclass

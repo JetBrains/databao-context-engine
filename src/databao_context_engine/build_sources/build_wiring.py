@@ -1,7 +1,12 @@
 import logging
 from pathlib import Path
 
+from _duckdb import DuckDBPyConnection
+
 from databao_context_engine.build_sources.build_runner import BuildContextResult, build
+from databao_context_engine.build_sources.build_service import BuildService
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
+from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.factory import (
     create_ollama_description_provider,
     create_ollama_embedding_provider,
@@ -10,9 +15,7 @@ from databao_context_engine.llm.factory import (
 from databao_context_engine.project.info import get_dce_version
 from databao_context_engine.project.layout import ensure_project_dir
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
-from databao_context_engine.services.factories import (
-    create_build_service,
-)
+from databao_context_engine.services.factories import create_chunk_embedding_service
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.migrate import migrate
 from databao_context_engine.system.properties import get_db_path
@@ -51,7 +54,7 @@ def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddin
             if chunk_embedding_mode.should_generate_description()
             else None
         )
-        build_service = create_build_service(
+        build_service = _create_build_service(
             conn,
             embedding_provider=embedding_provider,
             description_provider=description_provider,
@@ -64,3 +67,22 @@ def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddin
             project_id=str(dce_config.project_id),
             dce_version=get_dce_version(),
         )
+
+
+def _create_build_service(
+    conn: DuckDBPyConnection,
+    *,
+    embedding_provider: EmbeddingProvider,
+    description_provider: DescriptionProvider | None,
+    chunk_embedding_mode: ChunkEmbeddingMode,
+) -> BuildService:
+    chunk_embedding_service = create_chunk_embedding_service(
+        conn,
+        embedding_provider=embedding_provider,
+        description_provider=description_provider,
+        chunk_embedding_mode=chunk_embedding_mode,
+    )
+
+    return BuildService(
+        chunk_embedding_service=chunk_embedding_service,
+    )
