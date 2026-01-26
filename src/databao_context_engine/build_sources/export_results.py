@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.datasource_config.datasource_context import get_context_header_for_datasource
 from databao_context_engine.project.layout import ALL_RESULTS_FILE_NAME
 from databao_context_engine.project.types import DatasourceId

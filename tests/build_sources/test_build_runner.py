@@ -5,9 +5,9 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from databao_context_engine.build_sources.internal import build_runner
+from databao_context_engine.build_sources import build_runner
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.project.types import PreparedFile
 
 

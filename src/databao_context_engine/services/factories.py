@@ -1,6 +1,6 @@
 from _duckdb import DuckDBPyConnection
 
-from databao_context_engine.build_sources.internal.build_service import BuildService
+from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.retrieve_embeddings.internal.retrieve_service import RetrieveService

@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from databao_context_engine.build_sources.internal.build_runner import BuildContextResult, build
+from databao_context_engine.build_sources.build_runner import BuildContextResult, build
 from databao_context_engine.llm.factory import (
     create_ollama_description_provider,
     create_ollama_embedding_provider,

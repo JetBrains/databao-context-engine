@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext, execute
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )

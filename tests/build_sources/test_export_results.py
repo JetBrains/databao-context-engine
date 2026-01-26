@@ -3,11 +3,11 @@ from pathlib import Path
 
 import yaml
 
-from databao_context_engine.build_sources.internal.export_results import (
+from databao_context_engine.build_sources.export_results import (
     append_result_to_all_results,
     export_build_result,
 )
-from databao_context_engine.build_sources.internal.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 
 
 def _output_dir(tmp_path: Path) -> Path:

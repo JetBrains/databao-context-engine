@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from databao_context_engine.build_sources.internal.build_service import BuildService
-from databao_context_engine.build_sources.internal.export_results import (
+from databao_context_engine.build_sources.build_service import BuildService
+from databao_context_engine.build_sources.export_results import (
     append_result_to_all_results,
     export_build_result,
     reset_all_results,

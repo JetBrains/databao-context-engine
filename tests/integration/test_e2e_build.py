@@ -8,7 +8,7 @@ from uuid import uuid4
 import duckdb
 import pytest
 
-from databao_context_engine import DatabaoContextProjectManager, ChunkEmbeddingMode
+from databao_context_engine import ChunkEmbeddingMode, DatabaoContextProjectManager
 from databao_context_engine.storage.migrate import migrate
 
 
@@ -57,15 +57,13 @@ def db_path(tmp_path: Path) -> Path:
 
 @pytest.fixture(autouse=True)
 def _force_test_db(monkeypatch, db_path: Path):
-    import databao_context_engine.build_sources.internal.build_wiring as wiring_mod
-    import databao_context_engine.build_sources.public.api as api_mod
+    import databao_context_engine.build_sources.build_wiring as wiring_mod
 
     monkeypatch.setattr(
         "databao_context_engine.system.properties.get_db_path",
         lambda *a, **k: db_path,
         raising=False,
     )
-    importlib.reload(api_mod)
     importlib.reload(wiring_mod)
 
 
@@ -93,7 +91,7 @@ def fake_provider() -> _FakeProvider:
 @pytest.fixture
 def use_fake_provider(mocker, fake_provider):
     return mocker.patch(
-        "databao_context_engine.build_sources.internal.build_wiring.create_ollama_embedding_provider",
+        "databao_context_engine.build_sources.build_wiring.create_ollama_embedding_provider",
         return_value=fake_provider,
     )
 
@@ -122,7 +120,7 @@ def test_e2e_build_with_fake_provider(
 def test_one_source_fails_but_others_succeed(
     mocker, project_dir, conn, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
 ):
-    import databao_context_engine.build_sources.internal.plugin_execution as execmod
+    import databao_context_engine.build_sources.plugin_execution as execmod
 
     original_execute = execmod.execute
 
