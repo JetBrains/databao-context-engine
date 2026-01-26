@@ -1,4 +1,4 @@
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.factory import create_ollama_embedding_provider, create_ollama_service

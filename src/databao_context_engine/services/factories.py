@@ -1,4 +1,4 @@
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider

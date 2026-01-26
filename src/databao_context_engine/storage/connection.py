@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Iterator
 
 import duckdb
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 
 logger = logging.getLogger(__name__)
 

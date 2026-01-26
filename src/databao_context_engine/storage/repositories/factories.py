@@ -1,4 +1,4 @@
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
 from databao_context_engine.storage.repositories.embedding_model_registry_repository import (

@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from urllib.parse import urlparse
 
 import duckdb
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 from pydantic import BaseModel, Field
 
 from databao_context_engine.pluginlib.config import DuckDBSecret

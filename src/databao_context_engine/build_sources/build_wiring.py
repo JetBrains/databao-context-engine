@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 
 from databao_context_engine.build_sources.build_runner import BuildContextResult, build
 from databao_context_engine.build_sources.build_service import BuildService
