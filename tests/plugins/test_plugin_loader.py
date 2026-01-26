@@ -51,11 +51,9 @@ def test_merge_plugins_duplicate_raises():
 
 
 def test_loaded_plugins_no_extra():
-    plugin_ids = load_plugin_ids("--extra", "recommended")
+    plugin_ids = load_plugin_ids()
     assert plugin_ids == {
         "jetbrains/duckdb",
-        "jetbrains/mysql",
-        "jetbrains/postgres",
         "jetbrains/parquet",
         "jetbrains/unstructured_files",
     }
@@ -78,7 +76,7 @@ def test_loaded_plugins_all_extras():
 
 def load_plugin_ids(*uv_extra_args) -> list[str]:
     p = subprocess.Popen(
-        ["uv", "run", "--isolated"] + list(uv_extra_args) + ["-s", "tests/plugins/get_loaded_plugins.py"],
+        ["uv", "run", "--no-dev", "--isolated"] + list(uv_extra_args) + ["-s", "tests/plugins/get_loaded_plugins.py"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -88,7 +86,11 @@ def load_plugin_ids(*uv_extra_args) -> list[str]:
     for line in p.stdout.readlines():
         lines.append(line.decode())
     exit_code = p.wait()
-    assert exit_code == 0, lines
-    output = "\n".join(lines)
+
+    assert exit_code == 0, f"""
+    out = {lines}
+    err = {"".join([line.decode() for line in p.stderr.readlines()]) if p.stderr is not None else ""}
+"""
+    output = "".join(lines)
     plugin_ids = eval(output)
     return plugin_ids
