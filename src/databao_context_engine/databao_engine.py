@@ -106,7 +106,6 @@ class DatabaoContextEngine:
 
         Args:
             retrieve_text: The text to search for in the contexts.
-            run_name: The name of the run to use to read the contexts. If none is provided, the latest run will be used.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
             export_to_file: Whether the results should be exported to a file as a side-effect. If True, the results will be exported in a file in the run directory.
             datasource_ids: Not Implemented yet: providing this argument changes nothing to the search
@@ -115,7 +114,6 @@ class DatabaoContextEngine:
             A list of the results found for the search, sorted by distance.
         """
         # TODO: Filter with datasource_ids
-        # TODO: Remove the need for a run_name
         # TODO: When no run_name is required, we can extract the "export_to_file" side-effect and let the caller (the CLI) do it themselves
 
         results = retrieve_embeddings(
