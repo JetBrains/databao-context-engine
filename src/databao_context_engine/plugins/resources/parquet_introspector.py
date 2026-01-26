@@ -20,7 +20,6 @@ class ParquetConfigFile(BaseModel):
     name: str | None = Field(default=None)
     type: str = Field(default=parquet_type)
     url: str = Field(
-        default=type,
         description="Parquet resource location. Should be a valid URL or a path to a local file. "
         "Examples: s3://your_bucket/file.parquet, s3://your-bucket/*.parquet, https://some.url/some_file.parquet, ~/path_to/file.parquet",
     )
