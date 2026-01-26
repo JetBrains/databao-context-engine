@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Any
 
-from databao_context_engine.datasource_config.add_config import get_datasource_id_for_config_file
-from databao_context_engine.datasource_config.datasource_context import DatasourceContext
+from databao_context_engine.datasources.add_config import get_datasource_id_for_config_file
+from databao_context_engine.datasources.datasource_context import DatasourceContext
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import (
     ProjectLayout,
@@ -10,7 +11,6 @@ from databao_context_engine.project.layout import (
     get_output_dir,
     get_source_dir,
 )
-from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.serialization.yaml import to_yaml_string
 
 

@@ -3,16 +3,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from databao_context_engine.datasource_config.datasource_context import (
+from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
     get_all_contexts,
     get_context_header_for_datasource,
     get_datasource_context,
     get_introspected_datasource_list,
 )
+from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
-from databao_context_engine.project.types import Datasource, DatasourceId
 from databao_context_engine.retrieve_embeddings import retrieve_embeddings
 
 

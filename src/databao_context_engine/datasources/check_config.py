@@ -6,16 +6,16 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
-from databao_context_engine.pluginlib.plugin_utils import check_connection_for_datasource
-from databao_context_engine.plugins.plugin_loader import load_plugins
-from databao_context_engine.project.datasource_discovery import (
+from databao_context_engine.datasources.datasource_discovery import (
     discover_datasources,
     get_datasource_descriptors,
     prepare_source,
 )
+from databao_context_engine.datasources.types import DatasourceId, PreparedConfig
+from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
+from databao_context_engine.pluginlib.plugin_utils import check_connection_for_datasource
+from databao_context_engine.plugins.plugin_loader import load_plugins
 from databao_context_engine.project.layout import ensure_project_dir
-from databao_context_engine.project.types import DatasourceId, PreparedConfig
 
 logger = logging.getLogger(__name__)
 

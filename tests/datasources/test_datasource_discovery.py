@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from databao_context_engine.project.datasource_discovery import discover_datasources, load_datasource_descriptor
-from databao_context_engine.project.types import DatasourceKind
+from databao_context_engine.datasources.datasource_discovery import discover_datasources, load_datasource_descriptor
+from databao_context_engine.datasources.types import DatasourceKind
 
 
 def _mk(p: Path, text: str = "x") -> Path:

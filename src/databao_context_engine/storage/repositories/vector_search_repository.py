@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 import duckdb
 
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.types import DatasourceId
 
 
 @dataclass(kw_only=True, frozen=True)

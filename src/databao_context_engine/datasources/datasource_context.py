@@ -5,8 +5,8 @@ from pathlib import Path
 
 import yaml
 
+from databao_context_engine.datasources.types import Datasource, DatasourceId, DatasourceType
 from databao_context_engine.project.layout import ProjectLayout, get_output_dir
-from databao_context_engine.project.types import Datasource, DatasourceId, DatasourceType
 
 logger = logging.getLogger(__name__)
 

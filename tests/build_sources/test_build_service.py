@@ -6,8 +6,8 @@ import pytest
 
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.datasources.types import PreparedDatasource, PreparedFile
 from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
-from databao_context_engine.project.types import PreparedDatasource, PreparedFile
 
 
 def mk_result(*, name="files/foo.md", typ="files/md", result=None):

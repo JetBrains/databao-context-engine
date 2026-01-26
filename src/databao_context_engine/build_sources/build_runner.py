@@ -9,11 +9,11 @@ from databao_context_engine.build_sources.export_results import (
     export_build_result,
     reset_all_results,
 )
+from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import load_plugins
-from databao_context_engine.project.datasource_discovery import discover_datasources, prepare_source
 from databao_context_engine.project.layout import get_output_dir
-from databao_context_engine.project.types import DatasourceId
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from databao_context_engine.project.types import DatasourceId
+from databao_context_engine.datasources.types import DatasourceId
 
 
 @pytest.mark.parametrize(

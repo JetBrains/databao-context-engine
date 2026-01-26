@@ -4,20 +4,20 @@ from typing import Any, overload
 
 from databao_context_engine.build_sources import BuildContextResult, build_all_datasources
 from databao_context_engine.databao_engine import DatabaoContextEngine
-from databao_context_engine.datasource_config.add_config import (
+from databao_context_engine.datasources.add_config import (
     create_datasource_config_file,
     get_datasource_id_for_config_file,
 )
-from databao_context_engine.datasource_config.check_config import (
+from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
 )
-from databao_context_engine.datasource_config.check_config import (
+from databao_context_engine.datasources.check_config import (
     check_datasource_connection as check_datasource_connection_internal,
 )
+from databao_context_engine.datasources.datasource_discovery import get_datasource_list
+from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.datasource_discovery import get_datasource_list
 from databao_context_engine.project.layout import ensure_datasource_config_file_doesnt_exist, ensure_project_dir
-from databao_context_engine.project.types import Datasource, DatasourceId
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 

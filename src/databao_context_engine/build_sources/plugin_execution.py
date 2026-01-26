@@ -8,7 +8,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin, execute_file_plugin
-from databao_context_engine.project.types import PreparedConfig, PreparedDatasource, DatasourceId
+from databao_context_engine.datasources.types import PreparedConfig, PreparedDatasource, DatasourceId
 
 
 @dataclass()

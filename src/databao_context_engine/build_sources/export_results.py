@@ -2,9 +2,9 @@ import logging
 from pathlib import Path
 
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
-from databao_context_engine.datasource_config.datasource_context import get_context_header_for_datasource
+from databao_context_engine.datasources.datasource_context import get_context_header_for_datasource
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.project.layout import ALL_RESULTS_FILE_NAME
-from databao_context_engine.project.types import DatasourceId
 from databao_context_engine.serialization.yaml import write_yaml_to_stream
 
 logger = logging.getLogger(__name__)

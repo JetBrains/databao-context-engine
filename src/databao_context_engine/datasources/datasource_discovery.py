@@ -4,17 +4,17 @@ from typing import Any
 
 import yaml
 
-from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.layout import get_source_dir
-from databao_context_engine.project.types import (
+from databao_context_engine.datasources.types import (
+    Datasource,
     DatasourceDescriptor,
+    DatasourceId,
     DatasourceKind,
     PreparedConfig,
     PreparedDatasource,
     PreparedFile,
-    DatasourceId,
-    Datasource,
 )
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.project.layout import get_source_dir
 from databao_context_engine.templating.renderer import render_template
 
 logger = logging.getLogger(__name__)

@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute
+from databao_context_engine.datasources.types import PreparedDatasource
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
-from databao_context_engine.project.types import PreparedDatasource
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 

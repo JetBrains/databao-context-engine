@@ -6,9 +6,9 @@ import pytest
 import yaml
 
 from databao_context_engine.build_sources import build_runner
-from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
-from databao_context_engine.project.types import PreparedFile
+from databao_context_engine.datasources.types import PreparedFile
+from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
 
 def _result(name="files/demo.md", typ="files/md"):
