@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, Annotated
+from typing import Annotated, Any, Mapping
 
 from mssql_python import connect  # type: ignore[import-untyped]
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 
 from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile

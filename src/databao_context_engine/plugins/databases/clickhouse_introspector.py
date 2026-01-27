@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 import clickhouse_connect
 from pydantic import BaseModel, Field
