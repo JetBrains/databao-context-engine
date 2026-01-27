@@ -53,8 +53,8 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
                 out.append(dict(zip(cols, r)))
         return out
 
-    def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
-        return SQLQuery("SELECT 'main' AS schema_name", None)
+    def _list_schemas_for_catalog(self, connection, catalog: str) -> list[str]:
+        return [self._PSEUDO_SCHEMA]
 
     def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
         if not schemas:
@@ -89,9 +89,9 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
         }
 
     def _sql_relations(self) -> str:
-        return """
+        return f"""
             SELECT
-                'main' AS schema_name,
+                '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
                 CASE m.type
                     WHEN 'view' THEN 'view'
@@ -108,9 +108,9 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
         """
 
     def _sql_columns(self) -> str:
-        return """
+        return f"""
             SELECT
-                'main' AS schema_name,
+                '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
                 c.name AS column_name,
                 (c.cid + 1) AS ordinal_position,
@@ -137,9 +137,9 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
         """
 
     def _sql_primary_keys(self) -> str:
-        return """
+        return f"""
             SELECT
-                'main' AS schema_name,
+                '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
                 ('pk_' || m.name) AS constraint_name,
                 c.pk AS position,
@@ -157,9 +157,9 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
         """
 
     def _sql_unique(self) -> str:
-        return """
+        return f"""
             SELECT
-                'main' AS schema_name,
+                '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
                 il.name AS constraint_name,
                 (ii.seqno + 1) AS position,
@@ -172,6 +172,7 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
                 m.type = 'table'
                 AND m.name NOT LIKE 'sqlite_%'
                 AND il."unique" = 1
+                AND il.origin = 'u'
             ORDER BY
                 m.name,
                 il.name,
@@ -179,9 +180,9 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
         """
 
     def _sql_foreign_keys(self) -> str:
-        return """
+        return f"""
             SELECT
-                'main' AS schema_name,
+                '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
                 ('fk_' || m.name || '_' || fk.id) AS constraint_name,
                 (fk.seq + 1) AS position,
@@ -205,13 +206,13 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
         """
 
     def _sql_indexes(self) -> str:
-        return """
+        return f"""
             SELECT
-                'main' AS schema_name,
+                '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
                 il.name AS index_name,
                 (ix.seqno + 1) AS position,
-                COALESCE(ix.name, ('<expr #' || (ix.seqno + 1) || '>')) AS expr,
+                ix.name AS expr,
                 il."unique" AS is_unique,
                 NULL AS method,
                 CASE
@@ -226,7 +227,7 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
             WHERE 
                 m.type='table'
                 AND m.name NOT LIKE 'sqlite_%'
-                AND lower(il.origin) <> 'pk'
+                AND lower(il.origin) = 'c'
                 AND ix.key = 1
             ORDER BY 
                 m.name, 
