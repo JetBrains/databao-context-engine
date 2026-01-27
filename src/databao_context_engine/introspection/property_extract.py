@@ -1,15 +1,15 @@
 import types
 from dataclasses import MISSING, fields, is_dataclass
-from typing import Annotated, Any, ForwardRef, Union, get_origin, get_type_hints, get_args
+from typing import Annotated, Any, ForwardRef, Union, get_args, get_origin, get_type_hints
 
-from pydantic import BaseModel, _internal
+from pydantic import BaseModel
 from pydantic_core import PydanticUndefinedType
 
 from databao_context_engine.pluginlib.config import (
     ConfigPropertyAnnotation,
     ConfigPropertyDefinition,
-    ConfigUnionPropertyDefinition,
     ConfigSinglePropertyDefinition,
+    ConfigUnionPropertyDefinition,
 )
 
 
@@ -59,18 +59,14 @@ def _get_property_list_from_dataclass(parent_type: type) -> list[ConfigPropertyD
         raise ValueError(f"{parent_type} is not a dataclass")
 
     dataclass_fields = fields(parent_type)
+    type_hints = get_type_hints(parent_type, include_extras=True)
 
     result = []
     for field in dataclass_fields:
         has_field_default = field.default is not None and field.default != MISSING
 
-        if isinstance(field.type, str):
-            try:
-                property_type = _evaluate_type_string(field.type)
-            except Exception:
-                continue
-        else:
-            property_type = field.type
+        # Use the type hints if the field type wasn't resolved (aka. if it is a ForwardRef or a str)
+        property_type = type_hints[field.name] if isinstance(field.type, ForwardRef | str) else field.type
 
         property_for_field = _create_property(
             property_type=property_type,
@@ -88,6 +84,10 @@ def _get_property_list_from_dataclass(parent_type: type) -> list[ConfigPropertyD
 def _get_property_list_from_pydantic_base_model(parent_type: type):
     if not issubclass(parent_type, BaseModel):
         raise ValueError(f"{parent_type} is not a Pydantic BaseModel")
+
+    if any(isinstance(field.annotation, ForwardRef) for field in parent_type.model_fields.values()):
+        # If any field's future type wasn't resolved yet, we rebuild the model to resolve them
+        parent_type.model_rebuild(force=True)
 
     pydantic_fields = parent_type.model_fields
     result = []
@@ -214,18 +214,3 @@ def compute_default_value(
         return str(property_default)
 
     return None
-
-
-def _evaluate_type_string(property_type: str) -> type:
-    try:
-        # Using a pydantic internal function for this, to avoid having to implement type evaluation manually...
-        return _internal._typing_extra.eval_type(property_type)
-    except Exception as initial_error:
-        try:
-            # Try to convert it ourselves if Pydantic didn't work
-            return ForwardRef(property_type)._evaluate(  # type: ignore[return-value]
-                globalns=globals(), localns=locals(), recursive_guard=frozenset()
-            )
-        except Exception as e:
-            # Ignore if we didn't manage to convert the str to a type
-            raise e from initial_error

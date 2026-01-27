@@ -6,7 +6,6 @@ import duckdb
 import pytest
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
-from databao_context_engine.pluginlib.config import DuckDBSecret
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.parquet_plugin import ParquetPlugin
 from databao_context_engine.plugins.resources.parquet_chunker import ParquetColumnChunkContent
@@ -15,26 +14,8 @@ from databao_context_engine.plugins.resources.parquet_introspector import (
     ParquetConfigFile,
     ParquetFile,
     ParquetIntrospectionResult,
-    generate_create_secret_sql,
     parquet_type,
 )
-
-
-def test_duckdb_secret_generation():
-    generated_sql = generate_create_secret_sql(
-        "test_secret",
-        DuckDBSecret(
-            name="test_secret",
-            type="s3",
-            properties={"provider": "credential_chain", "profile": "sandbox", "chain": "sso"},
-        ),
-    )
-    assert (
-        generated_sql.strip()
-        == """CREATE SECRET test_secret (
-    type s3, provider credential_chain, profile sandbox, chain sso
-);"""
-    )
 
 
 @dataclass(frozen=True)

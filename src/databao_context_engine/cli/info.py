@@ -15,6 +15,7 @@ def _generate_info_string(command_info: DceInfo) -> str:
     info_lines = []
     info_lines.append(f"Databao context engine version: {command_info.version}")
     info_lines.append(f"Databao context engine storage dir: {command_info.dce_path}")
+    info_lines.append(f"Databao context engine plugins: {command_info.plugin_ids}")
 
     info_lines.append("")
 
