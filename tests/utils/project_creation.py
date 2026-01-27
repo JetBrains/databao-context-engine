@@ -14,7 +14,7 @@ from databao_context_engine.project.layout import (
 from databao_context_engine.serialization.yaml import to_yaml_string
 
 
-def with_config_file(
+def given_datasource_config_file(
     project_dir: Path,
     full_type: str,
     datasource_name: str,
@@ -29,7 +29,9 @@ def with_config_file(
     )
 
 
-def with_raw_source_file(project_dir: Path, file_name: str, datasource_type: DatasourceType, file_content: str) -> Path:
+def given_raw_source_file(
+    project_dir: Path, file_name: str, datasource_type: DatasourceType, file_content: str
+) -> Path:
     file_path = (
         get_source_dir(project_dir)
         .joinpath(datasource_type.main_type)
@@ -43,7 +45,9 @@ def with_raw_source_file(project_dir: Path, file_name: str, datasource_type: Dat
     return file_path
 
 
-def with_output(project_layout: ProjectLayout, datasource_contexts: list[DatasourceContext]) -> Path:
+def given_output_dir_with_built_contexts(
+    project_layout: ProjectLayout, datasource_contexts: list[DatasourceContext]
+) -> Path:
     output_dir = get_output_dir(project_layout.project_dir)
     output_dir.mkdir(exist_ok=True)
 

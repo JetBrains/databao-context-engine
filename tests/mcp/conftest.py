@@ -5,7 +5,7 @@ import pytest
 
 from databao_context_engine import DatasourceContext, DatasourceId
 from databao_context_engine.project.layout import ProjectLayout, get_output_dir
-from tests.utils.project_creation import with_output
+from tests.utils.project_creation import given_output_dir_with_built_contexts
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -36,7 +36,7 @@ def project(create_db, project_layout: ProjectLayout, db_path: Path) -> Project:
         ),
     ]
 
-    output_dir = with_output(project_layout, datasource_contexts)
+    output_dir = given_output_dir_with_built_contexts(project_layout, datasource_contexts)
     output = Output(output_dir=output_dir, datasource_contexts=datasource_contexts)
 
     return Project(project_dir=project_layout.project_dir, output=output)

@@ -3,7 +3,7 @@ import pytest
 from databao_context_engine import DatabaoContextEngine, Datasource, DatasourceContext, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.serialization.yaml import to_yaml_string
-from tests.utils.project_creation import with_config_file, with_output
+from tests.utils.project_creation import given_datasource_config_file, given_output_dir_with_built_contexts
 
 
 def test_databao_engine__can_not_be_created_on_non_existing_project(tmp_path):
@@ -16,7 +16,7 @@ def test_databao_engine__can_not_be_created_on_non_existing_project(tmp_path):
 def test_databao_engine__get_datasource_list_with_no_datasources(project_path, db_path, create_db):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
-    with_output(
+    given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [],
     )
@@ -28,26 +28,26 @@ def test_databao_engine__get_datasource_list_with_no_datasources(project_path, d
 
 def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path, db_path, create_db):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
-    with_config_file(
+    given_datasource_config_file(
         project_dir=databao_context_engine.project_dir,
         full_type="full/any",
         datasource_name="a",
         config_content={"type": "any", "name": "a"},
     )
-    with_config_file(
+    given_datasource_config_file(
         project_dir=databao_context_engine.project_dir,
         full_type="other/type",
         datasource_name="b",
         config_content={"type": "type", "name": "b"},
     )
-    with_config_file(
+    given_datasource_config_file(
         project_dir=databao_context_engine.project_dir,
         full_type="full/type2",
         datasource_name="c",
         config_content={"type": "type2", "name": "c"},
     )
 
-    with_output(
+    given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
             DatasourceContext(
@@ -76,7 +76,7 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
 def test_databao_engine__get_datasource_context(project_path, db_path, create_db):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
-    with_output(
+    given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
@@ -95,7 +95,7 @@ def test_databao_engine__get_datasource_context(project_path, db_path, create_db
 def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_path, db_path, create_db):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
-    with_output(
+    given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
@@ -111,7 +111,7 @@ def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_p
 def test_databao_engine__get_all_contexts(project_path, db_path, create_db):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
-    with_output(
+    given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
@@ -134,7 +134,7 @@ def test_databao_engine__get_all_contexts(project_path, db_path, create_db):
 def test_databao_engine__get_all_contexts_formatted(project_path, db_path, create_db):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
-    with_output(
+    given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
