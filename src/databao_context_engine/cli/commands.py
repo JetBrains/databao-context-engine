@@ -14,11 +14,11 @@ from databao_context_engine import (
     InitErrorReason,
     InitProjectError,
     init_dce_project,
+    install_ollama_if_needed,
 )
 from databao_context_engine.cli.datasources import add_datasource_config_cli, check_datasource_connection_cli
 from databao_context_engine.cli.info import echo_info
 from databao_context_engine.config.logging import configure_logging
-from databao_context_engine.llm.install import resolve_ollama_bin
 from databao_context_engine.mcp.mcp_runner import McpTransport, run_mcp_server
 
 
@@ -80,7 +80,7 @@ def init(ctx: Context) -> None:
     click.echo(f"Project initialized successfully at {project_dir.resolve()}")
 
     try:
-        resolve_ollama_bin()
+        install_ollama_if_needed()
     except RuntimeError as e:
         click.echo(str(e), err=True)
 
