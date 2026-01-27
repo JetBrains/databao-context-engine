@@ -92,11 +92,7 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     except ImportError:
         pass
 
-    required_plugins: list[BuildDatasourcePlugin] = [
-        DuckDbPlugin(),
-        ParquetPlugin(),
-        SQLiteDbPlugin()
-    ]
+    required_plugins: list[BuildDatasourcePlugin] = [DuckDbPlugin(), ParquetPlugin(), SQLiteDbPlugin()]
     return required_plugins + optional_plugins
 
 
