@@ -1,0 +1,40 @@
+name: Prepare Ollama cache
+description: Restore cache; if miss then run Ollama, pull model, and save cache
+inputs:
+  model-name:
+    required: true
+    description: LLM name
+  model-version:
+    required: true
+    description: LLM version
+  models-path:
+    description: Models path
+    required: false
+    default: ~/.ollama/models
+  image:
+    description: Ollama image
+    required: false
+    default: ollama/ollama:latest
+
+runs:
+  using: "composite"
+  steps:
+    - name: Restore Ollama models cache
+      id: ollama-restore
+      uses: ./.github/actions/ollama-cache-restore
+      with:
+        key: ollama-${{ runner.os }}-${{ inputs.model-name }}-${{ inputs.model-version }}
+
+    - name: Start Ollama + pull model (only if cache miss)
+      if: steps.ollama-restore.outputs.cache-hit != 'true'
+      uses: ./.github/actions/run-ollama-with-model
+      with:
+        model: ${{ inputs.model-name}}:${{ inputs.model-version}}
+        models-path: ${{ inputs.models-path }}
+
+    - name: Save Ollama models cache (only if cache miss)
+      if: steps.ollama-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.models-path }}
+        key: ollama-${{ runner.os }}-${{ inputs.model-name }}-${{ inputs.model-version }}

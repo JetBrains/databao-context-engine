@@ -1,0 +1,53 @@
+name: Pre commit checks
+
+permissions: { }
+
+on:
+  push:
+    paths-ignore:
+      - docs/
+    branches: [ "main" ]
+  pull_request:
+    paths-ignore:
+      - docs/
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: pre-commit on ${{ matrix.python-version }}
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.12", "3.13" ]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pre-commit hooks
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml', 'uv.lock') }}
+          restore-keys: |
+            pre-commit-${{ runner.os }}-
+
+      - name: Run pre-commit
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
+      - name: Run mypy type checking
+        run: uv run mypy
+
+      - name: Build
+        run: |
+          uv build
