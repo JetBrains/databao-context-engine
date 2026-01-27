@@ -6,11 +6,11 @@ from typing import Any
 import click
 
 from databao_context_engine import (
+    ConfigPropertyDefinition,
     DatabaoContextPluginLoader,
     DatabaoContextProjectManager,
     DatasourceId,
     DatasourceType,
-    ConfigPropertyDefinition,
 )
 from databao_context_engine.pluginlib.config import ConfigUnionPropertyDefinition
 

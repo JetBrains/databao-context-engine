@@ -10,7 +10,7 @@ from databao_context_engine.plugins.databases.introspection_model_builder import
 
 
 class DuckDBConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/duckdb")
+    type: str = Field(default="duckdb")
     connection: DuckDBConnectionConfig
 
 

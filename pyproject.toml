@@ -1,7 +1,7 @@
 [project]
 name = "databao-context-engine"
-version = "0.1.2"
-description = "Add your description here"
+version = "0.1.3"
+description = "Semantic context for your LLMs — generated automatically"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,23 +9,16 @@ dependencies = [
     "duckdb>=1.4.3",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
-    "pymysql>=1.1.2",
     "mcp>=1.23.3",
-    "snowflake-connector-python>=4.1.0",
     "pydantic>=2.12.4",
     "jinja2>=3.1.6",
-    "asyncpg>=0.31.0",
-    "asyncpg-stubs>=0.31.1",
 ]
 default-optional-dependency-keys = [
-    "recommended",
+    "mysql",
+    "postgresql"
 ]
-
 
 [project.optional-dependencies]
-recommended = [
-    # todo add postgres and maybe mysql?
-]
 mssql = [
     "mssql-python>=1.0.0"
 ]
@@ -34,6 +27,15 @@ clickhouse = [
 ]
 athena = [
     "pyathena>=3.25.0"
+]
+snowflake = [
+    "snowflake-connector-python>=4.2.0",
+]
+mysql = [
+    "pymysql>=1.1.2"
+]
+postgresql = [
+    "asyncpg>=0.31.0",
 ]
 
 [build-system]
@@ -51,6 +53,7 @@ dev = [
     "types-pyyaml>=6.0.12.20250915",
     "types-pymysql>=1.1.0.20250916",
     "pytest-mock>=3.15.1",
+    "asyncpg-stubs>=0.31.1",
 ]
 
 [project.scripts]
@@ -70,6 +73,3 @@ ignore_missing_imports = true
 [tool.pytest]
 addopts = ["--import-mode=importlib"]
 strict = true
-markers = [
-    "recommended_extras: marks tests which are supposed to be run only with recommended set of extras",
-]

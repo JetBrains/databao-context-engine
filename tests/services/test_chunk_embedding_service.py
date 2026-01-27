@@ -7,7 +7,6 @@ from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 from databao_context_engine.services.table_name_policy import TableNamePolicy
-from tests.utils.factories import make_datasource_run
 
 
 def _expected_table(provider) -> str:
@@ -31,7 +30,7 @@ def test_noop_on_empty_chunks(persistence, resolver, chunk_repo, embedding_repo,
     embedding_provider.model_id = "model:v1"
     embedding_provider.dim = 768
 
-    service.embed_chunks(datasource_run_id=123, chunks=[], result="")
+    service.embed_chunks(chunks=[], result="", full_type="databases/some", datasource_id="databases/test.yml")
 
     assert chunk_repo.list() == []
     assert registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id) is None
@@ -40,9 +39,7 @@ def test_noop_on_empty_chunks(persistence, resolver, chunk_repo, embedding_repo,
     description_provider.describe.assert_not_called()
 
 
-def test_embeds_resolves_and_persists(
-    persistence, resolver, run_repo, datasource_run_repo, chunk_repo, embedding_repo, registry_repo
-):
+def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embedding_repo, registry_repo):
     embedding_provider = Mock(spec=EmbeddingProvider)
     description_provider = Mock(spec=DescriptionProvider)
 
@@ -65,14 +62,6 @@ def test_embeds_resolves_and_persists(
         shard_resolver=resolver,
     )
 
-    datasource_run = make_datasource_run(
-        run_repo,
-        datasource_run_repo,
-        plugin="p",
-        source_id="s",
-        storage_directory="/tmp",
-    )
-
     chunks = [
         EmbeddableChunk("A", "a"),
         EmbeddableChunk("B", "b"),
@@ -80,9 +69,10 @@ def test_embeds_resolves_and_persists(
     ]
 
     service.embed_chunks(
-        datasource_run_id=datasource_run.datasource_run_id,
         chunks=chunks,
         result="",
+        full_type="databases/some",
+        datasource_id="test.yml",
     )
 
     expected_table = _expected_table(embedding_provider)
@@ -91,7 +81,7 @@ def test_embeds_resolves_and_persists(
     assert reg.table_name == expected_table
     assert reg.dim == embedding_provider.dim
 
-    saved = [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id]
+    saved = chunk_repo.list()
     assert [c.embeddable_text for c in saved] == ["C", "B", "A"]
 
     rows = embedding_repo.list(table_name=expected_table)
@@ -101,9 +91,7 @@ def test_embeds_resolves_and_persists(
     assert embedding_provider.embed.call_count == 3
 
 
-def test_provider_failure_writes_nothing(
-    persistence, resolver, run_repo, datasource_run_repo, chunk_repo, embedding_repo, registry_repo
-):
+def test_provider_failure_writes_nothing(persistence, resolver, chunk_repo, embedding_repo, registry_repo):
     embedding_provider = Mock(spec=EmbeddingProvider)
     description_provider = Mock(spec=DescriptionProvider)
 
@@ -125,16 +113,13 @@ def test_provider_failure_writes_nothing(
         shard_resolver=resolver,
     )
 
-    datasource_run = make_datasource_run(
-        run_repo, datasource_run_repo, plugin="p", source_id="s", storage_directory="/tmp"
-    )
-
     with pytest.raises(RuntimeError):
         service.embed_chunks(
-            datasource_run_id=datasource_run.datasource_run_id,
             chunks=[EmbeddableChunk("X", "x"), EmbeddableChunk("Y", "y")],
             result="",
+            full_type="databases/some",
+            datasource_id="test.yml",
         )
 
     assert registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id) is None
-    assert [c for c in chunk_repo.list() if c.datasource_run_id == datasource_run.datasource_run_id] == []
+    assert chunk_repo.list() == []

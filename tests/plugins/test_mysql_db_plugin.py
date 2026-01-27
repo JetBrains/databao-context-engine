@@ -525,7 +525,7 @@ def _create_config_file_from_container(mysql: MySqlContainer) -> Mapping[str, An
         "connection": {
             "host": mysql.get_container_host_ip(),
             "port": int(mysql.get_exposed_port(mysql.port)),
-            # TODO now this parameter is not used in introspections, worth checking if that is expected behaviour
+            # TODO now this parameter is not used in introspections, worth checking if that is expected behavior
             "database": mysql.dbname,
             "user": mysql.username,
             "password": mysql.password,

@@ -28,9 +28,7 @@ def test_service_embed_returns_vector():
     assert all(isinstance(x, float) for x in vec)
 
 
-def test_ollama_embed_and_persist_e2e(
-    conn, run_repo, datasource_run_repo, chunk_repo, embedding_repo, tmp_path, registry_repo, resolver
-):
+def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path, registry_repo, resolver):
     config = OllamaConfig(host=HOST, port=PORT)
     service = OllamaService(config)
     rt = OllamaRuntime(service=service, config=config)
@@ -50,23 +48,12 @@ def test_ollama_embed_and_persist_e2e(
         description_provider=description_provider,
     )
 
-    run = run_repo.create(project_id="project-id")
-    datasource_run = datasource_run_repo.create(
-        run_id=run.run_id,
-        plugin="integration-test",
-        full_type="folder/type",
-        source_id="src-ollama",
-        storage_directory="/some/path",
-    )
-
     chunks = [EmbeddableChunk("alpha", "Alpha"), EmbeddableChunk("beta", "Beta")]
-    chunk_embedding_service.embed_chunks(datasource_run_id=datasource_run.datasource_run_id, chunks=chunks, result="")
+    chunk_embedding_service.embed_chunks(chunks=chunks, result="", full_type="type/md", datasource_id="some-id")
 
-    chunk_rows = conn.execute(
-        "SELECT chunk_id FROM chunk WHERE datasource_run_id = ? ORDER BY chunk_id", [datasource_run.datasource_run_id]
-    ).fetchall()
+    chunk_rows = chunk_repo.list()
     assert len(chunk_rows) == 2
-    chunk_ids = [r[0] for r in chunk_rows]
+    chunk_ids = [r.chunk_id for r in chunk_rows]
 
     expected_table = TableNamePolicy().build(
         embedder=embedding_provider.embedder, model_id=embedding_provider.model_id, dim=embedding_provider.dim

@@ -14,8 +14,8 @@ from databao_context_engine.pluginlib.build_plugin import (
 from databao_context_engine.pluginlib.config import (
     ConfigPropertyAnnotation,
     ConfigPropertyDefinition,
-    CustomiseConfigProperties,
     ConfigSinglePropertyDefinition,
+    CustomiseConfigProperties,
 )
 
 

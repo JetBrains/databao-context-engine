@@ -15,6 +15,7 @@ def _generate_info_string(command_info: DceInfo) -> str:
     info_lines = []
     info_lines.append(f"Databao context engine version: {command_info.version}")
     info_lines.append(f"Databao context engine storage dir: {command_info.dce_path}")
+    info_lines.append(f"Databao context engine plugins: {command_info.plugin_ids}")
 
     info_lines.append("")
 
@@ -23,10 +24,10 @@ def _generate_info_string(command_info: DceInfo) -> str:
 
     info_lines.append("")
 
-    if command_info.project_info.is_initialised:
+    if command_info.project_info.is_initialized:
         info_lines.append(f"Project dir: {command_info.project_info.project_path.resolve()}")
         info_lines.append(f"Project ID: {str(command_info.project_info.project_id)}")
     else:
-        info_lines.append(f"Project not initialised at {command_info.project_info.project_path.resolve()}")
+        info_lines.append(f"Project not initialized at {command_info.project_info.project_path.resolve()}")
 
     return os.linesep.join(info_lines)

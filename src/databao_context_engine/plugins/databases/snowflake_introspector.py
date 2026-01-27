@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Annotated
+from typing import Annotated, Any, Dict, List
 
 import snowflake.connector
 from pydantic import BaseModel, Field
@@ -50,7 +50,7 @@ class SnowflakeConnectionProperties(BaseModel):
 
 
 class SnowflakeConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/snowflake")
+    type: str = Field(default="snowflake")
     connection: SnowflakeConnectionProperties
 
 

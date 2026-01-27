@@ -1,20 +1,15 @@
-from _duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 
-from databao_context_engine.build_sources.internal.build_service import BuildService
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
-from databao_context_engine.retrieve_embeddings.internal.retrieve_service import RetrieveService
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode, ChunkEmbeddingService
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.persistence_service import PersistenceService
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 from databao_context_engine.storage.repositories.factories import (
     create_chunk_repository,
-    create_datasource_run_repository,
     create_embedding_repository,
     create_registry_repository,
-    create_run_repository,
-    create_vector_search_repository,
 )
 
 
@@ -45,44 +40,4 @@ def create_chunk_embedding_service(
         shard_resolver=resolver,
         description_provider=description_provider,
         chunk_embedding_mode=chunk_embedding_mode,
-    )
-
-
-def create_build_service(
-    conn: DuckDBPyConnection,
-    *,
-    embedding_provider: EmbeddingProvider,
-    description_provider: DescriptionProvider | None,
-    chunk_embedding_mode: ChunkEmbeddingMode,
-) -> BuildService:
-    run_repo = create_run_repository(conn)
-    datasource_run_repo = create_datasource_run_repository(conn)
-    chunk_embedding_service = create_chunk_embedding_service(
-        conn,
-        embedding_provider=embedding_provider,
-        description_provider=description_provider,
-        chunk_embedding_mode=chunk_embedding_mode,
-    )
-
-    return BuildService(
-        run_repo=run_repo,
-        datasource_run_repo=datasource_run_repo,
-        chunk_embedding_service=chunk_embedding_service,
-    )
-
-
-def create_retrieve_service(
-    conn: DuckDBPyConnection,
-    *,
-    embedding_provider: EmbeddingProvider,
-) -> RetrieveService:
-    run_repo = create_run_repository(conn)
-    vector_search_repo = create_vector_search_repository(conn)
-    shard_resolver = create_shard_resolver(conn)
-
-    return RetrieveService(
-        run_repo=run_repo,
-        vector_search_repo=vector_search_repo,
-        shard_resolver=shard_resolver,
-        provider=embedding_provider,
     )

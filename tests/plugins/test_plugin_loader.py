@@ -1,3 +1,5 @@
+import subprocess
+
 import pytest
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
@@ -46,3 +48,49 @@ def test_merge_plugins_duplicate_raises():
     assert "files/md" in msg
     assert "P1" in msg or "p1" in msg
     assert "P3Overlap" in msg
+
+
+def test_loaded_plugins_no_extra():
+    plugin_ids = load_plugin_ids()
+    assert plugin_ids == {
+        "jetbrains/duckdb",
+        "jetbrains/parquet",
+        "jetbrains/unstructured_files",
+    }
+
+
+def test_loaded_plugins_all_extras():
+    plugin_ids = load_plugin_ids("--all-extras")
+    assert plugin_ids == {
+        "jetbrains/athena",
+        "jetbrains/clickhouse",
+        "jetbrains/duckdb",
+        "jetbrains/mssql",
+        "jetbrains/mysql",
+        "jetbrains/postgres",
+        "jetbrains/snowflake",
+        "jetbrains/parquet",
+        "jetbrains/unstructured_files",
+    }
+
+
+def load_plugin_ids(*uv_extra_args) -> list[str]:
+    p = subprocess.Popen(
+        ["uv", "run", "--no-dev", "--isolated"] + list(uv_extra_args) + ["-s", "tests/plugins/get_loaded_plugins.py"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    lines = []
+
+    assert p.stdout is not None
+    for line in p.stdout.readlines():
+        lines.append(line.decode())
+    exit_code = p.wait()
+
+    assert exit_code == 0, f"""
+    out = {lines}
+    err = {"".join([line.decode() for line in p.stderr.readlines()]) if p.stderr is not None else ""}
+"""
+    output = "".join(lines)
+    plugin_ids = eval(output)
+    return plugin_ids

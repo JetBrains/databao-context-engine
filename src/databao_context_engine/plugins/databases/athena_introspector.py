@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 from pyathena import connect
 from pyathena.cursor import DictCursor
@@ -57,7 +57,7 @@ class AthenaConnectionProperties(BaseModel):
 
 
 class AthenaConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/athena")
+    type: str = Field(default="athena")
     connection: AthenaConnectionProperties
 
 

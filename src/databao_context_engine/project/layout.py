@@ -2,8 +2,8 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.project.project_config import ProjectConfig
-from databao_context_engine.project.types import DatasourceId
 
 SOURCE_FOLDER_NAME = "src"
 OUTPUT_FOLDER_NAME = "output"
@@ -96,12 +96,12 @@ class _ProjectValidator:
 
         if self.config_file is None:
             raise ValueError(
-                f"The current project directory has not been initialised. It should contain a config file. [project_dir: {self.project_dir.resolve()}]"
+                f"The current project directory has not been initialized. It should contain a config file. [project_dir: {self.project_dir.resolve()}]"
             )
 
         if not self.is_src_valid():
             raise ValueError(
-                f"The current project directory has not been initialised. It should contain a src directory. [project_dir: {self.project_dir.resolve()}]"
+                f"The current project directory has not been initialized. It should contain a src directory. [project_dir: {self.project_dir.resolve()}]"
             )
 
         return ProjectLayout(project_dir=self.project_dir, config_file=self.config_file)
