@@ -7,6 +7,7 @@ from databao_context_engine.plugins.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
+from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
 
 
 class DuckDBConfigFile(BaseDatabaseConfigFile):
@@ -319,7 +320,4 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
         cur = connection.cursor()
-        cur.execute(sql, params or [])
-        columns = [desc[0].lower() for desc in cur.description] if cur.description else []
-        rows = cur.fetchall()
-        return [dict(zip(columns, row)) for row in rows]
+        return fetchall_dicts(cur, sql, params)

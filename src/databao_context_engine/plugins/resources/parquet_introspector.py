@@ -10,6 +10,7 @@ from duckdb import DuckDBPyConnection
 from pydantic import BaseModel, Field
 
 from databao_context_engine.pluginlib.config import DuckDBSecret
+from databao_context_engine.plugins.duckdb_tools import fetchall_dicts, generate_create_secret_sql
 
 parquet_type = "resources/parquet"
 
@@ -47,14 +48,6 @@ class ParquetFile:
 @dataclass
 class ParquetIntrospectionResult:
     files: list[ParquetFile]
-
-
-def generate_create_secret_sql(secret_name, duckdb_secret: DuckDBSecret) -> str:
-    parameters = [("type", duckdb_secret.type)] + list(duckdb_secret.properties.items())
-    return f"""CREATE SECRET {secret_name} (
-    {", ".join([f"{k} {v}" for (k, v) in parameters])}
-);
-"""
 
 
 @contextlib.contextmanager
@@ -97,10 +90,9 @@ class ParquetIntrospector:
         with self._connect(file_config) as conn:
             with conn.cursor() as cur:
                 resolved_url = _resolve_url(file_config)
-                cur.execute(f"SELECT * FROM parquet_file_metadata('{resolved_url}') LIMIT 1")
-                columns = [desc[0].lower() for desc in cur.description] if cur.description else []
-                rows = cur.fetchall()
-                parquet_file_metadata = [dict(zip(columns, row)) for row in rows]
+                parquet_file_metadata = fetchall_dicts(
+                    cur, f"SELECT * FROM parquet_file_metadata('{resolved_url}') LIMIT 1"
+                )
                 if not parquet_file_metadata:
                     raise ValueError(f"No parquet files found by url {resolved_url}")
                 if not parquet_file_metadata or not parquet_file_metadata[0]["file_name"]:
@@ -110,10 +102,7 @@ class ParquetIntrospector:
         with self._connect(file_config) as conn:
             with conn.cursor() as cur:
                 resolved_url = _resolve_url(file_config)
-                cur.execute(f"SELECT * from parquet_metadata('{resolved_url}')")
-                cols = [desc[0].lower() for desc in cur.description] if cur.description else []
-                rows = cur.fetchall()
-                file_metas = [dict(zip(cols, row)) for row in rows]
+                file_metas = fetchall_dicts(cur, f"SELECT * from parquet_metadata('{resolved_url}')")
 
                 columns_per_file: dict[str, dict[int, ParquetColumn]] = defaultdict(defaultdict)
                 for file_meta in file_metas:

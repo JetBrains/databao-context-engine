@@ -9,7 +9,7 @@ from databao_context_engine.cli.add_datasource_config import add_datasource_conf
 from databao_context_engine.project.layout import get_source_dir
 from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.dummy_build_plugin import load_dummy_plugins
-from tests.utils.project_creation import with_config_file
+from tests.utils.project_creation import given_datasource_config_file
 
 
 @pytest.fixture(autouse=True)
@@ -166,7 +166,7 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
 
 
 def test_add_datasource_config__abort_if_existing_config_and_no_overwrite(project_path: Path):
-    with_config_file(
+    given_datasource_config_file(
         project_path,
         "dummy/no_config_type",
         "my datasource name",
@@ -194,7 +194,7 @@ def test_add_datasource_config__abort_if_existing_config_and_no_overwrite(projec
 
 
 def test_add_datasource_config__overwrite_existing_config(project_path: Path):
-    with_config_file(
+    given_datasource_config_file(
         project_path,
         "dummy/no_config_type",
         "my datasource name",

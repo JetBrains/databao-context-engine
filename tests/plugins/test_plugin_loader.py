@@ -1,4 +1,5 @@
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -76,8 +77,9 @@ def test_loaded_plugins_all_extras():
 
 
 def load_plugin_ids(*uv_extra_args) -> list[str]:
+    test_file_path = Path(__file__).parent.joinpath("get_loaded_plugins.py")
     p = subprocess.Popen(
-        ["uv", "run", "--no-dev", "--isolated"] + list(uv_extra_args) + ["-s", "tests/plugins/get_loaded_plugins.py"],
+        ["uv", "run", "--no-dev", "--isolated"] + list(uv_extra_args) + ["-s", str(test_file_path)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
