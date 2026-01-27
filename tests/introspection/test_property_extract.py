@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Annotated, Any, Collection, Mapping, Optional, TypedDict
@@ -64,8 +66,6 @@ def test_get_property_list_from_type__with_dataclass():
     property_list = get_property_list_from_type(TestDataclass)
 
     assert property_list == unordered(
-        ConfigSinglePropertyDefinition(property_key="a", required=False, property_type=int, default_value="1"),
-        ConfigSinglePropertyDefinition(property_key="b", required=False, property_type=float, default_value="3.14"),
         ConfigSinglePropertyDefinition(
             property_key="complex",
             required=True,
@@ -120,6 +120,8 @@ def test_get_property_list_from_type__with_dataclass():
                 ),
             ],
         ),
+        ConfigSinglePropertyDefinition(property_key="a", required=False, property_type=int, default_value="1"),
+        ConfigSinglePropertyDefinition(property_key="b", required=False, property_type=float, default_value="3.14"),
     )
 
 
@@ -146,6 +148,12 @@ class DataclassWithAllCases:
     ] = field(default=False)
     property_with_string_type: "str"
     property_with_union_type_as_string: "int | None"
+    property_with_future_type: NestedDataclassModel
+    property_with_future_type_and_annotation: Annotated[NestedDataclassModel, ConfigPropertyAnnotation(required=False)]
+
+
+class NestedDataclassModel(BaseModel):
+    one_property: str
 
 
 def test_get_property_list__from_dataclass():
@@ -183,6 +191,22 @@ def test_get_property_list__from_dataclass():
                 required=True,
                 property_type=int,
             ),
+            ConfigSinglePropertyDefinition(
+                property_key="property_with_future_type",
+                required=True,
+                property_type=None,
+                nested_properties=[
+                    ConfigSinglePropertyDefinition(property_key="one_property", required=True, property_type=str)
+                ],
+            ),
+            ConfigSinglePropertyDefinition(
+                property_key="property_with_future_type_and_annotation",
+                required=False,
+                property_type=None,
+                nested_properties=[
+                    ConfigSinglePropertyDefinition(property_key="one_property", required=True, property_type=str)
+                ],
+            ),
         ]
     )
 
@@ -199,6 +223,12 @@ class BaseModelWithAllCases(BaseModel):
     )
     property_with_string_type: "str"
     property_with_union_type_as_string: "float | None"
+    property_with_future_type: NestedPydanticModel
+    property_with_future_type_and_annotation: Annotated[NestedPydanticModel, ConfigPropertyAnnotation(required=False)]
+
+
+class NestedPydanticModel(BaseModel):
+    one_property: str
 
 
 def test_get_property_list__from_pydantic_base_model():
@@ -242,6 +272,22 @@ def test_get_property_list__from_pydantic_base_model():
                 property_key="property_with_union_type_as_string",
                 required=True,
                 property_type=float,
+            ),
+            ConfigSinglePropertyDefinition(
+                property_key="property_with_future_type",
+                required=True,
+                property_type=None,
+                nested_properties=[
+                    ConfigSinglePropertyDefinition(property_key="one_property", required=True, property_type=str)
+                ],
+            ),
+            ConfigSinglePropertyDefinition(
+                property_key="property_with_future_type_and_annotation",
+                required=False,
+                property_type=None,
+                nested_properties=[
+                    ConfigSinglePropertyDefinition(property_key="one_property", required=True, property_type=str)
+                ],
             ),
         ]
     )
