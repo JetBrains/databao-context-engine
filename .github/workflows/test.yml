@@ -62,6 +62,3 @@ jobs:
 
       - name: Run tests with all-extras
         run: uv run pytest -v
-
-      - name: Run tests with recommended extras
-        run: uv run --isolated --extra recommended pytest -v tests/recommended_extras --run-recommended-extras

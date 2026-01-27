@@ -56,8 +56,7 @@ will execute every step required before pushing to repository:
 
 - check code formatting
 - check static type checks
-- run tests with all extras environment
-- run special tests with a recommended environment
+- run tests
 
 ## Running `dce` locally
 
@@ -126,28 +125,17 @@ This will make sure `dce` command is available in the current terminal session.
 
 ## Testing
 
-For testing we use `uv` and `pytest` framework. `uv` manages environments and dependencies automatically. Currently,
-there are two environments which we test:
-
-1. Main testing environment includes all `dce`
-   package [optional-dependencies](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-optional-dependencies)
-2. Another testing environment is for `recommended` set of extras
+For testing we use `uv` and `pytest` framework. `uv` manages environments and dependencies automatically.
 
 ### Running test commands
 
-To run all tests excluding `recommended` environment which is the majority of all tests:
+To run all tests:
 
 ```shell
   uv run --all-extras pytest
 ```
 
-To run tests for the `recommended` set of extras:
-
-```shell
-uv run --isolated --extra recommended pytest tests/recommended_extras --run-recommended-extras
-```
-
-To run them all together with one command - `make test`
+or a use a shortcut - `make test`
 
 ### Running linters
 
