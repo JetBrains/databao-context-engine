@@ -1,4 +1,4 @@
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 import pymysql
 from pydantic import BaseModel, Field
