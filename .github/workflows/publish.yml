@@ -1,0 +1,48 @@
+name: "Publish"
+
+on:
+  push:
+    tags:
+      # Publish on any tag starting with a `v`, e.g., v0.1.0
+      - v*
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi-publish
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.7"
+
+      - name: Verify version and tag correspondence
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PROJECT_VERSION="$(uv version --short)"
+          if [ "$TAG_VERSION" != "$PROJECT_VERSION" ]; then
+            echo "Error: Git tag version ($TAG_VERSION) does not match project version ($PROJECT_VERSION)"
+            exit 1
+          fi
+          echo "Version verified: $PROJECT_VERSION"
+
+      - name: Build
+        run: uv build --clear
+      # Check that basic features work and we didn't miss to include crucial files
+#      - name: Smoke test (wheel)
+#        run: uv run --isolated --no-project --with dist/*.whl tests/smoke_test.py
+#      - name: Smoke test (source distribution)
+#        run: uv run --isolated --no-project --with dist/*.tar.gz tests/smoke_test.py
+#      - name: Publish
+#        run: uv publish
