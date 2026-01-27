@@ -9,7 +9,7 @@ from databao_context_engine.plugins.databases.introspection_model_builder import
 
 
 class SQLiteConnectionConfig(BaseModel):
-    database: str = Field(description="Path to the SQLite database file")
+    database_path: str = Field(description="Path to the SQLite database file")
 
 
 class SQLiteConfigFile(BaseDatabaseConfigFile):
@@ -23,7 +23,7 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
     supports_catalogs = False
 
     def _connect(self, file_config: SQLiteConfigFile):
-        database_path = str(file_config.connection.database)
+        database_path = str(file_config.connection.database_path)
         conn = sqlite3.connect(database_path)
         conn.text_factory = str
         return conn

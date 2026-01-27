@@ -277,5 +277,5 @@ def test_duckdb_samples_in_big(duckdb_with_demo_schema: Path):
 def _create_config_file_from_container(duckdb_path: Path) -> Mapping[str, Any]:
     return {
         "type": "databases/duckdb",
-        "connection": dict(database=str(duckdb_path)),
+        "connection": dict(database_path=str(duckdb_path)),
     }

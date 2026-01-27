@@ -70,6 +70,7 @@ def test_loaded_plugins_all_extras():
         "jetbrains/postgres",
         "jetbrains/snowflake",
         "jetbrains/parquet",
+        "jetbrains/sqlite",
         "jetbrains/unstructured_files",
     }
 

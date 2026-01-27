@@ -15,7 +15,7 @@ class DuckDBConfigFile(BaseDatabaseConfigFile):
 
 
 class DuckDBConnectionConfig(BaseModel):
-    database: str = Field(description="Path to the DuckDB database file")
+    database_path: str = Field(description="Path to the DuckDB database file")
 
 
 class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
@@ -24,7 +24,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     supports_catalogs = True
 
     def _connect(self, file_config: DuckDBConfigFile):
-        database_path = str(file_config.connection.database)
+        database_path = str(file_config.connection.database_path)
         return duckdb.connect(database=database_path)
 
     def _connect_to_catalog(self, file_config: DuckDBConfigFile, catalog: str):
