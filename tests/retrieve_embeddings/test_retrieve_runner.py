@@ -35,11 +35,10 @@ def test_retrieve_without_export(capsys):
 
     result = retrieve(
         retrieve_service=service,
-        project_id="proj-123",
         text="hello",
         limit=5,
     )
 
-    service.retrieve.assert_called_once_with(project_id="proj-123", text="hello", limit=5)
+    service.retrieve.assert_called_once_with(text="hello", limit=5, datasource_ids=None)
 
     assert result == expected
