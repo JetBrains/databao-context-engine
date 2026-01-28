@@ -10,6 +10,7 @@ extend-select = [
     # pydocstyle
     "D",
     "I",
+    "T20",
 ]
 ignore = [
     "D100",
@@ -33,4 +34,4 @@ ignore-one-line-docstrings = true
 
 [lint.per-file-ignores]
 # Ignore `D` and "DOC" rules everywhere except for the `src/` directory.
-"!src/**.py" = ["D", "DOC"]
+"!src/**.py" = ["D", "DOC", "T20"]

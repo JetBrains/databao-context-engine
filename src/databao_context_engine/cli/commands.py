@@ -34,7 +34,7 @@ from databao_context_engine.mcp.mcp_runner import McpTransport, run_mcp_server
 @click.pass_context
 def dce(ctx: Context, verbose: bool, quiet: bool, project_dir: str | None) -> None:
     if verbose and quiet:
-        print("Arguments --quiet and --verbose can not be used together", file=sys.stderr)
+        click.echo("Arguments --quiet and --verbose can not be used together", file=sys.stderr)
         exit(1)
 
     if project_dir is None:

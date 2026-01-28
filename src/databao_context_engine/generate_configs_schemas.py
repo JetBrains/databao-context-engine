@@ -38,9 +38,9 @@ def generate_configs_schemas(
     try:
         schema_list = _generate_json_schema_output_for_plugins(include_plugins, exclude_plugins)
 
-        print(f"{os.linesep}{os.linesep}".join(schema_list))
+        click.echo(f"{os.linesep}{os.linesep}".join(schema_list))
     except Exception as e:
-        print(str(e))
+        click.echo(str(e))
 
 
 def _generate_json_schema_output_for_plugins(
