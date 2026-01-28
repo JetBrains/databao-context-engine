@@ -43,7 +43,10 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ matrix.python-version }}
 
       - name: Restore Ollama models cache
         uses: ./.github/actions/ollama-cache-restore
@@ -54,11 +57,6 @@ jobs:
         uses: ./.github/actions/run-ollama-with-model
         with:
           model: ${{ env.OLLAMA_MODEL}}:${{ env.OLLAMA_MODEL_VERSION}}
-
-      - name: Set up project
-        uses: ./.github/actions/setup-project
-        with:
-          python-version: ${{ matrix.python-version }}
 
       - name: Run tests with all-extras
         run: uv run pytest -v
