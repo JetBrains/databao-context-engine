@@ -13,7 +13,7 @@ def test_databao_engine__can_not_be_created_on_non_existing_project(tmp_path):
         DatabaoContextEngine(project_dir=non_existing_project_dir)
 
 
-def test_databao_engine__get_datasource_list_with_no_datasources(project_path, db_path, create_db):
+def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
     given_output_dir_with_built_contexts(
@@ -26,7 +26,7 @@ def test_databao_engine__get_datasource_list_with_no_datasources(project_path, d
     assert datasource_list == []
 
 
-def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path, db_path, create_db):
+def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
     given_datasource_config_file(
         project_dir=databao_context_engine.project_dir,
@@ -73,7 +73,7 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     ]
 
 
-def test_databao_engine__get_datasource_context(project_path, db_path, create_db):
+def test_databao_engine__get_datasource_context(project_path):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
     given_output_dir_with_built_contexts(
@@ -92,7 +92,7 @@ def test_databao_engine__get_datasource_context(project_path, db_path, create_db
     )
 
 
-def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_path, db_path, create_db):
+def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_path):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
     given_output_dir_with_built_contexts(
@@ -108,7 +108,7 @@ def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_p
         databao_context_engine.get_datasource_context(DatasourceId.from_string_repr("full/d.yaml"))
 
 
-def test_databao_engine__get_all_contexts(project_path, db_path, create_db):
+def test_databao_engine__get_all_contexts(project_path):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
     given_output_dir_with_built_contexts(
@@ -131,7 +131,7 @@ def test_databao_engine__get_all_contexts(project_path, db_path, create_db):
     ]
 
 
-def test_databao_engine__get_all_contexts_formatted(project_path, db_path, create_db):
+def test_databao_engine__get_all_contexts_formatted(project_path):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
 
     given_output_dir_with_built_contexts(
