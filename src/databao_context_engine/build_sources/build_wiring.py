@@ -43,9 +43,8 @@ def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddin
     if db_path.exists():
         db_path.unlink()
 
+    migrate(db_path)
     with open_duckdb_connection(db_path) as conn:
-        migrate(db_path)
-
         ollama_service = create_ollama_service()
         embedding_provider = create_ollama_embedding_provider(ollama_service)
         description_provider = (
