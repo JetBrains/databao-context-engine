@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 from typing import Literal
@@ -171,29 +172,29 @@ def build(
 )
 @click.option(
     "-o",
-    "--output-format",
-    type=click.Choice(["file", "streamed"]),
-    default="file",
-    help="The output format [file (default), streamed]",
+    "--output-file",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=False),
+    help="If provided, the results are written as YAML into the file given as a path, rather than printed to the console.",
 )
 @click.pass_context
 def retrieve(
     ctx: Context,
     retrieve_text: tuple[str, ...],
     limit: int | None,
-    output_format: Literal["file", "streamed"],
+    output_file: str | None,
 ) -> None:
     """Search the project's built context for the most relevant chunks."""
     text = " ".join(retrieve_text)
 
     databao_engine = DatabaoContextEngine(project_dir=ctx.obj["project_dir"])
 
-    retrieve_results = databao_engine.search_context(
-        retrieve_text=text, limit=limit, export_to_file=output_format == "file"
-    )
+    retrieve_results = databao_engine.search_context(retrieve_text=text, limit=limit)
 
-    if output_format == "streamed":
-        display_texts = [context_search_result.context_result for context_search_result in retrieve_results]
+    display_texts = [context_search_result.context_result for context_search_result in retrieve_results]
+    if output_file is not None:
+        Path(output_file).expanduser().write_text(f"---{os.linesep}".join(display_texts))
+        click.echo(f"Found {len(retrieve_results)} results, written to {output_file}")
+    else:
         click.echo("\n".join(display_texts))
 
 

@@ -47,9 +47,7 @@ class McpServer:
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
         def retrieve_tool(text: str, limit: int | None):
-            retrieve_results = self._databao_context_engine.search_context(
-                retrieve_text=text, limit=limit, export_to_file=False
-            )
+            retrieve_results = self._databao_context_engine.search_context(retrieve_text=text, limit=limit)
 
             display_results = [context_search_result.context_result for context_search_result in retrieve_results]
 
