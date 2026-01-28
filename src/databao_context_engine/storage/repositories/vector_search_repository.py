@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import duckdb
 
@@ -23,27 +24,38 @@ class VectorSearchRepository:
         self._conn = conn
 
     def get_display_texts_by_similarity(
-        self, *, table_name: str, retrieve_vec: Sequence[float], dimension: int, limit: int
+        self,
+        *,
+        table_name: str,
+        retrieve_vec: Sequence[float],
+        dimension: int,
+        limit: int,
+        datasource_ids: list[DatasourceId] | None = None,
     ) -> list[VectorSearchResult]:
         """Read only similarity search on a specific embedding shard table."""
+        params: list[Any] = [list(retrieve_vec), self._DEFAULT_DISTANCE_THRESHOLD, list(retrieve_vec), limit]
+        if datasource_ids:
+            params.append([str(datasource_id) for datasource_id in datasource_ids])
+
         rows = self._conn.execute(
             f"""
             SELECT
                 COALESCE(c.display_text, c.embeddable_text) AS display_text,
                 c.embeddable_text,
-                array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) AS cosine_distance,
+                array_cosine_distance(e.vec, CAST($1 AS FLOAT[{dimension}])) AS cosine_distance,
                 c.full_type,
                 c.datasource_id,
             FROM
                 {table_name} e
                 JOIN chunk c ON e.chunk_id = c.chunk_id
             WHERE
-                cosine_distance < ?
+                cosine_distance < $2
+                {"AND c.datasource_id IN $5" if datasource_ids else ""}
             ORDER BY
-                array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) ASC
-            LIMIT ?
+                array_cosine_distance(e.vec, CAST($3 AS FLOAT[{dimension}])) ASC
+            LIMIT $4
             """,
-            [list(retrieve_vec), self._DEFAULT_DISTANCE_THRESHOLD, list(retrieve_vec), limit],
+            params,
         ).fetchall()
 
         return [

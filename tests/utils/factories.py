@@ -38,3 +38,30 @@ def make_embedding(
         table_name=table_name,
         vec=vec,
     )
+
+
+def make_chunk_and_embedding(
+    chunk_repo: ChunkRepository,
+    embedding_repo: EmbeddingRepository,
+    table_name: str,
+    dimension: int,
+    full_type: str,
+    datasource_id: str,
+    embeddable_text: str,
+    display_text: str,
+):
+    chunk = make_chunk(
+        chunk_repo,
+        full_type=full_type,
+        datasource_id=datasource_id,
+        embeddable_text=embeddable_text,
+        display_text=display_text,
+    )
+    make_embedding(
+        chunk_repo,
+        embedding_repo,
+        table_name=table_name,
+        chunk_id=chunk.chunk_id,
+        dim=dimension,
+        vec=[1.0] + [0.0] * (dimension - 1),
+    )

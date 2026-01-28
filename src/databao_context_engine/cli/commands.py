@@ -176,19 +176,34 @@ def build(
     type=click.Path(file_okay=True, dir_okay=False, allow_dash=False),
     help="If provided, the results are written as YAML into the file given as a path, rather than printed to the console.",
 )
+@click.option(
+    "-d",
+    "--datasource-id",
+    "datasource_ids_as_str",
+    type=click.STRING,
+    multiple=True,
+    help="A datasourceId to restrict the search to. If not provided, search across all datasources. This option can be provided multiple times",
+)
 @click.pass_context
 def retrieve(
     ctx: Context,
     retrieve_text: tuple[str, ...],
     limit: int | None,
     output_file: str | None,
+    datasource_ids_as_str: tuple[str, ...] | None,
 ) -> None:
     """Search the project's built context for the most relevant chunks."""
     text = " ".join(retrieve_text)
 
+    datasource_ids = (
+        [DatasourceId.from_string_repr(datasource_id) for datasource_id in datasource_ids_as_str]
+        if datasource_ids_as_str is not None
+        else None
+    )
+
     databao_engine = DatabaoContextEngine(project_dir=ctx.obj["project_dir"])
 
-    retrieve_results = databao_engine.search_context(retrieve_text=text, limit=limit)
+    retrieve_results = databao_engine.search_context(retrieve_text=text, limit=limit, datasource_ids=datasource_ids)
 
     display_texts = [context_search_result.context_result for context_search_result in retrieve_results]
     if output_file is not None:

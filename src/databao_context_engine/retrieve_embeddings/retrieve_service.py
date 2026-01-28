@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.storage.repositories.vector_search_repository import (
@@ -23,7 +24,9 @@ class RetrieveService:
         self._provider = provider
         self._vector_search_repo = vector_search_repo
 
-    def retrieve(self, *, project_id: str, text: str, limit: int | None = None) -> list[VectorSearchResult]:
+    def retrieve(
+        self, *, text: str, limit: int | None = None, datasource_ids: list[DatasourceId] | None = None
+    ) -> list[VectorSearchResult]:
         if limit is None:
             limit = 10
 
@@ -40,6 +43,7 @@ class RetrieveService:
             retrieve_vec=retrieve_vec,
             dimension=dimension,
             limit=limit,
+            datasource_ids=datasource_ids,
         )
 
         logger.debug(f"Retrieved {len(search_results)} display texts in table {table_name}")

@@ -110,12 +110,8 @@ class DatabaoContextEngine:
         Returns:
             A list of the results found for the search, sorted by distance.
         """
-        # TODO: Filter with datasource_ids
-
         results = retrieve_embeddings(
-            project_layout=self._project_layout,
-            retrieve_text=retrieve_text,
-            limit=limit,
+            project_layout=self._project_layout, retrieve_text=retrieve_text, limit=limit, datasource_ids=datasource_ids
         )
 
         return [

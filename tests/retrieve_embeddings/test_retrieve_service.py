@@ -44,7 +44,7 @@ def test_retrieve_returns_results():
         provider=provider,
     )
 
-    result = retrieve_service.retrieve(project_id="proj-1", text="hello world")
+    result = retrieve_service.retrieve(text="hello world")
 
     shard_resolver.resolve.assert_called_once_with(
         embedder="ollama",
@@ -58,6 +58,7 @@ def test_retrieve_returns_results():
         retrieve_vec=[0.1, 0.2],
         dimension=768,
         limit=10,
+        datasource_ids=None,
     )
 
     assert result == expected
@@ -96,7 +97,7 @@ def test_retrieve_uses_run_name_if_provided():
         provider=provider,
     )
 
-    retrieve_service.retrieve(project_id="proj-1", text="hello world")
+    retrieve_service.retrieve(text="hello world")
 
 
 def test_retrieve_honors_limit():
@@ -126,7 +127,7 @@ def test_retrieve_honors_limit():
         provider=provider,
     )
 
-    result = retrieve_service.retrieve(project_id="proj-1", text="q", limit=3)
+    result = retrieve_service.retrieve(text="q", limit=3)
 
     vector_search_repo.get_display_texts_by_similarity.assert_called_once()
     _, kwargs = vector_search_repo.get_display_texts_by_similarity.call_args
