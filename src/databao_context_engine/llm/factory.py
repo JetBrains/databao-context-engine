@@ -5,6 +5,9 @@ from databao_context_engine.llm.install import resolve_ollama_bin
 from databao_context_engine.llm.runtime import OllamaRuntime
 from databao_context_engine.llm.service import OllamaService
 
+DEFAULT_EMBED_MODEL_ID = "nomic-embed-text:v1.5"
+DEFAULT_DESCRIPTION_GENERATOR_MODEL = "llama3.2:1b"
+
 
 def _create_ollama_service_common(
     *,
@@ -39,7 +42,7 @@ def create_ollama_service(
 def create_ollama_embedding_provider(
     service: OllamaService,
     *,
-    model_id: str = "nomic-embed-text:v1.5",
+    model_id: str = DEFAULT_EMBED_MODEL_ID,
     dim: int = 768,
     pull_if_needed: bool = True,
 ) -> OllamaEmbeddingProvider:
@@ -52,7 +55,7 @@ def create_ollama_embedding_provider(
 def create_ollama_description_provider(
     service: OllamaService,
     *,
-    model_id: str = "llama3.2:1b",
+    model_id: str = DEFAULT_DESCRIPTION_GENERATOR_MODEL,
     pull_if_needed: bool = True,
 ):
     if pull_if_needed:

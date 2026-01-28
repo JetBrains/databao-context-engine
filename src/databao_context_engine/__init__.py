@@ -8,6 +8,13 @@ from databao_context_engine.datasources.check_config import (
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.init_project import init_dce_project, init_or_get_dce_project
+from databao_context_engine.llm import (
+    OllamaError,
+    OllamaPermanentError,
+    OllamaTransientError,
+    download_ollama_models_if_needed,
+    install_ollama_if_needed,
+)
 from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
@@ -44,4 +51,9 @@ __all__ = [
     "BuildPlugin",
     "BuildDatasourcePlugin",
     "BuildFilePlugin",
+    "install_ollama_if_needed",
+    "download_ollama_models_if_needed",
+    "OllamaError",
+    "OllamaTransientError",
+    "OllamaPermanentError",
 ]
