@@ -98,7 +98,6 @@ class DatabaoContextEngine:
         self,
         retrieve_text: str,
         limit: int | None = None,
-        export_to_file: bool = False,
         datasource_ids: list[DatasourceId] | None = None,
     ) -> list[ContextSearchResult]:
         """Search in the avaialable context for the closest matches to the given text.
@@ -106,20 +105,17 @@ class DatabaoContextEngine:
         Args:
             retrieve_text: The text to search for in the contexts.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
-            export_to_file: Whether the results should be exported to a file as a side-effect. If True, the results will be exported in a file in the run directory.
             datasource_ids: Not Implemented yet: providing this argument changes nothing to the search
 
         Returns:
             A list of the results found for the search, sorted by distance.
         """
         # TODO: Filter with datasource_ids
-        # TODO: When no run_name is required, we can extract the "export_to_file" side-effect and let the caller (the CLI) do it themselves
 
         results = retrieve_embeddings(
             project_layout=self._project_layout,
             retrieve_text=retrieve_text,
             limit=limit,
-            export_to_file=export_to_file,
         )
 
         return [

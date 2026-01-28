@@ -16,7 +16,6 @@ def retrieve_embeddings(
     project_layout: ProjectLayout,
     retrieve_text: str,
     limit: int | None,
-    export_to_file: bool,
 ) -> list[VectorSearchResult]:
     ensure_project_dir(project_layout.project_dir)
 
@@ -25,12 +24,10 @@ def retrieve_embeddings(
         embedding_provider = create_ollama_embedding_provider(ollama_service)
         retrieve_service = _create_retrieve_service(conn, embedding_provider=embedding_provider)
         return retrieve(
-            project_dir=project_layout.project_dir,
             retrieve_service=retrieve_service,
             project_id=str(project_layout.read_config_file().project_id),
             text=retrieve_text,
             limit=limit,
-            export_to_file=export_to_file,
         )
 
 
