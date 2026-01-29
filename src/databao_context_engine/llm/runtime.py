@@ -26,7 +26,7 @@ class OllamaRuntime:
 
         stdout = subprocess.DEVNULL
 
-        proc = subprocess.Popen(
+        proc = subprocess.Popen(  # noqa: S603 We're always running Ollama
             cmd,
             cwd=str(self._config.work_dir) if self._config.work_dir else None,
             env=env,
@@ -62,11 +62,11 @@ class OllamaRuntime:
             try:
                 proc.terminate()
             except Exception:
-                pass
+                logger.debug("Failed to terminate Ollama server", exc_info=True, stack_info=True)
             try:
                 proc.kill()
             except Exception:
-                pass
+                logger.debug("Failed to kill Ollama server", exc_info=True, stack_info=True)
 
         raise TimeoutError(
             f"Timed out waiting for Ollama to become healthy at http://{self._config.host}:{self._config.port}"
