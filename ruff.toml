@@ -11,6 +11,7 @@ extend-select = [
     "D",
     "I",
     "T20",
+    "RET",
 ]
 ignore = [
     "D100",

@@ -39,10 +39,10 @@ def _get_property_list_from_type_hints(*, parent_type: type, is_root_type: bool)
         if is_root_type:
             # Ignore root types that don't have type hints like dict or list
             return []
-        else:
-            # If we're evaluating a nested property, we want to propagate the exception
-            # to let the parent property know that this type should be ignored
-            raise e
+
+        # If we're evaluating a nested property, we want to propagate the exception
+        # to let the parent property know that this type should be ignored
+        raise e
 
     result = []
     for property_key, property_type in type_hints.items():
@@ -152,31 +152,30 @@ def _create_property(
             types=actual_property_types,
             type_properties=type_properties,
         )
-    else:
-        actual_property_type = actual_property_types[0]
-        try:
-            nested_properties = _get_property_list_from_type(
-                parent_type=actual_property_type,
-                is_root_type=False,
-            )
-        except TypeError:
-            return None
-
-        resolved_type = actual_property_type if not nested_properties else None
-        default_value = compute_default_value(
-            annotation=annotation,
-            property_default=property_default,
-            has_nested_properties=nested_properties is not None and len(nested_properties) > 0,
+    actual_property_type = actual_property_types[0]
+    try:
+        nested_properties = _get_property_list_from_type(
+            parent_type=actual_property_type,
+            is_root_type=False,
         )
+    except TypeError:
+        return None
 
-        return ConfigSinglePropertyDefinition(
-            property_key=property_name,
-            property_type=resolved_type,
-            required=required,
-            default_value=default_value,
-            nested_properties=nested_properties or None,
-            secret=secret,
-        )
+    resolved_type = actual_property_type if not nested_properties else None
+    default_value = compute_default_value(
+        annotation=annotation,
+        property_default=property_default,
+        has_nested_properties=nested_properties is not None and len(nested_properties) > 0,
+    )
+
+    return ConfigSinglePropertyDefinition(
+        property_key=property_name,
+        property_type=resolved_type,
+        required=required,
+        default_value=default_value,
+        nested_properties=nested_properties or None,
+        secret=secret,
+    )
 
 
 def _get_config_property_annotation(property_type) -> ConfigPropertyAnnotation | None:
@@ -194,9 +193,8 @@ def _read_actual_property_type(property_type: type) -> tuple[type, ...]:
 
     if property_type_origin is Annotated:
         return _read_actual_property_type(property_type.__origin__)  # type: ignore[attr-defined]
-    elif property_type_origin in (Union, types.UnionType):
-        args = tuple(arg for arg in get_args(property_type) if arg is not type(None))
-        return args
+    if property_type_origin in (Union, types.UnionType):
+        return tuple(arg for arg in get_args(property_type) if arg is not type(None))
 
     return (property_type,)
 

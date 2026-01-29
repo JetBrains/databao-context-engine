@@ -7,16 +7,16 @@ from yaml import Node, SafeDumper
 def default_representer(dumper: SafeDumper, data: object) -> Node:
     if isinstance(data, Mapping):
         return dumper.represent_dict(data)
-    elif hasattr(data, "__dict__"):
+    if hasattr(data, "__dict__"):
         # Doesn't serialize "private" attributes (that starts with an _)
         data_public_attributes = {key: value for key, value in data.__dict__.items() if not key.startswith("_")}
         if data_public_attributes:
             return dumper.represent_dict(data_public_attributes)
-        else:
-            # If there is no public attributes, we default to the string representation
-            return dumper.represent_str(str(data))
-    else:
+
+        # If there is no public attributes, we default to the string representation
         return dumper.represent_str(str(data))
+
+    return dumper.represent_str(str(data))
 
 
 # Registers our default representer only once, when that file is imported
