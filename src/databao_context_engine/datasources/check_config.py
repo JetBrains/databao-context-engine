@@ -127,16 +127,16 @@ def _get_validation_result_from_error(datasource_id: DatasourceId, e: Exception)
             summary="Config file is invalid",
             full_message=str(e),
         )
-    elif isinstance(e, NotImplementedError | NotSupportedError):
+    if isinstance(e, NotImplementedError | NotSupportedError):
         return CheckDatasourceConnectionResult(
             datasource_id=datasource_id,
             connection_status=DatasourceConnectionStatus.UNKNOWN,
             summary="Plugin doesn't support validating its config",
         )
-    else:
-        return CheckDatasourceConnectionResult(
-            datasource_id=datasource_id,
-            connection_status=DatasourceConnectionStatus.INVALID,
-            summary="Connection with the datasource can not be established",
-            full_message=str(e),
-        )
+
+    return CheckDatasourceConnectionResult(
+        datasource_id=datasource_id,
+        connection_status=DatasourceConnectionStatus.INVALID,
+        summary="Connection with the datasource can not be established",
+        full_message=str(e),
+    )

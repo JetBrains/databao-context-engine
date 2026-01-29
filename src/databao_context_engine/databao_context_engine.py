@@ -88,11 +88,9 @@ class DatabaoContextEngine:
     def get_all_contexts_formatted(self) -> str:
         all_contexts = self.get_all_contexts()
 
-        all_results = os.linesep.join(
+        return os.linesep.join(
             [f"{get_context_header_for_datasource(context.datasource_id)}{context.context}" for context in all_contexts]
         )
-
-        return all_results
 
     def search_context(
         self,

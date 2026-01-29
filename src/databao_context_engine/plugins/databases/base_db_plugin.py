@@ -37,9 +37,7 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T]):
         return self.supported
 
     def build_context(self, full_type: str, datasource_name: str, file_config: T) -> Any:
-        introspection_result = self._introspector.introspect_database(file_config)
-
-        return introspection_result
+        return self._introspector.introspect_database(file_config)
 
     def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> None:
         self._introspector.check_connection(file_config)

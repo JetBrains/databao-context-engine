@@ -422,8 +422,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             "trust_server_certificate": "yes" if file_config.get("trust_server_certificate") else None,
         }
 
-        connection_string = ";".join(f"{k}={v}" for k, v in connection_parts.items() if v is not None)
-        return connection_string
+        return ";".join(f"{k}={v}" for k, v in connection_parts.items() if v is not None)
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
         with connection.cursor() as cursor:

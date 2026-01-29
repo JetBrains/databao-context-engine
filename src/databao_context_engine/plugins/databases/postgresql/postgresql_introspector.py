@@ -81,9 +81,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         if self.supports_catalogs:
             sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY($1)"
             return SQLQuery(sql, (catalogs,))
-        else:
-            sql = "SELECT schema_name FROM information_schema.schemata"
-            return SQLQuery(sql, None)
+
+        sql = "SELECT schema_name FROM information_schema.schemata"
+        return SQLQuery(sql, None)
 
     def _connect(self, file_config: PostgresConfigFile):
         kwargs = self._create_connection_kwargs(file_config.connection)
@@ -97,8 +97,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         if database is not None:
             return [database]
 
-        rows = connection.fetch_scalar_values("SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false")
-        return rows
+        return connection.fetch_scalar_values("SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false")
 
     def _connect_to_catalog(self, file_config: PostgresConfigFile, catalog: str):
         cfg = file_config.model_copy(deep=True)
@@ -408,10 +407,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         }
         connection_parts.update(connection_config.additional_properties)
 
-        connection_string = " ".join(
-            f"{k}={_escape_pg_value(str(v))}" for k, v in connection_parts.items() if v is not None
-        )
-        return connection_string
+        return " ".join(f"{k}={_escape_pg_value(str(v))}" for k, v in connection_parts.items() if v is not None)
 
     def _create_connection_kwargs(self, connection_config: PostgresConnectionProperties) -> dict[str, Any]:
         kwargs: dict[str, Any] = {

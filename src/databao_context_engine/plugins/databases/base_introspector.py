@@ -74,9 +74,9 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
         if self.supports_catalogs:
             sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(%s)"
             return SQLQuery(sql, (catalogs,))
-        else:
-            sql = "SELECT schema_name FROM information_schema.schemata"
-            return SQLQuery(sql, None)
+
+        sql = "SELECT schema_name FROM information_schema.schemata"
+        return SQLQuery(sql, None)
 
     def _list_schemas_for_catalog(self, connection: Any, catalog: str) -> list[str]:
         sql_query = self._sql_list_schemas([catalog] if self.supports_catalogs else None)
