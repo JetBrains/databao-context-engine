@@ -35,7 +35,7 @@ def _load_builtin_plugins(exclude_file_plugins: bool = False) -> list[BuildPlugi
 
 
 def _load_builtin_file_plugins() -> list[BuildFilePlugin]:
-    from databao_context_engine.plugins.unstructured_files_plugin import InternalUnstructuredFilesPlugin
+    from databao_context_engine.plugins.files.unstructured_files_plugin import InternalUnstructuredFilesPlugin
 
     return [
         InternalUnstructuredFilesPlugin(),
@@ -44,49 +44,49 @@ def _load_builtin_file_plugins() -> list[BuildFilePlugin]:
 
 def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     """Statically register built-in plugins."""
-    from databao_context_engine.plugins.duckdb_db_plugin import DuckDbPlugin
-    from databao_context_engine.plugins.parquet_plugin import ParquetPlugin
-    from databao_context_engine.plugins.sqlite_db_plugin import SQLiteDbPlugin
+    from databao_context_engine.plugins.databases.duckdb.duckdb_db_plugin import DuckDbPlugin
+    from databao_context_engine.plugins.databases.sqlite.sqlite_db_plugin import SQLiteDbPlugin
+    from databao_context_engine.plugins.resources.parquet_plugin import ParquetPlugin
 
     # optional plugins are added to the python environment via extras
     optional_plugins: list[BuildDatasourcePlugin] = []
     try:
-        from databao_context_engine.plugins.mssql_db_plugin import MSSQLDbPlugin
+        from databao_context_engine.plugins.databases.mssql.mssql_db_plugin import MSSQLDbPlugin
 
         optional_plugins = [MSSQLDbPlugin()]
     except ImportError:
         pass
 
     try:
-        from databao_context_engine.plugins.clickhouse_db_plugin import ClickhouseDbPlugin
+        from databao_context_engine.plugins.databases.clickhouse.clickhouse_db_plugin import ClickhouseDbPlugin
 
         optional_plugins.append(ClickhouseDbPlugin())
     except ImportError:
         pass
 
     try:
-        from databao_context_engine.plugins.athena_db_plugin import AthenaDbPlugin
+        from databao_context_engine.plugins.databases.athena.athena_db_plugin import AthenaDbPlugin
 
         optional_plugins.append(AthenaDbPlugin())
     except ImportError:
         pass
 
     try:
-        from databao_context_engine.plugins.snowflake_db_plugin import SnowflakeDbPlugin
+        from databao_context_engine.plugins.databases.snowflake.snowflake_db_plugin import SnowflakeDbPlugin
 
         optional_plugins.append(SnowflakeDbPlugin())
     except ImportError:
         pass
 
     try:
-        from databao_context_engine.plugins.mysql_db_plugin import MySQLDbPlugin
+        from databao_context_engine.plugins.databases.mysql.mysql_db_plugin import MySQLDbPlugin
 
         optional_plugins.append(MySQLDbPlugin())
     except ImportError:
         pass
 
     try:
-        from databao_context_engine.plugins.postgresql_db_plugin import PostgresqlDbPlugin
+        from databao_context_engine.plugins.databases.postgresql.postgresql_db_plugin import PostgresqlDbPlugin
 
         optional_plugins.append(PostgresqlDbPlugin())
     except ImportError:

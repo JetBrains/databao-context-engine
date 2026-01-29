@@ -7,7 +7,6 @@ import pytest
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
-from databao_context_engine.plugins.parquet_plugin import ParquetPlugin
 from databao_context_engine.plugins.resources.parquet_chunker import ParquetColumnChunkContent
 from databao_context_engine.plugins.resources.parquet_introspector import (
     ParquetColumn,
@@ -16,6 +15,7 @@ from databao_context_engine.plugins.resources.parquet_introspector import (
     ParquetIntrospectionResult,
     parquet_type,
 )
+from databao_context_engine.plugins.resources.parquet_plugin import ParquetPlugin
 
 
 @dataclass(frozen=True)
