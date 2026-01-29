@@ -13,7 +13,7 @@ class SQLiteConnectionConfig(BaseModel):
 
 
 class SQLiteConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="databases/sqlite")
+    type: str = Field(default="sqlite")
     connection: SQLiteConnectionConfig
 
 
