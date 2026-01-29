@@ -69,7 +69,7 @@ class _Migration:
 def _create_migration(file: Path) -> _Migration:
     query_bytes = file.read_bytes()
     query = query_bytes.decode("utf-8")
-    checksum = hashlib.md5(query_bytes).hexdigest()
+    checksum = hashlib.md5(query_bytes, usedforsecurity=False).hexdigest()
     version = _extract_version_from_name(file.name)
     return _Migration(name=file.name, version=version, checksum=checksum, query=query)
 
