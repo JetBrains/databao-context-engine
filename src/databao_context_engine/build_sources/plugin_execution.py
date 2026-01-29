@@ -61,10 +61,10 @@ def _execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> An
             config=prepared_datasource.config,
             datasource_name=prepared_datasource.datasource_name,
         )
-    else:
-        file_plugin = cast(BuildFilePlugin, plugin)
-        return execute_file_plugin(
-            plugin=file_plugin,
-            datasource_type=prepared_datasource.datasource_type,
-            file_path=prepared_datasource.path,
-        )
+
+    file_plugin = cast(BuildFilePlugin, plugin)
+    return execute_file_plugin(
+        plugin=file_plugin,
+        datasource_type=prepared_datasource.datasource_type,
+        file_path=prepared_datasource.path,
+    )

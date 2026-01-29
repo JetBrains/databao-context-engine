@@ -24,9 +24,7 @@ class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):
         return build_parquet_chunks(context)
 
     def build_context(self, full_type: str, datasource_name: str, file_config: ParquetConfigFile) -> Any:
-        introspection_result = self._introspector.introspect(file_config)
-
-        return introspection_result
+        return self._introspector.introspect(file_config)
 
     def check_connection(self, full_type: str, datasource_name: str, file_config: ParquetConfigFile) -> None:
         self._introspector.check_connection(file_config)

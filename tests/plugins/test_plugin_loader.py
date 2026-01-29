@@ -97,4 +97,4 @@ def load_plugin_ids(*uv_extra_args) -> list[str]:
 """
     output = "".join(lines)
     plugin_ids = eval(output)
-    return plugin_ids
+    return plugin_ids  # noqa: RET504

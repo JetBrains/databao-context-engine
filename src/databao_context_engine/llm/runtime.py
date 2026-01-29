@@ -26,7 +26,7 @@ class OllamaRuntime:
 
         stdout = subprocess.DEVNULL
 
-        proc = subprocess.Popen(
+        return subprocess.Popen(
             cmd,
             cwd=str(self._config.work_dir) if self._config.work_dir else None,
             env=env,
@@ -35,8 +35,6 @@ class OllamaRuntime:
             text=False,
             close_fds=os.name != "nt",
         )
-
-        return proc
 
     def start_and_await(
         self,

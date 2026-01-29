@@ -304,10 +304,9 @@ class _StubSession:
         method = method.upper()
         if method == "POST":
             return self.post(url, **kwargs)
-        elif method == "GET":
+        if method == "GET":
             return self.get(url, **kwargs)
-        else:
-            raise ValueError(f"Unsupported method in _StubSession: {method}")
+        raise ValueError(f"Unsupported method in _StubSession: {method}")
 
 
 _LIST_MODELS_JSON_RESPONSE_WITH_NOMIC_MODEL = {

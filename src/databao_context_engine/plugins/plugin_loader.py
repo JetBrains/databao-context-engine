@@ -18,9 +18,8 @@ def load_plugins(exclude_file_plugins: bool = False) -> dict[DatasourceType, Bui
     """Load both builtin and external plugins and merges them into one list."""
     builtin_plugins = _load_builtin_plugins(exclude_file_plugins)
     external_plugins = _load_external_plugins(exclude_file_plugins)
-    plugins = _merge_plugins(builtin_plugins, external_plugins)
 
-    return plugins
+    return _merge_plugins(builtin_plugins, external_plugins)
 
 
 def _load_builtin_plugins(exclude_file_plugins: bool = False) -> list[BuildPlugin]:
