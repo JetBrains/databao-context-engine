@@ -7,7 +7,7 @@ import httpx
 import pytest
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 from databao_context_engine.mcp.mcp_runner import run_mcp_server
 from tests.mcp.conftest import Project
@@ -68,7 +68,7 @@ async def run_mcp_server_http_test(
         attempts_left = 10
         while not server_started:
             try:
-                async with streamablehttp_client(f"http://{host or '127.0.0.1'}:{port or 8000}/mcp") as (
+                async with streamable_http_client(f"http://{host or '127.0.0.1'}:{port or 8000}/mcp") as (
                     read_stream,
                     write_stream,
                     _,
