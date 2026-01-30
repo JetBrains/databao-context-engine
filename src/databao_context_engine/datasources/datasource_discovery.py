@@ -73,7 +73,7 @@ def _is_datasource_file(p: Path) -> bool:
     return p.is_file() and not p.suffix.endswith("~")
 
 
-def get_datasource_descriptors(project_dir: Path, datasource_ids: list[DatasourceId]):
+def get_datasource_descriptors(project_dir: Path, datasource_ids: list[DatasourceId]) -> list[DatasourceDescriptor]:
     src = get_source_dir(project_dir)
     if not src.exists() or not src.is_dir():
         raise ValueError(f"src directory does not exist in {project_dir}")
