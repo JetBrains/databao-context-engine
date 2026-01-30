@@ -42,7 +42,8 @@ def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Data
     result = []
     for main_type_dir in sorted((p for p in output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
         for context_path in sorted(
-            (p for p in main_type_dir.iterdir() if p.suffix in [".yaml", ".yml"]), key=lambda p: p.name.lower()
+            (p for p in main_type_dir.iterdir() if p.suffix in DatasourceId.ALLOWED_YAML_SUFFIXES),
+            key=lambda p: p.name.lower(),
         ):
             try:
                 result.append(
@@ -77,7 +78,8 @@ def get_all_contexts(project_layout: ProjectLayout) -> list[DatasourceContext]:
     result = []
     for main_type_dir in sorted((p for p in output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
         for context_path in sorted(
-            (p for p in main_type_dir.iterdir() if p.suffix in [".yaml", ".yml"]), key=lambda p: p.name.lower()
+            (p for p in main_type_dir.iterdir() if p.suffix in DatasourceId.ALLOWED_YAML_SUFFIXES),
+            key=lambda p: p.name.lower(),
         ):
             result.append(
                 DatasourceContext(

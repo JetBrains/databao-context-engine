@@ -50,6 +50,9 @@ class DatasourceId:
         config_file_suffix: The suffix of the config (or raw) file.
     """
 
+    ALLOWED_YAML_SUFFIXES = [".yaml", ".yml"]
+    CONTEXT_FILE_SUFFIX = ".yaml"
+
     datasource_config_folder: str
     datasource_name: str
     config_file_suffix: str
@@ -100,7 +103,11 @@ class DatasourceId:
             The path to the context file relative to the output folder in the project.
         """
         # Keep the suffix in the filename if this datasource is a raw file, to handle multiple files with the same name and different extensions
-        suffix = ".yaml" if self.config_file_suffix == ".yaml" else (self.config_file_suffix + ".yaml")
+        suffix = (
+            DatasourceId.CONTEXT_FILE_SUFFIX
+            if self.config_file_suffix in DatasourceId.ALLOWED_YAML_SUFFIXES
+            else (self.config_file_suffix + DatasourceId.CONTEXT_FILE_SUFFIX)
+        )
 
         return Path(self.datasource_config_folder).joinpath(self.datasource_name + suffix)
 
@@ -158,9 +165,14 @@ class DatasourceId:
         Returns:
             The DatasourceId instance created from the context file path.
         """
-        if len(datasource_context_file.suffixes) > 1 and datasource_context_file.suffix == ".yaml":
+        if (
+            len(datasource_context_file.suffixes) > 1
+            and datasource_context_file.suffix == DatasourceId.CONTEXT_FILE_SUFFIX
+        ):
             # If there is more than 1 suffix, we remove the latest suffix (.yaml) to keep only the actual datasource file suffix
-            context_file_name_without_yaml_extension = datasource_context_file.name[: -len(".yaml")]
+            context_file_name_without_yaml_extension = datasource_context_file.name[
+                : -len(DatasourceId.CONTEXT_FILE_SUFFIX)
+            ]
             datasource_context_file = datasource_context_file.with_name(context_file_name_without_yaml_extension)
 
         return DatasourceId(
