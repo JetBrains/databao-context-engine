@@ -14,31 +14,15 @@ from databao_context_engine.project.layout import (
 from databao_context_engine.serialization.yaml import to_yaml_string
 
 
-def given_datasource_config_file_from_project_layout(
+def given_datasource_config_file(
     project_layout: ProjectLayout,
     full_type: str,
     datasource_name: str,
     config_content: dict[str, Any],
     overwrite_existing: bool = False,
 ) -> Path:
-    return given_datasource_config_file(
-        project_dir=project_layout.project_dir,
-        full_type=full_type,
-        datasource_name=datasource_name,
-        config_content=config_content,
-        overwrite_existing=overwrite_existing,
-    )
-
-
-def given_datasource_config_file(
-    project_dir: Path,
-    full_type: str,
-    datasource_name: str,
-    config_content: dict[str, Any],
-    overwrite_existing: bool = False,
-) -> Path:
     return create_datasource_config_file(
-        project_dir,
+        project_layout,
         get_datasource_id_for_config_file(DatasourceType(full_type=full_type), datasource_name),
         to_yaml_string(config_content),
         overwrite_existing=overwrite_existing,

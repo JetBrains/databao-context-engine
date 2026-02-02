@@ -13,7 +13,7 @@ from databao_context_engine.project.layout import ProjectLayout
 from tests.utils.dummy_build_plugin import (
     DummyDefaultDatasourcePlugin,
 )
-from tests.utils.project_creation import given_datasource_config_file_from_project_layout
+from tests.utils.project_creation import given_datasource_config_file
 
 
 @dataclass
@@ -52,28 +52,28 @@ def load_dummy_plugins() -> dict[DatasourceType, BuildPlugin]:
 
 
 def test_check_datasource_connection_with_failing_config_validation(project_layout: ProjectLayout):
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout, "databases/unknown", "unknown", {"type": "unknown", "name": "my datasource name"}
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/dummy_default",
         "not_implemented",
         {"type": "dummy_default", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid",
         {"type": "simple_config", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid2",
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "invalid"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid3",
@@ -92,7 +92,7 @@ def test_check_datasource_connection_with_failing_config_validation(project_layo
 
 
 def test_check_datasource_connection_with_valid_connections(project_layout: ProjectLayout):
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "valid",
@@ -111,25 +111,25 @@ def test_check_datasource_connection_with_valid_connections(project_layout: Proj
 
 
 def test_check_datasource_connection_with_filter(project_layout: ProjectLayout):
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "valid",
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/dummy_default",
         "not_implemented",
         {"type": "dummy_default", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid",
         {"type": "simple_config", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid3",
@@ -151,25 +151,25 @@ def test_check_datasource_connection_with_filter(project_layout: ProjectLayout):
 
 
 def test_check_datasource_connection_with_single_filter(project_layout: ProjectLayout):
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "valid",
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/dummy_default",
         "not_implemented",
         {"type": "dummy_default", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid",
         {"type": "simple_config", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid3",
@@ -190,25 +190,25 @@ def test_check_datasource_connection_with_single_filter(project_layout: ProjectL
 
 
 def test_check_datasource_connection_with_invalid_filter(project_layout: ProjectLayout):
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "valid",
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/dummy_default",
         "not_implemented",
         {"type": "dummy_default", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid",
         {"type": "simple_config", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid3",
@@ -222,21 +222,19 @@ def test_check_datasource_connection_with_invalid_filter(project_layout: Project
 
 
 def test_check_datasource_connection_with_no_type(project_layout: ProjectLayout):
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "valid",
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid",
         {"type": "simple_config", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
-        project_layout, "dummy/dummy_default", "no_type", {"name": "no_type"}
-    )
+    given_datasource_config_file(project_layout, "dummy/dummy_default", "no_type", {"name": "no_type"})
 
     result = check_datasource_connection(project_layout)
 
@@ -248,19 +246,19 @@ def test_check_datasource_connection_with_no_type(project_layout: ProjectLayout)
 
 
 def test_check_datasource_connection_with_invalid_template(project_layout: ProjectLayout):
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "valid",
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/simple_config",
         "invalid",
         {"type": "simple_config", "name": "my datasource name"},
     )
-    given_datasource_config_file_from_project_layout(
+    given_datasource_config_file(
         project_layout,
         "dummy/dummy_default",
         "template_error",

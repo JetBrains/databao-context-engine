@@ -6,7 +6,7 @@ from click import Abort
 from click.testing import CliRunner
 
 from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
-from databao_context_engine.project.layout import get_source_dir
+from databao_context_engine.project.layout import ProjectLayout, get_source_dir
 from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.dummy_build_plugin import load_dummy_plugins
 from tests.utils.project_creation import given_datasource_config_file
@@ -165,9 +165,9 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
     )
 
 
-def test_add_datasource_config__abort_if_existing_config_and_no_overwrite(project_path: Path):
+def test_add_datasource_config__abort_if_existing_config_and_no_overwrite(project_layout: ProjectLayout):
     given_datasource_config_file(
-        project_path,
+        project_layout,
         "dummy/no_config_type",
         "my datasource name",
         {"type": "no_config_type", "name": "my datasource name", "old_attribute": "old_value"},
@@ -184,18 +184,18 @@ def test_add_datasource_config__abort_if_existing_config_and_no_overwrite(projec
 
     with cli_runner.isolation(input="\n".join(inputs)):
         with pytest.raises(Abort):
-            add_datasource_config_interactive(project_path)
+            add_datasource_config_interactive(project_layout.project_dir)
 
-    result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
+    result_config_file = project_layout.src_dir.joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
     assert result_config_file.read_text() == to_yaml_string(
         {"type": "no_config_type", "name": "my datasource name", "old_attribute": "old_value"}
     )
 
 
-def test_add_datasource_config__overwrite_existing_config(project_path: Path):
+def test_add_datasource_config__overwrite_existing_config(project_layout: ProjectLayout):
     given_datasource_config_file(
-        project_path,
+        project_layout,
         "dummy/no_config_type",
         "my datasource name",
         {"type": "no_config_type", "name": "my datasource name", "old_attribute": "old_value"},
@@ -216,9 +216,9 @@ def test_add_datasource_config__overwrite_existing_config(project_path: Path):
     ]
 
     with cli_runner.isolation(input="\n".join(inputs)):
-        add_datasource_config_interactive(project_path)
+        add_datasource_config_interactive(project_layout.project_dir)
 
-    result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
+    result_config_file = project_layout.src_dir.joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
     assert result_config_file.read_text() == to_yaml_string(
         {

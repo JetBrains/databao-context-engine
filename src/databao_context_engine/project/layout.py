@@ -70,8 +70,8 @@ def get_logs_dir(project_dir: Path) -> Path:
     return project_dir.joinpath(LOGS_FOLDER_NAME)
 
 
-def ensure_datasource_config_file_doesnt_exist(project_dir: Path, datasource_id: DatasourceId) -> Path:
-    config_file = get_source_dir(project_dir).joinpath(datasource_id.relative_path_to_config_file())
+def ensure_datasource_config_file_doesnt_exist(project_layout: ProjectLayout, datasource_id: DatasourceId) -> Path:
+    config_file = project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
 
     if config_file.is_file():
         raise ValueError(f"A config file already exists for {str(datasource_id)}")
@@ -80,12 +80,12 @@ def ensure_datasource_config_file_doesnt_exist(project_dir: Path, datasource_id:
 
 
 def create_datasource_config_file(
-    project_dir: Path, datasource_id: DatasourceId, config_content: str, overwrite_existing: bool
+    project_layout: ProjectLayout, datasource_id: DatasourceId, config_content: str, overwrite_existing: bool
 ) -> Path:
     if not overwrite_existing:
-        ensure_datasource_config_file_doesnt_exist(project_dir, datasource_id)
+        ensure_datasource_config_file_doesnt_exist(project_layout, datasource_id)
 
-    config_file = get_source_dir(project_dir).joinpath(datasource_id.relative_path_to_config_file())
+    config_file = project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
     config_file.parent.mkdir(parents=True, exist_ok=True)
 
     config_file.write_text(config_content)

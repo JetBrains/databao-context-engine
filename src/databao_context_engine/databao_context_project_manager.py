@@ -129,7 +129,7 @@ class DatabaoContextProjectManager:
         """
         # TODO: Before creating the datasource, validate the config content based on which plugin will be used
         config_file_path = create_datasource_config_file(
-            project_dir=self.project_dir,
+            project_layout=self._project_layout,
             datasource_type=datasource_type,
             datasource_name=datasource_name,
             config_content=config_content,
@@ -173,7 +173,7 @@ class DatabaoContextProjectManager:
 
         try:
             ensure_datasource_config_file_doesnt_exist(
-                project_dir=self.project_dir,
+                project_layout=self._project_layout,
                 datasource_id=datasource_id,
             )
             return False

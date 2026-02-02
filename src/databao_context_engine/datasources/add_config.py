@@ -4,13 +4,16 @@ from typing import Any
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import (
+    ProjectLayout,
+)
+from databao_context_engine.project.layout import (
     create_datasource_config_file as create_datasource_config_file_internal,
 )
 from databao_context_engine.serialization.yaml import to_yaml_string
 
 
 def create_datasource_config_file(
-    project_dir: Path,
+    project_layout: ProjectLayout,
     datasource_type: DatasourceType,
     datasource_name: str,
     config_content: dict[str, Any],
@@ -19,7 +22,7 @@ def create_datasource_config_file(
     basic_config = {"type": datasource_type.subtype, "name": datasource_name}
 
     return create_datasource_config_file_internal(
-        project_dir,
+        project_layout,
         get_datasource_id_for_config_file(datasource_type, datasource_name),
         to_yaml_string(basic_config | config_content),
         overwrite_existing=overwrite_existing,

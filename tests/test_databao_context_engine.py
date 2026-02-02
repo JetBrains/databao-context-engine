@@ -3,7 +3,10 @@ import pytest
 from databao_context_engine import DatabaoContextEngine, Datasource, DatasourceContext, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.serialization.yaml import to_yaml_string
-from tests.utils.project_creation import given_datasource_config_file, given_output_dir_with_built_contexts
+from tests.utils.project_creation import (
+    given_datasource_config_file,
+    given_output_dir_with_built_contexts,
+)
 
 
 def test_databao_engine__can_not_be_created_on_non_existing_project(tmp_path):
@@ -29,19 +32,19 @@ def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
 def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path):
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
     given_datasource_config_file(
-        project_dir=databao_context_engine.project_dir,
+        databao_context_engine._project_layout,
         full_type="full/any",
         datasource_name="a",
         config_content={"type": "any", "name": "a"},
     )
     given_datasource_config_file(
-        project_dir=databao_context_engine.project_dir,
+        databao_context_engine._project_layout,
         full_type="other/type",
         datasource_name="b",
         config_content={"type": "type", "name": "b"},
     )
     given_datasource_config_file(
-        project_dir=databao_context_engine.project_dir,
+        databao_context_engine._project_layout,
         full_type="full/type2",
         datasource_name="c",
         config_content={"type": "type2", "name": "c"},

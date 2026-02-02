@@ -13,7 +13,10 @@ from databao_context_engine import (
 )
 from databao_context_engine.project.layout import get_output_dir
 from tests.utils.dummy_build_plugin import load_dummy_plugins
-from tests.utils.project_creation import given_datasource_config_file, given_raw_source_file
+from tests.utils.project_creation import (
+    given_datasource_config_file,
+    given_raw_source_file,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -33,27 +36,27 @@ def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
 
 
 def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path):
-    databao_context_engine = DatabaoContextProjectManager(project_dir=project_path)
+    project_manager = DatabaoContextProjectManager(project_dir=project_path)
     given_datasource_config_file(
-        project_dir=databao_context_engine.project_dir,
+        project_manager._project_layout,
         full_type="full/any",
         datasource_name="a",
         config_content={"type": "any", "name": "a"},
     )
     given_datasource_config_file(
-        project_dir=databao_context_engine.project_dir,
+        project_manager._project_layout,
         full_type="other/type",
         datasource_name="b",
         config_content={"type": "type", "name": "b"},
     )
     given_datasource_config_file(
-        project_dir=databao_context_engine.project_dir,
+        project_manager._project_layout,
         full_type="full/type2",
         datasource_name="c",
         config_content={"type": "type2", "name": "c"},
     )
 
-    datasource_list = databao_context_engine.get_configured_datasource_list()
+    datasource_list = project_manager.get_configured_datasource_list()
 
     assert datasource_list == [
         Datasource(id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="full/any")),
@@ -76,7 +79,7 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
     project_manager = DatabaoContextProjectManager(project_dir=project_path)
 
     given_datasource_config_file(
-        project_dir=project_manager.project_dir,
+        project_manager._project_layout,
         full_type="dummy/dummy_default",
         datasource_name="my_dummy_data",
         config_content={"type": "dummy_default", "name": "my_dummy_data"},
