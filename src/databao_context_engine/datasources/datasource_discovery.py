@@ -14,15 +14,15 @@ from databao_context_engine.datasources.types import (
     PreparedFile,
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.layout import get_source_dir
+from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.templating.renderer import render_template
 
 logger = logging.getLogger(__name__)
 
 
-def get_datasource_list(project_dir: Path) -> list[Datasource]:
+def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
     result = []
-    for discovered_datasource in discover_datasources(project_dir=project_dir):
+    for discovered_datasource in discover_datasources(project_layout=project_layout):
         try:
             prepared_source = prepare_source(discovered_datasource)
         except Exception as e:
@@ -40,7 +40,7 @@ def get_datasource_list(project_dir: Path) -> list[Datasource]:
     return result
 
 
-def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
+def discover_datasources(project_layout: ProjectLayout) -> list[DatasourceDescriptor]:
     """Scan the project's src/ directory and return all discovered sources.
 
     Rules:
@@ -48,18 +48,14 @@ def discover_datasources(project_dir: Path) -> list[DatasourceDescriptor]:
         - Unsupported or unreadable entries are skipped.
         - The returned list is sorted by directory and then filename
 
+    Args:
+        project_layout: ProjectLayout instance representing the project directory and configuration.
+
     Returns:
         A list of DatasourceDescriptor instances representing the discovered datasources.
-
-    Raises:
-        ValueError: If the src directory does not exist in the project directory.
     """
-    src = get_source_dir(project_dir)
-    if not src.exists() or not src.is_dir():
-        raise ValueError(f"src directory does not exist in {project_dir}")
-
     datasources: list[DatasourceDescriptor] = []
-    for main_dir in sorted((p for p in src.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
+    for main_dir in sorted((p for p in project_layout.src_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
         for path in sorted((p for p in main_dir.iterdir() if _is_datasource_file(p)), key=lambda p: p.name.lower()):
             datasource = _load_datasource_descriptor(path)
             if datasource is not None:
@@ -73,14 +69,12 @@ def _is_datasource_file(p: Path) -> bool:
     return p.is_file() and not p.suffix.endswith("~")
 
 
-def get_datasource_descriptors(project_dir: Path, datasource_ids: list[DatasourceId]) -> list[DatasourceDescriptor]:
-    src = get_source_dir(project_dir)
-    if not src.exists() or not src.is_dir():
-        raise ValueError(f"src directory does not exist in {project_dir}")
-
+def get_datasource_descriptors(
+    project_layout: ProjectLayout, datasource_ids: list[DatasourceId]
+) -> list[DatasourceDescriptor]:
     datasources: list[DatasourceDescriptor] = []
     for datasource_id in sorted(datasource_ids, key=lambda id: str(id)):
-        config_file_path = src.joinpath(datasource_id.relative_path_to_config_file())
+        config_file_path = project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
         if not config_file_path.is_file():
             raise ValueError(f"Datasource config file not found: {config_file_path}")
 

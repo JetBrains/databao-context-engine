@@ -2,7 +2,6 @@ import logging
 import os
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 
 from pydantic import ValidationError
 
@@ -15,7 +14,7 @@ from databao_context_engine.datasources.types import DatasourceId, PreparedConfi
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
 from databao_context_engine.pluginlib.plugin_utils import check_connection_for_datasource
 from databao_context_engine.plugins.plugin_loader import load_plugins
-from databao_context_engine.project.layout import ensure_project_dir
+from databao_context_engine.project.layout import ProjectLayout
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +54,13 @@ class CheckDatasourceConnectionResult:
 
 
 def check_datasource_connection(
-    project_dir: Path, *, datasource_ids: list[DatasourceId] | None = None
+    project_layout: ProjectLayout, *, datasource_ids: list[DatasourceId] | None = None
 ) -> dict[DatasourceId, CheckDatasourceConnectionResult]:
-    ensure_project_dir(project_dir)
-
     if datasource_ids:
         logger.info(f"Validating datasource(s): {datasource_ids}")
-        datasources_to_traverse = get_datasource_descriptors(project_dir, datasource_ids)
+        datasources_to_traverse = get_datasource_descriptors(project_layout, datasource_ids)
     else:
-        datasources_to_traverse = discover_datasources(project_dir)
+        datasources_to_traverse = discover_datasources(project_layout)
 
     plugins = load_plugins(exclude_file_plugins=True)
 
