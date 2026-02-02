@@ -16,6 +16,4 @@ class OllamaDescriptionProvider(DescriptionProvider):
         return self._model_id
 
     def describe(self, text: str, context: str) -> str:
-        description = self._service.describe(model=self._model_id, text=text, context=context)
-
-        return description
+        return self._service.describe(model=self._model_id, text=text, context=context)

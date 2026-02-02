@@ -38,8 +38,8 @@ class DatabaoContextPluginLoader:
                 for (datasource_type, plugin) in self._all_plugins_by_type.items()
                 if not isinstance(plugin, BuildFilePlugin)
             }
-        else:
-            return set(self._all_plugins_by_type.keys())
+
+        return set(self._all_plugins_by_type.keys())
 
     def get_plugin_for_datasource_type(self, datasource_type: DatasourceType) -> BuildPlugin:
         """Return the plugin able to build a context for the given datasource type.
@@ -103,9 +103,8 @@ class DatabaoContextPluginLoader:
 
         if isinstance(plugin, CustomiseConfigProperties):
             return plugin.get_config_file_properties()
-        elif isinstance(plugin, BuildDatasourcePlugin):
+        if isinstance(plugin, BuildDatasourcePlugin):
             return get_property_list_from_type(plugin.config_file_type)
-        else:
-            raise ValueError(
-                f'Impossible to create a config for datasource type "{datasource_type.full_type}". The corresponding plugin is a {type(plugin).__name__} but should be a BuildDatasourcePlugin or CustomiseConfigProperties'
-            )
+        raise ValueError(
+            f'Impossible to create a config for datasource type "{datasource_type.full_type}". The corresponding plugin is a {type(plugin).__name__} but should be a BuildDatasourcePlugin or CustomiseConfigProperties'
+        )

@@ -54,10 +54,9 @@ def _generate_json_schema_output_for_plugins(
     if len(filtered_plugins) == 0:
         if include_plugins:
             raise ValueError(f"No plugin found with id in {include_plugins}")
-        elif exclude_plugins:
+        if exclude_plugins:
             raise ValueError(f"No plugin found when excluding {exclude_plugins}")
-        else:
-            raise ValueError("No plugin found")
+        raise ValueError("No plugin found")
 
     results = []
     for plugin in filtered_plugins:

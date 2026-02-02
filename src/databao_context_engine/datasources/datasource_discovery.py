@@ -121,19 +121,18 @@ def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
             path=datasource.path,
         )
 
-    else:
-        config = _parse_config_file(datasource.path)
+    config = _parse_config_file(datasource.path)
 
-        subtype = config.get("type")
-        if not subtype or not isinstance(subtype, str):
-            raise ValueError("Config missing 'type' at %s - skipping", datasource.path)
+    subtype = config.get("type")
+    if not subtype or not isinstance(subtype, str):
+        raise ValueError("Config missing 'type' at %s - skipping", datasource.path)
 
-        return PreparedConfig(
-            datasource_type=DatasourceType.from_main_and_subtypes(main_type=datasource.main_type, subtype=subtype),
-            path=datasource.path,
-            config=config,
-            datasource_name=datasource.path.stem,
-        )
+    return PreparedConfig(
+        datasource_type=DatasourceType.from_main_and_subtypes(main_type=datasource.main_type, subtype=subtype),
+        path=datasource.path,
+        config=config,
+        datasource_name=datasource.path.stem,
+    )
 
 
 def _parse_config_file(file_path: Path) -> dict[Any, Any]:

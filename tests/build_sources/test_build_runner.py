@@ -22,8 +22,7 @@ def _result(name="files/demo.md", typ="files/md"):
 
 @pytest.fixture
 def mock_build_service(mocker):
-    svc = mocker.Mock(name="BuildService")
-    return svc
+    return mocker.Mock(name="BuildService")
 
 
 @pytest.fixture
