@@ -95,16 +95,18 @@ def _detect_platform() -> str:
     raise RuntimeError(f"Unsupported OS/arch: os={os_name!r} arch={arch!r}")
 
 
-def _download_to_temp(url: str) -> Path:
+def _download_artifact_to_temp(artifact_version: str, artifact_name: str) -> Path:
     """Download to a temporary file and return its path."""
     import urllib.request
 
+    artifact_url = f"https://github.com/ollama/ollama/releases/download/{artifact_version}/{artifact_name}"
+
     tmp_dir = Path(tempfile.mkdtemp(prefix="ollama-download-"))
-    file_name = url.rsplit("/", 1)[-1]
+    file_name = artifact_url.rsplit("/", 1)[-1]
     dest = tmp_dir / file_name
 
-    logger.info("Downloading %s to %s", url, dest)
-    with urllib.request.urlopen(url) as resp, dest.open("wb") as out:
+    logger.info("Downloading %s to %s", artifact_url, dest)
+    with urllib.request.urlopen(artifact_url) as resp, dest.open("wb") as out:
         shutil.copyfileobj(resp, out)
 
     return dest
@@ -128,10 +130,12 @@ def _extract_archive(archive: Path, target_dir: Path) -> None:
 
     if name.endswith(".zip"):
         with ZipFile(archive, "r") as zf:
-            zf.extractall(target_dir)
+            # There is no built-in protection against zip bombs in ZipFile.
+            # However, we previously checked the sha256 of the downloaded archive and we trust the origin (GitHub repo of Ollama)
+            zf.extractall(target_dir)  # noqa: S202
     elif name.endswith(".tgz") or name.endswith(".tar.gz"):
         with tarfile.open(archive, "r:gz") as tf:
-            tf.extractall(target_dir)
+            tf.extractall(target_dir, filter="data")
     else:
         raise RuntimeError(f"Unsupported archive format: {archive}")
 
@@ -142,7 +146,7 @@ def _ensure_executable(path: Path) -> None:
         mode = path.stat().st_mode
         path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     except Exception:
-        pass
+        logger.debug("Failed to mark %s as executable", path, exc_info=True, stack_info=True)
 
 
 def install_ollama_to(target: Path) -> None:
@@ -172,8 +176,7 @@ def install_ollama_to(target: Path) -> None:
     except KeyError as e:
         raise RuntimeError(f"Unsupported platform: {platform_key}") from e
 
-    url = f"https://github.com/ollama/ollama/releases/download/{DEFAULT_VERSION}/{artifact.name}"
-    archive_path = _download_to_temp(url)
+    archive_path = _download_artifact_to_temp(DEFAULT_VERSION, artifact.name)
 
     try:
         _verify_sha256(archive_path, artifact.sha256)
@@ -217,4 +220,4 @@ def install_ollama_to(target: Path) -> None:
         try:
             archive_path.unlink(missing_ok=True)
         except Exception:
-            pass
+            logger.debug("Failed to remove temporary archive %s", archive_path, exc_info=True, stack_info=True)

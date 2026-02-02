@@ -11,6 +11,7 @@ extend-select = [
     "D",
     "I",
     "T20",
+    "S",
 ]
 ignore = [
     "D100",
@@ -21,6 +22,8 @@ ignore = [
     "D105",
     "D106",
     "D107",
+    "S404", # excluded because there is other subchecks on the usage of subprocess
+    "S608", # excluded because we're builidng a lot of SQL queries using formatted strings for reusability (without using user input variables)
 ]
 preview = true
 
@@ -34,4 +37,4 @@ ignore-one-line-docstrings = true
 
 [lint.per-file-ignores]
 # Ignore `D` and "DOC" rules everywhere except for the `src/` directory.
-"!src/**.py" = ["D", "DOC", "T20"]
+"!src/**.py" = ["D", "DOC", "T20", "S"]
