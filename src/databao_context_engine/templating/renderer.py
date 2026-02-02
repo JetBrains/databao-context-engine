@@ -2,6 +2,8 @@ import os
 
 from jinja2.sandbox import SandboxedEnvironment
 
+from databao_context_engine.project.layout import ProjectLayout
+
 
 class DceTemplateError(Exception):
     pass
@@ -11,10 +13,14 @@ class UnknownEnvVarTemplateError(DceTemplateError):
     pass
 
 
-def render_template(source: str) -> str:
+def render_template(project_layout: ProjectLayout, source: str) -> str:
     env = SandboxedEnvironment()
 
-    return env.from_string(source=str(source)).render(env_var=resolve_env_var)
+    return env.from_string(source=str(source)).render(
+        env_var=resolve_env_var,
+        PROJECT_DIR=project_layout.project_dir.resolve(),
+        SRC_DIR=project_layout.src_dir.resolve(),
+    )
 
 
 def resolve_env_var(env_var: str, default: str | None = None) -> str:

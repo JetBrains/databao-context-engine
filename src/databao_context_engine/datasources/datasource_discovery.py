@@ -25,7 +25,7 @@ def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
     result = []
     for discovered_datasource in discover_datasources(project_layout=project_layout):
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, discovered_datasource)
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
             logger.info(f"Invalid source at ({discovered_datasource.path}): {str(e)}")
@@ -112,7 +112,7 @@ def _load_datasource_descriptor(project_layout: ProjectLayout, config_file: Path
     return None
 
 
-def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
+def prepare_source(project_layout: ProjectLayout, datasource: DatasourceDescriptor) -> PreparedDatasource:
     """Convert a discovered datasource into a prepared datasource ready for plugin execution."""
     if datasource.kind is DatasourceKind.FILE:
         file_subtype = datasource.path.suffix.lower().lstrip(".")
@@ -122,7 +122,7 @@ def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
             path=datasource.path,
         )
 
-    config = _parse_config_file(datasource.path)
+    config = _parse_config_file(project_layout, datasource.path)
 
     ds_type = config.get("type")
     if not ds_type or not isinstance(ds_type, str):
@@ -137,7 +137,7 @@ def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
     )
 
 
-def _parse_config_file(file_path: Path) -> dict[Any, Any]:
-    rendered_file = render_template(file_path.read_text())
+def _parse_config_file(project_layout: ProjectLayout, file_path: Path) -> dict[Any, Any]:
+    rendered_file = render_template(project_layout, file_path.read_text())
 
     return yaml.safe_load(rendered_file) or {}

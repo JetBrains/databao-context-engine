@@ -31,7 +31,7 @@ def stub_prepare(mocker):
     def _stub(prepared_list):
         items = list(prepared_list)
 
-        def side_effect(_ds):
+        def side_effect(_pl, _ds):
             return items.pop(0) if items else None
 
         return mocker.patch.object(build_runner, "prepare_source", side_effect=side_effect)

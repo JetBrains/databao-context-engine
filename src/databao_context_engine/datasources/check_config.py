@@ -69,7 +69,7 @@ def check_datasource_connection(
         result_key = DatasourceId.from_datasource_config_file_path(project_layout, discovered_datasource.path)
 
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, discovered_datasource)
         except Exception as e:
             result[result_key] = CheckDatasourceConnectionResult(
                 datasource_id=result_key,
