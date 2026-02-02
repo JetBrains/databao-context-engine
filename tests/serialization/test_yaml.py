@@ -2,6 +2,7 @@ import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -10,9 +11,15 @@ from pydantic import BaseModel
 from databao_context_engine.serialization.yaml import to_yaml_string, write_yaml_to_stream
 
 
+class MyEnum(Enum):
+    KEY_1 = "VALUE_1"
+    KEY_2 = "VALUE_2"
+
+
 class PydanticClass(BaseModel):
     my_str: str = "123"
     my_date: date
+    my_path: Path
 
 
 class CustomClass:
@@ -34,6 +41,7 @@ class CustomClassNoPublicFields:
 @dataclass
 class SimpleNestedClass:
     nested_var: str
+    enum_value: MyEnum
 
 
 @dataclass
@@ -51,8 +59,10 @@ class TypedDictionary(TypedDict):
 
 def get_input(my_uuid: uuid.UUID, my_date: datetime) -> Any:
     return {
-        "dataclass": Dataclass("hello", my_uuid=my_uuid, my_date=my_date, my_nested_class=SimpleNestedClass("nested")),
-        "pydantic": PydanticClass(my_date=date(2025, 1, 1)),
+        "dataclass": Dataclass(
+            "hello", my_uuid=my_uuid, my_date=my_date, my_nested_class=SimpleNestedClass("nested", MyEnum.KEY_2)
+        ),
+        "pydantic": PydanticClass(my_date=date(2025, 1, 1), my_path=Path("/tmp/test.txt")),
         "custom": CustomClass(),
         "tuple": (1, "text"),
         "list": [TypedDictionary(my_var=1.0), TypedDictionary(my_var=2.0), TypedDictionary(my_var=3.0)],
@@ -65,12 +75,14 @@ dataclass:
   my_str: hello
   my_nested_class:
     nested_var: nested
+    enum_value: MyEnum.KEY_2
   my_int: 12
   my_uuid: {str(my_uuid)}
   my_date: {now.isoformat(" ")}
 pydantic:
   my_str: '123'
   my_date: 2025-01-01
+  my_path: /tmp/test.txt
 custom:
   exposed_var: exposed_var
   my_list:
