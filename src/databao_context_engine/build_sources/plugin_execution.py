@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
 
-from databao_context_engine.datasources.types import DatasourceId, PreparedConfig, PreparedDatasource
+from databao_context_engine.datasources.types import PreparedConfig, PreparedDatasource
 from databao_context_engine.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildFilePlugin,
@@ -39,11 +39,8 @@ class BuiltDatasourceContext:
 
 def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
     built_context = _execute(prepared_datasource, plugin)
-
-    datasource_id = DatasourceId.from_datasource_config_file_path(prepared_datasource.path)
-
     return BuiltDatasourceContext(
-        datasource_id=str(datasource_id),
+        datasource_id=str(prepared_datasource.datasource_id),
         datasource_type=prepared_datasource.datasource_type.full_type,
         context_built_at=datetime.now(),
         context=built_context,

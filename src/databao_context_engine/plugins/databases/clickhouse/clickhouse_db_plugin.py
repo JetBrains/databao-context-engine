@@ -8,7 +8,7 @@ from databao_context_engine.plugins.databases.clickhouse.clickhouse_introspector
 class ClickhouseDbPlugin(BaseDatabasePlugin[ClickhouseConfigFile]):
     id = "jetbrains/clickhouse"
     name = "Clickhouse DB Plugin"
-    supported = {"databases/clickhouse"}
+    supported = {"clickhouse"}
     config_file_type = ClickhouseConfigFile
 
     def __init__(self):

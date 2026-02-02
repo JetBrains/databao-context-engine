@@ -1,5 +1,4 @@
 import os
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -28,12 +27,10 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
     )
     datasource_name = click.prompt("Datasource name?", type=str)
 
-    is_datasource_existing = project_manager.datasource_config_exists(
-        datasource_type=datasource_type, datasource_name=datasource_name
-    )
+    is_datasource_existing = project_manager.datasource_config_exists(datasource_name=datasource_name)
     if is_datasource_existing:
         click.confirm(
-            f"A config file already exists for this datasource ({datasource_type.config_folder}/{datasource_name}). Do you want to overwrite it?",
+            f"A config file already exists for this datasource src/{datasource_name}.yaml. Do you want to overwrite it?",
             abort=True,
             default=False,
         )
@@ -52,25 +49,15 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
 
 
 def _ask_for_datasource_type(supported_datasource_types: set[DatasourceType]) -> DatasourceType:
-    supported_types_by_folder = _group_supported_types_by_folder(supported_datasource_types)
-
-    all_config_folders = sorted(supported_types_by_folder.keys())
-    config_folder = click.prompt(
+    all_config_folders = sorted([ds_type.full_type for ds_type in supported_datasource_types])
+    config_type = click.prompt(
         "What type of datasource do you want to add?",
         type=click.Choice(all_config_folders),
         default=all_config_folders[0] if len(all_config_folders) == 1 else None,
     )
-    click.echo(f"Selected type: {config_folder}")
+    click.echo(f"Selected type: {config_type}")
 
-    all_subtypes_for_folder = sorted(supported_types_by_folder[config_folder])
-    config_type = click.prompt(
-        "What is the subtype of this datasource?",
-        type=click.Choice(all_subtypes_for_folder),
-        default=all_subtypes_for_folder[0] if len(all_subtypes_for_folder) == 1 else None,
-    )
-    click.echo(f"Selected subtype: {config_type}")
-
-    return DatasourceType.from_main_and_subtypes(config_folder, config_type)
+    return DatasourceType(full_type=config_type)
 
 
 def _ask_for_config_details(config_file_structure: list[ConfigPropertyDefinition]) -> dict[str, Any]:
@@ -146,11 +133,3 @@ def _build_config_content_from_properties(
                 config_content[config_file_property.property_key] = property_value
 
     return config_content
-
-
-def _group_supported_types_by_folder(all_plugin_types: set[DatasourceType]) -> dict[str, list[str]]:
-    main_to_subtypes = defaultdict(list)
-    for datasource_type in all_plugin_types:
-        main_to_subtypes[datasource_type.main_type].append(datasource_type.subtype)
-
-    return main_to_subtypes

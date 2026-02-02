@@ -22,7 +22,7 @@ def test_similarity_returns_display_and_distance(
         embedding_repo=embedding_repo,
         table_name=table_name,
         dimension=DIM,
-        full_type="f/type",
+        full_type="test_type",
         datasource_id="databases/test_clickhouse_db.yaml",
         embeddable_text="raw embeddable",
         display_text="nice description",
@@ -42,7 +42,7 @@ def test_similarity_returns_display_and_distance(
     r = results[0]
     assert r.display_text == "nice description"
     assert r.embeddable_text == "raw embeddable"
-    assert r.datasource_type == DatasourceType.from_main_and_subtypes("f", "type")
+    assert r.datasource_type == DatasourceType(full_type="test_type")
     assert r.datasource_id == DatasourceId.from_string_repr("databases/test_clickhouse_db.yaml")
     assert r.cosine_distance == pytest.approx(0.0, abs=1e-6)
 

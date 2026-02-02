@@ -33,20 +33,17 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     databao_context_engine = DatabaoContextEngine(project_dir=project_path)
     given_datasource_config_file(
         databao_context_engine._project_layout,
-        full_type="full/any",
-        datasource_name="a",
+        datasource_name="full/a",
         config_content={"type": "any", "name": "a"},
     )
     given_datasource_config_file(
         databao_context_engine._project_layout,
-        full_type="other/type",
-        datasource_name="b",
+        datasource_name="other/b",
         config_content={"type": "type", "name": "b"},
     )
     given_datasource_config_file(
         databao_context_engine._project_layout,
-        full_type="full/type2",
-        datasource_name="c",
+        datasource_name="full/c",
         config_content={"type": "type2", "name": "c"},
     )
 
@@ -56,13 +53,13 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
             DatasourceContext(
                 datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
                 context=to_yaml_string(
-                    {"datasource_id": "full/a.yaml", "datasource_type": "full/any", "context": "Context for a"}
+                    {"datasource_id": "full/a.yaml", "datasource_type": "any", "context": "Context for a"}
                 ),
             ),
             DatasourceContext(
                 datasource_id=DatasourceId.from_string_repr("other/b.yaml"),
                 context=to_yaml_string(
-                    {"datasource_id": "other/b.yaml", "datasource_type": "other/type", "context": "Context for b"}
+                    {"datasource_id": "other/b.yaml", "datasource_type": "type", "context": "Context for b"}
                 ),
             ),
         ],
@@ -71,8 +68,8 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     datasource_list = databao_context_engine.get_introspected_datasource_list()
 
     assert datasource_list == [
-        Datasource(id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="full/any")),
-        Datasource(id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="other/type")),
+        Datasource(id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="any")),
+        Datasource(id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="type")),
     ]
 
 

@@ -39,29 +39,26 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     project_manager = DatabaoContextProjectManager(project_dir=project_path)
     given_datasource_config_file(
         project_manager._project_layout,
-        full_type="full/any",
-        datasource_name="a",
+        datasource_name="full/a",
         config_content={"type": "any", "name": "a"},
     )
     given_datasource_config_file(
         project_manager._project_layout,
-        full_type="other/type",
-        datasource_name="b",
+        datasource_name="other/b",
         config_content={"type": "type", "name": "b"},
     )
     given_datasource_config_file(
         project_manager._project_layout,
-        full_type="full/type2",
-        datasource_name="c",
+        datasource_name="full/c",
         config_content={"type": "type2", "name": "c"},
     )
 
     datasource_list = project_manager.get_configured_datasource_list()
 
     assert datasource_list == [
-        Datasource(id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="full/any")),
-        Datasource(id=DatasourceId.from_string_repr("full/c.yaml"), type=DatasourceType(full_type="full/type2")),
-        Datasource(id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="other/type")),
+        Datasource(id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="any")),
+        Datasource(id=DatasourceId.from_string_repr("full/c.yaml"), type=DatasourceType(full_type="type2")),
+        Datasource(id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="type")),
     ]
 
 
@@ -80,14 +77,12 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
 
     given_datasource_config_file(
         project_manager._project_layout,
-        full_type="dummy/dummy_default",
-        datasource_name="my_dummy_data",
+        datasource_name="dummy/my_dummy_data",
         config_content={"type": "dummy_default", "name": "my_dummy_data"},
     )
     given_raw_source_file(
         project_dir=project_manager.project_dir,
-        file_name="my_dummy_file",
-        datasource_type=DatasourceType(full_type="files/dummy"),
+        file_name="files/my_dummy_file.dummy_txt",
         file_content="Content of my dummy file",
     )
 
@@ -95,21 +90,21 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
-    assert len(result) == 2
+    assert len(result) == 2, str(result)
     assert_build_context_result(
         result[0],
         project_manager.project_dir,
         datasource_id=DatasourceId.from_string_repr("dummy/my_dummy_data.yaml"),
-        datasource_type=DatasourceType(full_type="dummy/dummy_default"),
+        datasource_type=DatasourceType(full_type="dummy_default"),
         context_file_relative_path="dummy/my_dummy_data.yaml",
     )
 
     assert_build_context_result(
         result[1],
         project_manager.project_dir,
-        datasource_id=DatasourceId.from_string_repr("files/my_dummy_file.dummy"),
-        datasource_type=DatasourceType(full_type="files/dummy"),
-        context_file_relative_path="files/my_dummy_file.dummy.yaml",
+        datasource_id=DatasourceId.from_string_repr("files/my_dummy_file.dummy_txt"),
+        datasource_type=DatasourceType(full_type="dummy_txt"),
+        context_file_relative_path="files/my_dummy_file.dummy_txt.yaml",
     )
 
 

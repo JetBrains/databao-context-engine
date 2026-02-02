@@ -1,10 +1,8 @@
 from pathlib import Path
 from typing import Any
 
-from databao_context_engine.datasources.add_config import get_datasource_id_for_config_file
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import DatasourceId
-from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import (
     ProjectLayout,
     create_datasource_config_file,
@@ -16,29 +14,21 @@ from databao_context_engine.serialization.yaml import to_yaml_string
 
 def given_datasource_config_file(
     project_layout: ProjectLayout,
-    full_type: str,
     datasource_name: str,
     config_content: dict[str, Any],
     overwrite_existing: bool = False,
 ) -> Path:
+    relative_path_to_config_file = Path(datasource_name + ".yaml")
     return create_datasource_config_file(
         project_layout,
-        get_datasource_id_for_config_file(DatasourceType(full_type=full_type), datasource_name),
+        str(relative_path_to_config_file),
         to_yaml_string(config_content),
         overwrite_existing=overwrite_existing,
     )
 
 
-def given_raw_source_file(
-    project_dir: Path, file_name: str, datasource_type: DatasourceType, file_content: str
-) -> Path:
-    file_path = (
-        get_source_dir(project_dir)
-        .joinpath(datasource_type.main_type)
-        .joinpath(file_name)
-        .with_suffix(f".{datasource_type.subtype}")
-    )
-
+def given_raw_source_file(project_dir: Path, file_name: str, file_content: str) -> Path:
+    file_path = get_source_dir(project_dir) / file_name
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(file_content)
 

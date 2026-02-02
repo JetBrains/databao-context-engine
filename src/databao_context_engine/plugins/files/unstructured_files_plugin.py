@@ -24,7 +24,7 @@ class InternalUnstructuredFilesPlugin(BuildFilePlugin):
         self.tokens_overlap = tokens_overlap or self._DEFAULT_TOKENS_OVERLAP
 
     def supported_types(self) -> set[str]:
-        return {f"files/{extension}" for extension in self._SUPPORTED_FILES_EXTENSIONS}
+        return self._SUPPORTED_FILES_EXTENSIONS
 
     def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
         file_content = self._read_file(file_buffer)

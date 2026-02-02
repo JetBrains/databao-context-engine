@@ -5,7 +5,7 @@ from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabase
 class AthenaDbPlugin(BaseDatabasePlugin[AthenaConfigFile]):
     id = "jetbrains/athena"
     name = "Athena DB Plugin"
-    supported = {"databases/athena"}
+    supported = {"athena"}
     config_file_type = AthenaConfigFile
 
     def __init__(self):

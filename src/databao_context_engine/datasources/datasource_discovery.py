@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -30,9 +31,10 @@ def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
             logger.info(f"Invalid source at ({discovered_datasource.path}): {str(e)}")
             continue
 
+        relative_config_file = discovered_datasource.path.relative_to(project_layout.get_source_dir())
         result.append(
             Datasource(
-                id=DatasourceId.from_datasource_config_file_path(discovered_datasource.path),
+                id=DatasourceId.from_datasource_config_file_path(relative_config_file),
                 type=prepared_source.datasource_type,
             )
         )
@@ -55,13 +57,14 @@ def discover_datasources(project_layout: ProjectLayout) -> list[DatasourceDescri
         A list of DatasourceDescriptor instances representing the discovered datasources.
     """
     datasources: list[DatasourceDescriptor] = []
-    for main_dir in sorted((p for p in project_layout.src_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
-        for path in sorted((p for p in main_dir.iterdir() if _is_datasource_file(p)), key=lambda p: p.name.lower()):
-            datasource = _load_datasource_descriptor(path)
+    for dirpath, dirnames, filenames in os.walk(project_layout.src_dir):
+        for context_file_name in filenames:
+            context_file = Path(dirpath).joinpath(context_file_name)
+            datasource = _load_datasource_descriptor(project_layout, context_file)
             if datasource is not None:
                 datasources.append(datasource)
 
-    return datasources
+    return sorted(datasources, key=lambda ds: str(ds.datasource_id.relative_path_to_config_file()).lower())
 
 
 def _is_datasource_file(p: Path) -> bool:
@@ -78,31 +81,35 @@ def get_datasource_descriptors(
         if not config_file_path.is_file():
             raise ValueError(f"Datasource config file not found: {config_file_path}")
 
-        datasource = _load_datasource_descriptor(config_file_path)
+        datasource = _load_datasource_descriptor(project_layout, config_file_path)
         if datasource is not None:
             datasources.append(datasource)
 
     return datasources
 
 
-def _load_datasource_descriptor(path: Path) -> DatasourceDescriptor | None:
+def _load_datasource_descriptor(project_layout: ProjectLayout, config_file: Path) -> DatasourceDescriptor | None:
     """Load a single file with src/<parent_name>/ into a DatasourceDescriptor."""
-    if not path.is_file():
+    if not config_file.is_file():
         return None
 
-    parent_name = path.parent.name
-    extension = path.suffix.lower().lstrip(".")
+    parent_name = config_file.parent.name
+    extension = config_file.suffix.lower().lstrip(".")
+    relative_config_file = config_file.relative_to(project_layout.src_dir)
 
-    if parent_name == "files":
-        return DatasourceDescriptor(path=path.resolve(), main_type=parent_name, kind=DatasourceKind.FILE)
+    if parent_name == "files" and len(relative_config_file.parts) == 2:
+        datasource_id = DatasourceId.from_datasource_config_file_path(relative_config_file)
+        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.FILE)
 
     if extension in {"yaml", "yml"}:
-        return DatasourceDescriptor(path=path.resolve(), main_type=parent_name, kind=DatasourceKind.CONFIG)
+        datasource_id = DatasourceId.from_datasource_config_file_path(relative_config_file)
+        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.CONFIG)
 
     if extension:
-        return DatasourceDescriptor(path=path.resolve(), main_type=parent_name, kind=DatasourceKind.FILE)
+        datasource_id = DatasourceId.from_datasource_config_file_path(relative_config_file)
+        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.FILE)
 
-    logger.debug("Skipping file without extension: %s", path)
+    logger.debug("Skipping file without extension: %s", config_file)
     return None
 
 
@@ -111,18 +118,20 @@ def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
     if datasource.kind is DatasourceKind.FILE:
         file_subtype = datasource.path.suffix.lower().lstrip(".")
         return PreparedFile(
-            datasource_type=DatasourceType.from_main_and_subtypes(main_type=datasource.main_type, subtype=file_subtype),
+            datasource_id=datasource.datasource_id,
+            datasource_type=DatasourceType(full_type=file_subtype),
             path=datasource.path,
         )
 
     config = _parse_config_file(datasource.path)
 
-    subtype = config.get("type")
-    if not subtype or not isinstance(subtype, str):
+    ds_type = config.get("type")
+    if not ds_type or not isinstance(ds_type, str):
         raise ValueError("Config missing 'type' at %s - skipping", datasource.path)
 
     return PreparedConfig(
-        datasource_type=DatasourceType.from_main_and_subtypes(main_type=datasource.main_type, subtype=subtype),
+        datasource_id=datasource.datasource_id,
+        datasource_type=DatasourceType(full_type=ds_type),
         path=datasource.path,
         config=config,
         datasource_name=datasource.path.stem,

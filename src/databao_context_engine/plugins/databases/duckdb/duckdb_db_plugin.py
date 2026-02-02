@@ -5,7 +5,7 @@ from databao_context_engine.plugins.databases.duckdb.duckdb_introspector import 
 class DuckDbPlugin(BaseDatabasePlugin[DuckDBConfigFile]):
     id = "jetbrains/duckdb"
     name = "DuckDB Plugin"
-    supported = {"databases/duckdb"}
+    supported = {"duckdb"}
     config_file_type = DuckDBConfigFile
 
     def __init__(self):

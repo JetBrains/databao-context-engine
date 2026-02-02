@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from databao_context_engine.pluginlib.config import DuckDBSecret
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts, generate_create_secret_sql
 
-parquet_type = "resources/parquet"
+parquet_type = "parquet"
 
 logger = logging.getLogger(__name__)
 

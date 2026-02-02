@@ -5,7 +5,7 @@ from databao_context_engine.plugins.databases.sqlite.sqlite_introspector import 
 class SQLiteDbPlugin(BaseDatabasePlugin[SQLiteConfigFile]):
     id = "jetbrains/sqlite"
     name = "SQLite Plugin"
-    supported = {"databases/sqlite"}
+    supported = {"sqlite"}
     config_file_type = SQLiteConfigFile
 
     def __init__(self):

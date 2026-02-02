@@ -5,7 +5,7 @@ from databao_context_engine.plugins.databases.mssql.mssql_introspector import MS
 class MSSQLDbPlugin(BaseDatabasePlugin[MSSQLConfigFile]):
     id = "jetbrains/mssql"
     name = "MSSQL DB Plugin"
-    supported = {"databases/mssql"}
+    supported = {"mssql"}
     config_file_type = MSSQLConfigFile
 
     def __init__(self):
