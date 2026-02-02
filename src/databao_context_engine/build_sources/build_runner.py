@@ -13,7 +13,7 @@ from databao_context_engine.datasources.datasource_discovery import discover_dat
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import load_plugins
-from databao_context_engine.project.layout import ProjectLayout, get_output_dir
+from databao_context_engine.project.layout import ProjectLayout
 
 logger = logging.getLogger(__name__)
 
@@ -57,15 +57,13 @@ def build(
 
     datasources = discover_datasources(project_layout)
 
-    project_dir = project_layout.project_dir
-
     if not datasources:
-        logger.info("No sources discovered under %s", project_dir)
+        logger.info("No sources discovered under %s", project_layout.src_dir)
         return []
 
     number_of_failed_builds = 0
     build_result = []
-    reset_all_results(get_output_dir(project_dir))
+    reset_all_results(project_layout.output_dir)
     for discovered_datasource in datasources:
         try:
             prepared_source = prepare_source(discovered_datasource)
@@ -89,7 +87,7 @@ def build(
                 plugin=plugin,
             )
 
-            output_dir = get_output_dir(project_dir)
+            output_dir = project_layout.output_dir
 
             context_file_path = export_build_result(output_dir, result)
             append_result_to_all_results(output_dir, result)

@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 from databao_context_engine.datasources.types import Datasource, DatasourceId, DatasourceType
-from databao_context_engine.project.layout import ProjectLayout, get_output_dir
+from databao_context_engine.project.layout import ProjectLayout
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +37,10 @@ def _read_datasource_type_from_context_file(context_path: Path) -> DatasourceTyp
 
 
 def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
-    output_dir = get_output_dir(project_dir=project_layout.project_dir)
-
     result = []
-    for main_type_dir in sorted((p for p in output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
+    for main_type_dir in sorted(
+        (p for p in project_layout.output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()
+    ):
         for context_path in sorted(
             (p for p in main_type_dir.iterdir() if p.suffix in DatasourceId.ALLOWED_YAML_SUFFIXES),
             key=lambda p: p.name.lower(),
@@ -62,9 +62,7 @@ def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Data
 
 
 def get_datasource_context(project_layout: ProjectLayout, datasource_id: DatasourceId) -> DatasourceContext:
-    output_dir = get_output_dir(project_dir=project_layout.project_dir)
-
-    context_path = output_dir.joinpath(datasource_id.relative_path_to_context_file())
+    context_path = project_layout.output_dir.joinpath(datasource_id.relative_path_to_context_file())
     if not context_path.is_file():
         raise ValueError(f"Context file not found for datasource {str(datasource_id)}")
 
@@ -73,10 +71,10 @@ def get_datasource_context(project_layout: ProjectLayout, datasource_id: Datasou
 
 
 def get_all_contexts(project_layout: ProjectLayout) -> list[DatasourceContext]:
-    output_dir = get_output_dir(project_dir=project_layout.project_dir)
-
     result = []
-    for main_type_dir in sorted((p for p in output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
+    for main_type_dir in sorted(
+        (p for p in project_layout.output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()
+    ):
         for context_path in sorted(
             (p for p in main_type_dir.iterdir() if p.suffix in DatasourceId.ALLOWED_YAML_SUFFIXES),
             key=lambda p: p.name.lower(),
