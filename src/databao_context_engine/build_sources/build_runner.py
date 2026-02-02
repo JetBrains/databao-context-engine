@@ -13,7 +13,7 @@ from databao_context_engine.datasources.datasource_discovery import discover_dat
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import load_plugins
-from databao_context_engine.project.layout import get_output_dir
+from databao_context_engine.project.layout import ProjectLayout, get_output_dir
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class BuildContextResult:
 
 
 def build(
-    project_dir: Path,
+    project_layout: ProjectLayout,
     *,
     build_service: BuildService,
 ) -> list[BuildContextResult]:
@@ -55,7 +55,9 @@ def build(
     """
     plugins = load_plugins()
 
-    datasources = discover_datasources(project_dir)
+    datasources = discover_datasources(project_layout)
+
+    project_dir = project_layout.project_dir
 
     if not datasources:
         logger.info("No sources discovered under %s", project_dir)

@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 from duckdb import DuckDBPyConnection
 
@@ -12,7 +11,7 @@ from databao_context_engine.llm.factory import (
     create_ollama_embedding_provider,
     create_ollama_service,
 )
-from databao_context_engine.project.layout import ensure_project_dir
+from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 from databao_context_engine.services.factories import create_chunk_embedding_service
 from databao_context_engine.storage.connection import open_duckdb_connection
@@ -22,7 +21,9 @@ from databao_context_engine.system.properties import get_db_path
 logger = logging.getLogger(__name__)
 
 
-def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddingMode) -> list[BuildContextResult]:
+def build_all_datasources(
+    project_layout: ProjectLayout, chunk_embedding_mode: ChunkEmbeddingMode
+) -> list[BuildContextResult]:
     """Build the context for all datasources in the project.
 
     - Instantiates the build service
@@ -31,14 +32,12 @@ def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddin
     Returns:
         A list of all the contexts built.
     """
-    ensure_project_dir(project_dir)
-
-    logger.debug(f"Starting to build datasources in project {project_dir.resolve()}")
+    logger.debug(f"Starting to build datasources in project {project_layout.project_dir.resolve()}")
 
     # Think about alternative solutions. This solution will mirror the current behaviour
     # The current behaviour only builds what is currently in the /src folder
     # This will need to change in the future when we can pick which datasources to build
-    db_path = get_db_path(project_dir)
+    db_path = get_db_path(project_layout.project_dir)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     if db_path.exists():
         db_path.unlink()
@@ -59,7 +58,7 @@ def build_all_datasources(project_dir: Path, chunk_embedding_mode: ChunkEmbeddin
             chunk_embedding_mode=chunk_embedding_mode,
         )
         return build(
-            project_dir=project_dir,
+            project_layout=project_layout,
             build_service=build_service,
         )
 

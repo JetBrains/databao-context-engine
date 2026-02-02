@@ -49,24 +49,24 @@ def _read_all_results(path: Path):
             return [yaml.safe_load(fh)]
 
 
-def test_build_returns_early_when_no_sources(stub_sources, stub_plugins, mock_build_service, tmp_path):
+def test_build_returns_early_when_no_sources(stub_sources, stub_plugins, mock_build_service, project_layout):
     stub_sources([])
     build_runner.build(
-        project_dir=tmp_path,
+        project_layout=project_layout,
         build_service=mock_build_service,
     )
     mock_build_service.start_run.assert_not_called()
 
 
 def test_build_skips_source_without_plugin(
-    stub_sources, stub_plugins, stub_prepare, mock_build_service, tmp_path, fake_output_dir
+    stub_sources, stub_plugins, stub_prepare, mock_build_service, project_layout, fake_output_dir
 ):
-    datasources = SimpleNamespace(path=tmp_path / "src" / "files" / "one.md")
+    datasources = SimpleNamespace(path=project_layout.src_dir / "files" / "one.md")
     stub_sources([datasources])
     stub_plugins({})
     stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=datasources.path)])
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service)
+    build_runner.build(project_layout=project_layout, build_service=mock_build_service)
     mock_build_service.start_run.assert_not_called()
     mock_build_service.process_prepared_source.assert_not_called()
     mock_build_service.finalize_run.assert_not_called()
@@ -76,23 +76,25 @@ def test_build_skips_source_without_plugin(
 
 
 def test_build_processes_file_source_and_exports(
-    stub_sources, stub_plugins, stub_prepare, mock_build_service, tmp_path
+    stub_sources, stub_plugins, stub_prepare, mock_build_service, project_layout
 ):
-    src = SimpleNamespace(path=tmp_path / "src" / "files" / "one.md")
+    src = SimpleNamespace(path=project_layout.src_dir / "files" / "one.md")
     stub_sources([src])
     stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=src.path)])
     stub_plugins({DatasourceType(full_type="files/md"): object()})
 
     mock_build_service.process_prepared_source.return_value = _result(name="files/one.md", typ="files/md")
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service)
+    build_runner.build(project_layout=project_layout, build_service=mock_build_service)
 
     mock_build_service.process_prepared_source.assert_called_once()
 
 
-def test_build_continues_on_service_exception(stub_sources, stub_plugins, stub_prepare, mock_build_service, tmp_path):
-    s1 = SimpleNamespace(path=tmp_path / "src" / "files" / "a.md")
-    s2 = SimpleNamespace(path=tmp_path / "src" / "files" / "b.md")
+def test_build_continues_on_service_exception(
+    stub_sources, stub_plugins, stub_prepare, mock_build_service, project_layout
+):
+    s1 = SimpleNamespace(path=project_layout.src_dir / "files" / "a.md")
+    s2 = SimpleNamespace(path=project_layout.src_dir / "files" / "b.md")
     stub_sources([s1, s2])
     stub_prepare(
         [
@@ -104,6 +106,6 @@ def test_build_continues_on_service_exception(stub_sources, stub_plugins, stub_p
 
     mock_build_service.process_prepared_source.side_effect = [RuntimeError("boom"), _result(name="files/b.md")]
 
-    build_runner.build(project_dir=tmp_path, build_service=mock_build_service)
+    build_runner.build(project_layout=project_layout, build_service=mock_build_service)
 
     assert mock_build_service.process_prepared_source.call_count == 2

@@ -17,7 +17,11 @@ from databao_context_engine.datasources.check_config import (
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
 from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.project.layout import ensure_datasource_config_file_doesnt_exist, ensure_project_dir
+from databao_context_engine.project.layout import (
+    ProjectLayout,
+    ensure_datasource_config_file_doesnt_exist,
+    ensure_project_dir,
+)
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 
@@ -45,6 +49,7 @@ class DatabaoContextProjectManager:
     """
 
     project_dir: Path
+    _project_layout: ProjectLayout
 
     def __init__(self, project_dir: Path) -> None:
         """Initialize the DatabaoContextProjectManager.
@@ -52,7 +57,7 @@ class DatabaoContextProjectManager:
         Args:
             project_dir: The root directory of the Databao Context Project.
         """
-        ensure_project_dir(project_dir=project_dir)
+        self._project_layout = ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
 
     def get_configured_datasource_list(self) -> list[Datasource]:
@@ -64,7 +69,7 @@ class DatabaoContextProjectManager:
         Returns:
             The list of datasources configured in the project.
         """
-        return get_datasource_list(self.project_dir)
+        return get_datasource_list(self._project_layout)
 
     def build_context(
         self,
@@ -83,7 +88,7 @@ class DatabaoContextProjectManager:
             The list of all built results.
         """
         # TODO: Filter which datasources to build by datasource_ids
-        return build_all_datasources(project_dir=self.project_dir, chunk_embedding_mode=chunk_embedding_mode)
+        return build_all_datasources(project_layout=self._project_layout, chunk_embedding_mode=chunk_embedding_mode)
 
     def check_datasource_connection(
         self, datasource_ids: list[DatasourceId] | None = None
@@ -97,7 +102,9 @@ class DatabaoContextProjectManager:
             The list of all connection check results, sorted by datasource id.
         """
         return sorted(
-            check_datasource_connection_internal(project_dir=self.project_dir, datasource_ids=datasource_ids).values(),
+            check_datasource_connection_internal(
+                project_layout=self._project_layout, datasource_ids=datasource_ids
+            ).values(),
             key=lambda result: str(result.datasource_id),
         )
 
