@@ -29,6 +29,10 @@ class ProjectLayout:
     def src_dir(self) -> Path:
         return get_source_dir(self.project_dir)
 
+    @property
+    def output_dir(self) -> Path:
+        return get_output_dir(self.project_dir)
+
 
 def ensure_project_dir(project_dir: Path) -> ProjectLayout:
     return _ProjectValidator(project_dir).ensure_project_dir_valid()
