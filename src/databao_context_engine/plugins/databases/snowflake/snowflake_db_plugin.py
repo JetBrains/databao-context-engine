@@ -8,7 +8,7 @@ from databao_context_engine.plugins.databases.snowflake.snowflake_introspector i
 class SnowflakeDbPlugin(BaseDatabasePlugin[SnowflakeConfigFile]):
     id = "jetbrains/snowflake"
     name = "Snowflake DB Plugin"
-    supported = {"databases/snowflake"}
+    supported = {"snowflake"}
     config_file_type = SnowflakeConfigFile
 
     def __init__(self):

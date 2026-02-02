@@ -89,26 +89,6 @@ class DatasourceType:
 
     full_type: str
 
-    def __post_init__(self):
-        type_segments = self.full_type.split("/")
-        if len(type_segments) != 2:
-            raise ValueError(f"Invalid DatasourceType: {self.full_type}")
-
-    @property
-    def main_type(self) -> str:
-        """The main type of the datasource, aka the folder in which the config or raw file is located."""
-        return self.full_type.split("/")[0]
-
-    @property
-    def config_folder(self) -> str:
-        """The folder in which the config or raw file is located. This is equivalent to `main_type`."""
-        return self.main_type
-
-    @property
-    def subtype(self) -> str:
-        """The subtype of the datasource. This is the actual type declared in the config file or the raw file's extension."""
-        return self.full_type.split("/")[1]
-
     @staticmethod
     def from_main_and_subtypes(main_type: str, subtype: str) -> "DatasourceType":
         """Create a DatasourceType from its main type and subtype.

@@ -8,7 +8,7 @@ from databao_context_engine.plugins.databases.postgresql.postgresql_introspector
 class PostgresqlDbPlugin(BaseDatabasePlugin[PostgresConfigFile]):
     id = "jetbrains/postgres"
     name = "PostgreSQL DB Plugin"
-    supported = {"databases/postgres"}
+    supported = {"postgres"}
     config_file_type = PostgresConfigFile
 
     def __init__(self):

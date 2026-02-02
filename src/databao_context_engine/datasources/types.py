@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -14,13 +13,14 @@ class DatasourceKind(StrEnum):
 
 @dataclass(frozen=True)
 class DatasourceDescriptor:
+    datasource_id: "DatasourceId"
     path: Path
     kind: DatasourceKind
-    main_type: str
 
 
 @dataclass(frozen=True)
 class PreparedConfig:
+    datasource_id: "DatasourceId"
     datasource_type: DatasourceType
     path: Path
     config: dict[Any, Any]
@@ -29,6 +29,7 @@ class PreparedConfig:
 
 @dataclass(frozen=True)
 class PreparedFile:
+    datasource_id: "DatasourceId"
     datasource_type: DatasourceType
     path: Path
 
@@ -45,41 +46,29 @@ class DatasourceId:
     Use the provided factory methods `from_string_repr` and `from_datasource_config_file_path` to create a DatasourceId, rather than its constructor.
 
     Attributes:
-        datasource_config_folder: The folder where the datasource's config file is located.
-        datasource_name: The name of the datasource.
+        datasource_path: The path to the datasource relative to project's src folder.
         config_file_suffix: The suffix of the config (or raw) file.
     """
 
     ALLOWED_YAML_SUFFIXES = [".yaml", ".yml"]
     CONTEXT_FILE_SUFFIX = ".yaml"
 
-    datasource_config_folder: str
-    datasource_name: str
+    datasource_path: str
     config_file_suffix: str
 
     def __post_init__(self):
-        if not self.datasource_config_folder.strip():
-            raise ValueError(f"Invalid DatasourceId ({str(self)}): datasource_config_folder must not be empty")
-        if not self.datasource_name.strip():
-            raise ValueError(f"Invalid DatasourceId ({str(self)}): datasource_name must not be empty")
+        if not self.datasource_path.strip():
+            raise ValueError(f"Invalid DatasourceId ({str(self)}): datasource_path must not be empty")
         if not self.config_file_suffix.strip():
             raise ValueError(f"Invalid DatasourceId ({str(self)}): config_file_suffix must not be empty")
-
-        if os.sep in self.datasource_config_folder:
-            raise ValueError(
-                f"Invalid DatasourceId ({str(self)}): datasource_config_folder must not contain a path separator"
-            )
-
-        if os.sep in self.datasource_name:
-            raise ValueError(f"Invalid DatasourceId ({str(self)}): datasource_name must not contain a path separator")
 
         if not self.config_file_suffix.startswith("."):
             raise ValueError(
                 f'Invalid DatasourceId ({str(self)}): config_file_suffix must start with a dot "." (e.g.: .yaml)'
             )
 
-        if self.datasource_name.endswith(self.config_file_suffix):
-            raise ValueError(f"Invalid DatasourceId ({str(self)}): datasource_name must not contain the file suffix")
+        if self.datasource_path.endswith(self.config_file_suffix):
+            raise ValueError(f"Invalid DatasourceId ({str(self)}): datasource_path must not contain the file suffix")
 
     def __str__(self):
         return str(self.relative_path_to_config_file())
@@ -92,7 +81,7 @@ class DatasourceId:
         Returns:
             The path to the config file relative to the src folder in the project.
         """
-        return Path(self.datasource_config_folder).joinpath(self.datasource_name + self.config_file_suffix)
+        return Path(self.datasource_path + self.config_file_suffix)
 
     def relative_path_to_context_file(self) -> Path:
         """Return a path to the config file for this datasource.
@@ -109,7 +98,7 @@ class DatasourceId:
             else (self.config_file_suffix + DatasourceId.CONTEXT_FILE_SUFFIX)
         )
 
-        return Path(self.datasource_config_folder).joinpath(self.datasource_name + suffix)
+        return Path(self.datasource_path + suffix)
 
     @classmethod
     def from_string_repr(cls, datasource_id_as_string: str) -> "DatasourceId":
@@ -122,17 +111,8 @@ class DatasourceId:
 
         Returns:
             The DatasourceId instance created from the string representation.
-
-        Raises:
-            ValueError: If the string representation is invalid (e.g. too many parent folders).
         """
         config_file_path = Path(datasource_id_as_string)
-
-        if len(config_file_path.parents) > 2:
-            raise ValueError(
-                f"Invalid string representation of a DatasourceId: too many parent folders defined in {datasource_id_as_string}"
-            )
-
         return DatasourceId.from_datasource_config_file_path(config_file_path)
 
     @classmethod
@@ -140,15 +120,21 @@ class DatasourceId:
         """Create a DatasourceId from a config file path.
 
         Args:
-            datasource_config_file: The path to the datasource config file.
+            datasource_config_file: The relative path (to src) to the datasource config file.
                 This path can either be the config file path relative to the src folder or the full path to the config file.
 
         Returns:
             The DatasourceId instance created from the config file path.
+
+        Raises:
+            ValueError: If the wrong datasource_config_file is provided.
         """
+        if datasource_config_file.is_absolute():
+            raise ValueError(
+                f"Path to datasource config file should be relative to project's src folder: {datasource_config_file}"
+            )
         return DatasourceId(
-            datasource_config_folder=datasource_config_file.parent.name,
-            datasource_name=datasource_config_file.stem,
+            datasource_path=_extract_datasource_path(datasource_config_file),
             config_file_suffix=datasource_config_file.suffix,
         )
 
@@ -164,6 +150,9 @@ class DatasourceId:
 
         Returns:
             The DatasourceId instance created from the context file path.
+
+        Raises:
+            ValueError: If the wrong datasource_context_file is provided.
         """
         if (
             len(datasource_context_file.suffixes) > 1
@@ -174,12 +163,16 @@ class DatasourceId:
                 : -len(DatasourceId.CONTEXT_FILE_SUFFIX)
             ]
             datasource_context_file = datasource_context_file.with_name(context_file_name_without_yaml_extension)
-
+        if datasource_context_file.is_absolute():
+            raise ValueError(f"Path to datasource context file should be a relative path: {datasource_context_file}")
         return DatasourceId(
-            datasource_config_folder=datasource_context_file.parent.name,
-            datasource_name=datasource_context_file.stem,
+            datasource_path=_extract_datasource_path(datasource_context_file),
             config_file_suffix=datasource_context_file.suffix,
         )
+
+
+def _extract_datasource_path(datasource_file: Path) -> str:
+    return str(datasource_file.with_suffix(""))
 
 
 @dataclass

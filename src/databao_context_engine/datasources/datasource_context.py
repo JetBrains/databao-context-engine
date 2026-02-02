@@ -38,27 +38,26 @@ def _read_datasource_type_from_context_file(context_path: Path) -> DatasourceTyp
 
 def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
     result = []
-    for main_type_dir in sorted(
-        (p for p in project_layout.output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()
-    ):
-        for context_path in sorted(
-            (p for p in main_type_dir.iterdir() if p.suffix in DatasourceId.ALLOWED_YAML_SUFFIXES),
-            key=lambda p: p.name.lower(),
-        ):
+    for dirpath, dirnames, filenames in os.walk(project_layout.output_dir):
+        for context_file_name in filenames:
+            if Path(context_file_name).suffix not in DatasourceId.ALLOWED_YAML_SUFFIXES:
+                continue
+            context_file = Path(dirpath).joinpath(context_file_name)
+            relative_context_file = context_file.relative_to(project_layout.output_dir)
             try:
                 result.append(
                     Datasource(
-                        id=DatasourceId.from_datasource_config_file_path(context_path),
-                        type=_read_datasource_type_from_context_file(context_path),
+                        id=DatasourceId.from_datasource_context_file_path(relative_context_file),
+                        type=_read_datasource_type_from_context_file(context_file),
                     )
                 )
             except ValueError as e:
                 logger.debug(str(e), exc_info=True, stack_info=True)
                 logger.warning(
-                    f"Ignoring introspected datasource: Failed to read datasource_type from context file at {context_path.resolve()}"
+                    f"Ignoring introspected datasource: Failed to read datasource_type from context file at {context_file.resolve()}"
                 )
 
-    return result
+    return sorted(result, key=lambda ds: str(ds.id.relative_path_to_config_file()).lower())
 
 
 def get_datasource_context(project_layout: ProjectLayout, datasource_id: DatasourceId) -> DatasourceContext:
@@ -72,21 +71,19 @@ def get_datasource_context(project_layout: ProjectLayout, datasource_id: Datasou
 
 def get_all_contexts(project_layout: ProjectLayout) -> list[DatasourceContext]:
     result = []
-    for main_type_dir in sorted(
-        (p for p in project_layout.output_dir.iterdir() if p.is_dir()), key=lambda p: p.name.lower()
-    ):
-        for context_path in sorted(
-            (p for p in main_type_dir.iterdir() if p.suffix in DatasourceId.ALLOWED_YAML_SUFFIXES),
-            key=lambda p: p.name.lower(),
-        ):
+    for dirpath, dirnames, filenames in os.walk(project_layout.output_dir):
+        for context_file_name in filenames:
+            if Path(context_file_name).suffix not in DatasourceId.ALLOWED_YAML_SUFFIXES:
+                continue
+            context_file = Path(dirpath).joinpath(context_file_name)
+            relative_context_file = context_file.relative_to(project_layout.output_dir)
             result.append(
                 DatasourceContext(
-                    datasource_id=DatasourceId.from_datasource_context_file_path(context_path),
-                    context=context_path.read_text(),
+                    datasource_id=DatasourceId.from_datasource_context_file_path(relative_context_file),
+                    context=context_file.read_text(),
                 )
             )
-
-    return result
+    return sorted(result, key=lambda context: str(context.datasource_id.relative_path_to_config_file()).lower())
 
 
 def get_context_header_for_datasource(datasource_id: DatasourceId) -> str:

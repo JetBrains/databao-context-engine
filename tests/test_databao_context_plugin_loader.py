@@ -20,11 +20,11 @@ def test_databao_context_plugin_loader__get_all_supported_datasource_types(plugi
     result = plugin_loader_under_test.get_all_supported_datasource_types()
 
     assert result == {
-        DatasourceType(full_type="files/dummy"),
-        DatasourceType(full_type="dummy/no_config_type"),
-        DatasourceType(full_type="dummy/dummy_default"),
-        DatasourceType(full_type="databases/dummy_db"),
-        DatasourceType(full_type="additional/dummy_type"),
+        DatasourceType(full_type="dummy_txt"),
+        DatasourceType(full_type="additional_dummy_type"),
+        DatasourceType(full_type="no_config_type"),
+        DatasourceType(full_type="dummy_db"),
+        DatasourceType(full_type="dummy_default"),
     }
 
 
@@ -34,15 +34,15 @@ def test_databao_context_plugin_loader__get_all_supported_datasource_types_exclu
     result = plugin_loader_under_test.get_all_supported_datasource_types(exclude_file_plugins=True)
 
     assert result == {
-        DatasourceType(full_type="dummy/no_config_type"),
-        DatasourceType(full_type="dummy/dummy_default"),
-        DatasourceType(full_type="databases/dummy_db"),
-        DatasourceType(full_type="additional/dummy_type"),
+        DatasourceType(full_type="no_config_type"),
+        DatasourceType(full_type="dummy_default"),
+        DatasourceType(full_type="dummy_db"),
+        DatasourceType(full_type="additional_dummy_type"),
     }
 
 
 @pytest.mark.parametrize(
-    ["full_type", "plugin_type"], [("files/dummy", DummyFilePlugin), ("databases/dummy_db", DummyBuildDatasourcePlugin)]
+    ["full_type", "plugin_type"], [("dummy_txt", DummyFilePlugin), ("dummy_db", DummyBuildDatasourcePlugin)]
 )
 def test_databao_context_plugin_loader__get_plugin_for_datasource_type(
     plugin_loader_under_test, full_type, plugin_type
@@ -63,7 +63,7 @@ def test_databao_context_plugin_loader__get_plugin_for_datasource_type_unknown(p
 
 @pytest.mark.parametrize(
     ["full_type", "config_file_type"],
-    [("dummy/dummy_default", dict[str, Any]), ("databases/dummy_db", DummyConfigFileType)],
+    [("dummy_default", dict[str, Any]), ("dummy_db", DummyConfigFileType)],
 )
 def test_databao_context_plugin_loader__get_config_file_type_for_datasource_type(
     plugin_loader_under_test, full_type, config_file_type

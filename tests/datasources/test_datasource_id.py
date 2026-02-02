@@ -7,26 +7,23 @@ from databao_context_engine.datasources.types import DatasourceId
 
 
 @pytest.mark.parametrize(
-    ["config_folder", "datasource_name", "suffix", "is_valid", "expected_error_message"],
+    ["datasource_path", "suffix", "is_valid", "expected_error_message"],
     [
-        ("parent/child", "my_datasource", ".yaml", False, "must not contain a path separator"),
-        ("parent/", "my_datasource", ".yaml", False, "must not contain a path separator"),
-        ("parent", "child/my_datasource", ".yaml", False, "must not contain a path separator"),
-        ("parent", "my_datasource.yaml", ".yaml", False, "not contain the file suffix"),
-        ("parent", "my_datasource", "yaml", False, "config_file_suffix must start with a dot"),
-        ("parent", "my_datasource", ".yaml", True, ""),
-        ("parent", "my_datasource.txt", ".yaml", True, ""),
-        ("Case Sensitive Folder", "My Datasource", ".yaml", True, ""),
+        ("parent/child/my_datasource", ".yaml", True, ""),
+        ("parent/my_datasource.yaml", ".yaml", False, "not contain the file suffix"),
+        ("parent/my_datasource", "yaml", False, "config_file_suffix must start with a dot"),
+        ("parent/my_datasource", ".yaml", True, ""),
+        ("parent/my_datasource.txt", ".yaml", True, ""),
+        ("Case Sensitive Folder/My Datasource", ".yaml", True, ""),
     ],
 )
 def test_datasource_id__fails_to_create_invalid_id(
-    config_folder: str, datasource_name: str, suffix: str, is_valid: bool, expected_error_message: str
+    datasource_path: str, suffix: str, is_valid: bool, expected_error_message: str
 ):
     context_manager = nullcontext() if is_valid else pytest.raises(ValueError)
     with context_manager as e:
         DatasourceId(
-            datasource_config_folder=config_folder,
-            datasource_name=datasource_name,
+            datasource_path=datasource_path,
             config_file_suffix=suffix,
         )
 
@@ -39,7 +36,12 @@ def test_datasource_id__fails_to_create_invalid_id(
 @pytest.mark.parametrize(
     ["string_repr", "is_valid", "expected_error_message", "expected_datasource_id"],
     [
-        ("parent/child/my_datasource.yaml", False, "too many parent folders", None),
+        (
+            "parent/child/my_datasource.yaml",
+            True,
+            "",
+            DatasourceId(datasource_path="parent/child/my_datasource", config_file_suffix=".yaml"),
+        ),
         ("parent/my_datasource", False, "must not be empty", None),
         ("parent/", False, "must not be empty", None),
         ("my_datasource", False, "must not be empty", None),
@@ -47,33 +49,32 @@ def test_datasource_id__fails_to_create_invalid_id(
             "parent/my_datasource.yaml",
             True,
             "",
-            DatasourceId(
-                datasource_config_folder="parent", datasource_name="my_datasource", config_file_suffix=".yaml"
-            ),
+            DatasourceId(datasource_path="parent/my_datasource", config_file_suffix=".yaml"),
         ),
         (
             "parent//my_datasource.yaml",
             True,
             "",
-            DatasourceId(
-                datasource_config_folder="parent", datasource_name="my_datasource", config_file_suffix=".yaml"
-            ),
+            DatasourceId(datasource_path="parent/my_datasource", config_file_suffix=".yaml"),
         ),
         (
             "parent/my_datasource.txt.yaml",
             True,
             "",
-            DatasourceId(
-                datasource_config_folder="parent", datasource_name="my_datasource.txt", config_file_suffix=".yaml"
-            ),
+            DatasourceId(datasource_path="parent/my_datasource.txt", config_file_suffix=".yaml"),
+        ),
+        (
+            "parent1/parent2/my_datasource.txt.yaml",
+            True,
+            "",
+            DatasourceId(datasource_path="parent1/parent2/my_datasource.txt", config_file_suffix=".yaml"),
         ),
         (
             "Case Sensitive Folder/My Datasource.yaml",
             True,
             "",
             DatasourceId(
-                datasource_config_folder="Case Sensitive Folder",
-                datasource_name="My Datasource",
+                datasource_path="Case Sensitive Folder/My Datasource",
                 config_file_suffix=".yaml",
             ),
         ),
@@ -102,36 +103,23 @@ def test_datasource_id__from_string_repr(
         (Path("parent/"), False, "must not be empty", None),
         (Path("my_datasource"), False, "must not be empty", None),
         (
-            Path("my-dce-project/src/databases/my_datasource.yaml"),
-            True,
-            "",
-            DatasourceId(
-                datasource_config_folder="databases", datasource_name="my_datasource", config_file_suffix=".yaml"
-            ),
-        ),
-        (
             Path("parent/my_datasource.yaml"),
             True,
             "",
-            DatasourceId(
-                datasource_config_folder="parent", datasource_name="my_datasource", config_file_suffix=".yaml"
-            ),
+            DatasourceId(datasource_path="parent/my_datasource", config_file_suffix=".yaml"),
         ),
         (
             Path("parent/my_datasource.txt.yaml"),
             True,
             "",
-            DatasourceId(
-                datasource_config_folder="parent", datasource_name="my_datasource.txt", config_file_suffix=".yaml"
-            ),
+            DatasourceId(datasource_path="parent/my_datasource.txt", config_file_suffix=".yaml"),
         ),
         (
             Path("Case Sensitive Folder/My Datasource.yaml"),
             True,
             "",
             DatasourceId(
-                datasource_config_folder="Case Sensitive Folder",
-                datasource_name="My Datasource",
+                datasource_path="Case Sensitive Folder/My Datasource",
                 config_file_suffix=".yaml",
             ),
         ),
@@ -154,9 +142,7 @@ def test_datasource_id__from_config_file_path(
 
 
 def test_datasource_id__relative_path_to_config_file_from_yaml_file():
-    under_test = DatasourceId(
-        datasource_config_folder="parent", datasource_name="my_datasource", config_file_suffix=".yaml"
-    )
+    under_test = DatasourceId(datasource_path="parent/my_datasource", config_file_suffix=".yaml")
 
     result = under_test.relative_path_to_config_file()
 
@@ -164,9 +150,7 @@ def test_datasource_id__relative_path_to_config_file_from_yaml_file():
 
 
 def test_datasource_id__relative_path_to_config_file_from_raw_file():
-    under_test = DatasourceId(
-        datasource_config_folder="parent", datasource_name="my_datasource", config_file_suffix=".txt"
-    )
+    under_test = DatasourceId(datasource_path="parent/my_datasource", config_file_suffix=".txt")
 
     result = under_test.relative_path_to_config_file()
 
@@ -174,9 +158,7 @@ def test_datasource_id__relative_path_to_config_file_from_raw_file():
 
 
 def test_datasource_id__relative_path_to_context_file_from_yaml_file():
-    under_test = DatasourceId(
-        datasource_config_folder="parent", datasource_name="my_datasource", config_file_suffix=".yaml"
-    )
+    under_test = DatasourceId(datasource_path="parent/my_datasource", config_file_suffix=".yaml")
 
     result = under_test.relative_path_to_context_file()
 
@@ -184,9 +166,7 @@ def test_datasource_id__relative_path_to_context_file_from_yaml_file():
 
 
 def test_datasource_id__relative_path_to_context_file_from_raw_file():
-    under_test = DatasourceId(
-        datasource_config_folder="parent", datasource_name="my_datasource", config_file_suffix=".txt"
-    )
+    under_test = DatasourceId(datasource_path="parent/my_datasource", config_file_suffix=".txt")
 
     result = under_test.relative_path_to_context_file()
 

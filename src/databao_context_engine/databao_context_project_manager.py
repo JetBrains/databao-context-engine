@@ -4,10 +4,6 @@ from typing import Any, overload
 
 from databao_context_engine.build_sources import BuildContextResult, build_all_datasources
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
-from databao_context_engine.datasources.add_config import (
-    create_datasource_config_file,
-    get_datasource_id_for_config_file,
-)
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
 )
@@ -22,6 +18,10 @@ from databao_context_engine.project.layout import (
     ensure_datasource_config_file_doesnt_exist,
     ensure_project_dir,
 )
+from databao_context_engine.project.layout import (
+    create_datasource_config_file as create_datasource_config_file_internal,
+)
+from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 
@@ -128,7 +128,7 @@ class DatabaoContextProjectManager:
             The path to the created datasource configuration file.
         """
         # TODO: Before creating the datasource, validate the config content based on which plugin will be used
-        config_file_path = create_datasource_config_file(
+        config_file = _create_datasource_config_file(
             project_layout=self._project_layout,
             datasource_type=datasource_type,
             datasource_name=datasource_name,
@@ -136,28 +136,27 @@ class DatabaoContextProjectManager:
             overwrite_existing=overwrite_existing,
         )
 
+        relative_config_file = config_file.relative_to(self._project_layout.src_dir)
         return DatasourceConfigFile(
-            datasource_id=DatasourceId.from_datasource_config_file_path(config_file_path),
-            config_file_path=config_file_path,
+            datasource_id=DatasourceId.from_datasource_config_file_path(relative_config_file),
+            config_file_path=config_file,
         )
 
     @overload
-    def datasource_config_exists(self, *, datasource_type: DatasourceType, datasource_name: str) -> bool: ...
+    def datasource_config_exists(self, *, datasource_name: str) -> bool: ...
     @overload
     def datasource_config_exists(self, *, datasource_id: DatasourceId) -> bool: ...
 
     def datasource_config_exists(
         self,
         *,
-        datasource_type: DatasourceType | None = None,
         datasource_name: str | None = None,
         datasource_id: DatasourceId | None = None,
     ) -> bool:
         """Check if a datasource configuration file already exists in the project.
 
         Args:
-            datasource_type: The type of the datasource. This must be used in conjunction with datasource_name.
-            datasource_name: The name of the datasource. This must be used in conjunction with datasource_type.
+            datasource_name: The name of the datasource.
             datasource_id: The id of the datasource. If provided, datasource_type and datasource_name will be ignored.
 
         Returns:
@@ -166,9 +165,12 @@ class DatabaoContextProjectManager:
         Raises:
             ValueError: If the wrong set of arguments is provided.
         """
-        if datasource_type is not None and datasource_name is not None:
-            datasource_id = get_datasource_id_for_config_file(datasource_type, datasource_name)
-        elif datasource_id is None:
+        if datasource_name is not None:
+            relative_config_file = Path(f"{datasource_name}.yaml")
+            config_file = self._project_layout.get_source_dir() / relative_config_file
+            return config_file.is_file()
+
+        if datasource_id is None:
             raise ValueError("Either datasource_id or both datasource_type and datasource_name must be provided")
 
         try:
@@ -187,3 +189,21 @@ class DatabaoContextProjectManager:
             A DatabaoContextEngine instance for the project.
         """
         return DatabaoContextEngine(project_dir=self.project_dir)
+
+
+def _create_datasource_config_file(
+    project_layout: ProjectLayout,
+    datasource_type: DatasourceType,
+    datasource_name: str,
+    config_content: dict[str, Any],
+    overwrite_existing: bool,
+) -> Path:
+    last_datasource_name = datasource_name.split("/")[-1]
+    basic_config = {"type": datasource_type.full_type, "name": last_datasource_name}
+
+    return create_datasource_config_file_internal(
+        project_layout,
+        f"{datasource_name}.yaml",
+        to_yaml_string(basic_config | config_content),
+        overwrite_existing=overwrite_existing,
+    )

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
+from databao_context_engine import DatasourceId
 from databao_context_engine.build_sources import build_runner
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.datasources.types import PreparedFile
@@ -64,7 +65,15 @@ def test_build_skips_source_without_plugin(
     datasources = SimpleNamespace(path=project_layout.src_dir / "files" / "one.md")
     stub_sources([datasources])
     stub_plugins({})
-    stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=datasources.path)])
+    stub_prepare(
+        [
+            PreparedFile(
+                DatasourceId.from_datasource_config_file_path(Path("files/one.md")),
+                datasource_type=DatasourceType(full_type="files/md"),
+                path=datasources.path,
+            )
+        ]
+    )
 
     build_runner.build(project_layout=project_layout, build_service=mock_build_service)
     mock_build_service.start_run.assert_not_called()
@@ -80,7 +89,15 @@ def test_build_processes_file_source_and_exports(
 ):
     src = SimpleNamespace(path=project_layout.src_dir / "files" / "one.md")
     stub_sources([src])
-    stub_prepare([PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=src.path)])
+    stub_prepare(
+        [
+            PreparedFile(
+                datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/one.md")),
+                datasource_type=DatasourceType(full_type="files/md"),
+                path=src.path,
+            )
+        ]
+    )
     stub_plugins({DatasourceType(full_type="files/md"): object()})
 
     mock_build_service.process_prepared_source.return_value = _result(name="files/one.md", typ="files/md")
@@ -98,8 +115,16 @@ def test_build_continues_on_service_exception(
     stub_sources([s1, s2])
     stub_prepare(
         [
-            PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=s1.path),
-            PreparedFile(datasource_type=DatasourceType(full_type="files/md"), path=s2.path),
+            PreparedFile(
+                datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/a.md")),
+                datasource_type=DatasourceType(full_type="files/md"),
+                path=s1.path,
+            ),
+            PreparedFile(
+                datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/b.md")),
+                datasource_type=DatasourceType(full_type="files/md"),
+                path=s2.path,
+            ),
         ]
     )
     stub_plugins({DatasourceType(full_type="files/md"): object()})

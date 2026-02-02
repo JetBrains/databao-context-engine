@@ -59,7 +59,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
     config_file_type = DummyConfigFileType
 
     def supported_types(self) -> set[str]:
-        return {"databases/dummy_db"}
+        return {"dummy_db"}
 
     def build_context(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> Any:
         return {
@@ -103,7 +103,7 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
     name = "Dummy Plugin with a default type"
 
     def supported_types(self) -> set[str]:
-        return {"dummy/dummy_default"}
+        return {"dummy_default"}
 
     def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
         return {"ok": True}
@@ -117,7 +117,7 @@ class DummyFilePlugin(BuildFilePlugin):
     name = "Dummy Plugin with a default type"
 
     def supported_types(self) -> set[str]:
-        return {"files/dummy"}
+        return {"dummy_txt"}
 
     def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
         return {"file_ok": True}
@@ -137,7 +137,7 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
     config_file_type = AdditionalDummyConfigFile
 
     def supported_types(self) -> set[str]:
-        return {"additional/dummy_type"}
+        return {"additional_dummy_type"}
 
     def build_context(self, full_type: str, datasource_name: str, file_config: AdditionalDummyConfigFile) -> Any:
         return {"additional_ok": True}
@@ -151,7 +151,7 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigP
     name = "Dummy Plugin With No Config Type"
 
     def supported_types(self) -> set[str]:
-        return {"dummy/no_config_type"}
+        return {"no_config_type"}
 
     def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
         return {"no_config_ok": True}
@@ -191,13 +191,13 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigP
 
 def load_dummy_plugins(exclude_file_plugins: bool = False) -> dict[DatasourceType, BuildPlugin]:
     result: dict[DatasourceType, BuildPlugin] = {
-        DatasourceType(full_type="databases/dummy_db"): DummyBuildDatasourcePlugin(),
-        DatasourceType(full_type="dummy/dummy_default"): DummyDefaultDatasourcePlugin(),
-        DatasourceType(full_type="additional/dummy_type"): AdditionalDummyPlugin(),
-        DatasourceType(full_type="dummy/no_config_type"): DummyPluginWithNoConfigType(),
+        DatasourceType(full_type="dummy_db"): DummyBuildDatasourcePlugin(),
+        DatasourceType(full_type="dummy_default"): DummyDefaultDatasourcePlugin(),
+        DatasourceType(full_type="additional_dummy_type"): AdditionalDummyPlugin(),
+        DatasourceType(full_type="no_config_type"): DummyPluginWithNoConfigType(),
     }
 
     if not exclude_file_plugins:
-        result.update({DatasourceType(full_type="files/dummy"): DummyFilePlugin()})
+        result.update({DatasourceType(full_type="dummy_txt"): DummyFilePlugin()})
 
     return result

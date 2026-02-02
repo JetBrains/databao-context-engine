@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from databao_context_engine import DatasourceId
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.datasources.types import PreparedDatasource, PreparedFile
@@ -20,7 +21,11 @@ def mk_result(*, name="files/foo.md", typ="files/md", result=None):
 
 
 def mk_prepared(path: Path, full_type: str) -> PreparedDatasource:
-    return PreparedFile(path=path, datasource_type=DatasourceType(full_type=full_type))
+    return PreparedFile(
+        DatasourceId.from_datasource_config_file_path(path),
+        datasource_type=DatasourceType(full_type=full_type),
+        path=path,
+    )
 
 
 @pytest.fixture
@@ -35,10 +40,10 @@ def svc(chunk_embed_svc):
     )
 
 
-def test_process_prepared_source_no_chunks_skips_write_and_embed(svc, chunk_embed_svc, mocker, tmp_path):
+def test_process_prepared_source_no_chunks_skips_write_and_embed(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "one.md", full_type="files/md")
+    prepared = mk_prepared(Path("files") / "one.md", full_type="files/md")
 
     mocker.patch("databao_context_engine.build_sources.build_service.execute", return_value=mk_result())
     plugin.divide_context_into_chunks.return_value = []
@@ -49,10 +54,10 @@ def test_process_prepared_source_no_chunks_skips_write_and_embed(svc, chunk_embe
     assert isinstance(out, BuiltDatasourceContext)
 
 
-def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, chunk_embed_svc, mocker, tmp_path):
+def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "two.md", full_type="files/md")
+    prepared = mk_prepared(Path("files") / "two.md", full_type="files/md")
 
     result = mk_result(name="files/two.md", typ="files/md", result={"context": "ok"})
     mocker.patch("databao_context_engine.build_sources.build_service.execute", return_value=result)
@@ -71,10 +76,10 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, chunk_em
     assert out is result
 
 
-def test_process_prepared_source_execute_error_bubbles_and_no_writes(svc, chunk_embed_svc, mocker, tmp_path):
+def test_process_prepared_source_execute_error_bubbles_and_no_writes(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "boom.md", full_type="files/md")
+    prepared = mk_prepared(Path("files") / "boom.md", full_type="files/md")
 
     mocker.patch("databao_context_engine.build_sources.build_service.execute", side_effect=RuntimeError("exec-fail"))
 
@@ -84,10 +89,10 @@ def test_process_prepared_source_execute_error_bubbles_and_no_writes(svc, chunk_
     chunk_embed_svc.embed_chunks.assert_not_called()
 
 
-def test_process_prepared_source_embed_error_bubbles_after_row_creation(svc, chunk_embed_svc, mocker, tmp_path):
+def test_process_prepared_source_embed_error_bubbles_after_row_creation(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
-    prepared = mk_prepared(tmp_path / "src" / "files" / "x.md", full_type="files/md")
+    prepared = mk_prepared(Path("files") / "x.md", full_type="files/md")
 
     mocker.patch("databao_context_engine.build_sources.build_service.execute", return_value=mk_result())
     plugin.divide_context_into_chunks.return_value = [EmbeddableChunk("x", "X")]

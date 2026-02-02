@@ -20,12 +20,12 @@ def patch_load_plugins(mocker):
 def test_add_datasource_config__with_no_custom_properties(project_path: Path):
     cli_runner = CliRunner()
 
-    inputs = ["dummy", "dummy_default", "my datasource name"]
+    inputs = ["dummy_default", "my datasource name"]
 
     with cli_runner.isolation(input=os.linesep.join(inputs)):
         add_datasource_config_interactive(project_path)
 
-    result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
+    result_config_file = get_source_dir(project_path).joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
     assert result_config_file.read_text() == to_yaml_string({"type": "dummy_default", "name": "my datasource name"})
 
@@ -34,9 +34,8 @@ def test_add_datasource_config__with_all_values_filled(project_path: Path):
     cli_runner = CliRunner()
 
     inputs = [
-        "databases",
         "dummy_db",
-        "my datasource name",
+        "databases/my datasource name",
         "15.356",
         "property_with_default",
         "nested_field",
@@ -68,9 +67,8 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
     cli_runner = CliRunner()
 
     inputs = [
-        "databases",
         "dummy_db",
-        "my datasource name",
+        "databases/my datasource name",
         "3.14",
         "",
         "nested_field",
@@ -102,9 +100,8 @@ def test_add_datasource_config__with_custom_property_list(project_path: Path):
     cli_runner = CliRunner()
 
     inputs = [
-        "dummy",
         "no_config_type",
-        "my datasource name",
+        "dummy/my datasource name",
         "3.14",
         "value",
         "nested_field",
@@ -138,9 +135,8 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
     cli_runner = CliRunner()
 
     inputs = [
-        "dummy",
         "no_config_type",
-        "my datasource name",
+        "dummy/my datasource name",
         "3.14",
         "",
         "",
@@ -168,17 +164,15 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
 def test_add_datasource_config__abort_if_existing_config_and_no_overwrite(project_layout: ProjectLayout):
     given_datasource_config_file(
         project_layout,
-        "dummy/no_config_type",
-        "my datasource name",
+        "dummy/my datasource name",
         {"type": "no_config_type", "name": "my datasource name", "old_attribute": "old_value"},
     )
 
     cli_runner = CliRunner()
 
     inputs = [
-        "dummy",
         "no_config_type",
-        "my datasource name",
+        "dummy/my datasource name",
         "n",
     ]
 
@@ -196,17 +190,15 @@ def test_add_datasource_config__abort_if_existing_config_and_no_overwrite(projec
 def test_add_datasource_config__overwrite_existing_config(project_layout: ProjectLayout):
     given_datasource_config_file(
         project_layout,
-        "dummy/no_config_type",
-        "my datasource name",
+        "dummy/my datasource name",
         {"type": "no_config_type", "name": "my datasource name", "old_attribute": "old_value"},
     )
 
     cli_runner = CliRunner()
 
     inputs = [
-        "dummy",
         "no_config_type",
-        "my datasource name",
+        "dummy/my datasource name",
         "y",
         "3.14",
         "",

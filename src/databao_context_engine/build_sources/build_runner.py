@@ -94,7 +94,7 @@ def build(
 
             build_result.append(
                 BuildContextResult(
-                    datasource_id=DatasourceId.from_string_repr(result.datasource_id),
+                    datasource_id=discovered_datasource.datasource_id,
                     datasource_type=DatasourceType(full_type=result.datasource_type),
                     context_built_at=result.context_built_at,
                     context_file_path=context_file_path,

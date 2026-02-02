@@ -5,7 +5,7 @@ from databao_context_engine.plugins.databases.mysql.mysql_introspector import My
 class MySQLDbPlugin(BaseDatabasePlugin[MySQLConfigFile]):
     id = "jetbrains/mysql"
     name = "MySQL DB Plugin"
-    supported = {"databases/mysql"}
+    supported = {"mysql"}
     config_file_type = MySQLConfigFile
 
     def __init__(self):
