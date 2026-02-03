@@ -143,16 +143,16 @@ class DatabaoContextProjectManager:
         )
 
     @overload
-    def datasource_config_exists(self, *, datasource_name: str) -> bool: ...
+    def datasource_config_exists(self, *, datasource_name: str) -> DatasourceId | None: ...
     @overload
-    def datasource_config_exists(self, *, datasource_id: DatasourceId) -> bool: ...
+    def datasource_config_exists(self, *, datasource_id: DatasourceId) -> DatasourceId | None: ...
 
     def datasource_config_exists(
         self,
         *,
         datasource_name: str | None = None,
         datasource_id: DatasourceId | None = None,
-    ) -> bool:
+    ) -> DatasourceId | None:
         """Check if a datasource configuration file already exists in the project.
 
         Args:
@@ -160,7 +160,7 @@ class DatabaoContextProjectManager:
             datasource_id: The id of the datasource. If provided, datasource_type and datasource_name will be ignored.
 
         Returns:
-            True if there is already a datasource configuration file for this datasource, False otherwise.
+            datasource_id if there is already a datasource configuration file for this datasource, None otherwise.
 
         Raises:
             ValueError: If the wrong set of arguments is provided.
@@ -168,7 +168,9 @@ class DatabaoContextProjectManager:
         if datasource_name is not None:
             relative_config_file = Path(f"{datasource_name}.yaml")
             config_file = self._project_layout.get_source_dir() / relative_config_file
-            return config_file.is_file()
+            if config_file.is_file():
+                return DatasourceId.from_datasource_config_file_path(relative_config_file)
+            return None
 
         if datasource_id is None:
             raise ValueError("Either datasource_id or both datasource_type and datasource_name must be provided")
@@ -178,9 +180,9 @@ class DatabaoContextProjectManager:
                 project_layout=self._project_layout,
                 datasource_id=datasource_id,
             )
-            return False
+            return datasource_id
         except ValueError:
-            return True
+            return None
 
     def get_engine_for_project(self) -> DatabaoContextEngine:
         """Instantiate a DatabaoContextEngine for the project.
