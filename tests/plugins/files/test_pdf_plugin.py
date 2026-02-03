@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 
 from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
 from databao_context_engine.services.docling_chunker import EmbeddingPolicy
 
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
+FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
 
 def _embed_tokenizer(policy: EmbeddingPolicy) -> HuggingFaceTokenizer:
@@ -20,7 +19,6 @@ def _embed_tokenizer(policy: EmbeddingPolicy) -> HuggingFaceTokenizer:
 
 def test_pdf_plugin_smoke_table_pdf_produces_chunks_under_budget():
     pdf_path = FIXTURES_DIR / "long_table.pdf"
-    assert pdf_path.exists(), f"Missing fixture: {pdf_path}"
 
     plugin = PDFPlugin()
 
@@ -60,8 +58,6 @@ def test_pdf_plugin_smoke_table_pdf_produces_chunks_under_budget():
 
 def test_pdf_plugin_smoke_mixed_text_pdf_produces_chunks_under_budget():
     pdf_path = FIXTURES_DIR / "mixed_text.pdf"
-    if not pdf_path.exists():
-        pytest.skip(f"Optional fixture not present: {pdf_path}")
 
     plugin = PDFPlugin()
 
