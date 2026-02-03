@@ -57,7 +57,7 @@ def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Data
                     f"Ignoring introspected datasource: Failed to read datasource_type from context file at {context_file.resolve()}"
                 )
 
-    return sorted(result, key=lambda ds: str(ds.id.relative_path_to_config_file()).lower())
+    return sorted(result, key=lambda ds: str(ds.id).lower())
 
 
 def get_datasource_context(project_layout: ProjectLayout, datasource_id: DatasourceId) -> DatasourceContext:
