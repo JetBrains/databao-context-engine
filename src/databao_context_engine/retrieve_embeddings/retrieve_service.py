@@ -49,10 +49,13 @@ class RetrieveService:
         logger.debug(f"Retrieved {len(search_results)} display texts in table {table_name}")
 
         if logger.isEnabledFor(logging.DEBUG):
-            closest_result = min(search_results, key=lambda result: result.cosine_distance)
-            logger.debug(f"Best result: ({closest_result.cosine_distance}, {closest_result.embeddable_text})")
+            if search_results:
+                closest_result = min(search_results, key=lambda result: result.cosine_distance)
+                logger.debug(f"Best result: ({closest_result.cosine_distance}, {closest_result.embeddable_text})")
 
-            farthest_result = max(search_results, key=lambda result: result.cosine_distance)
-            logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
+                farthest_result = max(search_results, key=lambda result: result.cosine_distance)
+                logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
+            else:
+                logger.debug("No results found")
 
         return search_results
