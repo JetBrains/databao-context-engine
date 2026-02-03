@@ -38,8 +38,14 @@ class DbtManifest(BaseModel):
     nodes: dict[str, DbtManifestNode]
 
 
+class DbtCatalogColumn(BaseModel):
+    name: str
+    type: str
+
+
 class DbtCatalogNode(BaseModel):
-    unique_id: str
+    unique_id: str | None = None
+    columns: dict[str, DbtCatalogColumn]
 
 
 class DbtCatalog(BaseModel):

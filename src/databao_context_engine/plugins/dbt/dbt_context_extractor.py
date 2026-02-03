@@ -10,6 +10,8 @@ from databao_context_engine.plugins.dbt.types import (
 from databao_context_engine.plugins.dbt.types_artifacts import (
     DbtArtifacts,
     DbtCatalog,
+    DbtCatalogColumn,
+    DbtCatalogNode,
     DbtManifest,
     DbtManifestColumn,
     DbtManifestModel,
@@ -50,16 +52,22 @@ def _extract_context_from_artifacts(artifacts: DbtArtifacts) -> DbtContext:
         if isinstance(manifest_model, DbtManifestModel)
     ]
 
-    # TODO: Add the catalog if available to read the actual column type
+    catalog_nodes = artifacts.catalog.nodes if artifacts.catalog else {}
+
     # TODO: Extract the stages? Or at least the "highest-level" models (= marts?)
     # TODO: Extract the constraints
     # TODO: Organize the models by schemas? Or by stages?
     return DbtContext(
-        models=[_manifest_model_to_dbt_model(manifest_model) for manifest_model in manifest_models],
+        models=[
+            _manifest_model_to_dbt_model(manifest_model, catalog_nodes.get(manifest_model.unique_id, None))
+            for manifest_model in manifest_models
+        ],
     )
 
 
-def _manifest_model_to_dbt_model(manifest_model: DbtManifestModel) -> DbtModel:
+def _manifest_model_to_dbt_model(manifest_model: DbtManifestModel, catalog_node: DbtCatalogNode | None) -> DbtModel:
+    catalog_columns = catalog_node.columns if catalog_node else {}
+
     return DbtModel(
         id=manifest_model.unique_id,
         name=manifest_model.name,
@@ -67,7 +75,8 @@ def _manifest_model_to_dbt_model(manifest_model: DbtManifestModel) -> DbtModel:
         schema=manifest_model.schema_,
         description=manifest_model.description,
         columns=[
-            _manifest_column_to_dbt_column(manifest_column) for manifest_column in manifest_model.columns.values()
+            _manifest_column_to_dbt_column(manifest_column, catalog_columns.get(manifest_column.name))
+            for manifest_column in manifest_model.columns.values()
         ],
         materialization=_manifest_materialization_to_dbt_materializaton(
             manifest_model.config.materialized if manifest_model.config else None
@@ -77,11 +86,13 @@ def _manifest_model_to_dbt_model(manifest_model: DbtManifestModel) -> DbtModel:
     )
 
 
-def _manifest_column_to_dbt_column(manifest_column: DbtManifestColumn) -> DbtColumn:
+def _manifest_column_to_dbt_column(
+    manifest_column: DbtManifestColumn, catalog_column: DbtCatalogColumn | None
+) -> DbtColumn:
     return DbtColumn(
         name=manifest_column.name,
         description=manifest_column.description,
-        type=manifest_column.data_type,
+        type=catalog_column.type if catalog_column else manifest_column.data_type,
     )
 
 
