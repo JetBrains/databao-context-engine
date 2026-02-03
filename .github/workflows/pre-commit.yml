@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    name: pre-commit on ${{ matrix.python-version }}
+    name: Build and run checks
 
     runs-on: ubuntu-latest
     permissions:
@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.12", "3.13" ]
+        python-version: [ "3.12" ]
 
     steps:
       - uses: actions/checkout@v5
