@@ -103,7 +103,7 @@ class DatabaoContextEngine:
         Args:
             retrieve_text: The text to search for in the contexts.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
-            datasource_ids: Not Implemented yet: providing this argument changes nothing to the search
+            datasource_ids: If provided, the search results will only come from the datasources with these IDs.
 
         Returns:
             A list of the results found for the search, sorted by distance.
