@@ -31,10 +31,9 @@ def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
             logger.info(f"Invalid source at ({discovered_datasource.path}): {str(e)}")
             continue
 
-        relative_config_file = discovered_datasource.path.relative_to(project_layout.src_dir)
         result.append(
             Datasource(
-                id=DatasourceId.from_datasource_config_file_path(relative_config_file),
+                id=DatasourceId.from_datasource_config_file_path(project_layout, discovered_datasource.path),
                 type=prepared_source.datasource_type,
             )
         )
@@ -98,15 +97,15 @@ def _load_datasource_descriptor(project_layout: ProjectLayout, config_file: Path
     relative_config_file = config_file.relative_to(project_layout.src_dir)
 
     if parent_name == "files" and len(relative_config_file.parts) == 2:
-        datasource_id = DatasourceId.from_datasource_config_file_path(relative_config_file)
+        datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
         return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.FILE)
 
     if extension in {"yaml", "yml"}:
-        datasource_id = DatasourceId.from_datasource_config_file_path(relative_config_file)
+        datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
         return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.CONFIG)
 
     if extension:
-        datasource_id = DatasourceId.from_datasource_config_file_path(relative_config_file)
+        datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
         return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.FILE)
 
     logger.debug("Skipping file without extension: %s", config_file)

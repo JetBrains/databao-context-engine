@@ -68,7 +68,7 @@ def test_build_skips_source_without_plugin(
     stub_prepare(
         [
             PreparedFile(
-                DatasourceId.from_datasource_config_file_path(Path("files/one.md")),
+                DatasourceId.from_string_repr("files/one.md"),
                 datasource_type=DatasourceType(full_type="files/md"),
                 path=datasources.path,
             )

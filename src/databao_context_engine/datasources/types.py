@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.project.layout import ProjectLayout
 
 
 class DatasourceKind(StrEnum):
@@ -113,29 +114,34 @@ class DatasourceId:
             The DatasourceId instance created from the string representation.
         """
         config_file_path = Path(datasource_id_as_string)
-        return DatasourceId.from_datasource_config_file_path(config_file_path)
+        return DatasourceId._from_relative_datasource_config_file_path(config_file_path)
 
     @classmethod
-    def from_datasource_config_file_path(cls, datasource_config_file: Path) -> "DatasourceId":
+    def from_datasource_config_file_path(
+        cls, project_layout: ProjectLayout, datasource_config_file: Path
+    ) -> "DatasourceId":
         """Create a DatasourceId from a config file path.
 
         Args:
-            datasource_config_file: The relative path (to src) to the datasource config file.
+            project_layout: The databao context engine project layout.
+            datasource_config_file: The path to the datasource config file.
                 This path can either be the config file path relative to the src folder or the full path to the config file.
 
         Returns:
             The DatasourceId instance created from the config file path.
-
-        Raises:
-            ValueError: If the wrong datasource_config_file is provided.
         """
-        if datasource_config_file.is_absolute():
+        relative_datasource_config_file = datasource_config_file.relative_to(project_layout.src_dir)
+        return DatasourceId._from_relative_datasource_config_file_path(relative_datasource_config_file)
+
+    @classmethod
+    def _from_relative_datasource_config_file_path(cls, relative_datasource_config_file: Path) -> "DatasourceId":
+        if relative_datasource_config_file.is_absolute():
             raise ValueError(
-                f"Path to datasource config file should be relative to project's src folder: {datasource_config_file}"
+                f"Path to datasource config file should be relative to project's src folder: {relative_datasource_config_file}"
             )
         return DatasourceId(
-            datasource_path=_extract_datasource_path(datasource_config_file),
-            config_file_suffix=datasource_config_file.suffix,
+            datasource_path=_extract_datasource_path(relative_datasource_config_file),
+            config_file_suffix=relative_datasource_config_file.suffix,
         )
 
     @classmethod

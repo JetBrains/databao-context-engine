@@ -66,8 +66,7 @@ def check_datasource_connection(
 
     result = {}
     for discovered_datasource in datasources_to_traverse:
-        relative_datasource_path = discovered_datasource.path.relative_to(project_layout.src_dir)
-        result_key = DatasourceId.from_datasource_config_file_path(relative_datasource_path)
+        result_key = DatasourceId.from_datasource_config_file_path(project_layout, discovered_datasource.path)
 
         try:
             prepared_source = prepare_source(discovered_datasource)

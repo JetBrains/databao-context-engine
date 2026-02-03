@@ -22,7 +22,7 @@ def mk_result(*, name="files/foo.md", typ="files/md", result=None):
 
 def mk_prepared(path: Path, full_type: str) -> PreparedDatasource:
     return PreparedFile(
-        DatasourceId.from_datasource_config_file_path(path),
+        DatasourceId._from_relative_datasource_config_file_path(path),
         datasource_type=DatasourceType(full_type=full_type),
         path=path,
     )
