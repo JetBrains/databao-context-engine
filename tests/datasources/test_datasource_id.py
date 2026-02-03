@@ -97,25 +97,25 @@ def test_datasource_id__from_string_repr(
 
 
 @pytest.mark.parametrize(
-    ["config_file_path", "is_valid", "expected_error_message", "expected_datasource_id"],
+    ["config_file", "is_valid", "expected_error_message", "expected_datasource_id"],
     [
-        (Path("parent/my_datasource"), False, "must not be empty", None),
-        (Path("parent/"), False, "must not be empty", None),
-        (Path("my_datasource"), False, "must not be empty", None),
+        ("parent/my_datasource", False, "must not be empty", None),
+        ("parent/", False, "must not be empty", None),
+        ("my_datasource", False, "must not be empty", None),
         (
-            Path("parent/my_datasource.yaml"),
+            "parent/my_datasource.yaml",
             True,
             "",
             DatasourceId(datasource_path="parent/my_datasource", config_file_suffix=".yaml"),
         ),
         (
-            Path("parent/my_datasource.txt.yaml"),
+            "parent/my_datasource.txt.yaml",
             True,
             "",
             DatasourceId(datasource_path="parent/my_datasource.txt", config_file_suffix=".yaml"),
         ),
         (
-            Path("Case Sensitive Folder/My Datasource.yaml"),
+            "Case Sensitive Folder/My Datasource.yaml",
             True,
             "",
             DatasourceId(
@@ -126,11 +126,11 @@ def test_datasource_id__from_string_repr(
     ],
 )
 def test_datasource_id__from_config_file_path(
-    config_file_path: Path, is_valid: bool, expected_error_message: str, expected_datasource_id: DatasourceId | None
+    config_file: str, is_valid: bool, expected_error_message: str, expected_datasource_id: DatasourceId | None
 ):
     context_manager = nullcontext() if is_valid else pytest.raises(ValueError)
     with context_manager as e:
-        result = DatasourceId.from_datasource_config_file_path(config_file_path)
+        result = DatasourceId.from_string_repr(config_file)
         if is_valid:
             assert result is not None
             assert result == expected_datasource_id

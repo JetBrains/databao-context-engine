@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.project.project_config import ProjectConfig
 
 SOURCE_FOLDER_NAME = "src"
@@ -68,15 +67,6 @@ def get_config_file(project_dir: Path) -> Path:
 
 def get_logs_dir(project_dir: Path) -> Path:
     return project_dir.joinpath(LOGS_FOLDER_NAME)
-
-
-def ensure_datasource_config_file_doesnt_exist(project_layout: ProjectLayout, datasource_id: DatasourceId) -> Path:
-    config_file = project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
-
-    if config_file.is_file():
-        raise ValueError(f"A config file already exists for {str(datasource_id)}")
-
-    return config_file
 
 
 def create_datasource_config_file(

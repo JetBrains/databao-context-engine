@@ -15,7 +15,6 @@ from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import (
     ProjectLayout,
-    ensure_datasource_config_file_doesnt_exist,
     ensure_project_dir,
 )
 from databao_context_engine.project.layout import (
@@ -136,9 +135,8 @@ class DatabaoContextProjectManager:
             overwrite_existing=overwrite_existing,
         )
 
-        relative_config_file = config_file.relative_to(self._project_layout.src_dir)
         return DatasourceConfigFile(
-            datasource_id=DatasourceId.from_datasource_config_file_path(relative_config_file),
+            datasource_id=DatasourceId.from_datasource_config_file_path(self._project_layout, config_file),
             config_file_path=config_file,
         )
 
@@ -166,20 +164,20 @@ class DatabaoContextProjectManager:
             ValueError: If the wrong set of arguments is provided.
         """
         if datasource_name is not None:
-            relative_config_file = Path(f"{datasource_name}.yaml")
-            config_file = self._project_layout.src_dir / relative_config_file
+            datasource_id = DatasourceId.from_string_repr(f"{datasource_name}.yaml")
+            config_file = self._project_layout.src_dir / datasource_id.relative_path_to_config_file()
             if config_file.is_file():
-                return DatasourceId.from_datasource_config_file_path(relative_config_file)
+                return datasource_id
             return None
 
         if datasource_id is None:
             raise ValueError("Either datasource_id or both datasource_type and datasource_name must be provided")
 
         try:
-            ensure_datasource_config_file_doesnt_exist(
-                project_layout=self._project_layout,
-                datasource_id=datasource_id,
-            )
+            config_file = self._project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
+            if config_file.is_file():
+                raise ValueError(f"A config file already exists for {str(datasource_id)}")
+
             return datasource_id
         except ValueError:
             return None
