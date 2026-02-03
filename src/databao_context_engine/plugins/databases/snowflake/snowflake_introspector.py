@@ -20,7 +20,7 @@ class SnowflakePasswordAuth(BaseModel):
 class SnowflakeKeyPairAuth(BaseModel):
     private_key_file: str | None = None
     private_key_file_pwd: str | None = None
-    private_key: Annotated[str, ConfigPropertyAnnotation(secret=True)] = None
+    private_key: Annotated[str | None, ConfigPropertyAnnotation(secret=True)] = None
 
 
 class SnowflakeSSOAuth(BaseModel):
