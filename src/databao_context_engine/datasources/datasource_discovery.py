@@ -31,7 +31,7 @@ def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
             logger.info(f"Invalid source at ({discovered_datasource.path}): {str(e)}")
             continue
 
-        relative_config_file = discovered_datasource.path.relative_to(project_layout.get_source_dir())
+        relative_config_file = discovered_datasource.path.relative_to(project_layout.src_dir)
         result.append(
             Datasource(
                 id=DatasourceId.from_datasource_config_file_path(relative_config_file),
@@ -59,7 +59,7 @@ def discover_datasources(project_layout: ProjectLayout) -> list[DatasourceDescri
     datasources: list[DatasourceDescriptor] = []
     for dirpath, dirnames, filenames in os.walk(project_layout.src_dir):
         for config_file_name in filenames:
-            context_file = Path(dirpath).joinpath(context_file_name)
+            context_file = Path(dirpath).joinpath(config_file_name)
             datasource = _load_datasource_descriptor(project_layout, context_file)
             if datasource is not None:
                 datasources.append(datasource)

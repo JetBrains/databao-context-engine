@@ -83,7 +83,7 @@ def get_all_contexts(project_layout: ProjectLayout) -> list[DatasourceContext]:
                     context=context_file.read_text(),
                 )
             )
-    return sorted(result, key=lambda context: str(context.datasource_id.relative_path_to_config_file()).lower())
+    return sorted(result, key=lambda context: str(context.datasource_id).lower())
 
 
 def get_context_header_for_datasource(datasource_id: DatasourceId) -> str:

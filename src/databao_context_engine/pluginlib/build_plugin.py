@@ -88,16 +88,3 @@ class DatasourceType:
     """
 
     full_type: str
-
-    @staticmethod
-    def from_main_and_subtypes(main_type: str, subtype: str) -> "DatasourceType":
-        """Create a DatasourceType from its main type and subtype.
-
-        Args:
-            main_type: The main type (aka config folder) of the datasource.
-            subtype: The subtype of the datasource.
-
-        Returns:
-            A DatasourceType instance with the specified main type and subtype.
-        """
-        return DatasourceType(full_type=f"{main_type}/{subtype}")
