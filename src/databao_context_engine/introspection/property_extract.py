@@ -1,6 +1,16 @@
 import types
 from dataclasses import MISSING, fields, is_dataclass
-from typing import Annotated, Any, ForwardRef, Union, get_args, get_origin, get_type_hints
+from typing import (
+    Annotated,
+    Any,
+    ForwardRef,
+    Iterable,
+    Mapping,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefinedType
@@ -14,10 +24,10 @@ from databao_context_engine.pluginlib.config import (
 
 
 def get_property_list_from_type(root_type: type) -> list[ConfigPropertyDefinition]:
-    return _get_property_list_from_type(parent_type=root_type, is_root_type=True)
+    return _get_property_list_from_type(parent_type=root_type)
 
 
-def _get_property_list_from_type(*, parent_type: type, is_root_type: bool) -> list[ConfigPropertyDefinition]:
+def _get_property_list_from_type(*, parent_type: type) -> list[ConfigPropertyDefinition]:
     if is_dataclass(parent_type):
         return _get_property_list_from_dataclass(parent_type=parent_type)
 
@@ -29,20 +39,15 @@ def _get_property_list_from_type(*, parent_type: type, is_root_type: bool) -> li
         # issubclass is raising a TypeError: issubclass() arg 1 must be a class
         pass
 
-    return _get_property_list_from_type_hints(parent_type=parent_type, is_root_type=is_root_type)
+    return _get_property_list_from_type_hints(parent_type=parent_type)
 
 
-def _get_property_list_from_type_hints(*, parent_type: type, is_root_type: bool) -> list[ConfigPropertyDefinition]:
+def _get_property_list_from_type_hints(*, parent_type: type) -> list[ConfigPropertyDefinition]:
     try:
         type_hints = get_type_hints(parent_type, include_extras=True)
-    except TypeError as e:
-        if is_root_type:
-            # Ignore root types that don't have type hints like dict or list
-            return []
-
-        # If we're evaluating a nested property, we want to propagate the exception
-        # to let the parent property know that this type should be ignored
-        raise e
+    except TypeError:
+        # Return an empty list of properties for any type that is not an object (e.g: primitives like str or containers like dict, list, tuple, etc.
+        return []
 
     result = []
     for property_key, property_type in type_hints.items():
@@ -137,13 +142,7 @@ def _create_property(
         type_properties: dict[type, list[ConfigPropertyDefinition]] = {}
 
         for union_type in actual_property_types:
-            try:
-                nested_props = _get_property_list_from_type(
-                    parent_type=union_type,
-                    is_root_type=False,
-                )
-            except TypeError:
-                nested_props = []
+            nested_props = _get_property_list_from_type(parent_type=union_type)
 
             type_properties[union_type] = nested_props
 
@@ -152,13 +151,13 @@ def _create_property(
             types=actual_property_types,
             type_properties=type_properties,
         )
+
     actual_property_type = actual_property_types[0]
-    try:
-        nested_properties = _get_property_list_from_type(
-            parent_type=actual_property_type,
-            is_root_type=False,
-        )
-    except TypeError:
+    nested_properties = _get_property_list_from_type(parent_type=actual_property_type)
+
+    if len(nested_properties) == 0 and _is_mapping_or_iterable(actual_property_type):
+        # Ignore Iterables and Mappings for which we didn't resolve nested properties
+        # (TypedDict is a Mapping but since we manage to resolve nested properties, it won't be ignored)
         return None
 
     resolved_type = actual_property_type if not nested_properties else None
@@ -176,6 +175,14 @@ def _create_property(
         nested_properties=nested_properties or None,
         secret=secret,
     )
+
+
+def _is_mapping_or_iterable(property_type: type):
+    # For types like list[str], we need to get the origin (ie. list) to use in issubclass
+    origin = get_origin(property_type)
+
+    # We make sure to not return True for str, which is an Iterable
+    return property_type is not str and issubclass(origin if origin else property_type, (Mapping, Iterable))
 
 
 def _get_config_property_annotation(property_type) -> ConfigPropertyAnnotation | None:
