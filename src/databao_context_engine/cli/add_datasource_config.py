@@ -27,10 +27,10 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
     )
     datasource_name = click.prompt("Datasource name?", type=str)
 
-    is_datasource_existing = project_manager.datasource_config_exists(datasource_name=datasource_name)
-    if is_datasource_existing:
+    datasource_id = project_manager.datasource_config_exists(datasource_name=datasource_name)
+    if datasource_id is not None:
         click.confirm(
-            f"A config file already exists for this datasource src/{datasource_name}.yaml. Do you want to overwrite it?",
+            f"A config file already exists for this datasource {datasource_id.relative_path_to_config_file()}. Do you want to overwrite it?",
             abort=True,
             default=False,
         )
