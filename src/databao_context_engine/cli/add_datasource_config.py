@@ -49,11 +49,11 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
 
 
 def _ask_for_datasource_type(supported_datasource_types: set[DatasourceType]) -> DatasourceType:
-    all_config_folders = sorted([ds_type.full_type for ds_type in supported_datasource_types])
+    all_datasource_types = sorted([ds_type.full_type for ds_type in supported_datasource_types])
     config_type = click.prompt(
         "What type of datasource do you want to add?",
-        type=click.Choice(all_config_folders),
-        default=all_config_folders[0] if len(all_config_folders) == 1 else None,
+        type=click.Choice(all_datasource_types),
+        default=all_datasource_types[0] if len(all_datasource_types) == 1 else None,
     )
     click.echo(f"Selected type: {config_type}")
 

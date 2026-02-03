@@ -22,9 +22,6 @@ class ProjectLayout:
     project_dir: Path
     config_file: Path
 
-    def get_source_dir(self):
-        return get_source_dir(project_dir=self.project_dir)
-
     def read_config_file(self) -> ProjectConfig:
         return ProjectConfig.from_file(self.config_file)
 
@@ -85,10 +82,10 @@ def ensure_datasource_config_file_doesnt_exist(project_layout: ProjectLayout, da
 def create_datasource_config_file(
     project_layout: ProjectLayout, datasource_relative_name: str, config_content: str, overwrite_existing: bool
 ) -> Path:
-    config_file = project_layout.get_source_dir().joinpath(datasource_relative_name)
+    config_file = project_layout.src_dir / datasource_relative_name
     if not overwrite_existing:
         if config_file.is_file():
-            raise ValueError(f"A config file already exists {project_layout.get_source_dir()}/{config_file}")
+            raise ValueError(f"A config file already exists {config_file}")
 
     config_file.parent.mkdir(parents=True, exist_ok=True)
 

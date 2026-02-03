@@ -167,7 +167,7 @@ class DatabaoContextProjectManager:
         """
         if datasource_name is not None:
             relative_config_file = Path(f"{datasource_name}.yaml")
-            config_file = self._project_layout.get_source_dir() / relative_config_file
+            config_file = self._project_layout.src_dir / relative_config_file
             if config_file.is_file():
                 return DatasourceId.from_datasource_config_file_path(relative_config_file)
             return None
