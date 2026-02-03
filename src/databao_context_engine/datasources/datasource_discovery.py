@@ -58,7 +58,7 @@ def discover_datasources(project_layout: ProjectLayout) -> list[DatasourceDescri
     """
     datasources: list[DatasourceDescriptor] = []
     for dirpath, dirnames, filenames in os.walk(project_layout.src_dir):
-        for context_file_name in filenames:
+        for config_file_name in filenames:
             context_file = Path(dirpath).joinpath(context_file_name)
             datasource = _load_datasource_descriptor(project_layout, context_file)
             if datasource is not None:
