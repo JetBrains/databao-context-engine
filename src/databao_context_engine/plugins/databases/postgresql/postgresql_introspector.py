@@ -85,8 +85,10 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         sql = "SELECT schema_name FROM information_schema.schemata"
         return SQLQuery(sql, None)
 
-    def _connect(self, file_config: PostgresConfigFile):
+    def _connect(self, file_config: PostgresConfigFile, *, catalog: str | None = None):
         kwargs = self._create_connection_kwargs(file_config.connection)
+        if catalog:
+            kwargs["database"] = catalog
         return _SyncAsyncpgConnection(kwargs)
 
     def _fetchall_dicts(self, connection: _SyncAsyncpgConnection, sql: str, params) -> list[dict]:
@@ -98,11 +100,6 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             return [database]
 
         return connection.fetch_scalar_values("SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false")
-
-    def _connect_to_catalog(self, file_config: PostgresConfigFile, catalog: str):
-        cfg = file_config.model_copy(deep=True)
-        cfg.connection.database = catalog
-        return self._connect(cfg)
 
     def collect_catalog_model(
         self, connection: _SyncAsyncpgConnection, catalog: str, schemas: list[str]

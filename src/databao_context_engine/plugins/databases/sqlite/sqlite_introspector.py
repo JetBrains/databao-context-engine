@@ -22,14 +22,11 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
     _PSEUDO_SCHEMA = "main"
     supports_catalogs = False
 
-    def _connect(self, file_config: SQLiteConfigFile):
+    def _connect(self, file_config: SQLiteConfigFile, *, catalog: str | None = None):
         database_path = str(file_config.connection.database_path)
         conn = sqlite3.connect(database_path)
         conn.text_factory = str
         return conn
-
-    def _connect_to_catalog(self, file_config: SQLiteConfigFile, catalog: str):
-        return self._connect(file_config)
 
     def _get_catalogs(self, connection, file_config: SQLiteConfigFile) -> list[str]:
         return [self._resolve_pseudo_catalog_name(file_config)]

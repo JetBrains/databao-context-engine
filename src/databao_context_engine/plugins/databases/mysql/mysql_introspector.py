@@ -35,17 +35,17 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
     supports_catalogs = True
 
-    def _connect(self, file_config: MySQLConfigFile):
+    def _connect(self, file_config: MySQLConfigFile, *, catalog: str | None = None):
+        connection_kwargs = file_config.connection.to_pymysql_kwargs()
+
+        if catalog:
+            connection_kwargs["database"] = catalog
+
         return pymysql.connect(
-            **file_config.connection.to_pymysql_kwargs(),
+            **connection_kwargs,
             cursorclass=pymysql.cursors.DictCursor,
             client_flag=CLIENT.MULTI_STATEMENTS | CLIENT.MULTI_RESULTS,
         )
-
-    def _connect_to_catalog(self, file_config: MySQLConfigFile, catalog: str):
-        cfg = file_config.model_copy(deep=True)
-        cfg.connection.database = catalog
-        return self._connect(cfg)
 
     def _get_catalogs(self, connection, file_config: MySQLConfigFile) -> list[str]:
         with connection.cursor() as cur:

@@ -24,12 +24,9 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "pg_catalog"}
     supports_catalogs = True
 
-    def _connect(self, file_config: DuckDBConfigFile):
+    def _connect(self, file_config: DuckDBConfigFile, *, catalog: str | None = None):
         database_path = str(file_config.connection.database_path)
         return duckdb.connect(database=database_path)
-
-    def _connect_to_catalog(self, file_config: DuckDBConfigFile, catalog: str):
-        return self._connect(file_config)
 
     def _get_catalogs(self, connection, file_config: DuckDBConfigFile) -> list[str]:
         rows = self._fetchall_dicts(connection, "SELECT database_name FROM duckdb_databases();", None)
