@@ -67,7 +67,7 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
     }
     supports_catalogs = True
 
-    def _connect(self, file_config: AthenaConfigFile):
+    def _connect(self, file_config: AthenaConfigFile, *, catalog: str | None = None) -> Any:
         return connect(**file_config.connection.to_athena_kwargs(), cursor_class=DictCursor)
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
@@ -78,9 +78,6 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
     def _get_catalogs(self, connection, file_config: AthenaConfigFile) -> list[str]:
         catalog = file_config.connection.catalog or self._resolve_pseudo_catalog_name(file_config)
         return [catalog]
-
-    def _connect_to_catalog(self, file_config: AthenaConfigFile, catalog: str):
-        return self._connect(file_config)
 
     def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
         if not catalogs:

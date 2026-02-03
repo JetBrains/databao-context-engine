@@ -40,7 +40,7 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
 
         discovered_schemas_per_catalog: dict[str, list[str]] = {}
         for catalog in catalogs:
-            with self._connect_to_catalog(file_config, catalog) as conn:
+            with self._connect(file_config, catalog=catalog) as conn:
                 discovered_schemas_per_catalog[catalog] = self._list_schemas_for_catalog(conn, catalog)
         scope = scope_matcher.filter_scopes(catalogs, discovered_schemas_per_catalog)
 
@@ -50,7 +50,7 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
             if not schemas_to_introspect:
                 continue
 
-            with self._connect_to_catalog(file_config, catalog) as catalog_connection:
+            with self._connect(file_config, catalog=catalog) as catalog_connection:
                 introspected_schemas = self.collect_catalog_model(catalog_connection, catalog, schemas_to_introspect)
 
                 if not introspected_schemas:
@@ -108,7 +108,12 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
         return samples
 
     @abstractmethod
-    def _connect(self, file_config: T):
+    def _connect(self, file_config: T, *, catalog: str | None = None) -> Any:
+        """Connect to the database.
+
+        If the `catalog` argument is provided, the connection is "scoped" to that catalog. For engines that don’t need a new connection,
+        return a connection with the session set/USE’d to that catalog.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -118,14 +123,6 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
     @abstractmethod
     def _get_catalogs(self, connection, file_config: T) -> list[str]:
         raise NotImplementedError
-
-    @abstractmethod
-    def _connect_to_catalog(self, file_config: T, catalog: str):
-        """Return a connection scoped to `catalog`.
-
-        For engines that don’t need a new connection, return a connection with the
-        session set/USE’d to that catalog.
-        """
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         raise NotImplementedError

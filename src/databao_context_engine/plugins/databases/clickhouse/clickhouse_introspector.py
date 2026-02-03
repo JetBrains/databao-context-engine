@@ -36,13 +36,10 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
 
     supports_catalogs = True
 
-    def _connect(self, file_config: ClickhouseConfigFile):
+    def _connect(self, file_config: ClickhouseConfigFile, *, catalog: str | None = None):
         return clickhouse_connect.get_client(
             **file_config.connection.to_clickhouse_kwargs(),
         )
-
-    def _connect_to_catalog(self, file_config: ClickhouseConfigFile, catalog: str):
-        return self._connect(file_config)
 
     def _get_catalogs(self, connection, file_config: ClickhouseConfigFile) -> list[str]:
         return ["clickhouse"]

@@ -55,15 +55,15 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     )
     supports_catalogs = True
 
-    def _connect(self, file_config: MSSQLConfigFile):
+    def _connect(self, file_config: MSSQLConfigFile, *, catalog: str | None = None):
         connection = file_config.connection
-        connection_string = self._create_connection_string_for_config(connection.to_mssql_kwargs())
-        return connect(connection_string)
 
-    def _connect_to_catalog(self, file_config: MSSQLConfigFile, catalog: str):
-        cfg = file_config.model_copy(deep=True)
-        cfg.connection.database = catalog
-        return self._connect(cfg)
+        connection_kwargs = connection.to_mssql_kwargs()
+        if catalog:
+            connection_kwargs["database"] = catalog
+
+        connection_string = self._create_connection_string_for_config(connection_kwargs)
+        return connect(connection_string)
 
     def _get_catalogs(self, connection, file_config: MSSQLConfigFile) -> list[str]:
         database = file_config.connection.database

@@ -61,17 +61,16 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
     _IGNORED_CATALOGS = {"STREAMLIT_APPS"}
     supports_catalogs = True
 
-    def _connect(self, file_config: SnowflakeConfigFile):
+    def _connect(self, file_config: SnowflakeConfigFile, *, catalog: str | None = None):
         connection = file_config.connection
         snowflake.connector.paramstyle = "qmark"
-        return snowflake.connector.connect(
-            **connection.to_snowflake_kwargs(),
-        )
+        connection_kwargs = connection.to_snowflake_kwargs()
+        if catalog:
+            connection_kwargs["database"] = catalog
 
-    def _connect_to_catalog(self, file_config: SnowflakeConfigFile, catalog: str):
-        cfg = dict(file_config.connection or {})
-        cfg["database"] = catalog
-        return snowflake.connector.connect(**cfg)
+        return snowflake.connector.connect(
+            **connection_kwargs,
+        )
 
     def _get_catalogs(self, connection, file_config: SnowflakeConfigFile) -> list[str]:
         database = file_config.connection.database
