@@ -2,6 +2,7 @@ from typing import Any
 
 from databao_context_engine import BuildDatasourcePlugin
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+from databao_context_engine.plugins.dbt.dbt_chunker import build_dbt_chunks
 from databao_context_engine.plugins.dbt.dbt_context_extractor import check_connection, extract_context
 from databao_context_engine.plugins.dbt.types import DbtConfigFile
 
@@ -21,5 +22,4 @@ class DbtPlugin(BuildDatasourcePlugin[DbtConfigFile]):
         check_connection(file_config)
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
-        # TODO
-        return []
+        return build_dbt_chunks(context)
