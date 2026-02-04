@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -20,10 +21,38 @@ class DbtMaterialization(str, Enum):
 
 
 @dataclass(kw_only=True)
+class DbtSimpleConstraint:
+    type: Literal["unique", "not_null"]
+    is_enforced: bool
+    description: str | None = None
+
+
+@dataclass(kw_only=True)
+class DbtAcceptedValuesConstraint:
+    type: Literal["accepted_values"]
+    is_enforced: bool
+    description: str | None = None
+    accepted_values: list[str]
+
+
+@dataclass(kw_only=True)
+class DbtRelationshipConstraint:
+    type: Literal["relationships"]
+    is_enforced: bool
+    description: str | None = None
+    target_model: str
+    target_column: str
+
+
+DbtConstraint = DbtSimpleConstraint | DbtAcceptedValuesConstraint | DbtRelationshipConstraint
+
+
+@dataclass(kw_only=True)
 class DbtColumn:
     name: str
     type: str | None = None
     description: str | None = None
+    constraints: list[DbtConstraint] | None = None
 
 
 @dataclass(kw_only=True)
