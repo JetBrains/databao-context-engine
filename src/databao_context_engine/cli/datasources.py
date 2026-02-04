@@ -62,3 +62,16 @@ def _print_check_datasource_connection_results(results: list[CheckDatasourceConn
         )
     else:
         click.echo("No datasource found")
+
+
+def run_sql_query_cli(project_dir: Path, *, datasource_id: DatasourceId, sql: str) -> None:
+    databao_project_manager = DatabaoContextProjectManager(project_dir=project_dir)
+    databao_engine = databao_project_manager.get_engine_for_project()
+    result = databao_engine.run_sql(datasource_id=datasource_id, sql=sql, params=None)
+
+    # save somewhere or pretty print
+    click.echo(f"Found {len(result.rows)} rows for query: {sql}")
+    for row in result.rows:
+        click.echo(row)
+
+    click.echo(f"Columns are: {result.columns}")

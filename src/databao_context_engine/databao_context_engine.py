@@ -10,8 +10,10 @@ from databao_context_engine.datasources.datasource_context import (
     get_datasource_context,
     get_introspected_datasource_list,
 )
+from databao_context_engine.datasources.execute_sql_query import run_sql
 from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
 from databao_context_engine.retrieve_embeddings import retrieve_embeddings
 
@@ -98,7 +100,7 @@ class DatabaoContextEngine:
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
     ) -> list[ContextSearchResult]:
-        """Search in the avaialable context for the closest matches to the given text.
+        """Search in the available context for the closest matches to the given text.
 
         Args:
             retrieve_text: The text to search for in the contexts.
@@ -122,6 +124,19 @@ class DatabaoContextEngine:
             for result in results
         ]
 
-    def run_sql(self, datasource_id: DatasourceId, sql: str, params: list[str]) -> dict[str, Any]:
-        """Not Implemented yet. This will allow to run a SQL query against a datasource (if the datasource supports it)."""
-        raise NotImplementedError("Running SQL is not supported yet")
+    def run_sql(
+        self,
+        datasource_id: DatasourceId,
+        sql: str,
+        params: list[Any] | None = None,
+        read_only: bool = True,
+    ) -> SqlExecutionResult:
+        """Execute a SQL query against a datasource if it supports it.
+
+        - Optional per plugin: raises NotSupportedError for datasources that don’t support SQL.
+        - Read-only by default: set read_only=False to permit mutating statements.
+
+        Returns:
+            Sql execution result containing columns and rows.
+        """
+        return run_sql(self._project_layout, datasource_id, sql, params, read_only)

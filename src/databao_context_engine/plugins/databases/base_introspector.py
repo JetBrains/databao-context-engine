@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence, Union
 
+from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.databases_types import (
     DatabaseCatalog,
     DatabaseIntrospectionResult,
@@ -132,6 +133,24 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
 
     def _ignored_schemas(self) -> set[str]:
         return self._IGNORED_SCHEMAS
+
+    def run_sql(
+        self,
+        file_config: T,
+        sql: str,
+        params: list[Any] | None,
+        read_only: bool,
+    ) -> SqlExecutionResult:
+        # for now, we don't have any read-only related logic implemented on the database side
+        with self._connect(file_config) as connection:
+            rows_dicts: list[dict] = self._fetchall_dicts(connection, sql, params)
+
+        if not rows_dicts:
+            return SqlExecutionResult(columns=[], rows=[])
+
+        columns: list[str] = list(rows_dicts[0].keys())
+        rows: list[tuple[Any, ...]] = [tuple(row.get(col) for col in columns) for row in rows_dicts]
+        return SqlExecutionResult(columns=columns, rows=rows)
 
 
 @dataclass
