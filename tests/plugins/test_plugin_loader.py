@@ -58,6 +58,7 @@ def test_loaded_plugins_no_extra():
         "jetbrains/parquet",
         "jetbrains/sqlite",
         "jetbrains/unstructured_files",
+        "jetbrains/dbt",
     }
 
 
@@ -74,6 +75,7 @@ def test_loaded_plugins_all_extras():
         "jetbrains/parquet",
         "jetbrains/sqlite",
         "jetbrains/unstructured_files",
+        "jetbrains/dbt",
     }
 
 
