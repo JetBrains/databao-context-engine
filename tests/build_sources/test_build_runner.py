@@ -141,7 +141,7 @@ def test_run_indexing_indexes_when_plugin_exists(mocker, mock_build_service, pro
     ds_type = DatasourceType(full_type="files/md")
 
     mocker.patch.object(build_runner, "load_plugins", return_value={ds_type: plugin})
-    mocker.patch.object(build_runner, "_read_datasource_type_from_context_file", return_value=ds_type)
+    mocker.patch.object(build_runner, "read_datasource_type_from_context_file", return_value=ds_type)
 
     ctx = DatasourceContext(
         datasource_id=DatasourceId.from_string_repr("files/one.md"),
@@ -157,7 +157,7 @@ def test_run_indexing_skips_when_plugin_missing(mocker, mock_build_service, proj
     ds_type = DatasourceType(full_type="files/md")
 
     mocker.patch.object(build_runner, "load_plugins", return_value={})
-    mocker.patch.object(build_runner, "_read_datasource_type_from_context_file", return_value=ds_type)
+    mocker.patch.object(build_runner, "read_datasource_type_from_context_file", return_value=ds_type)
 
     ctx = DatasourceContext(
         datasource_id=DatasourceId.from_string_repr("files/one.md"),
@@ -174,7 +174,7 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
     ds_type = DatasourceType(full_type="files/md")
 
     mocker.patch.object(build_runner, "load_plugins", return_value={ds_type: plugin})
-    mocker.patch.object(build_runner, "_read_datasource_type_from_context_file", return_value=ds_type)
+    mocker.patch.object(build_runner, "read_datasource_type_from_context_file", return_value=ds_type)
 
     c1 = DatasourceContext(DatasourceId.from_string_repr("files/a.md"), context="a")
     c2 = DatasourceContext(DatasourceId.from_string_repr("files/b.md"), context="b")
