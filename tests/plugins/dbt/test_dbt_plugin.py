@@ -9,7 +9,15 @@ from pydantic import ValidationError
 from databao_context_engine import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.dbt.dbt_plugin import DbtPlugin
-from databao_context_engine.plugins.dbt.types import DbtColumn, DbtContext, DbtMaterialization, DbtModel
+from databao_context_engine.plugins.dbt.types import (
+    DbtAcceptedValuesConstraint,
+    DbtColumn,
+    DbtContext,
+    DbtMaterialization,
+    DbtModel,
+    DbtRelationshipConstraint,
+    DbtSimpleConstraint,
+)
 
 
 @pytest.fixture
@@ -83,7 +91,7 @@ def test_dbt_plugin__build_context_fails_with_invalid_manifest_file(tmp_path):
         )
 
 
-def test_dbt_plugin__build_context(dbt_target_folder_path, expected_customers_model):
+def test_dbt_plugin__build_context(dbt_target_folder_path, expected_orders_model):
     under_test = DbtPlugin()
 
     result = execute_datasource_plugin(
@@ -103,11 +111,11 @@ def test_dbt_plugin__build_context(dbt_target_folder_path, expected_customers_mo
         "model.toastie_winkel.stg_orders",
     }
 
-    customers_model = next(model for model in result.models if model.id == "model.toastie_winkel.customers")
-    assert customers_model == expected_customers_model
+    orders_model = next(model for model in result.models if model.id == "model.toastie_winkel.orders")
+    assert orders_model == expected_orders_model
 
 
-def test_dbt_plugin__build_context_without_catalog(dbt_target_folder_path, expected_customers_model_without_catalog):
+def test_dbt_plugin__build_context_without_catalog(dbt_target_folder_path, expected_orders_model_without_catalog):
     # Deletes the catalog file
     dbt_target_folder_path.joinpath("catalog.json").unlink()
 
@@ -130,59 +138,107 @@ def test_dbt_plugin__build_context_without_catalog(dbt_target_folder_path, expec
         "model.toastie_winkel.stg_orders",
     }
 
-    customers_model = next(model for model in result.models if model.id == "model.toastie_winkel.customers")
-    assert customers_model == expected_customers_model_without_catalog
+    orders_model = next(model for model in result.models if model.id == "model.toastie_winkel.orders")
+    assert orders_model == expected_orders_model_without_catalog
 
 
 @pytest.fixture
-def expected_customers_model() -> DbtModel:
+def expected_orders_model() -> DbtModel:
     return DbtModel(
-        id="model.toastie_winkel.customers",
-        name="customers",
+        id="model.toastie_winkel.orders",
+        name="orders",
         database="toastie_winkel",
         schema="main",
         materialization=DbtMaterialization.TABLE,
-        primary_key=["customer_id"],
-        depends_on_nodes=[
-            "model.toastie_winkel.stg_customers",
-            "model.toastie_winkel.stg_orders",
-            "model.toastie_winkel.stg_payments",
-        ],
-        description="This table has basic information about a customer, as well as some derived facts based on a customer's orders",
+        primary_key=["order_id"],
+        depends_on_nodes=["model.toastie_winkel.stg_orders", "model.toastie_winkel.stg_payments"],
+        description="This table has basic information about orders, as well as some derived facts based on payments",
         columns=[
-            DbtColumn(name="customer_id", type="INTEGER", description="This is a unique identifier for a customer"),
-            DbtColumn(name="first_name", type="VARCHAR", description="Customer's first name. PII."),
-            DbtColumn(name="last_name", type="VARCHAR", description="Customer's last name. PII."),
-            DbtColumn(name="first_order", type="DATE", description="Date (UTC) of a customer's first order"),
             DbtColumn(
-                name="most_recent_order", type="DATE", description="Date (UTC) of a customer's most recent order"
+                name="order_id",
+                type="INTEGER",
+                description="This is a unique identifier for an order",
+                constraints=[
+                    DbtSimpleConstraint(type="unique", is_enforced=True, description=""),
+                    DbtSimpleConstraint(type="not_null", is_enforced=True, description=""),
+                ],
             ),
             DbtColumn(
-                name="number_of_orders",
-                type="BIGINT",
-                description="Count of the number of orders a customer has placed",
+                name="customer_id",
+                type="INTEGER",
+                description="Foreign key to the customers table",
+                constraints=[
+                    DbtSimpleConstraint(type="not_null", is_enforced=True, description=""),
+                    DbtRelationshipConstraint(
+                        type="relationships",
+                        is_enforced=True,
+                        description="",
+                        target_model="customers",
+                        target_column="customer_id",
+                    ),
+                ],
             ),
-            DbtColumn(name="total_order_amount", type=None, description="Total value (AUD) of a customer's orders"),
             DbtColumn(
-                name="customer_source",
+                name="order_date", type="DATE", description="Date (UTC) that the order was placed", constraints=[]
+            ),
+            DbtColumn(
+                name="order_status",
                 type="VARCHAR",
-                description="""Customer acquisition channels indicate how customers discovered or were referred to the business:
+                description="""Orders can be one of the following statuses:
 
-| source        | description                                                                                        |
-|---------------|----------------------------------------------------------------------------------------------------|
-| organic       | Customers who found the business through unpaid/natural search results or direct navigation        |
-| paid_search   | Customers acquired through paid search advertising campaigns (Google Ads, Bing Ads, etc.)          |
-| paid_social   | Customers acquired through paid social media advertising (Facebook, Instagram, LinkedIn ads, etc.) |
-| referral      | Customers who were referred by existing customers, partners, or other external sources             |
-| null or empty | Customer acquisition source is unknown, should be considered as organic                            |""",
+| status         | description                                                                                                            |
+|----------------|------------------------------------------------------------------------------------------------------------------------|
+| placed         | The order has been placed but has not yet left the warehouse                                                           |
+| shipped        | The order has ben shipped to the customer and is currently in transit                                                  |
+| completed      | The order has been received by the customer                                                                            |
+| return_pending | The customer has indicated that they would like to return the order, but it has not yet been received at the warehouse |
+| returned       | The order has been returned by the customer and received at the warehouse                                              |""",
+                constraints=[
+                    DbtAcceptedValuesConstraint(
+                        type="accepted_values",
+                        is_enforced=True,
+                        description="",
+                        accepted_values=["placed", "shipped", "completed", "return_pending", "returned"],
+                    )
+                ],
+            ),
+            DbtColumn(
+                name="amount",
+                type="DOUBLE",
+                description="Total amount (AUD) of the order",
+                constraints=[DbtSimpleConstraint(type="not_null", is_enforced=True, description="")],
+            ),
+            DbtColumn(
+                name="credit_card_amount",
+                type="DOUBLE",
+                description="Amount of the order (AUD) paid for by credit card",
+                constraints=[DbtSimpleConstraint(type="not_null", is_enforced=True, description="")],
+            ),
+            DbtColumn(
+                name="coupon_amount",
+                type="DOUBLE",
+                description="Amount of the order (AUD) paid for by coupon",
+                constraints=[DbtSimpleConstraint(type="not_null", is_enforced=True, description="")],
+            ),
+            DbtColumn(
+                name="bank_transfer_amount",
+                type="DOUBLE",
+                description="Amount of the order (AUD) paid for by bank transfer",
+                constraints=[DbtSimpleConstraint(type="not_null", is_enforced=True, description="")],
+            ),
+            DbtColumn(
+                name="gift_card_amount",
+                type="DOUBLE",
+                description="Amount of the order (AUD) paid for by gift card",
+                constraints=[DbtSimpleConstraint(type="not_null", is_enforced=True, description="")],
             ),
         ],
     )
 
 
 @pytest.fixture
-def expected_customers_model_without_catalog(expected_customers_model) -> DbtModel:
+def expected_orders_model_without_catalog(expected_orders_model) -> DbtModel:
     return dataclasses.replace(
-        expected_customers_model,
-        columns=[dataclasses.replace(column, type=None) for column in expected_customers_model.columns],
+        expected_orders_model,
+        columns=[dataclasses.replace(column, type=None) for column in expected_orders_model.columns],
     )
