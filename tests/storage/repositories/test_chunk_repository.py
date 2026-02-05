@@ -45,3 +45,20 @@ def test_list(chunk_repo):
 
     all_rows = chunk_repo.list()
     assert [s.chunk_id for s in all_rows] == [s3.chunk_id, s2.chunk_id, s1.chunk_id]
+
+
+def test_delete_by_datasource_id(chunk_repo):
+    d1_a = chunk_repo.create(full_type="type/md", datasource_id="ds1", embeddable_text="a", display_text="a")
+    d1_b = chunk_repo.create(full_type="type/md", datasource_id="ds1", embeddable_text="b", display_text="b")
+    d2_c = chunk_repo.create(full_type="type/md", datasource_id="ds2", embeddable_text="c", display_text="c")
+
+    chunk_repo.delete_by_datasource_id(datasource_id="ds1")
+
+    remaining = chunk_repo.list()
+    remaining_ids = {c.chunk_id for c in remaining}
+
+    assert d1_a.chunk_id not in remaining_ids
+    assert d1_b.chunk_id not in remaining_ids
+    assert d2_c.chunk_id in remaining_ids
+
+    assert {c.datasource_id for c in remaining} == {"ds2"}

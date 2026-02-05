@@ -71,6 +71,25 @@ def test_update_with_missing_table_raises(embedding_repo):
         embedding_repo.update(table_name="123", chunk_id=1, vec=_vec(0.0))
 
 
+def test_delete_by_datasource_id(embedding_repo, chunk_repo, table_name):
+    ds1_a = make_chunk(chunk_repo, full_type="type/f", datasource_id="ds1", embeddable_text="a", display_text="a")
+    ds1_b = make_chunk(chunk_repo, full_type="type/f", datasource_id="ds1", embeddable_text="b", display_text="b")
+    ds2_c = make_chunk(chunk_repo, full_type="type/f", datasource_id="ds2", embeddable_text="c", display_text="c")
+
+    embedding_repo.create(table_name=table_name, chunk_id=ds1_a.chunk_id, vec=_vec(1.0))
+    embedding_repo.create(table_name=table_name, chunk_id=ds1_b.chunk_id, vec=_vec(2.0))
+    embedding_repo.create(table_name=table_name, chunk_id=ds2_c.chunk_id, vec=_vec(3.0))
+
+    embedding_repo.delete_by_datasource_id(table_name=table_name, datasource_id="ds1")
+
+    remaining = embedding_repo.list(table_name=table_name)
+    remaining_ids = {e.chunk_id for e in remaining}
+
+    assert ds1_a.chunk_id not in remaining_ids
+    assert ds1_b.chunk_id not in remaining_ids
+    assert ds2_c.chunk_id in remaining_ids
+
+
 def _vec(fill: float | None = None, *, pattern_start: float | None = None) -> list[float]:
     dim = 768
     if fill is not None:

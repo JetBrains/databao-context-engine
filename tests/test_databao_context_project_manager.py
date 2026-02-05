@@ -8,6 +8,7 @@ from databao_context_engine import (
     ChunkEmbeddingMode,
     DatabaoContextProjectManager,
     Datasource,
+    DatasourceContext,
     DatasourceId,
     DatasourceType,
 )
@@ -105,6 +106,64 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
         datasource_id=DatasourceId.from_string_repr("files/my_dummy_file.dummy_txt"),
         datasource_type=DatasourceType(full_type="dummy_txt"),
         context_file_relative_path="files/my_dummy_file.dummy_txt.yaml",
+    )
+
+
+def test_databao_context_project_manager__index_built_contexts_indexes_all_when_no_ids(project_path, mocker):
+    pm = DatabaoContextProjectManager(project_dir=project_path)
+
+    c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
+    c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
+
+    engine = mocker.Mock()
+    engine.get_all_contexts.return_value = [c1, c2]
+    mocker.patch.object(pm, "get_engine_for_project", return_value=engine)
+
+    index_fn = mocker.patch(
+        "databao_context_engine.databao_context_project_manager.index_built_contexts",
+        autospec=True,
+        return_value="OK",
+    )
+
+    result = pm.index_built_contexts(datasource_ids=None)
+
+    assert result == "OK"
+    index_fn.assert_called_once_with(
+        project_layout=pm._project_layout,
+        contexts=[c1, c2],
+        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+    )
+
+
+def test_databao_context_project_manager__index_built_contexts_filters_by_datasource_path(project_path, mocker):
+    pm = DatabaoContextProjectManager(project_dir=project_path)
+
+    c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
+    c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
+    c3 = DatasourceContext(DatasourceId.from_string_repr("full/c.yaml"), context="C")
+
+    engine = mocker.Mock()
+    engine.get_all_contexts.return_value = [c1, c2, c3]
+    mocker.patch.object(pm, "get_engine_for_project", return_value=engine)
+
+    index_fn = mocker.patch(
+        "databao_context_engine.databao_context_project_manager.index_built_contexts",
+        autospec=True,
+        return_value="OK",
+    )
+
+    wanted = [
+        DatasourceId.from_string_repr("full/a.yaml"),
+        DatasourceId.from_string_repr("full/c.yaml"),
+    ]
+
+    result = pm.index_built_contexts(datasource_ids=wanted)
+
+    assert result == "OK"
+    index_fn.assert_called_once_with(
+        project_layout=pm._project_layout,
+        contexts=[c1, c3],
+        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     )
 
 

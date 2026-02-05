@@ -4,6 +4,7 @@ from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin,
 from databao_context_engine.plugins.resources.parquet_chunker import build_parquet_chunks
 from databao_context_engine.plugins.resources.parquet_introspector import (
     ParquetConfigFile,
+    ParquetIntrospectionResult,
     ParquetIntrospector,
     parquet_type,
 )
@@ -13,6 +14,7 @@ class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):
     id = "jetbrains/parquet"
     name = "Parquet Plugin"
     config_file_type = ParquetConfigFile
+    context_type = ParquetIntrospectionResult
 
     def __init__(self):
         self._introspector = ParquetIntrospector()

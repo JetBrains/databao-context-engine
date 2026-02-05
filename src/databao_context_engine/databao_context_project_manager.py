@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any, overload
 
 from databao_context_engine.build_sources import BuildContextResult, build_all_datasources
+from databao_context_engine.build_sources.build_runner import IndexSummary
+from databao_context_engine.build_sources.build_wiring import index_built_contexts
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
@@ -10,6 +12,7 @@ from databao_context_engine.datasources.check_config import (
 from databao_context_engine.datasources.check_config import (
     check_datasource_connection as check_datasource_connection_internal,
 )
+from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
 from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
@@ -88,6 +91,34 @@ class DatabaoContextProjectManager:
         """
         # TODO: Filter which datasources to build by datasource_ids
         return build_all_datasources(project_layout=self._project_layout, chunk_embedding_mode=chunk_embedding_mode)
+
+    def index_built_contexts(
+        self,
+        datasource_ids: list[DatasourceId] | None = None,
+        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+    ) -> IndexSummary:
+        """Index built datasource contexts into the embeddings database.
+
+        It reads already built context files from the output directory, chunks them using the appropriate plugin,
+        embeds the chunks and persists both the chunks and embeddings.
+
+        Args:
+            datasource_ids: The list of datsource ids to index. If None, all datsources will be indexed.
+            chunk_embedding_mode: The mode to use for chunk embedding.
+
+        Returns:
+            The summary of the index operation.
+        """
+        engine: DatabaoContextEngine = self.get_engine_for_project()
+        contexts: list[DatasourceContext] = engine.get_all_contexts()
+
+        if datasource_ids is not None:
+            wanted_paths = {d.datasource_path for d in datasource_ids}
+            contexts = [c for c in contexts if c.datasource_id.datasource_path in wanted_paths]
+
+        return index_built_contexts(
+            project_layout=self._project_layout, contexts=contexts, chunk_embedding_mode=chunk_embedding_mode
+        )
 
     def check_datasource_connection(
         self, datasource_ids: list[DatasourceId] | None = None
