@@ -32,4 +32,4 @@ def to_yaml_string(data: Any) -> str:
 
 
 def _to_yaml(data: Any, stream: TextIO | None) -> str | None:
-    return yaml.safe_dump(data, stream, sort_keys=False, default_flow_style=False)
+    return yaml.safe_dump(data, stream, sort_keys=True, default_flow_style=False)

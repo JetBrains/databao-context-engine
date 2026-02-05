@@ -71,32 +71,32 @@ def get_input(my_uuid: uuid.UUID, my_date: datetime) -> Any:
 
 def get_expected(my_uuid, now):
     return f"""
-dataclass:
-  my_str: hello
-  my_nested_class:
-    nested_var: nested
-    enum_value: MyEnum.KEY_2
-  my_int: 12
-  my_uuid: {str(my_uuid)}
-  my_date: {now.isoformat(" ")}
-pydantic:
-  my_str: '123'
-  my_date: 2025-01-01
-  my_path: /tmp/test.txt
 custom:
   exposed_var: exposed_var
   my_list:
   - '1'
   - '2'
   - '3'
-tuple:
-- 1
-- text
+dataclass:
+  my_date: {now.isoformat(" ")}
+  my_int: 12
+  my_nested_class:
+    enum_value: MyEnum.KEY_2
+    nested_var: nested
+  my_str: hello
+  my_uuid: {str(my_uuid)}
 list:
 - my_var: 1.0
 - my_var: 2.0
 - my_var: 3.0
-        """
+pydantic:
+  my_date: 2025-01-01
+  my_path: /tmp/test.txt
+  my_str: '123'
+tuple:
+- 1
+- text
+    """
 
 
 def test_to_yaml_string():
