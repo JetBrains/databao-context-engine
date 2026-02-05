@@ -97,7 +97,7 @@ class DatabaoContextProjectManager:
         datasource_ids: list[DatasourceId] | None = None,
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     ) -> IndexSummary:
-        """Index built datasource contexts into duckdb.
+        """Index built datasource contexts into the embeddings database.
 
         It reads already built context files from the output directory, chunks them using the appropriate plugin,
         embeds the chunks and persists both the chunks and embeddings.

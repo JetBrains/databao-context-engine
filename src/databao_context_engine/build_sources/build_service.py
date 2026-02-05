@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 
-import cattrs
 import yaml
+from pydantic import BaseModel, TypeAdapter
 
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute
 from databao_context_engine.datasources.datasource_context import DatasourceContext
@@ -66,13 +65,14 @@ class BuildService:
         4) Calls the plugin's chunker and persists the resulting chunks and embeddings.
         """
         raw_context = yaml.safe_load(context.context)
-
-        converter = cattrs.Converter()
-        converter.register_structure_hook(datetime, lambda v, _: v)
-        build_datasource_context = converter.structure(raw_context, BuiltDatasourceContext)
+        build_datasource_context = TypeAdapter(BuiltDatasourceContext).validate_python(raw_context)
 
         context_type = plugin.context_type
-        typed_context = converter.structure(build_datasource_context.context, context_type)
+
+        if isinstance(context_type, type) and issubclass(context_type, BaseModel):
+            typed_context = context_type.model_validate(build_datasource_context.context)
+        else:
+            typed_context = TypeAdapter(context_type).validate_python(build_datasource_context.context)
 
         chunks = plugin.divide_context_into_chunks(typed_context)
         if not chunks:

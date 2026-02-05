@@ -46,6 +46,7 @@ class PersistenceService:
         # Outside the transaction due to duckdb limitations.
         # DuckDB FK checks can behave unexpectedly across multiple statements in the same transaction when deleting
         # and re-inserting related rows. It also does not support on delete cascade yet.
+        # Given that there is a foreign key from embedding to chunk, the embedding must be deleted first.
         if override:
             self._embedding_repo.delete_by_datasource_id(table_name=table_name, datasource_id=datasource_id)
             self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)

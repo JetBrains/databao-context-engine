@@ -2,6 +2,7 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 
 import yaml
 
@@ -27,13 +28,23 @@ class DatasourceContext:
 
 def read_datasource_type_from_context_file(context_path: Path) -> DatasourceType:
     with context_path.open("r") as context_file:
-        type_key = "datasource_type"
-        for line in context_file:
-            if line.startswith(f"{type_key}: "):
-                datasource_type = yaml.safe_load(line)[type_key]
-                return DatasourceType(full_type=datasource_type)
+        return _read_datasource_type_from_lines(context_file, source_label=str(context_path))
 
-    raise ValueError(f"Could not find type in context file {context_path}")
+
+def read_datasource_type_from_context(context: DatasourceContext) -> DatasourceType:
+    return _read_datasource_type_from_lines(
+        context.context.splitlines(True),
+        source_label=str(context.datasource_id),
+    )
+
+
+def _read_datasource_type_from_lines(lines: Iterable[str], *, source_label: str) -> DatasourceType:
+    type_key = "datasource_type"
+    for line in lines:
+        if line.startswith(f"{type_key}: "):
+            datasource_type = yaml.safe_load(line)[type_key]
+            return DatasourceType(full_type=datasource_type)
+    raise ValueError(f"Could not find type in context {source_label}")
 
 
 def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:

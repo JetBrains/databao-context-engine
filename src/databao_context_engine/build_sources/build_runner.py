@@ -11,7 +11,7 @@ from databao_context_engine.build_sources.export_results import (
 )
 from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
-    read_datasource_type_from_context_file,
+    read_datasource_type_from_context,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
 from databao_context_engine.datasources.types import DatasourceId
@@ -148,9 +148,7 @@ def run_indexing(
         try:
             logger.info(f"Indexing datasource {context.datasource_id}")
 
-            datasource_type = read_datasource_type_from_context_file(
-                project_layout.output_dir.joinpath(context.datasource_id.relative_path_to_context_file())
-            )
+            datasource_type = read_datasource_type_from_context(context)
 
             plugin = plugins.get(datasource_type)
             if plugin is None:
