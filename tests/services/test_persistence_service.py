@@ -145,5 +145,52 @@ def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_rep
     assert len(rows) == len(complex_items)
 
 
+def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
+    persistence, chunk_repo, embedding_repo, table_name
+):
+    ds1_pairs = [
+        ChunkEmbedding(EmbeddableChunk("A", "a"), _vec(0.0), display_text="a", generated_description="g"),
+        ChunkEmbedding(EmbeddableChunk("B", "b"), _vec(1.0), display_text="b", generated_description="g"),
+    ]
+    ds2_pairs = [
+        ChunkEmbedding(EmbeddableChunk("X", "x"), _vec(2.0), display_text="x", generated_description="g"),
+    ]
+
+    persistence.write_chunks_and_embeddings(
+        chunk_embeddings=ds1_pairs, table_name=table_name, full_type="files/md", datasource_id="ds1"
+    )
+    persistence.write_chunks_and_embeddings(
+        chunk_embeddings=ds2_pairs, table_name=table_name, full_type="files/md", datasource_id="ds2"
+    )
+
+    saved_before = chunk_repo.list()
+    old_ds1_chunk_ids = {c.chunk_id for c in saved_before if c.datasource_id == "ds1"}
+    assert len(old_ds1_chunk_ids) == 2
+
+    new_ds1_pairs = [
+        ChunkEmbedding(EmbeddableChunk("C", "c"), _vec(3.0), display_text="c", generated_description="g"),
+    ]
+    persistence.write_chunks_and_embeddings(
+        chunk_embeddings=new_ds1_pairs,
+        table_name=table_name,
+        full_type="files/md",
+        datasource_id="ds1",
+        override=True,
+    )
+
+    saved_after = chunk_repo.list()
+
+    ds1_rows = [c for c in saved_after if c.datasource_id == "ds1"]
+    assert [c.embeddable_text for c in ds1_rows] == ["C"]
+    assert {c.chunk_id for c in ds1_rows}.isdisjoint(old_ds1_chunk_ids)
+
+    ds2_rows = [c for c in saved_after if c.datasource_id == "ds2"]
+    assert [c.embeddable_text for c in ds2_rows] == ["X"]
+
+    embedding_rows = embedding_repo.list(table_name=table_name)
+    assert all(row.chunk_id not in old_ds1_chunk_ids for row in embedding_rows)
+    assert len(embedding_rows) == len(ds1_rows) + len(ds2_rows)
+
+
 def _vec(fill: float, dim: int = 768) -> list[float]:
     return [fill] * dim

@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Mapping, TextIO, cast
 
 import yaml
@@ -5,6 +6,8 @@ from yaml import Node, SafeDumper
 
 
 def default_representer(dumper: SafeDumper, data: object) -> Node:
+    if isinstance(data, Enum):
+        return dumper.represent_str(data.value)
     if isinstance(data, Mapping):
         return dumper.represent_dict(data)
     if hasattr(data, "__dict__"):

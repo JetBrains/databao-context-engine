@@ -25,7 +25,7 @@ class DatasourceContext:
     context: str
 
 
-def _read_datasource_type_from_context_file(context_path: Path) -> DatasourceType:
+def read_datasource_type_from_context_file(context_path: Path) -> DatasourceType:
     with context_path.open("r") as context_file:
         type_key = "datasource_type"
         for line in context_file:
@@ -48,7 +48,7 @@ def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Data
                 result.append(
                     Datasource(
                         id=DatasourceId.from_datasource_context_file_path(relative_context_file),
-                        type=_read_datasource_type_from_context_file(context_file),
+                        type=read_datasource_type_from_context_file(context_file),
                     )
                 )
             except ValueError as e:
@@ -73,7 +73,10 @@ def get_all_contexts(project_layout: ProjectLayout) -> list[DatasourceContext]:
     result = []
     for dirpath, dirnames, filenames in os.walk(project_layout.output_dir):
         for context_file_name in filenames:
-            if Path(context_file_name).suffix not in DatasourceId.ALLOWED_YAML_SUFFIXES:
+            if (
+                Path(context_file_name).suffix not in DatasourceId.ALLOWED_YAML_SUFFIXES
+                or context_file_name == "all_results.yaml"
+            ):
                 continue
             context_file = Path(dirpath).joinpath(context_file_name)
             relative_context_file = context_file.relative_to(project_layout.output_dir)

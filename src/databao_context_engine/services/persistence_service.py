@@ -24,9 +24,17 @@ class PersistenceService:
         self._dim = dim
 
     def write_chunks_and_embeddings(
-        self, *, chunk_embeddings: list[ChunkEmbedding], table_name: str, full_type: str, datasource_id: str
+        self,
+        *,
+        chunk_embeddings: list[ChunkEmbedding],
+        table_name: str,
+        full_type: str,
+        datasource_id: str,
+        override: bool = False,
     ):
         """Atomically persist chunks and their vectors.
+
+        If override is True, delete existing chunks and embeddings for the datasource before persisting.
 
         Raises:
             ValueError: If chunk_embeddings is an empty list.
@@ -34,6 +42,13 @@ class PersistenceService:
         """
         if not chunk_embeddings:
             raise ValueError("chunk_embeddings must be a non-empty list")
+
+        # Outside the transaction due to duckdb limitations.
+        # DuckDB FK checks can behave unexpectedly across multiple statements in the same transaction when deleting
+        # and re-inserting related rows. It also does not support on delete cascade yet.
+        if override:
+            self._embedding_repo.delete_by_datasource_id(table_name=table_name, datasource_id=datasource_id)
+            self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
 
         with transaction(self._conn):
             for chunk_embedding in chunk_embeddings:

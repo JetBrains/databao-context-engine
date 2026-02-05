@@ -13,6 +13,7 @@ class FileChunk(TypedDict):
 class InternalUnstructuredFilesPlugin(BuildFilePlugin):
     id = "jetbrains/unstructured_files"
     name = "Unstructured Files Plugin"
+    context_type = dict
 
     _SUPPORTED_FILES_EXTENSIONS = {"txt", "md"}
 

@@ -3,8 +3,9 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+import yaml
 
-from databao_context_engine import DatasourceId
+from databao_context_engine import DatasourceContext, DatasourceId
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.datasources.types import PreparedDatasource, PreparedFile
@@ -101,3 +102,58 @@ def test_process_prepared_source_embed_error_bubbles_after_row_creation(svc, chu
 
     with pytest.raises(RuntimeError):
         svc.process_prepared_source(prepared_source=prepared, plugin=plugin)
+
+
+def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
+    plugin = mocker.Mock(name="Plugin")
+    plugin.name = "pluggy"
+    plugin.context_type = dict
+
+    built_at = datetime(2026, 2, 4, 12, 0, 0)
+    raw = {
+        "datasource_id": "files/two.md",
+        "datasource_type": "files/md",
+        "context_built_at": built_at,
+        "context": {"hello": "world"},
+    }
+    yaml_text = yaml.safe_dump(raw)
+
+    dsid = DatasourceId.from_string_repr("files/two.md")
+    ctx = DatasourceContext(datasource_id=dsid, context=yaml_text)
+
+    chunks = [EmbeddableChunk("a", "A"), EmbeddableChunk("b", "B")]
+    plugin.divide_context_into_chunks.return_value = chunks
+
+    svc.index_built_context(context=ctx, plugin=plugin)
+
+    plugin.divide_context_into_chunks.assert_called_once_with({"hello": "world"})
+    chunk_embed_svc.embed_chunks.assert_called_once_with(
+        chunks=chunks,
+        result=yaml_text,
+        full_type="files/md",
+        datasource_id="files/two.md",
+        override=True,
+    )
+
+
+def test_index_built_context_no_chunks_skips_embed(svc, chunk_embed_svc, mocker):
+    plugin = mocker.Mock(name="Plugin")
+    plugin.name = "pluggy"
+    plugin.context_type = dict
+
+    raw = {
+        "datasource_id": "files/empty.md",
+        "datasource_type": "files/md",
+        "context_built_at": datetime(2026, 2, 4, 12, 0, 0),
+        "context": {"nothing": True},
+    }
+    yaml_text = yaml.safe_dump(raw)
+
+    dsid = DatasourceId.from_string_repr("files/empty.md")
+    ctx = DatasourceContext(datasource_id=dsid, context=yaml_text)
+
+    plugin.divide_context_into_chunks.return_value = []
+
+    svc.index_built_context(context=ctx, plugin=plugin)
+
+    chunk_embed_svc.embed_chunks.assert_not_called()

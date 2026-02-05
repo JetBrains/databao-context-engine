@@ -2,8 +2,9 @@ import logging
 
 from duckdb import DuckDBPyConnection
 
-from databao_context_engine.build_sources.build_runner import BuildContextResult, build
+from databao_context_engine.build_sources.build_runner import BuildContextResult, build, run_indexing, IndexSummary
 from databao_context_engine.build_sources.build_service import BuildService
+from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.factory import (
@@ -61,6 +62,44 @@ def build_all_datasources(
             project_layout=project_layout,
             build_service=build_service,
         )
+
+
+def index_built_contexts(
+    project_layout: ProjectLayout,
+    contexts: list[DatasourceContext],
+    chunk_embedding_mode: ChunkEmbeddingMode,
+) -> IndexSummary:
+    """Index the contexts into the database.
+
+    - Instantiates the build service
+    - If the database does not exist, it creates it.
+
+    Returns:
+        The summary of the indexing run.
+    """
+    logger.debug("Starting to index %d context(s) for project %s", len(contexts), project_layout.project_dir.resolve())
+
+    db_path = get_db_path(project_layout.project_dir)
+    if not db_path.exists():
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        migrate(db_path)
+
+    with open_duckdb_connection(db_path) as conn:
+        ollama_service = create_ollama_service()
+        embedding_provider = create_ollama_embedding_provider(ollama_service)
+        description_provider = (
+            create_ollama_description_provider(ollama_service)
+            if chunk_embedding_mode.should_generate_description()
+            else None
+        )
+
+        build_service = _create_build_service(
+            conn,
+            embedding_provider=embedding_provider,
+            description_provider=description_provider,
+            chunk_embedding_mode=chunk_embedding_mode,
+        )
+        return run_indexing(project_layout=project_layout, build_service=build_service, contexts=contexts)
 
 
 def _create_build_service(
