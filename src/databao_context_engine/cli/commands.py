@@ -175,7 +175,9 @@ def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
         [DatasourceId.from_string_repr(p) for p in datasources_config_files] if datasources_config_files else None
     )
 
-    summary = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(datasource_ids=datasource_ids)
+    summary = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
+        datasource_ids=datasource_ids
+    )
 
     suffix = []
     if summary.skipped:

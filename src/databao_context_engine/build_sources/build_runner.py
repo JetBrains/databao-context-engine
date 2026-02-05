@@ -38,9 +38,11 @@ class BuildContextResult:
     context_built_at: datetime
     context_file_path: Path
 
+
 @dataclass
 class IndexSummary:
     """Summary of an indexing run over built contexts."""
+
     total: int
     indexed: int
     skipped: int
@@ -125,7 +127,10 @@ def build(
 
     return build_result
 
-def run_indexing(*, project_layout: ProjectLayout, build_service: BuildService, contexts: list[DatasourceContext]) -> IndexSummary:
+
+def run_indexing(
+    *, project_layout: ProjectLayout, build_service: BuildService, contexts: list[DatasourceContext]
+) -> IndexSummary:
     """Index a list of built datasource contexts.
 
     1) Load available plugins
@@ -172,5 +177,3 @@ def run_indexing(*, project_layout: ProjectLayout, build_service: BuildService, 
     )
 
     return summary
-
-

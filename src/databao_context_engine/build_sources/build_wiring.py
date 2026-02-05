@@ -2,7 +2,7 @@ import logging
 
 from duckdb import DuckDBPyConnection
 
-from databao_context_engine.build_sources.build_runner import BuildContextResult, build, run_indexing, IndexSummary
+from databao_context_engine.build_sources.build_runner import BuildContextResult, IndexSummary, build, run_indexing
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
