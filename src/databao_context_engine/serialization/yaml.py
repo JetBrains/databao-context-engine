@@ -11,23 +11,23 @@ def default_representer(dumper: SafeDumper, data: object) -> Node:
         return dumper.represent_dict(data)
 
     if is_dataclass(data) and not isinstance(data, type):
-        ordered: dict[str, Any] = {}
+        ordered_dc: dict[str, Any] = {}
         for field in fields(data):
-            ordered[field.name] = getattr(data, field.name)
-        return dumper.represent_dict(ordered)
+            ordered_dc[field.name] = getattr(data, field.name)
+        return dumper.represent_dict(ordered_dc)
 
     if BaseModel is not None and isinstance(data, BaseModel):
-        ordered: dict[str, Any] = {}
+        ordered_pyd: dict[str, Any] = {}
         for name in data.model_fields.keys():
-            ordered[name] = getattr(data, name)
-        return dumper.represent_dict(ordered)
+            ordered_pyd[name] = getattr(data, name)
+        return dumper.represent_dict(ordered_pyd)
 
     if hasattr(data, "__dict__"):
         # Doesn't serialize "private" attributes (that starts with an _)
         data_public_attributes = {key: value for key, value in data.__dict__.items() if not key.startswith("_")}
         if data_public_attributes:
-            ordered = {key: data_public_attributes[key] for key in sorted(data_public_attributes)}
-            return dumper.represent_dict(ordered)
+            ordered_dict = {key: data_public_attributes[key] for key in sorted(data_public_attributes)}
+            return dumper.represent_dict(ordered_dict)
 
         # If there is no public attributes, we default to the string representation
         return dumper.represent_str(str(data))
