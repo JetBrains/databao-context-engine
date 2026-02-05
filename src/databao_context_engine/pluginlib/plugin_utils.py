@@ -6,7 +6,13 @@ from typing import Any, Mapping
 
 from pydantic import TypeAdapter
 
-from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, BuildFilePlugin, DatasourceType
+from databao_context_engine.pluginlib.build_plugin import (
+    BuildDatasourcePlugin,
+    BuildFilePlugin,
+    DatasourceType,
+    SqlRunnablePlugin,
+)
+from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 
 logger = logging.getLogger(__name__)
 
@@ -66,3 +72,24 @@ def generate_json_schema(plugin: BuildDatasourcePlugin, pretty_print: bool = Tru
 
 def format_json_schema_for_output(plugin: BuildDatasourcePlugin, json_schema: str) -> str:
     return os.linesep.join([f"JSON Schema for plugin {plugin.id}:", json_schema])
+
+
+def execute_sql_for_datasource(
+    plugin: BuildDatasourcePlugin,
+    datasource_type: DatasourceType,
+    config: Mapping[str, Any],
+    sql: str,
+    params: list[Any] | None = None,
+    read_only: bool = True,
+) -> SqlExecutionResult:
+    if not isinstance(plugin, SqlRunnablePlugin):
+        raise ValueError("Sql query execution can only be performed on SqlRunnablePlugin")
+
+    validated_config = _validate_datasource_config_file(config, plugin)
+
+    return plugin.run_sql(
+        file_config=validated_config,
+        sql=sql,
+        params=params,
+        read_only=read_only,
+    )
