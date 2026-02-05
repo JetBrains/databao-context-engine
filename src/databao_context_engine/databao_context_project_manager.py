@@ -13,6 +13,7 @@ from databao_context_engine.datasources.check_config import (
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
 from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.progress.progress import ProgressCallback
 from databao_context_engine.project.layout import (
     ProjectLayout,
     ensure_project_dir,
@@ -74,6 +75,8 @@ class DatabaoContextProjectManager:
         self,
         datasource_ids: list[DatasourceId] | None = None,
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        *,
+        progress: ProgressCallback | None = None,
     ) -> list[BuildContextResult]:
         """Build the context for datasources in the project.
 
@@ -87,7 +90,11 @@ class DatabaoContextProjectManager:
             The list of all built results.
         """
         # TODO: Filter which datasources to build by datasource_ids
-        return build_all_datasources(project_layout=self._project_layout, chunk_embedding_mode=chunk_embedding_mode)
+        return build_all_datasources(
+            project_layout=self._project_layout,
+            chunk_embedding_mode=chunk_embedding_mode,
+            progress=progress,
+        )
 
     def check_datasource_connection(
         self, datasource_ids: list[DatasourceId] | None = None

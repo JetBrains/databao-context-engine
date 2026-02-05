@@ -11,6 +11,7 @@ from databao_context_engine.llm.factory import (
     create_ollama_embedding_provider,
     create_ollama_service,
 )
+from databao_context_engine.progress.progress import ProgressCallback
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 from databao_context_engine.services.factories import create_chunk_embedding_service
@@ -22,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 def build_all_datasources(
-    project_layout: ProjectLayout, chunk_embedding_mode: ChunkEmbeddingMode
+    project_layout: ProjectLayout,
+    chunk_embedding_mode: ChunkEmbeddingMode,
+    *,
+    progress: ProgressCallback | None = None,
 ) -> list[BuildContextResult]:
     """Build the context for all datasources in the project.
 
@@ -60,6 +64,7 @@ def build_all_datasources(
         return build(
             project_layout=project_layout,
             build_service=build_service,
+            progress=progress,
         )
 
 

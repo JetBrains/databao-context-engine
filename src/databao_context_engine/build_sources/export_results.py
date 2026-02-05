@@ -20,7 +20,7 @@ def export_build_result(output_dir: Path, result: BuiltDatasourceContext) -> Pat
     with export_file_path.open("w") as export_file:
         write_yaml_to_stream(data=result, file_stream=export_file)
 
-    logger.info(f"Exported result to {export_file_path.resolve()}")
+    # logger.info(f"Exported result to {export_file_path.resolve()}")
 
     return export_file_path
 

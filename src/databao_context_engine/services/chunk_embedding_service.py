@@ -5,6 +5,7 @@ from typing import cast
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.models import ChunkEmbedding
@@ -57,7 +58,15 @@ class ChunkEmbeddingService:
         if self._chunk_embedding_mode.should_generate_description() and description_provider is None:
             raise ValueError("A DescriptionProvider must be provided when generating descriptions")
 
-    def embed_chunks(self, *, chunks: list[EmbeddableChunk], result: str, full_type: str, datasource_id: str) -> None:
+    def embed_chunks(
+        self,
+        *,
+        chunks: list[EmbeddableChunk],
+        result: str,
+        full_type: str,
+        datasource_id: str,
+        progress: ProgressCallback | None = None,
+    ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
         Flow:
@@ -68,12 +77,16 @@ class ChunkEmbeddingService:
         if not chunks:
             return
 
+        emitter = ProgressEmitter(progress)
+        emitter.embedding_started(datasource_id=datasource_id, total_chunks=len(chunks))
+
         logger.debug(
             f"Embedding {len(chunks)} chunks for datasource {datasource_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
         )
 
         enriched_embeddings: list[ChunkEmbedding] = []
-        for chunk in chunks:
+        emit_every = 10  # avoid overly chatty UIs
+        for i, chunk in enumerate(chunks, start=1):
             chunk_display_text = chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)
 
             generated_description = ""
@@ -101,6 +114,15 @@ class ChunkEmbeddingService:
                     generated_description=generated_description,
                 )
             )
+            if i % emit_every == 0 or i == len(chunks):
+                emitter.embedding_progress(
+                    datasource_id=datasource_id,
+                    done=i,
+                    total=len(chunks),
+                    message=f"Embedded {i}/{len(chunks)} chunks",
+                )
+
+        emitter.embedding_finished(datasource_id=datasource_id)
 
         table_name = self._shard_resolver.resolve_or_create(
             embedder=self._embedding_provider.embedder,
@@ -113,4 +135,5 @@ class ChunkEmbeddingService:
             table_name=table_name,
             full_type=full_type,
             datasource_id=datasource_id,
+            progress=progress,
         )

@@ -2,6 +2,7 @@ from collections.abc import Sequence
 
 import duckdb
 
+from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter
 from databao_context_engine.services.models import ChunkEmbedding
 from databao_context_engine.storage.models import ChunkDTO
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
@@ -24,7 +25,13 @@ class PersistenceService:
         self._dim = dim
 
     def write_chunks_and_embeddings(
-        self, *, chunk_embeddings: list[ChunkEmbedding], table_name: str, full_type: str, datasource_id: str
+        self,
+        *,
+        chunk_embeddings: list[ChunkEmbedding],
+        table_name: str,
+        full_type: str,
+        datasource_id: str,
+        progress: ProgressCallback | None = None,
     ):
         """Atomically persist chunks and their vectors.
 
@@ -35,8 +42,13 @@ class PersistenceService:
         if not chunk_embeddings:
             raise ValueError("chunk_embeddings must be a non-empty list")
 
+        emitter = ProgressEmitter(progress)
+        total_items = len(chunk_embeddings)
+        emitter.persist_started(datasource_id=datasource_id, total_items=total_items)
+
         with transaction(self._conn):
-            for chunk_embedding in chunk_embeddings:
+            emit_every = 25
+            for i, chunk_embedding in enumerate(chunk_embeddings, start=1):
                 chunk_dto = self.create_chunk(
                     full_type=full_type,
                     datasource_id=datasource_id,
@@ -44,6 +56,15 @@ class PersistenceService:
                     display_text=chunk_embedding.display_text,
                 )
                 self.create_embedding(table_name=table_name, chunk_id=chunk_dto.chunk_id, vec=chunk_embedding.vec)
+
+                if i % emit_every == 0 or i == total_items:
+                    emitter.persist_progress(
+                        datasource_id=datasource_id,
+                        done=i,
+                        total=total_items,
+                        message=f"Persisted {i}/{total_items} chunks",
+                    )
+            emitter.persist_finished(datasource_id=datasource_id)
 
     def create_chunk(self, *, full_type: str, datasource_id: str, embeddable_text: str, display_text: str) -> ChunkDTO:
         return self._chunk_repo.create(

@@ -20,6 +20,7 @@ from databao_context_engine.cli.datasources import add_datasource_config_cli, ch
 from databao_context_engine.cli.info import echo_info
 from databao_context_engine.config.logging import configure_logging
 from databao_context_engine.mcp.mcp_runner import McpTransport, run_mcp_server
+from databao_context_engine.progress.rich_progress import rich_progress
 
 
 @click.group()
@@ -151,9 +152,10 @@ def build(
 
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
-    result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
-        datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper())
-    )
+    with rich_progress() as progress_cb:
+        result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
+            datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()), progress=progress_cb
+        )
 
     click.echo(f"Build complete. Processed {len(result)} datasources.")
 
