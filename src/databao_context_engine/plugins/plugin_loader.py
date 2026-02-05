@@ -44,6 +44,7 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     """Statically register built-in plugins."""
     from databao_context_engine.plugins.databases.duckdb.duckdb_db_plugin import DuckDbPlugin
     from databao_context_engine.plugins.databases.sqlite.sqlite_db_plugin import SQLiteDbPlugin
+    from databao_context_engine.plugins.dbt.dbt_plugin import DbtPlugin
     from databao_context_engine.plugins.resources.parquet_plugin import ParquetPlugin
 
     # optional plugins are added to the python environment via extras
@@ -90,7 +91,7 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
     except ImportError:
         pass
 
-    required_plugins: list[BuildDatasourcePlugin] = [DuckDbPlugin(), ParquetPlugin(), SQLiteDbPlugin()]
+    required_plugins: list[BuildDatasourcePlugin] = [DuckDbPlugin(), ParquetPlugin(), SQLiteDbPlugin(), DbtPlugin()]
     return required_plugins + optional_plugins
 
 

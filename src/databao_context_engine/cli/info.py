@@ -4,18 +4,21 @@ from pathlib import Path
 
 import click
 
-from databao_context_engine import DceInfo, get_databao_context_engine_info
+from databao_context_engine import DceInfo, DceProjectInfo, get_databao_context_engine_info
+from databao_context_engine.project.info import get_databao_context_engine_project_info
 
 
 def echo_info(project_dir: Path) -> None:
-    click.echo(_generate_info_string(get_databao_context_engine_info(project_dir=project_dir)))
+    dce_info = get_databao_context_engine_info()
+    dce_project_info = get_databao_context_engine_project_info(project_dir=project_dir)
+    click.echo(_generate_info_string(dce_info, dce_project_info))
 
 
-def _generate_info_string(command_info: DceInfo) -> str:
+def _generate_info_string(dce_info: DceInfo, project_info: DceProjectInfo) -> str:
     info_lines = []
-    info_lines.append(f"Databao context engine version: {command_info.version}")
-    info_lines.append(f"Databao context engine storage dir: {command_info.dce_path}")
-    info_lines.append(f"Databao context engine plugins: {command_info.plugin_ids}")
+    info_lines.append(f"Databao context engine version: {dce_info.version}")
+    info_lines.append(f"Databao context engine storage dir: {dce_info.dce_path}")
+    info_lines.append(f"Databao context engine plugins: {dce_info.plugin_ids}")
 
     info_lines.append("")
 
@@ -24,10 +27,10 @@ def _generate_info_string(command_info: DceInfo) -> str:
 
     info_lines.append("")
 
-    if command_info.project_info.is_initialized:
-        info_lines.append(f"Project dir: {command_info.project_info.project_path.resolve()}")
-        info_lines.append(f"Project ID: {str(command_info.project_info.project_id)}")
+    if project_info.is_initialized:
+        info_lines.append(f"Project dir: {project_info.project_path.resolve()}")
+        info_lines.append(f"Project ID: {str(project_info.project_id)}")
     else:
-        info_lines.append(f"Project not initialized at {command_info.project_info.project_path.resolve()}")
+        info_lines.append(f"Project not initialized at {project_info.project_path.resolve()}")
 
     return os.linesep.join(info_lines)
