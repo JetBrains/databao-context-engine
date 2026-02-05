@@ -23,7 +23,12 @@ from databao_context_engine.pluginlib.build_plugin import (
     DatasourceType,
 )
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
-from databao_context_engine.project.info import DceInfo, DceProjectInfo, get_databao_context_engine_info
+from databao_context_engine.project.info import (
+    DceInfo,
+    DceProjectInfo,
+    get_databao_context_engine_info,
+    get_databao_context_engine_project_info,
+)
 from databao_context_engine.project.init_project import InitErrorReason, InitProjectError
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
@@ -41,6 +46,7 @@ __all__ = [
     "DatasourceConfigFile",
     "DatasourceType",
     "get_databao_context_engine_info",
+    "get_databao_context_engine_project_info",
     "DceInfo",
     "DceProjectInfo",
     "init_dce_project",
