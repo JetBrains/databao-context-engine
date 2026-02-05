@@ -15,7 +15,7 @@ class PDFPlugin(BuildFilePlugin):
     name = "PDF Plugin"
 
     def supported_types(self) -> set[str]:
-        return {"files/pdf"}
+        return {"pdf"}
 
     def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
         pdf_bytes = file_buffer.read()

@@ -122,10 +122,35 @@ class DoclingChunker:
             if self._is_table_chunk(chunk):
                 continue
 
-            display_text = getattr(chunk, "text", "") or ""
+            raw_text = getattr(chunk, "text", "")
+            display_text = (raw_text or "").strip()
+            if not display_text:
+                continue
+
             embed_text = chunker.contextualize(chunk=chunk)
 
-            for part in self.splitter.split(embed_text, tokenizer=tokenizer):
+            if tokenizer.count_tokens(embed_text) <= self.policy.tokens_budget:
+                out.append(EmbeddableChunk(embeddable_text=embed_text, content=display_text))
+                continue
+
+            delim = getattr(chunker, "delim", "\n")
+            if delim in embed_text:
+                header, body = embed_text.rsplit(delim, 1)
+                header = header.strip()
+                body = body.strip()
+
+                if not body or not header:
+                    parts = self.splitter.split(embed_text, tokenizer=tokenizer)
+                else:
+                    parts = []
+                    for body_part in self.splitter.split(body, tokenizer=tokenizer):
+                        candidate = f"{header}{delim}{body_part}".strip()
+                        parts.append(candidate)
+
+            else:
+                parts = self.splitter.split(embed_text, tokenizer=tokenizer)
+
+            for part in parts:
                 out.append(EmbeddableChunk(embeddable_text=part, content=display_text))
 
         return out
@@ -217,3 +242,10 @@ class DoclingChunker:
         if headers:
             lines.append("COLUMNS: " + " | ".join(headers))
         return "\n".join(lines).strip()
+
+    def _display_excerpt(self, text: str, *, max_chars: int = 600) -> str:
+        """A short, user-facing snippet when chunk.text is empty/missing."""
+        s = (text or "").strip()
+        if not s:
+            return ""
+        return s if len(s) <= max_chars else s[: max_chars - 1] + "…"
