@@ -30,31 +30,36 @@ class DceInfo:
     Attributes:
         version: The version of the databao_context_engine package installed on the system.
         dce_path: The path where databao_context_engine stores its global data.
-        project_info: Information about the Databao Context Engine project.
     """
 
     version: str
     dce_path: Path
     plugin_ids: list[str]
 
-    project_info: DceProjectInfo
 
-
-def get_databao_context_engine_info(project_dir: Path) -> DceInfo:
+def get_databao_context_engine_info() -> DceInfo:
     """Return information about the current Databao Context Engine installation and project.
 
-    Args:
-        project_dir: The root directory of the Databao Context Project.
-
     Returns:
-        A DceInfo instance containing information about the Databao Context Engine installation and project.
+        A DceInfo instance containing information about the Databao Context Engine installation.
     """
     return DceInfo(
         version=get_dce_version(),
         dce_path=get_dce_path(),
         plugin_ids=[plugin.id for plugin in load_plugins().values()],
-        project_info=_get_project_info(project_dir),
     )
+
+
+def get_databao_context_engine_project_info(project_dir: Path) -> DceProjectInfo:
+    """Return information about the current Databao Context Engine project.
+
+    Args:
+        project_dir: The root directory of the Databao Context Project.
+
+    Returns:
+        A DceProjectInfo instance containing information about the Databao Context Engine project.
+    """
+    return _get_project_info(project_dir)
 
 
 def _get_project_info(project_dir: Path) -> DceProjectInfo:
