@@ -5,6 +5,7 @@ import click
 
 from databao_context_engine import (
     CheckDatasourceConnectionResult,
+    DatabaoContextEngine,
     DatabaoContextProjectManager,
     DatasourceConnectionStatus,
     DatasourceId,
@@ -65,8 +66,7 @@ def _print_check_datasource_connection_results(results: list[CheckDatasourceConn
 
 
 def run_sql_query_cli(project_dir: Path, *, datasource_id: DatasourceId, sql: str) -> None:
-    databao_project_manager = DatabaoContextProjectManager(project_dir=project_dir)
-    databao_engine = databao_project_manager.get_engine_for_project()
+    databao_engine = DatabaoContextEngine(project_dir=project_dir)
     result = databao_engine.run_sql(datasource_id=datasource_id, sql=sql, params=None)
 
     # save somewhere or pretty print
