@@ -37,7 +37,7 @@ class BuiltDatasourceContext:
     """
 
 
-def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
+def execute_plugin(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
     built_context = _execute(prepared_datasource, plugin)
     return BuiltDatasourceContext(
         datasource_id=str(prepared_datasource.datasource_id),

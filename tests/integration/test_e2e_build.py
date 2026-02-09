@@ -122,14 +122,14 @@ def test_one_source_fails_but_others_succeed(
 ):
     import databao_context_engine.build_sources.plugin_execution as execmod
 
-    original_execute = execmod.execute
+    original_execute_plugin = execmod.execute_plugin
 
     def flaky_execute(source, plugin):
         if source.path.name.endswith("pg.yaml"):
             raise RuntimeError("boom")
-        return original_execute(source, plugin)
+        return original_execute_plugin(source, plugin)
 
-    mocker.patch.object(execmod, "execute", side_effect=flaky_execute)
+    mocker.patch.object(execmod, "execute_plugin", side_effect=flaky_execute)
 
     result = DatabaoContextProjectManager(project_dir=project_dir).build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY

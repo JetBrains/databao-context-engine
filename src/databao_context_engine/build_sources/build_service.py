@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute_plugin
 from databao_context_engine.datasources.types import PreparedDatasource
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
@@ -36,7 +36,7 @@ class BuildService:
         Returns:
             The built context.
         """
-        result = execute(prepared_source, plugin)
+        result = execute_plugin(prepared_source, plugin)
 
         chunks = plugin.divide_context_into_chunks(result.context)
         if not chunks:
