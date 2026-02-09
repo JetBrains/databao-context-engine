@@ -70,7 +70,6 @@ def test_build_skips_source_without_plugin(
             PreparedFile(
                 DatasourceId.from_string_repr("files/one.md"),
                 datasource_type=DatasourceType(full_type="files/md"),
-                path=datasources.path,
             )
         ]
     )
@@ -94,7 +93,6 @@ def test_build_processes_file_source_and_exports(
             PreparedFile(
                 datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/one.md")),
                 datasource_type=DatasourceType(full_type="files/md"),
-                path=src.path,
             )
         ]
     )
@@ -118,12 +116,10 @@ def test_build_continues_on_service_exception(
             PreparedFile(
                 datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/a.md")),
                 datasource_type=DatasourceType(full_type="files/md"),
-                path=s1.path,
             ),
             PreparedFile(
                 datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/b.md")),
                 datasource_type=DatasourceType(full_type="files/md"),
-                path=s2.path,
             ),
         ]
     )

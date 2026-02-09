@@ -119,7 +119,6 @@ def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
         return PreparedFile(
             datasource_id=datasource.datasource_id,
             datasource_type=DatasourceType(full_type=file_subtype),
-            path=datasource.path,
         )
 
     config = _parse_config_file(datasource.path)
@@ -131,7 +130,6 @@ def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
     return PreparedConfig(
         datasource_id=datasource.datasource_id,
         datasource_type=DatasourceType(full_type=ds_type),
-        path=datasource.path,
         config=config,
         datasource_name=datasource.path.stem,
     )

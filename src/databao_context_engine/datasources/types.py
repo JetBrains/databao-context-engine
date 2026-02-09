@@ -23,7 +23,6 @@ class DatasourceDescriptor:
 class PreparedConfig:
     datasource_id: "DatasourceId"
     datasource_type: DatasourceType
-    path: Path
     config: dict[Any, Any]
     datasource_name: str
 
@@ -32,7 +31,6 @@ class PreparedConfig:
 class PreparedFile:
     datasource_id: "DatasourceId"
     datasource_type: DatasourceType
-    path: Path
 
 
 PreparedDatasource = PreparedConfig | PreparedFile
@@ -83,6 +81,17 @@ class DatasourceId:
             The path to the config file relative to the src folder in the project.
         """
         return Path(self.datasource_path + self.config_file_suffix)
+
+    def absolute_path_to_config_file(self, project_layout: ProjectLayout) -> Path:
+        """Return an absolute path to the config file for this datasource.
+
+        Args:
+            project_layout: The databao context engine project layout.
+
+        Returns:
+            The absolute path to the config file.
+        """
+        return project_layout.src_dir / (self.datasource_path + self.config_file_suffix)
 
     def relative_path_to_context_file(self) -> Path:
         """Return a path to the config file for this datasource.

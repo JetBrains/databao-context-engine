@@ -24,7 +24,6 @@ def mk_prepared(path: Path, full_type: str) -> PreparedDatasource:
     return PreparedFile(
         DatasourceId._from_relative_datasource_config_file_path(path),
         datasource_type=DatasourceType(full_type=full_type),
-        path=path,
     )
 
 
@@ -34,8 +33,9 @@ def chunk_embed_svc(mocker):
 
 
 @pytest.fixture
-def svc(chunk_embed_svc):
+def svc(chunk_embed_svc, mocker):
     return BuildService(
+        project_layout=mocker.Mock(name="ProjectLayout"),
         chunk_embedding_service=chunk_embed_svc,
     )
 

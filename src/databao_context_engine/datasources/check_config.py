@@ -84,7 +84,7 @@ def check_datasource_connection(
             logger.debug(
                 "No plugin for '%s' (datasource=%s) — skipping.",
                 prepared_source.datasource_type.full_type,
-                prepared_source.path,
+                prepared_source.datasource_id.datasource_path,
             )
             result[result_key] = CheckDatasourceConnectionResult(
                 datasource_id=result_key,

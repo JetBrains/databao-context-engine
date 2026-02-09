@@ -69,7 +69,7 @@ def build(
             prepared_source = prepare_source(discovered_datasource)
 
             logger.info(
-                f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.path.stem}'
+                f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
             )
 
             plugin = plugins.get(prepared_source.datasource_type)
@@ -77,7 +77,7 @@ def build(
                 logger.warning(
                     "No plugin for '%s' (datasource=%s) — skipping.",
                     prepared_source.datasource_type.full_type,
-                    prepared_source.path,
+                    prepared_source.datasource_id.relative_path_to_config_file(),
                 )
                 number_of_failed_builds += 1
                 continue
