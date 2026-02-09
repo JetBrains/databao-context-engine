@@ -13,21 +13,21 @@ from databao_context_engine.llm.service import (
 
 def test_embed_embedding_field():
     session = _StubSession()
-    session.set_next_post(_StubResponse(status=200, json_obj={"embedding": [1, 2.5, 3]}))
+    session.set_next_post(_StubResponse(status=200, json_obj={"embeddings": [[1, 2.5, 3]]}))
     service = OllamaService(OllamaConfig(host="host", port=11434, timeout=12.0), session=session)
 
     vec = service.embed(model="nomic-embed-text", text="hello")
 
     assert vec == [1.0, 2.5, 3.0]
     call = session.calls[0]
-    assert call["url"] == "http://host:11434/api/embeddings"
-    assert call["json"] == {"model": "nomic-embed-text", "prompt": "hello"}
+    assert call["url"] == "http://host:11434/api/embed"
+    assert call["json"] == {"model": "nomic-embed-text", "input": "hello"}
     assert call["timeout"] == 12.0
 
 
 def test_embed_alt_schema_under_data_embedding():
     session = _StubSession()
-    session.set_next_post(_StubResponse(status=200, json_obj={"data": [{"embedding": [0.1, 0.2]}]}))
+    session.set_next_post(_StubResponse(status=200, json_obj={"embeddings": [[0.1, 0.2]]}))
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
     vec = service.embed(model="m", text="t")
