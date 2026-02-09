@@ -84,9 +84,7 @@ class OllamaService:
             if 200 <= r.status_code < 300:
                 models = r.json().get("models")
                 if models and isinstance(models, list):
-                    local_model = next(
-                        (model for model in models if model.get("name").lower() == model_name.lower()), None
-                    )
+                    local_model = next((model for model in models if model.get("name") == model_name), None)
                     return local_model is not None
 
             return False
