@@ -13,17 +13,9 @@ class DatasourceKind(StrEnum):
 
 
 @dataclass(frozen=True)
-class DatasourceDescriptor:
-    datasource_id: "DatasourceId"
-    path: Path
-    kind: DatasourceKind
-
-
-@dataclass(frozen=True)
 class PreparedConfig:
     datasource_id: "DatasourceId"
     datasource_type: DatasourceType
-    path: Path
     config: dict[Any, Any]
     datasource_name: str
 
@@ -32,7 +24,6 @@ class PreparedConfig:
 class PreparedFile:
     datasource_id: "DatasourceId"
     datasource_type: DatasourceType
-    path: Path
 
 
 PreparedDatasource = PreparedConfig | PreparedFile
@@ -56,6 +47,17 @@ class DatasourceId:
 
     datasource_path: str
     config_file_suffix: str
+
+    @property
+    def kind(self) -> DatasourceKind:
+        parts = self.datasource_path.split("/")
+        if len(parts) == 2 and parts[0] == "files":
+            return DatasourceKind.FILE
+        if self.config_file_suffix in {".yaml", ".yml"}:
+            return DatasourceKind.CONFIG
+        if self.config_file_suffix:
+            return DatasourceKind.FILE
+        raise ValueError("Unknown datasource kind %s" % self)
 
     def __post_init__(self):
         if not self.datasource_path.strip():
@@ -83,6 +85,17 @@ class DatasourceId:
             The path to the config file relative to the src folder in the project.
         """
         return Path(self.datasource_path + self.config_file_suffix)
+
+    def absolute_path_to_config_file(self, project_layout: ProjectLayout) -> Path:
+        """Return an absolute path to the config file for this datasource.
+
+        Args:
+            project_layout: The databao context engine project layout.
+
+        Returns:
+            The absolute path to the config file.
+        """
+        return project_layout.src_dir / (self.datasource_path + self.config_file_suffix)
 
     def relative_path_to_context_file(self) -> Path:
         """Return a path to the config file for this datasource.

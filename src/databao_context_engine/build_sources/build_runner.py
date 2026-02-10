@@ -54,48 +54,47 @@ def build(
     """
     plugins = load_plugins()
 
-    datasources = discover_datasources(project_layout)
+    datasource_ids = discover_datasources(project_layout)
 
     emitter = ProgressEmitter(progress)
 
-    if not datasources:
+    if not datasource_ids:
         logger.info("No sources discovered under %s", project_layout.src_dir)
         emitter.build_started(total_datasources=0)
         emitter.build_finished(ok=0, failed=0, skipped=0)
         return []
 
-    emitter.build_started(total_datasources=len(datasources))
+    emitter.build_started(total_datasources=len(datasource_ids))
 
     number_of_failed_builds = 0
     number_of_skipped_builds = 0
 
     build_result = []
     reset_all_results(project_layout.output_dir)
-    for datasource_index, discovered_datasource in enumerate(datasources, start=1):
-        datasource_id = str(discovered_datasource.datasource_id)
+    for datasource_index, datasource_id in enumerate(datasource_ids, start=1):
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, datasource_id)
 
             logger.info(
-                f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.path.stem}'
+                f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
             )
 
             emitter.datasource_started(
-                datasource_id=datasource_id,
+                datasource_id=str(datasource_id),
                 index=datasource_index,
-                total=len(datasources),
+                total=len(datasource_ids),
             )
             plugin = plugins.get(prepared_source.datasource_type)
             if plugin is None:
                 logger.warning(
                     "No plugin for '%s' (datasource=%s) — skipping.",
                     prepared_source.datasource_type.full_type,
-                    prepared_source.path,
+                    prepared_source.datasource_id.relative_path_to_config_file(),
                 )
                 emitter.datasource_finished(
-                    datasource_id=datasource_id,
+                    datasource_id=str(datasource_id),
                     index=datasource_index,
-                    total=len(datasources),
+                    total=len(datasource_ids),
                     status=DatasourceStatus.SKIPPED,
                 )
                 number_of_skipped_builds += 1
@@ -114,25 +113,25 @@ def build(
 
             build_result.append(
                 BuildContextResult(
-                    datasource_id=discovered_datasource.datasource_id,
+                    datasource_id=datasource_id,
                     datasource_type=DatasourceType(full_type=result.datasource_type),
                     context_built_at=result.context_built_at,
                     context_file_path=context_file_path,
                 )
             )
             emitter.datasource_finished(
-                datasource_id=datasource_id,
+                datasource_id=str(datasource_id),
                 index=datasource_index,
-                total=len(datasources),
+                total=len(datasource_ids),
                 status=DatasourceStatus.OK,
             )
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
-            logger.info(f"Failed to build source at ({discovered_datasource.path}): {str(e)}")
+            logger.info(f"Failed to build source at ({datasource_id.relative_path_to_config_file()}): {str(e)}")
             emitter.datasource_finished(
-                datasource_id=datasource_id,
+                datasource_id=str(datasource_id),
                 index=datasource_index,
-                total=len(datasources),
+                total=len(datasource_ids),
                 status=DatasourceStatus.FAILED,
                 error=str(e),
             )
