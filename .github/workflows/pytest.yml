@@ -29,6 +29,12 @@ jobs:
           model-name: ${{ env.OLLAMA_MODEL }}
           model-version: ${{ env.OLLAMA_MODEL_VERSION }}
 
+      - name: Cleanup Docker
+        if: always()
+        run: |
+          docker rm -f ollama || true
+          docker system prune -af --volumes || true
+
   tests:
     needs: prepare-ollama-cache
     name: Run pytest on ${{ matrix.python-version }}
@@ -37,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.12", "3.13", "3.14"]
+        python-version: [ "3.12", "3.13", "3.14" ]
 
     permissions:
       contents: read
