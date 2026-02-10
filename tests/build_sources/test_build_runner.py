@@ -149,7 +149,7 @@ def test_run_indexing_indexes_when_plugin_exists(mocker, mock_build_service, pro
 
     build_runner.run_indexing(project_layout=project_layout, build_service=mock_build_service, contexts=[ctx])
 
-    mock_build_service.index_built_context.assert_called_once_with(context=ctx, plugin=plugin)
+    mock_build_service.index_built_context.assert_called_once_with(context=ctx, plugin=plugin, progress=None)
 
 
 def test_run_indexing_skips_when_plugin_missing(mocker, mock_build_service, project_layout, caplog):
@@ -183,5 +183,5 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
     build_runner.run_indexing(project_layout=project_layout, build_service=mock_build_service, contexts=[c1, c2])
 
     assert mock_build_service.index_built_context.call_count == 2
-    mock_build_service.index_built_context.assert_any_call(context=c1, plugin=plugin)
-    mock_build_service.index_built_context.assert_any_call(context=c2, plugin=plugin)
+    mock_build_service.index_built_context.assert_any_call(context=c1, plugin=plugin, progress=None)
+    mock_build_service.index_built_context.assert_any_call(context=c2, plugin=plugin, progress=None)

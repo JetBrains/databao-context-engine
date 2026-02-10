@@ -108,7 +108,9 @@ def index_built_contexts(
             description_provider=description_provider,
             chunk_embedding_mode=chunk_embedding_mode,
         )
-        return run_indexing(project_layout=project_layout, build_service=build_service, contexts=contexts, progress=progress)
+        return run_indexing(
+            project_layout=project_layout, build_service=build_service, contexts=contexts, progress=progress
+        )
 
 
 def _create_build_service(

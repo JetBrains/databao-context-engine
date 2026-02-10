@@ -8,8 +8,8 @@ EMIT_EVERY = 10
 
 
 class ProgressKind(str, Enum):
-    BUILD_STARTED = "build_started"
-    BUILD_FINISHED = "build_finished"
+    TASK_STARTED = "task_started"
+    TASK_FINISHED = "task_finished"
     DATASOURCE_STARTED = "datasource_started"
     DATASOURCE_FINISHED = "datasource_finished"
     DATASOURCE_PROGRESS = "datasource_progress"
@@ -44,13 +44,13 @@ class ProgressEmitter:
         if self._cb is not None:
             self._cb(event)
 
-    def build_started(self, *, total_datasources: int | None) -> None:
-        self.emit(ProgressEvent(kind=ProgressKind.BUILD_STARTED, datasource_total=total_datasources))
+    def task_started(self, *, total_datasources: int | None) -> None:
+        self.emit(ProgressEvent(kind=ProgressKind.TASK_STARTED, datasource_total=total_datasources))
 
-    def build_finished(self, *, ok: int, failed: int, skipped: int) -> None:
+    def task_finished(self, *, ok: int, failed: int, skipped: int) -> None:
         self.emit(
             ProgressEvent(
-                kind=ProgressKind.BUILD_FINISHED,
+                kind=ProgressKind.TASK_FINISHED,
                 message=f"Finished (ok={ok}, failed={failed}, skipped={skipped})",
             )
         )

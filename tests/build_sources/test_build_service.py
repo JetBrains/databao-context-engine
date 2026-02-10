@@ -136,6 +136,7 @@ def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
         full_type="files/md",
         datasource_id="files/two.md",
         override=True,
+        progress=None,
     )
 
 

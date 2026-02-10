@@ -73,11 +73,11 @@ def build(
 
     if not datasource_ids:
         logger.info("No sources discovered under %s", project_layout.src_dir)
-        emitter.build_started(total_datasources=0)
-        emitter.build_finished(ok=0, failed=0, skipped=0)
+        emitter.task_started(total_datasources=0)
+        emitter.task_finished(ok=0, failed=0, skipped=0)
         return []
 
-    emitter.build_started(total_datasources=len(datasource_ids))
+    emitter.task_started(total_datasources=len(datasource_ids))
 
     number_of_failed_builds = 0
     number_of_skipped_builds = 0
@@ -157,7 +157,7 @@ def build(
         f"Failed to build {number_of_failed_builds}." if number_of_failed_builds > 0 else "",
     )
 
-    emitter.build_finished(
+    emitter.task_finished(
         ok=len(build_result),
         failed=number_of_failed_builds,
         skipped=number_of_skipped_builds,
@@ -189,11 +189,11 @@ def run_indexing(
     emitter = ProgressEmitter(progress)
 
     if not contexts:
-        emitter.build_started(total_datasources=0)
-        emitter.build_finished(ok=0, failed=0, skipped=0)
+        emitter.task_started(total_datasources=0)
+        emitter.task_finished(ok=0, failed=0, skipped=0)
         return summary
 
-    emitter.build_started(total_datasources=len(contexts))
+    emitter.task_started(total_datasources=len(contexts))
 
     for datasource_index, context in enumerate(contexts, start=1):
         try:
@@ -251,5 +251,5 @@ def run_indexing(
         f"Skipped {summary.skipped}. Failed {summary.failed}." if (summary.skipped or summary.failed) else "",
     )
 
-    emitter.build_finished(ok=summary.indexed, failed=summary.failed, skipped=summary.skipped)
+    emitter.task_finished(ok=summary.indexed, failed=summary.failed, skipped=summary.skipped)
     return summary

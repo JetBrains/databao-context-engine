@@ -118,10 +118,10 @@ def rich_progress() -> Iterator[ProgressCallback]:
 
     def on_event(ev: ProgressEvent) -> None:
         match ev.kind:
-            case ProgressKind.BUILD_STARTED:
+            case ProgressKind.TASK_STARTED:
                 _get_or_create_overall_task(ev.datasource_total)
                 return
-            case ProgressKind.BUILD_FINISHED:
+            case ProgressKind.TASK_FINISHED:
                 if ev.message:
                     progress.console.print(f"{ev.message}")
                 return
