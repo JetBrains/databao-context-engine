@@ -420,12 +420,14 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "requests" },
-    { name = "rich" },
 ]
 
 [package.optional-dependencies]
 athena = [
     { name = "pyathena" },
+]
+cli = [
+    { name = "rich" },
 ]
 clickhouse = [
     { name = "clickhouse-connect" },
@@ -471,10 +473,10 @@ requires-dist = [
     { name = "pymysql", marker = "extra == 'mysql'", specifier = ">=1.1.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "rich", specifier = ">=14.3.2" },
+    { name = "rich", marker = "extra == 'cli'", specifier = ">=14.3.2" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = ">=4.2.0" },
 ]
-provides-extras = ["mssql", "clickhouse", "athena", "snowflake", "mysql", "postgresql"]
+provides-extras = ["cli", "mssql", "clickhouse", "athena", "snowflake", "mysql", "postgresql"]
 
 [package.metadata.requires-dev]
 dev = [

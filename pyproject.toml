@@ -12,7 +12,6 @@ dependencies = [
     "mcp>=1.23.3",
     "pydantic>=2.12.4",
     "jinja2>=3.1.6",
-    "rich>=14.3.2"
 ]
 default-optional-dependency-keys = [
     "mysql",
@@ -20,6 +19,9 @@ default-optional-dependency-keys = [
 ]
 
 [project.optional-dependencies]
+cli = [
+    "rich>=14.3.2"
+]
 mssql = [
     "mssql-python>=1.0.0"
 ]

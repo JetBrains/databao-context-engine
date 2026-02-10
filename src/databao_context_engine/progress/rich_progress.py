@@ -3,21 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 from contextlib import contextmanager
-from typing import Callable, Iterator, Optional
-
-from rich.console import Console
-from rich.progress import (
-    BarColumn,
-    Progress,
-    ProgressColumn,
-    SpinnerColumn,
-    TaskID,
-    TaskProgressColumn,
-    TextColumn,
-    TimeRemainingColumn,
-)
-from rich.table import Column
-from rich.text import Text
+from typing import Callable, Iterator, Optional, TypedDict
 
 from databao_context_engine.progress.progress import (
     ProgressCallback,
@@ -32,34 +18,57 @@ def _datasource_label(ds_id: str | None) -> str:
     return ds_id or "datasource"
 
 
-class _EtaExceptOverallColumn(ProgressColumn):
-    def __init__(self, overall_task_id_getter: Callable[[], Optional[TaskID]]):
-        super().__init__()
-        self._overall_task_id_getter = overall_task_id_getter
-        self._eta = TimeRemainingColumn()
+def _noop_progress_cb(_: ProgressEvent) -> None:
+    return
 
-    def render(self, task) -> Text:
-        overall_id = self._overall_task_id_getter()
-        if overall_id is not None and task.id == overall_id:
-            return Text("")
-        return self._eta.render(task)
+
+class _UIState(TypedDict):
+    datasource_index: int | None
+    datasource_total: int | None
+    last_percent: int
 
 
 @contextmanager
 def rich_progress() -> Iterator[ProgressCallback]:
+    try:
+        from rich.console import Console
+        from rich.progress import (
+            BarColumn,
+            Progress,
+            ProgressColumn,
+            SpinnerColumn,
+            TaskID,
+            TaskProgressColumn,
+            TextColumn,
+            TimeRemainingColumn,
+        )
+        from rich.table import Column
+        from rich.text import Text
+    except ImportError:
+        yield _noop_progress_cb
+        return
+
     interactive = sys.stderr.isatty()
     if not interactive:
-
-        def noop(_: ProgressEvent) -> None:
-            return
-
-        yield noop
+        yield _noop_progress_cb
         return
+
+    class _EtaExceptOverallColumn(ProgressColumn):
+        def __init__(self, overall_task_id_getter: Callable[[], Optional[TaskID]]):
+            super().__init__()
+            self._overall_task_id_getter = overall_task_id_getter
+            self._eta = TimeRemainingColumn()
+
+        def render(self, task) -> Text:
+            overall_id = self._overall_task_id_getter()
+            if overall_id is not None and task.id == overall_id:
+                return Text("")
+            return self._eta.render(task)
 
     console = Console(stderr=True)
 
     tasks: dict[str, TaskID] = {}
-    ui_state = {
+    ui_state: _UIState = {
         "datasource_index": None,
         "datasource_total": None,
         "last_percent": 0,

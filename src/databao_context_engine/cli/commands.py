@@ -154,7 +154,9 @@ def build(
     """
     with rich_progress() as progress_cb:
         result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
-            datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()), progress=progress_cb
+            datasource_ids=None,
+            chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()),
+            progress=progress_cb,
         )
 
     click.echo(f"Build complete. Processed {len(result)} datasources.")
