@@ -43,6 +43,11 @@ def test_pk_conflict_raises_constraint_error(registry_repo):
         registry_repo.create(embedder="tests", model_id="dup:v1", dim=768, table_name=table2)
 
 
+def test_case_sensitive_model_name():
+    table = TableNamePolicy().build(embedder="tests", model_id="EmbeddingGemma:300m", dim=768)
+    assert table == "embedding_tests__embeddinggemma_300m__768"
+
+
 def test_unique_table_name_conflict_raises(registry_repo):
     table = TableNamePolicy().build(embedder="tests", model_id="unique-a:v1", dim=768)
 

@@ -7,8 +7,8 @@ from pydantic import ValidationError
 
 from databao_context_engine.datasources.datasource_discovery import (
     discover_datasources,
-    get_datasource_descriptors,
     prepare_source,
+    validate_datasource_ids,
 )
 from databao_context_engine.datasources.types import DatasourceId, PreparedConfig
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
@@ -58,18 +58,18 @@ def check_datasource_connection(
 ) -> dict[DatasourceId, CheckDatasourceConnectionResult]:
     if datasource_ids:
         logger.info(f"Validating datasource(s): {datasource_ids}")
-        datasources_to_traverse = get_datasource_descriptors(project_layout, datasource_ids)
+        datasources_to_traverse = validate_datasource_ids(project_layout, datasource_ids)
     else:
         datasources_to_traverse = discover_datasources(project_layout)
 
     plugins = load_plugins(exclude_file_plugins=True)
 
     result = {}
-    for discovered_datasource in datasources_to_traverse:
-        result_key = DatasourceId.from_datasource_config_file_path(project_layout, discovered_datasource.path)
+    for datasource_id in datasources_to_traverse:
+        result_key = datasource_id
 
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, datasource_id)
         except Exception as e:
             result[result_key] = CheckDatasourceConnectionResult(
                 datasource_id=result_key,
@@ -84,7 +84,7 @@ def check_datasource_connection(
             logger.debug(
                 "No plugin for '%s' (datasource=%s) — skipping.",
                 prepared_source.datasource_type.full_type,
-                prepared_source.path,
+                prepared_source.datasource_id.datasource_path,
             )
             result[result_key] = CheckDatasourceConnectionResult(
                 datasource_id=result_key,
