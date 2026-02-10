@@ -77,5 +77,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Disk + inode usage (after setup)
+        if: always()
+        run: |
+          df -h
+          df -i
+          echo "Big dirs:"
+          sudo du -xh -d 2 /home/runner /var/lib/docker 2>/dev/null | sort -h | tail -n 40
+
       - name: Run tests with all-extras
         run: uv run pytest -v
