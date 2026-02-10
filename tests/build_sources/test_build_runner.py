@@ -108,9 +108,12 @@ def test_build_processes_file_source_and_exports(
 def test_build_continues_on_service_exception(
     stub_sources, stub_plugins, stub_prepare, mock_build_service, project_layout
 ):
-    s1 = SimpleNamespace(datasource_id=DatasourceId(datasource_path="files/a", config_file_suffix=".md"))
-    s2 = SimpleNamespace(datasource_id=DatasourceId(datasource_path="files/b", config_file_suffix=".md"))
-    stub_sources([s1, s2])
+    stub_sources(
+        [
+            (DatasourceId(datasource_path="files/a", config_file_suffix=".md")),
+            (DatasourceId(datasource_path="files/b", config_file_suffix=".md")),
+        ]
+    )
     stub_prepare(
         [
             PreparedFile(

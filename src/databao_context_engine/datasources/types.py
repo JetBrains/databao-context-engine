@@ -13,11 +13,6 @@ class DatasourceKind(StrEnum):
 
 
 @dataclass(frozen=True)
-class DatasourceDescriptor:
-    datasource_id: "DatasourceId"
-
-
-@dataclass(frozen=True)
 class PreparedConfig:
     datasource_id: "DatasourceId"
     datasource_type: DatasourceType

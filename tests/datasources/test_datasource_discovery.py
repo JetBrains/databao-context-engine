@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from databao_context_engine.datasources.datasource_discovery import (
-    _load_datasource_descriptor,
+    _load_datasource_id,
     discover_datasources,
 )
 from databao_context_engine.datasources.types import DatasourceId, DatasourceKind
@@ -14,8 +14,8 @@ def _mk(p: Path, text: str = "x") -> Path:
     return p
 
 
-def _snapshot(rows):
-    return [(r.datasource_id, r.datasource_id.kind) for r in rows]
+def _snapshot(ids):
+    return [(id, id.kind) for id in ids]
 
 
 def test_empty_src_returns_empty(project_layout: ProjectLayout):
@@ -26,8 +26,8 @@ def test_orders_by_dir_then_filename(project_layout: ProjectLayout):
     _mk(project_layout.src_dir / "A" / "1.txt")
     _mk(project_layout.src_dir / "b" / "0.txt")
 
-    rows = discover_datasources(project_layout)
-    assert _snapshot(rows) == [
+    ids = discover_datasources(project_layout)
+    assert _snapshot(ids) == [
         (
             DatasourceId(
                 datasource_path="A/1",
@@ -49,8 +49,8 @@ def test_files_dir_treats_everything_as_FILE_including_yaml(project_layout: Proj
     _mk(project_layout.src_dir / "files" / "x.yaml", "k: v")
     _mk(project_layout.src_dir / "files" / "y.txt", "hello")
 
-    rows = discover_datasources(project_layout)
-    kinds = {r.datasource_id.datasource_path + r.datasource_id.config_file_suffix: r.datasource_id.kind for r in rows}
+    ids = discover_datasources(project_layout)
+    kinds = {id.datasource_path + id.config_file_suffix: id.kind for id in ids}
 
     assert kinds["files/x.yaml"] == DatasourceKind.FILE
     assert kinds["files/y.txt"] == DatasourceKind.FILE
@@ -89,26 +89,24 @@ def test_non_yaml_elsewhere_with_extension_is_FILE(project_layout: ProjectLayout
 def test_skips_files_without_extension(project_layout: ProjectLayout):
     _mk(project_layout.src_dir / "misc" / "NOEXT", "data")
 
-    rows = discover_datasources(project_layout)
-    assert rows == []
+    ids = discover_datasources(project_layout)
+    assert ids == []
 
 
 def test_load_descriptor_files_dir_yaml_is_FILE(project_layout: ProjectLayout):
     p = _mk(project_layout.src_dir / "files" / "conf.yaml", "k: v")
-    d = _load_datasource_descriptor(project_layout, p)
-    assert d is not None
-    assert d.datasource_id.kind == DatasourceKind.FILE
-    assert d.datasource_id == DatasourceId(datasource_path="files/conf", config_file_suffix=".yaml")
+    id = _load_datasource_id(project_layout, p)
+    assert id == DatasourceId(datasource_path="files/conf", config_file_suffix=".yaml")
+    assert id.kind == DatasourceKind.FILE
 
 
 def test_load_descriptor_yaml_elsewhere_is_CONFIG(project_layout: ProjectLayout):
     p = _mk(project_layout.src_dir / "databases" / "ds.yaml", "type: pg")
-    d = _load_datasource_descriptor(project_layout, p)
-    assert d is not None
-    assert d.datasource_id.kind == DatasourceKind.CONFIG
-    assert d.datasource_id == DatasourceId(datasource_path="databases/ds", config_file_suffix=".yaml")
+    id = _load_datasource_id(project_layout, p)
+    assert id == DatasourceId(datasource_path="databases/ds", config_file_suffix=".yaml")
+    assert id.kind == DatasourceKind.CONFIG
 
 
 def test_load_descriptor_no_extension_returns_none(project_layout: ProjectLayout):
     p = _mk(project_layout.src_dir / "misc" / "NOEXT", "data")
-    assert _load_datasource_descriptor(project_layout, p) is None
+    assert _load_datasource_id(project_layout, p) is None
