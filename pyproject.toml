@@ -40,6 +40,9 @@ mysql = [
 postgresql = [
     "asyncpg>=0.31.0",
 ]
+pdf = [
+    "docling>=2.70.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]

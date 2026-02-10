@@ -9,6 +9,10 @@ from databao_context_engine.build_sources.export_results import (
     export_build_result,
     reset_all_results,
 )
+from databao_context_engine.datasources.datasource_context import (
+    DatasourceContext,
+    read_datasource_type_from_context,
+)
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
@@ -36,6 +40,16 @@ class BuildContextResult:
     context_file_path: Path
 
 
+@dataclass
+class IndexSummary:
+    """Summary of an indexing run over built contexts."""
+
+    total: int
+    indexed: int
+    skipped: int
+    failed: int
+
+
 def build(
     project_layout: ProjectLayout, *, build_service: BuildService, progress: ProgressCallback | None = None
 ) -> list[BuildContextResult]:
@@ -46,8 +60,7 @@ def build(
 
     1) Load available plugins
     2) Discover sources
-    3) Create a run
-    4) For each source, call process_source
+    3) For each source, call process_source
 
     Returns:
         A list of all the contexts built.
@@ -151,3 +164,92 @@ def build(
     )
 
     return build_result
+
+
+def run_indexing(
+    *,
+    project_layout: ProjectLayout,
+    build_service: BuildService,
+    contexts: list[DatasourceContext],
+    progress: ProgressCallback | None = None,
+) -> IndexSummary:
+    """Index a list of built datasource contexts.
+
+    1) Load available plugins
+    2) Infer datasource type from context file
+    3) For each context, call index_built_context
+
+    Returns:
+        A summary of the indexing run.
+    """
+    plugins = load_plugins()
+
+    summary = IndexSummary(total=len(contexts), indexed=0, skipped=0, failed=0)
+
+    emitter = ProgressEmitter(progress)
+
+    if not contexts:
+        emitter.build_started(total_datasources=0)
+        emitter.build_finished(ok=0, failed=0, skipped=0)
+        return summary
+
+    emitter.build_started(total_datasources=len(contexts))
+
+    for datasource_index, context in enumerate(contexts, start=1):
+        try:
+            logger.info(f"Indexing datasource {context.datasource_id}")
+
+            emitter.datasource_started(
+                datasource_id=str(context.datasource_id),
+                index=datasource_index,
+                total=len(contexts),
+            )
+
+            datasource_type = read_datasource_type_from_context(context)
+
+            plugin = plugins.get(datasource_type)
+            if plugin is None:
+                logger.warning(
+                    "No plugin for datasource type '%s' — skipping indexing for %s.",
+                    getattr(datasource_type, "full_type", datasource_type),
+                    context.datasource_id,
+                )
+                summary.skipped += 1
+                emitter.datasource_finished(
+                    datasource_id=str(context.datasource_id),
+                    index=datasource_index,
+                    total=len(contexts),
+                    status=DatasourceStatus.SKIPPED,
+                )
+                continue
+
+            build_service.index_built_context(context=context, plugin=plugin, progress=progress)
+            summary.indexed += 1
+
+            emitter.datasource_finished(
+                datasource_id=str(context.datasource_id),
+                index=datasource_index,
+                total=len(contexts),
+                status=DatasourceStatus.OK,
+            )
+        except Exception as e:
+            logger.debug(str(e), exc_info=True, stack_info=True)
+            logger.info(f"Failed to build source at ({context.datasource_id}): {str(e)}")
+            summary.failed += 1
+            emitter.datasource_finished(
+                datasource_id=str(context.datasource_id),
+                index=datasource_index,
+                total=len(contexts),
+                status=DatasourceStatus.FAILED,
+                error=str(e),
+            )
+
+    logger.debug(
+        "Successfully indexed %d/%d datasource(s). %s",
+        summary.indexed,
+        summary.total,
+        f"Skipped {summary.skipped}. Failed {summary.failed}." if (summary.skipped or summary.failed) else "",
+    )
+
+    emitter.build_finished(ok=summary.indexed, failed=summary.failed, skipped=summary.skipped)
+    return summary

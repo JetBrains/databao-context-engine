@@ -164,6 +164,39 @@ def build(
 
 @dce.command()
 @click.argument(
+    "datasources-config-files",
+    nargs=-1,
+    type=click.STRING,
+)
+@click.pass_context
+def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
+    """Index and create embeddings for built context files into duckdb.
+
+    If one or more datasource config files are provided, only those datasources will be indexed.
+    If no paths are provided, all built contexts found in the output directory will be indexed.
+    """
+    datasource_ids = (
+        [DatasourceId.from_string_repr(p) for p in datasources_config_files] if datasources_config_files else None
+    )
+
+    with rich_progress() as progress_cb:
+        summary = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
+            datasource_ids=datasource_ids,
+            progress=progress_cb,
+        )
+
+    suffix = []
+    if summary.skipped:
+        suffix.append(f"skipped {summary.skipped}")
+    if summary.failed:
+        suffix.append(f"failed {summary.failed}")
+
+    extra = f" ({', '.join(suffix)})" if suffix else ""
+    click.echo(f"Indexing complete. Indexed {summary.indexed}/{summary.total} datasource(s){extra}.")
+
+
+@dce.command()
+@click.argument(
     "retrieve-text",
     nargs=-1,
     required=True,

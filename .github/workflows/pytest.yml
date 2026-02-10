@@ -37,13 +37,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.12", "3.13", "3.14"]
+        python-version: [ "3.12", "3.13", "3.14" ]
+
+    env:
+      TMPDIR: /mnt/tmp
+      TEMP: /mnt/tmp
+      TMP: /mnt/tmp
 
     permissions:
       contents: read
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Prepare /mnt tmp
+        run: |
+          sudo mkdir -p /mnt/tmp
+          sudo chmod 1777 /mnt/tmp
 
       - name: Restore Ollama models cache
         uses: ./.github/actions/ollama-cache-restore
@@ -62,3 +72,10 @@ jobs:
 
       - name: Run tests with all-extras
         run: uv run pytest -v
+
+      - name: Cleanup Docker (post)
+        if: always()
+        run: |
+          docker rm -f ollama || true
+          docker system prune -af --volumes || true
+          docker system df || true

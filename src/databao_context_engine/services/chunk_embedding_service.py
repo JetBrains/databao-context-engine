@@ -65,6 +65,7 @@ class ChunkEmbeddingService:
         result: str,
         full_type: str,
         datasource_id: str,
+        override: bool = False,
         progress: ProgressCallback | None = None,
     ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
@@ -137,5 +138,6 @@ class ChunkEmbeddingService:
             table_name=table_name,
             full_type=full_type,
             datasource_id=datasource_id,
+            override=override,
             progress=progress,
         )
