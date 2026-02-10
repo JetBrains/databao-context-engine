@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, overload
 
@@ -14,7 +13,7 @@ from databao_context_engine.datasources.check_config import (
 )
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
-from databao_context_engine.datasources.types import Datasource, DatasourceId
+from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import (
     ProjectLayout,
@@ -25,19 +24,6 @@ from databao_context_engine.project.layout import (
 )
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
-
-
-@dataclass
-class DatasourceConfigFile:
-    """A datasource config file that was created by the DatabaoContextProjectManager.
-
-    Attributes:
-        datasource_id: The unique identifier for the datasource.
-        config_file_path: The path to the datasource configuration file.
-    """
-
-    datasource_id: DatasourceId
-    config_file_path: Path
 
 
 class DatabaoContextProjectManager:
@@ -62,7 +48,7 @@ class DatabaoContextProjectManager:
         self._project_layout = ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
 
-    def get_configured_datasource_list(self) -> list[Datasource]:
+    def get_configured_datasource_list(self) -> list[ConfiguredDatasource]:
         """Return the list of datasources configured in the project.
 
         This method returns all datasources configured in the src folder of the project,
@@ -144,7 +130,7 @@ class DatabaoContextProjectManager:
         datasource_name: str,
         config_content: dict[str, Any],
         overwrite_existing: bool = False,
-    ) -> DatasourceConfigFile:
+    ) -> ConfiguredDatasource:
         """Create a new datasource configuration file in the project.
 
         Args:
@@ -158,17 +144,12 @@ class DatabaoContextProjectManager:
             The path to the created datasource configuration file.
         """
         # TODO: Before creating the datasource, validate the config content based on which plugin will be used
-        config_file = _create_datasource_config_file(
+        return _create_datasource_config_file(
             project_layout=self._project_layout,
             datasource_type=datasource_type,
             datasource_name=datasource_name,
             config_content=config_content,
             overwrite_existing=overwrite_existing,
-        )
-
-        return DatasourceConfigFile(
-            datasource_id=DatasourceId.from_datasource_config_file_path(self._project_layout, config_file),
-            config_file_path=config_file,
         )
 
     @overload
@@ -213,6 +194,17 @@ class DatabaoContextProjectManager:
         except ValueError:
             return None
 
+    def get_config_file_path_for_datasource(self, datasource_id: DatasourceId) -> Path:
+        """Return the path to the config file (or to the raw file) for the given datasource id.
+
+        Args:
+              datasource_id: The datasource id we need the config file path for.
+
+        Returns:
+              The path to the config file (or to the raw file) for the given datasource id.
+        """
+        return datasource_id.absolute_path_to_config_file(self._project_layout)
+
     def get_engine_for_project(self) -> DatabaoContextEngine:
         """Instantiate a DatabaoContextEngine for the project.
 
@@ -228,13 +220,22 @@ def _create_datasource_config_file(
     datasource_name: str,
     config_content: dict[str, Any],
     overwrite_existing: bool,
-) -> Path:
+) -> ConfiguredDatasource:
     last_datasource_name = datasource_name.split("/")[-1]
     basic_config = {"type": datasource_type.full_type, "name": last_datasource_name}
 
-    return create_datasource_config_file_internal(
+    actual_config_content = basic_config | config_content
+    config_file = create_datasource_config_file_internal(
         project_layout,
         f"{datasource_name}.yaml",
-        to_yaml_string(basic_config | config_content),
+        to_yaml_string(actual_config_content),
         overwrite_existing=overwrite_existing,
+    )
+
+    return ConfiguredDatasource(
+        datasource=Datasource(
+            id=DatasourceId.from_datasource_config_file_path(project_layout, config_file),
+            type=datasource_type,
+        ),
+        config=actual_config_content,
     )

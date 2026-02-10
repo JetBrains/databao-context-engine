@@ -16,7 +16,7 @@ class DatasourceKind(StrEnum):
 class PreparedConfig:
     datasource_id: "DatasourceId"
     datasource_type: DatasourceType
-    config: dict[Any, Any]
+    config: dict[str, Any]
     datasource_name: str
 
 
@@ -205,3 +205,16 @@ class Datasource:
 
     id: DatasourceId
     type: DatasourceType
+
+
+@dataclass
+class ConfiguredDatasource:
+    """A datasource configured in the project.
+
+    Attributes:
+        datasource: An object describing the datasource.
+        config: The config dictionary for the datasource, or None if the datasource is a raw file.
+    """
+
+    datasource: Datasource
+    config: dict[str, Any] | None

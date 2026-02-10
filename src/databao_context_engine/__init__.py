@@ -1,12 +1,12 @@
 from databao_context_engine.build_sources import BuildContextResult
 from databao_context_engine.databao_context_engine import ContextSearchResult, DatabaoContextEngine
-from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager, DatasourceConfigFile
+from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
     DatasourceConnectionStatus,
 )
 from databao_context_engine.datasources.datasource_context import DatasourceContext
-from databao_context_engine.datasources.types import Datasource, DatasourceId
+from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
 from databao_context_engine.init_project import init_dce_project, init_or_get_dce_project
 from databao_context_engine.llm import (
     OllamaError,
@@ -35,6 +35,7 @@ from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddi
 __all__ = [
     "DatabaoContextEngine",
     "Datasource",
+    "ConfiguredDatasource",
     "DatasourceId",
     "DatasourceContext",
     "ContextSearchResult",
@@ -43,7 +44,6 @@ __all__ = [
     "BuildContextResult",
     "CheckDatasourceConnectionResult",
     "DatasourceConnectionStatus",
-    "DatasourceConfigFile",
     "DatasourceType",
     "get_databao_context_engine_info",
     "get_databao_context_engine_project_info",

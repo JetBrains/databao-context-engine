@@ -6,6 +6,7 @@ import pytest
 from databao_context_engine import (
     BuildContextResult,
     ChunkEmbeddingMode,
+    ConfiguredDatasource,
     DatabaoContextProjectManager,
     Datasource,
     DatasourceContext,
@@ -57,9 +58,24 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     datasource_list = project_manager.get_configured_datasource_list()
 
     assert datasource_list == [
-        Datasource(id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="any")),
-        Datasource(id=DatasourceId.from_string_repr("full/c.yaml"), type=DatasourceType(full_type="type2")),
-        Datasource(id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="type")),
+        ConfiguredDatasource(
+            datasource=Datasource(
+                id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="any")
+            ),
+            config={"type": "any", "name": "a"},
+        ),
+        ConfiguredDatasource(
+            datasource=Datasource(
+                id=DatasourceId.from_string_repr("full/c.yaml"), type=DatasourceType(full_type="type2")
+            ),
+            config={"type": "type2", "name": "c"},
+        ),
+        ConfiguredDatasource(
+            datasource=Datasource(
+                id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="type")
+            ),
+            config={"type": "type", "name": "b"},
+        ),
     ]
 
 
