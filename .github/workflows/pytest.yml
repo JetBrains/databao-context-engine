@@ -40,7 +40,7 @@ jobs:
           echo "Top offenders under home:"
           du -xh -d 2 /home/runner 2>/dev/null | sort -h | tail -n 30
 
-      - name: Cleanup Docker
+      - name: Cleanup Docker before
         if: always()
         run: |
           docker rm -f ollama || true
@@ -56,11 +56,31 @@ jobs:
       matrix:
         python-version: [ "3.12", "3.13", "3.14" ]
 
+    env:
+      TMPDIR: /mnt/tmp
+      TEMP: /mnt/tmp
+      TMP: /mnt/tmp
+
     permissions:
       contents: read
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Prepare /mnt tmp
+        run: |
+          sudo mkdir -p /mnt/tmp
+          sudo chmod 1777 /mnt/tmp
+          
+      - name: Disk + inode usage (start)
+        run: |
+          df -h
+          df -i
+
+      - name: Docker prune (pre)
+        run: |
+          docker system prune -af --volumes || true
+          docker system df || true
 
       - name: Restore Ollama models cache
         uses: ./.github/actions/ollama-cache-restore
@@ -87,3 +107,10 @@ jobs:
 
       - name: Run tests with all-extras
         run: uv run pytest -v
+
+      - name: Cleanup Docker (post)
+        if: always()
+        run: |
+          docker rm -f ollama || true
+          docker system prune -af --volumes || true
+          docker system df || true
