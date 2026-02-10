@@ -53,6 +53,7 @@ def build_all_datasources(
         )
         build_service = _create_build_service(
             conn,
+            project_layout=project_layout,
             embedding_provider=embedding_provider,
             description_provider=description_provider,
             chunk_embedding_mode=chunk_embedding_mode,
@@ -66,6 +67,7 @@ def build_all_datasources(
 def _create_build_service(
     conn: DuckDBPyConnection,
     *,
+    project_layout: ProjectLayout,
     embedding_provider: EmbeddingProvider,
     description_provider: DescriptionProvider | None,
     chunk_embedding_mode: ChunkEmbeddingMode,
@@ -78,5 +80,6 @@ def _create_build_service(
     )
 
     return BuildService(
+        project_layout=project_layout,
         chunk_embedding_service=chunk_embedding_service,
     )

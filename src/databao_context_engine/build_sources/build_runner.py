@@ -55,21 +55,21 @@ def build(
     """
     plugins = load_plugins()
 
-    datasources = discover_datasources(project_layout)
+    datasource_ids = discover_datasources(project_layout)
 
-    if not datasources:
+    if not datasource_ids:
         logger.info("No sources discovered under %s", project_layout.src_dir)
         return []
 
     number_of_failed_builds = 0
     build_result = []
     reset_all_results(project_layout.output_dir)
-    for discovered_datasource in datasources:
+    for datasource_id in datasource_ids:
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, datasource_id)
 
             logger.info(
-                f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.path.stem}'
+                f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
             )
 
             plugin = plugins.get(prepared_source.datasource_type)
@@ -77,7 +77,7 @@ def build(
                 logger.warning(
                     "No plugin for '%s' (datasource=%s) — skipping.",
                     prepared_source.datasource_type.full_type,
-                    prepared_source.path,
+                    prepared_source.datasource_id.relative_path_to_config_file(),
                 )
                 number_of_failed_builds += 1
                 continue
@@ -94,7 +94,7 @@ def build(
 
             build_result.append(
                 BuildContextResult(
-                    datasource_id=discovered_datasource.datasource_id,
+                    datasource_id=datasource_id,
                     datasource_type=DatasourceType(full_type=result.datasource_type),
                     context_built_at=result.context_built_at,
                     context_file_path=context_file_path,
@@ -102,7 +102,7 @@ def build(
             )
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
-            logger.info(f"Failed to build source at ({discovered_datasource.path}): {str(e)}")
+            logger.info(f"Failed to build source at ({datasource_id.relative_path_to_config_file()}): {str(e)}")
 
             number_of_failed_builds += 1
 

@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Discriminator, Field
 
 
-class DbtManifestNodeConfig(BaseModel):
+class DbtManifestModelConfig(BaseModel):
     materialized: str
 
 
@@ -21,17 +21,36 @@ class DbtManifestModel(BaseModel):
     database: str
     schema_: str = Field(alias="schema")
     description: str | None = None
-    config: DbtManifestNodeConfig | None = None
+    config: DbtManifestModelConfig | None = None
     columns: dict[str, DbtManifestColumn]
     depends_on: dict[str, list[str]] | None = None
     primary_key: list[str] | None = None
 
 
+class DbtManifestTestConfig(BaseModel):
+    severity: str
+
+
+class DbtManifestTestMetadata(BaseModel):
+    name: str | None = None
+    kwargs: dict[str, Any] | None = None
+
+
+class DbtManifestTest(BaseModel):
+    resource_type: Literal["test"]
+    unique_id: str
+    attached_node: str | None = None
+    column_name: str | None = None
+    description: str | None = None
+    test_metadata: DbtManifestTestMetadata | None = None
+    config: DbtManifestTestConfig | None = None
+
+
 class DbtManifestOtherNode(BaseModel):
-    resource_type: Literal["seed", "analysis", "test", "operation", "sql_operation", "snapshot"]
+    resource_type: Literal["seed", "analysis", "operation", "sql_operation", "snapshot"]
 
 
-DbtManifestNode = Annotated[DbtManifestModel | DbtManifestOtherNode, Discriminator("resource_type")]
+DbtManifestNode = Annotated[DbtManifestModel | DbtManifestTest | DbtManifestOtherNode, Discriminator("resource_type")]
 
 
 class DbtManifest(BaseModel):
