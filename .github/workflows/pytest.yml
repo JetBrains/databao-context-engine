@@ -29,17 +29,6 @@ jobs:
           model-name: ${{ env.OLLAMA_MODEL }}
           model-version: ${{ env.OLLAMA_MODEL_VERSION }}
 
-      - name: Disk usage after cache prep
-        if: always()
-        run: |
-          df -h
-          echo "~/.ollama size:"
-          du -sh ~/.ollama || true
-          echo "Docker usage:"
-          docker system df || true
-          echo "Top offenders under home:"
-          du -xh -d 2 /home/runner 2>/dev/null | sort -h | tail -n 30
-
       - name: Cleanup Docker before
         if: always()
         run: |
@@ -71,11 +60,6 @@ jobs:
         run: |
           sudo mkdir -p /mnt/tmp
           sudo chmod 1777 /mnt/tmp
-          
-      - name: Disk + inode usage (start)
-        run: |
-          df -h
-          df -i
 
       - name: Docker prune (pre)
         run: |
@@ -96,14 +80,6 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Disk + inode usage (after setup)
-        if: always()
-        run: |
-          df -h
-          df -i
-          echo "Big dirs:"
-          sudo du -xh -d 2 /home/runner /var/lib/docker 2>/dev/null | sort -h | tail -n 40
 
       - name: Run tests with all-extras
         run: uv run pytest -v
