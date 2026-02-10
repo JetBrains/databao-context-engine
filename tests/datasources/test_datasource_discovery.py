@@ -15,7 +15,7 @@ def _mk(p: Path, text: str = "x") -> Path:
 
 
 def _snapshot(rows):
-    return [(r.datasource_id, r.path.name, r.kind) for r in rows]
+    return [(r.datasource_id, r.kind) for r in rows]
 
 
 def test_empty_src_returns_empty(project_layout: ProjectLayout):
@@ -33,7 +33,6 @@ def test_orders_by_dir_then_filename(project_layout: ProjectLayout):
                 datasource_path="A/1",
                 config_file_suffix=".txt",
             ),
-            "1.txt",
             DatasourceKind.FILE,
         ),
         (
@@ -41,7 +40,6 @@ def test_orders_by_dir_then_filename(project_layout: ProjectLayout):
                 datasource_path="b/0",
                 config_file_suffix=".txt",
             ),
-            "0.txt",
             DatasourceKind.FILE,
         ),
     ]
@@ -52,10 +50,10 @@ def test_files_dir_treats_everything_as_FILE_including_yaml(project_layout: Proj
     _mk(project_layout.src_dir / "files" / "y.txt", "hello")
 
     rows = discover_datasources(project_layout)
-    kinds = {r.path.name: r.kind for r in rows}
+    kinds = {r.datasource_id.datasource_path + r.datasource_id.config_file_suffix: r.kind for r in rows}
 
-    assert kinds["x.yaml"] == DatasourceKind.FILE
-    assert kinds["y.txt"] == DatasourceKind.FILE
+    assert kinds["files/x.yaml"] == DatasourceKind.FILE
+    assert kinds["files/y.txt"] == DatasourceKind.FILE
 
 
 def test_yaml_elsewhere_is_CONFIG(project_layout: ProjectLayout):
@@ -68,7 +66,6 @@ def test_yaml_elsewhere_is_CONFIG(project_layout: ProjectLayout):
                 datasource_path="databases/pg",
                 config_file_suffix=".yml",
             ),
-            "pg.yml",
             DatasourceKind.CONFIG,
         ),
     ]
@@ -84,7 +81,6 @@ def test_non_yaml_elsewhere_with_extension_is_FILE(project_layout: ProjectLayout
                 datasource_path="databases/readme",
                 config_file_suffix=".md",
             ),
-            "readme.md",
             DatasourceKind.FILE,
         ),
     ]
@@ -102,7 +98,7 @@ def test_load_descriptor_files_dir_yaml_is_FILE(project_layout: ProjectLayout):
     d = _load_datasource_descriptor(project_layout, p)
     assert d is not None
     assert d.kind == DatasourceKind.FILE
-    assert d.path.name == "conf.yaml"
+    assert d.datasource_id == DatasourceId(datasource_path="files/conf", config_file_suffix=".yaml")
 
 
 def test_load_descriptor_yaml_elsewhere_is_CONFIG(project_layout: ProjectLayout):
@@ -110,7 +106,7 @@ def test_load_descriptor_yaml_elsewhere_is_CONFIG(project_layout: ProjectLayout)
     d = _load_datasource_descriptor(project_layout, p)
     assert d is not None
     assert d.kind == DatasourceKind.CONFIG
-    assert d.path.name == "ds.yaml"
+    assert d.datasource_id == DatasourceId(datasource_path="databases/ds", config_file_suffix=".yaml")
 
 
 def test_load_descriptor_no_extension_returns_none(project_layout: ProjectLayout):

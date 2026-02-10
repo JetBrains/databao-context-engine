@@ -15,7 +15,6 @@ class DatasourceKind(StrEnum):
 @dataclass(frozen=True)
 class DatasourceDescriptor:
     datasource_id: "DatasourceId"
-    path: Path
     kind: DatasourceKind
 
 

@@ -24,16 +24,17 @@ logger = logging.getLogger(__name__)
 def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
     result = []
     for discovered_datasource in discover_datasources(project_layout=project_layout):
+        datasource_path = discovered_datasource.datasource_id.relative_path_to_config_file()
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, discovered_datasource)
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
-            logger.info(f"Invalid source at ({discovered_datasource.path}): {str(e)}")
+            logger.info(f"Invalid source at ({datasource_path}): {str(e)}")
             continue
 
         result.append(
             Datasource(
-                id=DatasourceId.from_datasource_config_file_path(project_layout, discovered_datasource.path),
+                id=discovered_datasource.datasource_id,
                 type=prepared_source.datasource_type,
             )
         )
@@ -98,40 +99,42 @@ def _load_datasource_descriptor(project_layout: ProjectLayout, config_file: Path
 
     if parent_name == "files" and len(relative_config_file.parts) == 2:
         datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.FILE)
+        return DatasourceDescriptor(datasource_id=datasource_id, kind=DatasourceKind.FILE)
 
     if extension in {"yaml", "yml"}:
         datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.CONFIG)
+        return DatasourceDescriptor(datasource_id=datasource_id, kind=DatasourceKind.CONFIG)
 
     if extension:
         datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.FILE)
+        return DatasourceDescriptor(datasource_id=datasource_id, kind=DatasourceKind.FILE)
 
     logger.debug("Skipping file without extension: %s", config_file)
     return None
 
 
-def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
+def prepare_source(project_layout: ProjectLayout, datasource: DatasourceDescriptor) -> PreparedDatasource:
     """Convert a discovered datasource into a prepared datasource ready for plugin execution."""
     if datasource.kind is DatasourceKind.FILE:
-        file_subtype = datasource.path.suffix.lower().lstrip(".")
+        file_subtype = datasource.datasource_id.config_file_suffix.lower().lstrip(".")
         return PreparedFile(
             datasource_id=datasource.datasource_id,
             datasource_type=DatasourceType(full_type=file_subtype),
         )
 
-    config = _parse_config_file(datasource.path)
+    absolute_datasource_path = datasource.datasource_id.absolute_path_to_config_file(project_layout)
+    config = _parse_config_file(absolute_datasource_path)
 
+    datasource_path = datasource.datasource_id.relative_path_to_config_file()
     ds_type = config.get("type")
     if not ds_type or not isinstance(ds_type, str):
-        raise ValueError("Config missing 'type' at %s - skipping", datasource.path)
+        raise ValueError("Config missing 'type' at %s - skipping", datasource_path)
 
     return PreparedConfig(
         datasource_id=datasource.datasource_id,
         datasource_type=DatasourceType(full_type=ds_type),
         config=config,
-        datasource_name=datasource.path.stem,
+        datasource_name=datasource_path.stem,
     )
 
 

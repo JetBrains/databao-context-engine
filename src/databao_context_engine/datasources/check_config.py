@@ -66,10 +66,10 @@ def check_datasource_connection(
 
     result = {}
     for discovered_datasource in datasources_to_traverse:
-        result_key = DatasourceId.from_datasource_config_file_path(project_layout, discovered_datasource.path)
+        result_key = discovered_datasource.datasource_id
 
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, discovered_datasource)
         except Exception as e:
             result[result_key] = CheckDatasourceConnectionResult(
                 datasource_id=result_key,

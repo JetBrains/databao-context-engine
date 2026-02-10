@@ -66,7 +66,7 @@ def build(
     reset_all_results(project_layout.output_dir)
     for discovered_datasource in datasources:
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, discovered_datasource)
 
             logger.info(
                 f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
@@ -102,7 +102,9 @@ def build(
             )
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
-            logger.info(f"Failed to build source at ({discovered_datasource.path}): {str(e)}")
+            logger.info(
+                f"Failed to build source at ({discovered_datasource.datasource_id.relative_path_to_config_file()}): {str(e)}"
+            )
 
             number_of_failed_builds += 1
 
