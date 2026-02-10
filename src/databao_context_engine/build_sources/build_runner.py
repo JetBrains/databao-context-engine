@@ -67,6 +67,8 @@ def build(
     emitter.build_started(total_datasources=len(datasources))
 
     number_of_failed_builds = 0
+    number_of_skipped_builds = 0
+
     build_result = []
     reset_all_results(project_layout.output_dir)
     for datasource_index, discovered_datasource in enumerate(datasources, start=1):
@@ -74,14 +76,12 @@ def build(
         try:
             prepared_source = prepare_source(discovered_datasource)
 
-            # logger.info(
-            #     f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.path.stem}'
-            # )
+            logger.info(
+                f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.path.stem}'
+            )
 
             emitter.datasource_started(
                 datasource_id=datasource_id,
-                datasource_type=prepared_source.datasource_type.full_type,
-                datasource_path=str(prepared_source.path),
                 index=datasource_index,
                 total=len(datasources),
             )
@@ -98,7 +98,7 @@ def build(
                     total=len(datasources),
                     status=DatasourceStatus.SKIPPED,
                 )
-                number_of_failed_builds += 1
+                number_of_skipped_builds += 1
                 continue
 
             result = build_service.process_prepared_source(
@@ -139,15 +139,16 @@ def build(
             number_of_failed_builds += 1
 
     logger.debug(
-        "Successfully built %d datasources. %s",
+        "Successfully built %d datasources. %s %s",
         len(build_result),
+        f"Skipped {number_of_skipped_builds}." if number_of_skipped_builds > 0 else "",
         f"Failed to build {number_of_failed_builds}." if number_of_failed_builds > 0 else "",
     )
 
     emitter.build_finished(
         ok=len(build_result),
         failed=number_of_failed_builds,
-        skipped=0,
+        skipped=number_of_skipped_builds,
     )
 
     return build_result

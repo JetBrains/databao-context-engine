@@ -1,220 +1,170 @@
-# databao_context_engine/cli/rich_progress.py
 from __future__ import annotations
 
+import logging
+import sys
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Callable, Iterator, Optional
 
 from rich.console import Console
 from rich.progress import (
     BarColumn,
     Progress,
+    ProgressColumn,
     SpinnerColumn,
     TaskID,
     TaskProgressColumn,
     TextColumn,
     TimeRemainingColumn,
 )
+from rich.table import Column
+from rich.text import Text
 
 from databao_context_engine.progress.progress import (
-    DatasourcePhase,
     ProgressCallback,
     ProgressEvent,
     ProgressKind,
 )
 
+_DESCRIPTION_COL_WIDTH = 50
+
+
+def _datasource_label(ds_id: str | None) -> str:
+    return ds_id or "datasource"
+
+
+class _EtaExceptOverallColumn(ProgressColumn):
+    def __init__(self, overall_task_id_getter: Callable[[], Optional[TaskID]]):
+        super().__init__()
+        self._overall_task_id_getter = overall_task_id_getter
+        self._eta = TimeRemainingColumn()
+
+    def render(self, task) -> Text:
+        overall_id = self._overall_task_id_getter()
+        if overall_id is not None and task.id == overall_id:
+            return Text("")
+        return self._eta.render(task)
+
 
 @contextmanager
 def rich_progress() -> Iterator[ProgressCallback]:
-    """Context manager that provides a ProgressCallback rendering a live UI via Rich.
+    interactive = sys.stderr.isatty()
+    if not interactive:
 
-    Usage:
-        with rich_progress() as progress_cb:
-            manager.build_context(..., progress=progress_cb)
-    """  # noqa: DOC402
+        def noop(_: ProgressEvent) -> None:
+            return
+
+        yield noop
+        return
+
     console = Console(stderr=True)
-    progress = Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-        TimeRemainingColumn(),
-        transient=False,  # keep the progress display after finishing (change to True if you prefer)
-        console=console,
-    )
 
-    # Task IDs (created lazily when we receive events)
     tasks: dict[str, TaskID] = {}
-
-    # Some state so we can update descriptions nicely
-    state = {
-        "current_datasource_id": None,
-        "current_phase": None,
+    ui_state = {
         "datasource_index": None,
         "datasource_total": None,
-        "embed_total": None,
-        "persist_total": None,
+        "last_percent": 0,
     }
 
-    def _ensure_overall_task(total: int | None) -> TaskID:
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn(
+            "[progress.description]{task.description}",
+            table_column=Column(width=_DESCRIPTION_COL_WIDTH, overflow="ellipsis", no_wrap=True),
+        ),
+        BarColumn(),
+        TaskProgressColumn(),
+        _EtaExceptOverallColumn(lambda: tasks.get("overall")),
+        transient=True,
+        console=console,
+        redirect_stdout=True,
+        redirect_stderr=True,
+    )
+
+    def _get_or_create_overall_task(total: int | None) -> TaskID:
         if "overall" not in tasks:
             tasks["overall"] = progress.add_task("Datasources", total=total)
         else:
-            # allow setting/updating totals later
             if total is not None:
                 progress.update(tasks["overall"], total=total)
         return tasks["overall"]
 
-    def _ensure_embed_task(total: int | None) -> TaskID:
-        ds = state["current_datasource_id"] or "datasource"
-        phase = state["current_phase"] or DatasourcePhase.EMBED
-        desc = f"{ds} • {phase.value}"
-        if "embed" not in tasks:
-            tasks["embed"] = progress.add_task(desc, total=total)
-        else:
-            progress.update(tasks["embed"], description=desc)
-            if total is not None:
-                progress.update(tasks["embed"], total=total)
-        return tasks["embed"]
+    def _get_or_create_datasource_task() -> TaskID:
+        if "datasource" not in tasks:
+            tasks["datasource"] = progress.add_task("Datasource", total=100.0)
+        return tasks["datasource"]
 
-    def _ensure_persist_task(total: int | None) -> TaskID:
-        ds = state["current_datasource_id"] or "datasource"
-        phase = state["current_phase"] or DatasourcePhase.PERSIST
-        desc = f"{ds} • {phase.value}"
-        if "persist" not in tasks:
-            tasks["persist"] = progress.add_task(desc, total=total)
-        else:
-            progress.update(tasks["persist"], description=desc)
-            if total is not None:
-                progress.update(tasks["persist"], total=total)
-        return tasks["persist"]
+    def _set_datasource_percent(percent: float) -> None:
+        task_id = _get_or_create_datasource_task()
+        clamped = max(0.0, min(100.0, percent))
+        progress.update(task_id, completed=clamped)
 
     def _update_overall_description() -> None:
         if "overall" not in tasks:
             return
-        idx = state["datasource_index"]
-        tot = state["datasource_total"]
-        ds = state["current_datasource_id"]
-        ph = state["current_phase"].value if state["current_phase"] else None
+        idx = ui_state["datasource_index"]
+        tot = ui_state["datasource_total"]
 
-        if idx is not None and tot is not None and ds:
-            suffix = f" • {ds}"
-            if ph:
-                suffix += f" • {ph}"
-            progress.update(tasks["overall"], description=f"Datasources {idx}/{tot}{suffix}")
+        if idx is not None and tot is not None:
+            progress.update(tasks["overall"], description=f"Datasources {idx}/{tot}")
 
     def on_event(ev: ProgressEvent) -> None:
-        # ---- Build-level ----
-        if ev.kind == ProgressKind.BUILD_STARTED:
-            _ensure_overall_task(ev.datasource_total)
-            return
+        match ev.kind:
+            case ProgressKind.BUILD_STARTED:
+                _get_or_create_overall_task(ev.datasource_total)
+                return
+            case ProgressKind.BUILD_FINISHED:
+                if ev.message:
+                    progress.console.print(f"{ev.message}")
+                return
+            case ProgressKind.DATASOURCE_STARTED:
+                ui_state["datasource_index"] = ev.datasource_index
+                ui_state["datasource_total"] = ev.datasource_total
+                ui_state["last_percent"] = 0
+                _get_or_create_overall_task(ev.datasource_total)
+                _update_overall_description()
 
-        if ev.kind == ProgressKind.BUILD_FINISHED:
-            # Optional: mark overall as completed if totals are known.
-            # (We’re already advancing it on datasource finished.)
-            if ev.message:
-                progress.console.print(f"{ev.message}")
-            return
+                ds = _datasource_label(ev.datasource_id)
 
-        # ---- Datasource lifecycle ----
-        if ev.kind == ProgressKind.DATASOURCE_STARTED:
-            state["current_datasource_id"] = ev.datasource_id
-            state["datasource_index"] = ev.datasource_index
-            state["datasource_total"] = ev.datasource_total
-            state["embed_total"] = None
-            state["persist_total"] = None
-            _ensure_overall_task(ev.datasource_total)
-            _update_overall_description()
+                task_id = _get_or_create_datasource_task()
+                progress.reset(task_id, completed=0, total=100.0, description=f"{ds}")
+                return
+            case ProgressKind.DATASOURCE_FINISHED:
+                idx = ev.datasource_index or 0
+                tot = ev.datasource_total or 0
+                ds = ev.datasource_id or "(unknown datasource)"
+                status = ev.status.value if ev.status else "done"
+                progress.console.print(f"{status.upper()} {idx}/{tot}: {ds}")
 
-            # Reset per-datasource tasks so each datasource starts fresh without flicker.
-            # Keep the tasks and just reset progress/description.
-            ds = state["current_datasource_id"] or "datasource"
+                _set_datasource_percent(100.0)
 
-            if "embed" in tasks:
-                progress.update(
-                    tasks["embed"], completed=0, total=None, description=f"{ds} • {DatasourcePhase.EMBED.value}"
-                )
+                _get_or_create_overall_task(ev.datasource_total)
+                progress.advance(tasks["overall"], 1)
 
-            if "persist" in tasks:
-                progress.update(
-                    tasks["persist"], completed=0, total=None, description=f"{ds} • {DatasourcePhase.PERSIST.value}"
-                )
-            return
+                _update_overall_description()
+                return
+            case ProgressKind.DATASOURCE_PROGRESS:
+                if ev.percent is not None:
+                    pct = int(ev.percent)
+                    pct = max(ui_state["last_percent"], pct)
+                    ui_state["last_percent"] = pct
+                    _set_datasource_percent(float(pct))
+                return
 
-        if ev.kind == ProgressKind.DATASOURCE_PHASE:
-            # Update current phase and refresh the overall description line
-            state["current_phase"] = ev.phase
-            _update_overall_description()
-            return
+    root = logging.getLogger()
+    prev_level = root.level
+    prev_handlers = list(root.handlers)
 
-        if ev.kind == ProgressKind.DATASOURCE_FINISHED:
-            idx = ev.datasource_index or 0
-            tot = ev.datasource_total or 0
-            ds = ev.datasource_id or "(unknown datasource)"
-            status = ev.status.value if ev.status else "done"
-            progress.console.print(f"{status.upper()} {idx}/{tot}: {ds}")
+    prev_disable_level = logging.root.manager.disable
+    logging.disable(logging.CRITICAL)
 
+    try:
+        with progress:
+            yield on_event
+    finally:
+        logging.disable(prev_disable_level)
 
-            # Advance overall by 1 (ok/failed/skipped are all "completed" from a progress perspective)
-            _ensure_overall_task(ev.datasource_total)
-            progress.advance(tasks["overall"], 1)
-
-            # Clear phase display for next datasource
-            state["current_phase"] = None
-            _update_overall_description()
-            return
-
-        # ---- Chunk discovery is informative; embed total will arrive in EMBEDDING_STARTED anyway ----
-        if ev.kind == ProgressKind.CHUNKS_DISCOVERED:
-            # You could surface this as a message or update descriptions; optional.
-            return
-
-        # ---- Embedding ----
-        if ev.kind == ProgressKind.EMBEDDING_STARTED:
-            state["current_phase"] = DatasourcePhase.EMBED
-            _update_overall_description()
-            _ensure_embed_task(ev.total)
-            state["embed_total"] = ev.total
-            return
-
-        if ev.kind == ProgressKind.EMBEDDING_PROGRESS:
-            task_id = _ensure_embed_task(ev.total)
-            # Use completed to avoid drift if events are throttled
-            if ev.done is not None:
-                progress.update(task_id, completed=ev.done)
-            if ev.total is not None:
-                progress.update(task_id, total=ev.total)
-                state["embed_total"] = ev.total
-            return
-
-        if ev.kind == ProgressKind.EMBEDDING_FINISHED:
-            # If we have an embed task, mark it complete (if total known)
-            if "embed" in tasks and state["embed_total"] is not None:
-                progress.update(tasks["embed"], completed=state["embed_total"])
-            return
-
-        # ---- Persistence ----
-        if ev.kind == ProgressKind.PERSIST_STARTED:
-            state["current_phase"] = DatasourcePhase.PERSIST
-            _update_overall_description()
-            _ensure_persist_task(ev.total)
-            state["persist_total"] = ev.total
-            return
-
-        if ev.kind == ProgressKind.PERSIST_PROGRESS:
-            task_id = _ensure_persist_task(ev.total)
-            if ev.done is not None:
-                progress.update(task_id, completed=ev.done)
-            if ev.total is not None:
-                progress.update(task_id, total=ev.total)
-                state["persist_total"] = ev.total
-            return
-
-        if ev.kind == ProgressKind.PERSIST_FINISHED:
-            if "persist" in tasks and state["persist_total"] is not None:
-                progress.update(tasks["persist"], completed=state["persist_total"])
-            return
-
-        # Ignore unknown events by default
-
-    with progress:
-        yield on_event
+        for h in list(root.handlers):
+            root.removeHandler(h)
+        for h in prev_handlers:
+            root.addHandler(h)
+        root.setLevel(prev_level)

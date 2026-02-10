@@ -85,6 +85,7 @@ class DatabaoContextProjectManager:
         Args:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
             chunk_embedding_mode: The mode to use for chunk embedding.
+            progress: Optional callback that receives progress events during execution.
 
         Returns:
             The list of all built results.

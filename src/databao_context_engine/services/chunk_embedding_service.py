@@ -5,7 +5,7 @@ from typing import cast
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
-from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter
+from databao_context_engine.progress.progress import EMIT_EVERY, ProgressCallback, ProgressEmitter
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.models import ChunkEmbedding
@@ -78,14 +78,12 @@ class ChunkEmbeddingService:
             return
 
         emitter = ProgressEmitter(progress)
-        emitter.embedding_started(datasource_id=datasource_id, total_chunks=len(chunks))
 
         logger.debug(
             f"Embedding {len(chunks)} chunks for datasource {datasource_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
         )
 
         enriched_embeddings: list[ChunkEmbedding] = []
-        emit_every = 10  # avoid overly chatty UIs
         for i, chunk in enumerate(chunks, start=1):
             chunk_display_text = chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)
 
@@ -114,15 +112,19 @@ class ChunkEmbeddingService:
                     generated_description=generated_description,
                 )
             )
-            if i % emit_every == 0 or i == len(chunks):
-                emitter.embedding_progress(
+            if i % EMIT_EVERY == 0 or i == len(chunks):
+                total_units = len(chunks) * 2
+                emitter.datasource_progress_units(
                     datasource_id=datasource_id,
-                    done=i,
-                    total=len(chunks),
-                    message=f"Embedded {i}/{len(chunks)} chunks",
+                    completed_units=i,
+                    total_units=total_units,
                 )
 
-        emitter.embedding_finished(datasource_id=datasource_id)
+        emitter.datasource_progress_units(
+            datasource_id=datasource_id,
+            completed_units=len(chunks),
+            total_units=len(chunks) * 2,
+        )
 
         table_name = self._shard_resolver.resolve_or_create(
             embedder=self._embedding_provider.embedder,
