@@ -15,7 +15,6 @@ class DatasourceKind(StrEnum):
 @dataclass(frozen=True)
 class DatasourceDescriptor:
     datasource_id: "DatasourceId"
-    kind: DatasourceKind
 
 
 @dataclass(frozen=True)
@@ -53,6 +52,17 @@ class DatasourceId:
 
     datasource_path: str
     config_file_suffix: str
+
+    @property
+    def kind(self) -> DatasourceKind:
+        parts = self.datasource_path.split("/")
+        if len(parts) == 2 and parts[0] == "files":
+            return DatasourceKind.FILE
+        if self.config_file_suffix in {".yaml", ".yml"}:
+            return DatasourceKind.CONFIG
+        if self.config_file_suffix:
+            return DatasourceKind.FILE
+        raise ValueError("Unknown datasource kind %s" % self)
 
     def __post_init__(self):
         if not self.datasource_path.strip():

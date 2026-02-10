@@ -15,7 +15,7 @@ def _mk(p: Path, text: str = "x") -> Path:
 
 
 def _snapshot(rows):
-    return [(r.datasource_id, r.kind) for r in rows]
+    return [(r.datasource_id, r.datasource_id.kind) for r in rows]
 
 
 def test_empty_src_returns_empty(project_layout: ProjectLayout):
@@ -50,7 +50,7 @@ def test_files_dir_treats_everything_as_FILE_including_yaml(project_layout: Proj
     _mk(project_layout.src_dir / "files" / "y.txt", "hello")
 
     rows = discover_datasources(project_layout)
-    kinds = {r.datasource_id.datasource_path + r.datasource_id.config_file_suffix: r.kind for r in rows}
+    kinds = {r.datasource_id.datasource_path + r.datasource_id.config_file_suffix: r.datasource_id.kind for r in rows}
 
     assert kinds["files/x.yaml"] == DatasourceKind.FILE
     assert kinds["files/y.txt"] == DatasourceKind.FILE
@@ -97,7 +97,7 @@ def test_load_descriptor_files_dir_yaml_is_FILE(project_layout: ProjectLayout):
     p = _mk(project_layout.src_dir / "files" / "conf.yaml", "k: v")
     d = _load_datasource_descriptor(project_layout, p)
     assert d is not None
-    assert d.kind == DatasourceKind.FILE
+    assert d.datasource_id.kind == DatasourceKind.FILE
     assert d.datasource_id == DatasourceId(datasource_path="files/conf", config_file_suffix=".yaml")
 
 
@@ -105,7 +105,7 @@ def test_load_descriptor_yaml_elsewhere_is_CONFIG(project_layout: ProjectLayout)
     p = _mk(project_layout.src_dir / "databases" / "ds.yaml", "type: pg")
     d = _load_datasource_descriptor(project_layout, p)
     assert d is not None
-    assert d.kind == DatasourceKind.CONFIG
+    assert d.datasource_id.kind == DatasourceKind.CONFIG
     assert d.datasource_id == DatasourceId(datasource_path="databases/ds", config_file_suffix=".yaml")
 
 

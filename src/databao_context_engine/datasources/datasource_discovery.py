@@ -99,15 +99,15 @@ def _load_datasource_descriptor(project_layout: ProjectLayout, config_file: Path
 
     if parent_name == "files" and len(relative_config_file.parts) == 2:
         datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, kind=DatasourceKind.FILE)
+        return DatasourceDescriptor(datasource_id=datasource_id)
 
     if extension in {"yaml", "yml"}:
         datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, kind=DatasourceKind.CONFIG)
+        return DatasourceDescriptor(datasource_id=datasource_id)
 
     if extension:
         datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, kind=DatasourceKind.FILE)
+        return DatasourceDescriptor(datasource_id=datasource_id)
 
     logger.debug("Skipping file without extension: %s", config_file)
     return None
@@ -115,7 +115,7 @@ def _load_datasource_descriptor(project_layout: ProjectLayout, config_file: Path
 
 def prepare_source(project_layout: ProjectLayout, datasource: DatasourceDescriptor) -> PreparedDatasource:
     """Convert a discovered datasource into a prepared datasource ready for plugin execution."""
-    if datasource.kind is DatasourceKind.FILE:
+    if datasource.datasource_id.kind is DatasourceKind.FILE:
         file_subtype = datasource.datasource_id.config_file_suffix.lower().lstrip(".")
         return PreparedFile(
             datasource_id=datasource.datasource_id,
