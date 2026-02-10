@@ -57,6 +57,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
     id = "jetbrains/dummy_db"
     name = "Dummy DB Plugin"
     config_file_type = DummyConfigFileType
+    context_type = dict
 
     def supported_types(self) -> set[str]:
         return {"dummy_db"}
@@ -101,6 +102,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
 class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
     id = "jetbrains/dummy_default"
     name = "Dummy Plugin with a default type"
+    context_type = dict
 
     def supported_types(self) -> set[str]:
         return {"dummy_default"}
@@ -115,6 +117,7 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
 class DummyFilePlugin(BuildFilePlugin):
     id = "jetbrains/dummy_file"
     name = "Dummy Plugin with a default type"
+    context_type = dict
 
     def supported_types(self) -> set[str]:
         return {"dummy_txt"}
@@ -135,6 +138,7 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
     id = "additional/dummy"
     name = "Additional Dummy Plugin"
     config_file_type = AdditionalDummyConfigFile
+    context_type = dict
 
     def supported_types(self) -> set[str]:
         return {"additional_dummy_type"}
@@ -149,6 +153,7 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
 class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigProperties):
     id = "dummy/no_config_type"
     name = "Dummy Plugin With No Config Type"
+    context_type = dict
 
     def supported_types(self) -> set[str]:
         return {"no_config_type"}

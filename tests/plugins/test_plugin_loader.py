@@ -56,7 +56,6 @@ def test_loaded_plugins_no_extra():
     assert plugin_ids == {
         "jetbrains/duckdb",
         "jetbrains/parquet",
-        "jetbrains/pdf",
         "jetbrains/sqlite",
         "jetbrains/unstructured_files",
         "jetbrains/dbt",

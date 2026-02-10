@@ -57,7 +57,9 @@ class ChunkEmbeddingService:
         if self._chunk_embedding_mode.should_generate_description() and description_provider is None:
             raise ValueError("A DescriptionProvider must be provided when generating descriptions")
 
-    def embed_chunks(self, *, chunks: list[EmbeddableChunk], result: str, full_type: str, datasource_id: str) -> None:
+    def embed_chunks(
+        self, *, chunks: list[EmbeddableChunk], result: str, full_type: str, datasource_id: str, override: bool = False
+    ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
         Flow:
@@ -113,4 +115,5 @@ class ChunkEmbeddingService:
             table_name=table_name,
             full_type=full_type,
             datasource_id=datasource_id,
+            override=override,
         )
