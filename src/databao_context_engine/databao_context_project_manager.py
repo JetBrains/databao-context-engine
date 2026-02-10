@@ -76,7 +76,13 @@ class DatabaoContextProjectManager:
             The list of all built results.
         """
         # TODO: Filter which datasources to build by datasource_ids
-        return build_all_datasources(project_layout=self._project_layout, chunk_embedding_mode=chunk_embedding_mode)
+        project_config = self._project_layout.read_config_file()
+        return build_all_datasources(
+            project_layout=self._project_layout,
+            chunk_embedding_mode=chunk_embedding_mode,
+            ollama_model_id=project_config.ollama_model_id,
+            ollama_model_dim=project_config.ollama_model_dim,
+        )
 
     def index_built_contexts(
         self,

@@ -23,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 def build_all_datasources(
-    project_layout: ProjectLayout, chunk_embedding_mode: ChunkEmbeddingMode
+    project_layout: ProjectLayout,
+    chunk_embedding_mode: ChunkEmbeddingMode,
+    ollama_model_id: str | None = None,
+    ollama_model_dim: int | None = None,
 ) -> list[BuildContextResult]:
     """Build the context for all datasources in the project.
 
@@ -46,7 +49,9 @@ def build_all_datasources(
     migrate(db_path)
     with open_duckdb_connection(db_path) as conn:
         ollama_service = create_ollama_service()
-        embedding_provider = create_ollama_embedding_provider(ollama_service)
+        embedding_provider = create_ollama_embedding_provider(
+            ollama_service, model_id=ollama_model_id, dim=ollama_model_dim
+        )
         description_provider = (
             create_ollama_description_provider(ollama_service)
             if chunk_embedding_mode.should_generate_description()

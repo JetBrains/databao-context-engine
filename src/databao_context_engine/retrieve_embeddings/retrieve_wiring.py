@@ -18,10 +18,14 @@ def retrieve_embeddings(
     retrieve_text: str,
     limit: int | None,
     datasource_ids: list[DatasourceId] | None,
+    ollama_model_id: str | None = None,
+    ollama_model_dim: int | None = None,
 ) -> list[VectorSearchResult]:
     with open_duckdb_connection(get_db_path(project_layout.project_dir)) as conn:
         ollama_service = create_ollama_service()
-        embedding_provider = create_ollama_embedding_provider(ollama_service)
+        embedding_provider = create_ollama_embedding_provider(
+            ollama_service, model_id=ollama_model_id, dim=ollama_model_dim
+        )
         retrieve_service = _create_retrieve_service(conn, embedding_provider=embedding_provider)
         return retrieve(
             retrieve_service=retrieve_service,

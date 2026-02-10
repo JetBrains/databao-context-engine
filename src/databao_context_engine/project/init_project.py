@@ -36,21 +36,27 @@ class InitProjectError(Exception):
         self.reason = reason
 
 
-def init_project_dir(project_dir: Path) -> Path:
-    project_creator = _ProjectCreator(project_dir=project_dir)
+def init_project_dir(
+    project_dir: Path, ollama_model_id: str | None = None, ollama_model_dim: int | None = None
+) -> Path:
+    project_creator = _ProjectCreator(
+        project_dir=project_dir, ollama_model_id=ollama_model_id, ollama_model_dim=ollama_model_dim
+    )
     project_creator.create()
 
     return project_dir
 
 
 class _ProjectCreator:
-    def __init__(self, project_dir: Path):
+    def __init__(self, project_dir: Path, ollama_model_id: str | None = None, ollama_model_dim: int | None = None):
         self.project_dir = project_dir
         self.deprecated_config_file = get_deprecated_config_file(project_dir)
         self.config_file = get_config_file(project_dir)
         self.src_dir = get_source_dir(project_dir)
         self.examples_dir = get_examples_dir(project_dir)
         self.logs_dir = get_logs_dir(project_dir)
+        self.ollama_model_id = ollama_model_id
+        self.ollama_model_dim = ollama_model_dim
 
     def create(self):
         self.ensure_can_init_project()
@@ -108,4 +114,6 @@ class _ProjectCreator:
 
     def create_dce_config_file(self) -> None:
         self.config_file.touch()
-        ProjectConfig().save(self.config_file)
+        ProjectConfig(ollama_model_id=self.ollama_model_id, ollama_model_dim=self.ollama_model_dim).save(
+            self.config_file
+        )
