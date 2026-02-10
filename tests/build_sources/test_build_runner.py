@@ -31,7 +31,7 @@ def stub_prepare(mocker):
     def _stub(prepared_list):
         items = list(prepared_list)
 
-        def side_effect(_ds):
+        def side_effect(_project_layout, _ds):
             return items.pop(0) if items else None
 
         return mocker.patch.object(build_runner, "prepare_source", side_effect=side_effect)
@@ -70,7 +70,6 @@ def test_build_skips_source_without_plugin(
             PreparedFile(
                 DatasourceId.from_string_repr("files/one.md"),
                 datasource_type=DatasourceType(full_type="files/md"),
-                path=datasources.path,
             )
         ]
     )
@@ -87,14 +86,13 @@ def test_build_skips_source_without_plugin(
 def test_build_processes_file_source_and_exports(
     stub_sources, stub_plugins, stub_prepare, mock_build_service, project_layout
 ):
-    src = SimpleNamespace(path=project_layout.src_dir / "files" / "one.md")
+    src = SimpleNamespace(datasource_id=DatasourceId(datasource_path="files/one", config_file_suffix=".md"))
     stub_sources([src])
     stub_prepare(
         [
             PreparedFile(
                 datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/one.md")),
                 datasource_type=DatasourceType(full_type="files/md"),
-                path=src.path,
             )
         ]
     )
@@ -110,20 +108,21 @@ def test_build_processes_file_source_and_exports(
 def test_build_continues_on_service_exception(
     stub_sources, stub_plugins, stub_prepare, mock_build_service, project_layout
 ):
-    s1 = SimpleNamespace(path=project_layout.src_dir / "files" / "a.md")
-    s2 = SimpleNamespace(path=project_layout.src_dir / "files" / "b.md")
-    stub_sources([s1, s2])
+    stub_sources(
+        [
+            (DatasourceId(datasource_path="files/a", config_file_suffix=".md")),
+            (DatasourceId(datasource_path="files/b", config_file_suffix=".md")),
+        ]
+    )
     stub_prepare(
         [
             PreparedFile(
                 datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/a.md")),
                 datasource_type=DatasourceType(full_type="files/md"),
-                path=s1.path,
             ),
             PreparedFile(
                 datasource_id=DatasourceId.from_datasource_context_file_path(Path("files/b.md")),
                 datasource_type=DatasourceType(full_type="files/md"),
-                path=s2.path,
             ),
         ]
     )

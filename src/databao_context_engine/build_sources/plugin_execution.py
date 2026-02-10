@@ -9,6 +9,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin, execute_file_plugin
+from databao_context_engine.project.layout import ProjectLayout
 
 
 @dataclass()
@@ -37,8 +38,10 @@ class BuiltDatasourceContext:
     """
 
 
-def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
-    built_context = _execute(prepared_datasource, plugin)
+def execute_plugin(
+    project_layout: ProjectLayout, prepared_datasource: PreparedDatasource, plugin: BuildPlugin
+) -> BuiltDatasourceContext:
+    built_context = _execute(project_layout, prepared_datasource, plugin)
     return BuiltDatasourceContext(
         datasource_id=str(prepared_datasource.datasource_id),
         datasource_type=prepared_datasource.datasource_type.full_type,
@@ -47,7 +50,7 @@ def execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Bui
     )
 
 
-def _execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Any:
+def _execute(project_layout: ProjectLayout, prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> Any:
     """Run a prepared source through the plugin."""
     if isinstance(prepared_datasource, PreparedConfig):
         ds_plugin = cast(BuildDatasourcePlugin, plugin)
@@ -63,5 +66,5 @@ def _execute(prepared_datasource: PreparedDatasource, plugin: BuildPlugin) -> An
     return execute_file_plugin(
         plugin=file_plugin,
         datasource_type=prepared_datasource.datasource_type,
-        file_path=prepared_datasource.path,
+        file_path=prepared_datasource.datasource_id.absolute_path_to_config_file(project_layout),
     )

@@ -50,9 +50,11 @@ class RetrieveService:
 
         if logger.isEnabledFor(logging.DEBUG):
             if search_results:
-                closest_result = min(search_results, key=lambda result: result.cosine_distance)
-                logger.debug(f"Best result: ({closest_result.cosine_distance}, {closest_result.embeddable_text})")
-
+                top_index = min(10, limit)
+                top_results = search_results[0:top_index]
+                logger.debug(
+                    f"Top {top_index} results:\n{'\n'.join([f'({r.cosine_distance}, {r.embeddable_text})' for r in top_results])}"
+                )
                 farthest_result = max(search_results, key=lambda result: result.cosine_distance)
                 logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
             else:

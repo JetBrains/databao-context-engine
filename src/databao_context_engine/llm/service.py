@@ -21,19 +21,17 @@ class OllamaService:
     def embed(self, *, model: str, text: str) -> list[float]:
         payload: dict[str, Any] = {
             "model": model,
-            "prompt": text,
+            "input": text,
         }
-        data = self._request_json(method="POST", path="/api/embeddings", json=payload)
+        data = self._request_json(method="POST", path="/api/embed", json=payload)
 
-        vec = data.get("embedding")
-        if not isinstance(vec, list) or not all(isinstance(x, (int, float)) for x in vec):
-            alt = data.get("data")
-            if isinstance(alt, list) and alt and isinstance(alt[0], dict) and isinstance(alt[0].get("embedding"), list):
-                vec = alt[0]["embedding"]
-            else:
-                raise ValueError("Unexpected Ollama embedding response schema")
+        vectors = data.get("embeddings")
+        if isinstance(vectors, list):
+            vector = vectors[0]
+            if isinstance(vector, list) and all(isinstance(n, (int, float)) for n in vector):
+                return [float(n) for n in vector]
 
-        return [float(x) for x in vec]
+        raise ValueError(f"Unexpected Ollama embedding response schema. {data}")
 
     def describe(self, *, model: str, text: str, context: str) -> str:
         """Ask Ollama to generate a short description for `text`."""
