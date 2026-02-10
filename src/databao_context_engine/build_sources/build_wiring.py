@@ -96,6 +96,7 @@ def index_built_contexts(
 
         build_service = _create_build_service(
             conn,
+            project_layout=project_layout,
             embedding_provider=embedding_provider,
             description_provider=description_provider,
             chunk_embedding_mode=chunk_embedding_mode,
