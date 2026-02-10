@@ -4,6 +4,7 @@ from typing import Any
 from docling.datamodel.base_models import DocumentStream, InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling_core.types import DoclingDocument
 
 from databao_context_engine import BuildFilePlugin
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
@@ -13,6 +14,7 @@ from databao_context_engine.services.docling_chunker import DoclingChunker
 class PDFPlugin(BuildFilePlugin):
     id = "jetbrains/pdf"
     name = "PDF Plugin"
+    context_type = DoclingDocument
 
     def supported_types(self) -> set[str]:
         return {"pdf"}

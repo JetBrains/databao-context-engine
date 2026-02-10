@@ -34,10 +34,18 @@ def _load_builtin_plugins(exclude_file_plugins: bool = False) -> list[BuildPlugi
 
 
 def _load_builtin_file_plugins() -> list[BuildFilePlugin]:
-    from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
     from databao_context_engine.plugins.files.unstructured_files_plugin import InternalUnstructuredFilesPlugin
 
-    return [InternalUnstructuredFilesPlugin(), PDFPlugin()]
+    plugins: list[BuildFilePlugin] = [InternalUnstructuredFilesPlugin()]
+
+    try:
+        from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
+
+        plugins.append(PDFPlugin())
+    except ImportError:
+        pass
+
+    return plugins
 
 
 def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
