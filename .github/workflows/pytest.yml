@@ -29,6 +29,17 @@ jobs:
           model-name: ${{ env.OLLAMA_MODEL }}
           model-version: ${{ env.OLLAMA_MODEL_VERSION }}
 
+      - name: Disk usage after cache prep
+        if: always()
+        run: |
+          df -h
+          echo "~/.ollama size:"
+          du -sh ~/.ollama || true
+          echo "Docker usage:"
+          docker system df || true
+          echo "Top offenders under home:"
+          du -xh -d 2 /home/runner 2>/dev/null | sort -h | tail -n 30
+
       - name: Cleanup Docker
         if: always()
         run: |
