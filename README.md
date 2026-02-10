@@ -198,5 +198,5 @@ Apache 2.0 — use it however you want. See the [LICENSE](LICENSE.md) file for d
 
 <p align="center">
  <a href="https://databao.app">Website</a> •
- <a href="https://discord.gg/databao">Discord</a>
+ <a href="https://discord.gg/hEUqCcWdVh">Discord</a>
 </p>
