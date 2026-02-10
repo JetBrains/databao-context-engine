@@ -29,12 +29,6 @@ jobs:
           model-name: ${{ env.OLLAMA_MODEL }}
           model-version: ${{ env.OLLAMA_MODEL_VERSION }}
 
-      - name: Cleanup Docker before
-        if: always()
-        run: |
-          docker rm -f ollama || true
-          docker system prune -af --volumes || true
-
   tests:
     needs: prepare-ollama-cache
     name: Run pytest on ${{ matrix.python-version }}
@@ -60,11 +54,6 @@ jobs:
         run: |
           sudo mkdir -p /mnt/tmp
           sudo chmod 1777 /mnt/tmp
-
-      - name: Docker prune (pre)
-        run: |
-          docker system prune -af --volumes || true
-          docker system df || true
 
       - name: Restore Ollama models cache
         uses: ./.github/actions/ollama-cache-restore
