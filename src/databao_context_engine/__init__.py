@@ -1,4 +1,9 @@
-from databao_context_engine.build_sources import BuildContextResult
+from databao_context_engine.build_sources.types import (
+    BuildDatasourceResult,
+    DatasourceResult,
+    DatasourceStatus,
+    IndexDatasourceResult,
+)
 from databao_context_engine.databao_context_engine import ContextSearchResult, DatabaoContextEngine
 from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
 from databao_context_engine.datasources.check_config import (
@@ -41,8 +46,6 @@ __all__ = [
     "ContextSearchResult",
     "DatabaoContextProjectManager",
     "ChunkEmbeddingMode",
-    "BuildContextResult",
-    "CheckDatasourceConnectionResult",
     "DatasourceConnectionStatus",
     "DatasourceType",
     "get_databao_context_engine_info",
@@ -63,4 +66,9 @@ __all__ = [
     "OllamaError",
     "OllamaTransientError",
     "OllamaPermanentError",
+    "BuildDatasourceResult",
+    "DatasourceResult",
+    "DatasourceStatus",
+    "IndexDatasourceResult",
+    "CheckDatasourceConnectionResult",
 ]
