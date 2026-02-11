@@ -52,7 +52,7 @@ class DatabaoContextEngine:
     _project_layout: ProjectLayout
     _plugin_loader: DatabaoContextPluginLoader
 
-    def __init__(self, project_dir: Path, plugin_loader: DatabaoContextPluginLoader = None) -> None:
+    def __init__(self, project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
         """Initialize the DatabaoContextEngine.
 
         Args:
