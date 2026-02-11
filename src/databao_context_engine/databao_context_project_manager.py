@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Any, overload
 
-from databao_context_engine.build_sources import BuildContextResult, build_all_datasources
-from databao_context_engine.build_sources.build_runner import IndexSummary
+from databao_context_engine.build_sources import build_all_datasources
+from databao_context_engine.build_sources.build_runner import BuildResult, IndexResult
 from databao_context_engine.build_sources.build_wiring import index_built_contexts
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
 from databao_context_engine.datasources.check_config import (
@@ -63,7 +63,7 @@ class DatabaoContextProjectManager:
         self,
         datasource_ids: list[DatasourceId] | None = None,
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
-    ) -> list[BuildContextResult]:
+    ) -> BuildResult:
         """Build the context for datasources in the project.
 
         Any datasource with an invalid configuration will be skipped.
@@ -88,7 +88,7 @@ class DatabaoContextProjectManager:
         self,
         datasource_ids: list[DatasourceId] | None = None,
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
-    ) -> IndexSummary:
+    ) -> IndexResult:
         """Index built datasource contexts into the embeddings database.
 
         It reads already built context files from the output directory, chunks them using the appropriate plugin,

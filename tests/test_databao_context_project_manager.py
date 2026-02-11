@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from databao_context_engine import (
-    BuildContextResult,
+    BuildDatasourceResult,
     ChunkEmbeddingMode,
     ConfiguredDatasource,
     DatabaoContextProjectManager,
@@ -86,7 +86,7 @@ def test_databao_context_project_manager__build_with_no_datasource(project_path)
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
-    assert result == []
+    assert result.results == []
 
 
 def test_databao_context_project_manager__build_with_multiple_datasource(project_path, create_db):
@@ -107,9 +107,9 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
-    assert len(result) == 2, str(result)
+    assert len(result.results) == 2, str(result)
     assert_build_context_result(
-        result[0],
+        result.results[0],
         project_manager.project_dir,
         datasource_id=DatasourceId.from_string_repr("dummy/my_dummy_data.yaml"),
         datasource_type=DatasourceType(full_type="dummy_default"),
@@ -117,7 +117,7 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
     )
 
     assert_build_context_result(
-        result[1],
+        result.results[1],
         project_manager.project_dir,
         datasource_id=DatasourceId.from_string_repr("files/my_dummy_file.dummy_txt"),
         datasource_type=DatasourceType(full_type="dummy_txt"),
@@ -188,7 +188,7 @@ def test_databao_context_project_manager__index_built_contexts_filters_by_dataso
 
 
 def assert_build_context_result(
-    context_result: BuildContextResult,
+    context_result: BuildDatasourceResult,
     project_dir: Path,
     *,
     datasource_id: DatasourceId,

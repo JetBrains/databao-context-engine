@@ -155,7 +155,13 @@ def build(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper())
     )
 
-    click.echo(f"Build complete. Processed {len(result)} datasources.")
+    suffix = []
+    if result.summary.skipped:
+        suffix.append(f"skipped {result.summary.skipped}")
+    if result.summary.failed:
+        suffix.append(f"failed {result.summary.failed}")
+    extra = f" ({', '.join(suffix)})" if suffix else ""
+    click.echo(f"Build complete. Processed {result.summary.ok}/{result.summary.total} datasources{extra}.")
 
 
 @dce.command()
@@ -175,18 +181,18 @@ def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
         [DatasourceId.from_string_repr(p) for p in datasources_config_files] if datasources_config_files else None
     )
 
-    summary = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
+    result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
         datasource_ids=datasource_ids
     )
 
     suffix = []
-    if summary.skipped:
-        suffix.append(f"skipped {summary.skipped}")
-    if summary.failed:
-        suffix.append(f"failed {summary.failed}")
+    if result.summary.skipped:
+        suffix.append(f"skipped {result.summary.skipped}")
+    if result.summary.failed:
+        suffix.append(f"failed {result.summary.failed}")
 
     extra = f" ({', '.join(suffix)})" if suffix else ""
-    click.echo(f"Indexing complete. Indexed {summary.indexed}/{summary.total} datasource(s){extra}.")
+    click.echo(f"Indexing complete. Indexed {result.summary.indexed}/{result.summary.total} datasource(s){extra}.")
 
 
 @dce.command()

@@ -2,7 +2,12 @@ import logging
 
 from duckdb import DuckDBPyConnection
 
-from databao_context_engine.build_sources.build_runner import BuildContextResult, IndexSummary, build, run_indexing
+from databao_context_engine.build_sources.build_runner import (
+    BuildResult,
+    IndexResult,
+    build,
+    run_indexing,
+)
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
@@ -27,7 +32,7 @@ def build_all_datasources(
     chunk_embedding_mode: ChunkEmbeddingMode,
     ollama_model_id: str | None = None,
     ollama_model_dim: int | None = None,
-) -> list[BuildContextResult]:
+) -> BuildResult:
     """Build the context for all datasources in the project.
 
     - Instantiates the build service
@@ -76,7 +81,7 @@ def index_built_contexts(
     chunk_embedding_mode: ChunkEmbeddingMode,
     ollama_model_id: str | None = None,
     ollama_model_dim: int | None = None,
-) -> IndexSummary:
+) -> IndexResult:
     """Index the contexts into the database.
 
     - Instantiates the build service
