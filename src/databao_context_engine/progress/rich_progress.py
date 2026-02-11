@@ -5,6 +5,8 @@ import sys
 from contextlib import contextmanager
 from typing import Callable, Iterator, Optional, TypedDict
 
+from rich.logging import RichHandler
+
 from databao_context_engine.progress.progress import (
     ProgressCallback,
     ProgressEvent,
@@ -66,6 +68,35 @@ def rich_progress() -> Iterator[ProgressCallback]:
             return self._eta.render(task)
 
     console = Console(stderr=True)
+
+    @contextmanager
+    def _use_rich_console_logging() -> Iterator[None]:
+        app_logger = logging.getLogger("databao_context_engine")
+
+        prev_handlers = list(app_logger.handlers)
+        prev_propagate = app_logger.propagate
+
+        def _is_console_handler(h: logging.Handler) -> bool:
+            return isinstance(h, logging.StreamHandler) and getattr(h, "stream", None) in (sys.stderr, sys.stdout)
+
+        kept_handlers = [h for h in prev_handlers if not _is_console_handler(h)]
+
+        rich_handler = RichHandler(
+            console=console,
+            show_time=False,
+            show_level=True,
+            show_path=False,
+            rich_tracebacks=False,
+        )
+
+        try:
+            app_logger.handlers = kept_handlers + [rich_handler]
+            app_logger.propagate = False
+            yield
+        finally:
+            app_logger.handlers = prev_handlers
+            app_logger.propagate = prev_propagate
+
 
     tasks: dict[str, TaskID] = {}
     ui_state: _UIState = {
@@ -159,21 +190,6 @@ def rich_progress() -> Iterator[ProgressCallback]:
                     _set_datasource_percent(float(pct))
                 return
 
-    root = logging.getLogger()
-    prev_level = root.level
-    prev_handlers = list(root.handlers)
-
-    prev_disable_level = logging.root.manager.disable
-    logging.disable(logging.CRITICAL)
-
-    try:
+    with _use_rich_console_logging():
         with progress:
             yield on_event
-    finally:
-        logging.disable(prev_disable_level)
-
-        for h in list(root.handlers):
-            root.removeHandler(h)
-        for h in prev_handlers:
-            root.addHandler(h)
-        root.setLevel(prev_level)

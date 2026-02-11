@@ -121,12 +121,6 @@ class ChunkEmbeddingService:
                     total_units=total_units,
                 )
 
-        emitter.datasource_progress_units(
-            datasource_id=datasource_id,
-            completed_units=len(chunks),
-            total_units=len(chunks) * 2,
-        )
-
         table_name = self._shard_resolver.resolve_or_create(
             embedder=self._embedding_provider.embedder,
             model_id=self._embedding_provider.model_id,

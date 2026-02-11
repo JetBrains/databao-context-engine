@@ -187,12 +187,6 @@ def run_indexing(
     summary = IndexSummary(total=len(contexts), indexed=0, skipped=0, failed=0)
 
     emitter = ProgressEmitter(progress)
-
-    if not contexts:
-        emitter.task_started(total_datasources=0)
-        emitter.task_finished(ok=0, failed=0, skipped=0)
-        return summary
-
     emitter.task_started(total_datasources=len(contexts))
 
     for datasource_index, context in enumerate(contexts, start=1):
