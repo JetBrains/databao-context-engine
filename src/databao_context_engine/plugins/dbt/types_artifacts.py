@@ -82,9 +82,20 @@ class DbtManifestSemanticModel(BaseModel):
     dimensions: list[DbtManifestSemanticDimension] | None = None
 
 
+class DbtManifestMetric(BaseModel):
+    name: str
+    resource_type: Literal["metric"]
+    unique_id: str
+    description: str
+    type: Literal["simple", "ratio", "cumulative", "derived", "conversion"]
+    label: str
+    depends_on: dict[str, list[str]] | None = None
+
+
 class DbtManifest(BaseModel):
     nodes: dict[str, DbtManifestNode]
     semantic_models: dict[str, DbtManifestSemanticModel]
+    metrics: dict[str, DbtManifestMetric]
 
 
 class DbtCatalogColumn(BaseModel):

@@ -103,6 +103,26 @@ class DbtSemanticModel:
 
 
 @dataclass(kw_only=True)
+class DbtMetric:
+    id: str
+    name: str
+    description: str
+    type: Literal["simple", "ratio", "cumulative", "derived", "conversion"]
+    label: str
+    depends_on_nodes: list[str]
+
+    @property
+    def depends_on_semantic_model(self) -> str | None:
+        return next((node for node in self.depends_on_nodes if node.startswith("semantic_model.")), None)
+
+
+@dataclass(kw_only=True)
+class DbtSemanticLayer:
+    semantic_models: list[DbtSemanticModel]
+    metrics: list[DbtMetric]
+
+
+@dataclass(kw_only=True)
 class DbtContext:
     models: list[DbtModel]
-    semantic_models: list[DbtSemanticModel]
+    semantic_layer: DbtSemanticLayer

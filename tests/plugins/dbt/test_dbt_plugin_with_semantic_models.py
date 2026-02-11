@@ -9,6 +9,7 @@ from databao_context_engine.plugins.dbt.dbt_plugin import DbtPlugin
 from databao_context_engine.plugins.dbt.types import (
     DbtConfigFile,
     DbtContext,
+    DbtMetric,
     DbtSemanticDimension,
     DbtSemanticEntity,
     DbtSemanticMeasure,
@@ -35,8 +36,8 @@ def test_dbt_plugin_with_semantic_models__build_context(dbt_target_folder_path, 
     )
 
     assert isinstance(result, DbtContext)
-    assert len(result.semantic_models) == 9
-    assert {model.id for model in result.semantic_models} == {
+    assert len(result.semantic_layer.semantic_models) == 9
+    assert {model.id for model in result.semantic_layer.semantic_models} == {
         "semantic_model.web_shop_orders.dim_customers",
         "semantic_model.web_shop_orders.dim_order_items",
         "semantic_model.web_shop_orders.dim_order_payments",
@@ -50,10 +51,36 @@ def test_dbt_plugin_with_semantic_models__build_context(dbt_target_folder_path, 
 
     order_payments_semantic_model = next(
         semantic_model
-        for semantic_model in result.semantic_models
+        for semantic_model in result.semantic_layer.semantic_models
         if semantic_model.id == expected_order_payments_semantic_model.id
     )
     assert order_payments_semantic_model == expected_order_payments_semantic_model
+
+    assert len(result.semantic_layer.metrics) == 11
+    assert {metric.id for metric in result.semantic_layer.metrics} == {
+        "metric.web_shop_orders.avg_payment",
+        "metric.web_shop_orders.cumulative_revenue",
+        "metric.web_shop_orders.customer_count",
+        "metric.web_shop_orders.order_count",
+        "metric.web_shop_orders.order_delivered_on_time_pct",
+        "metric.web_shop_orders.orders_w_reviews_pct",
+        "metric.web_shop_orders.payment_count",
+        "metric.web_shop_orders.product_count",
+        "metric.web_shop_orders.revenue",
+        "metric.web_shop_orders.seller_count",
+        "metric.web_shop_orders.sum_payment",
+    }
+    revenue_metric = next(
+        metric for metric in result.semantic_layer.metrics if metric.id == "metric.web_shop_orders.revenue"
+    )
+    assert revenue_metric == DbtMetric(
+        id="metric.web_shop_orders.revenue",
+        name="revenue",
+        description="Sum of the product revenue for each order item. Excludes freight value.",
+        type="simple",
+        label="Revenue",
+        depends_on_nodes=["semantic_model.web_shop_orders.fct_sales"],
+    )
 
 
 def test_dbt_plugin_with_semantic_models__divide_context_into_chunks(dbt_target_folder_path):
@@ -68,7 +95,10 @@ def test_dbt_plugin_with_semantic_models__divide_context_into_chunks(dbt_target_
     result = under_test.divide_context_into_chunks(context)
 
     expected_number_of_chunks = (
-        len(context.semantic_models) + len(context.models) + sum(len(model.columns) for model in context.models)
+        len(context.semantic_layer.semantic_models)
+        + len(context.models)
+        + sum(len(model.columns) for model in context.models)
+        + len(context.semantic_layer.metrics)
     )
     assert len(result) == expected_number_of_chunks
 
