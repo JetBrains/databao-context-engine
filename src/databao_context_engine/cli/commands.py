@@ -139,7 +139,7 @@ def check_datasource_config(ctx: Context, datasources_config_files: list[str] | 
     help="Choose how chunks will be embedded. If a mode with the generated_description is selected, a local LLM model will be downloaded and used.",
 )
 @click.option(
-    "--semantic-index/--no-semantic-index",
+    "--should-index/--should-not-index",
     default=True,
     show_default=True,
     help="Whether to index the context. If disabled, the context will be built but not indexed.",
@@ -150,7 +150,7 @@ def build(
     chunk_embedding_mode: Literal[
         "embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"
     ],
-    semantic_index: bool,
+    should_index: bool,
 ) -> None:
     """Build context for all datasources.
 
@@ -161,7 +161,7 @@ def build(
     result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
         datasource_ids=None,
         chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()),
-        semantic_index=semantic_index,
+        should_index=should_index,
     )
 
     click.echo(f"Build complete. Processed {len(result)} datasources.")
