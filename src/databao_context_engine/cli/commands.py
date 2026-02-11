@@ -152,7 +152,7 @@ def build(
 
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
-    result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
+    results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper())
     )
 
@@ -160,8 +160,7 @@ def build(
         heading="Build complete",
         verb="Processed",
         noun="datasource(s)",
-        summary=result.summary,
-        results=result.results,
+        results=results,
     )
 
 
@@ -182,7 +181,7 @@ def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
         [DatasourceId.from_string_repr(p) for p in datasources_config_files] if datasources_config_files else None
     )
 
-    result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
+    results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
         datasource_ids=datasource_ids
     )
 
@@ -190,8 +189,7 @@ def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
         heading="Indexing complete",
         verb="Indexed",
         noun="datasource(s)",
-        summary=result.summary,
-        results=result.results,
+        results=results,
     )
 
 
@@ -283,19 +281,22 @@ def _echo_operation_result(
     heading: str,
     verb: str,
     noun: str,
-    summary,
     results: Sequence,
 ) -> None:
+    total = len(results)
+    ok = sum(1 for r in results if r.status == DatasourceStatus.OK)
+    skipped = sum(1 for r in results if r.status == DatasourceStatus.SKIPPED)
+    failed = sum(1 for r in results if r.status == DatasourceStatus.FAILED)
+
     suffix_parts: list[str] = []
-    if summary.skipped:
-        suffix_parts.append(f"skipped {summary.skipped}")
-    if summary.failed:
-        suffix_parts.append(f"failed {summary.failed}")
+    if skipped:
+        suffix_parts.append(f"skipped {skipped}")
+    if failed:
+        suffix_parts.append(f"failed {failed}")
 
     suffix = f" ({', '.join(suffix_parts)})" if suffix_parts else ""
-    click.echo(f"{heading}. {verb} {summary.ok}/{summary.total} {noun}{suffix}.")
-
-    if not summary.failed:
+    click.echo(f"{heading}. {verb} {ok}/{total} {noun}{suffix}.")
+    if failed == 0:
         return
 
     failed_results = [r for r in results if r.status == DatasourceStatus.FAILED]

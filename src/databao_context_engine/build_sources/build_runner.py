@@ -8,11 +8,8 @@ from databao_context_engine.build_sources.export_results import (
 )
 from databao_context_engine.build_sources.types import (
     BuildDatasourceResult,
-    BuildResult,
     DatasourceStatus,
     IndexDatasourceResult,
-    IndexResult,
-    OperationSummary,
 )
 from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
@@ -30,7 +27,7 @@ def build(
     project_layout: ProjectLayout,
     *,
     build_service: BuildService,
-) -> BuildResult:
+) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
     Unless you already have access to BuildService, this should not be called directly.
@@ -41,7 +38,7 @@ def build(
     3) For each source, call process_source
 
     Returns:
-        A BuildResult containing a summary and a per-datasource result.
+        A list of per-datasource build results.
     """
     plugins = load_plugins()
 
@@ -49,7 +46,7 @@ def build(
 
     if not datasource_ids:
         logger.info("No sources discovered under %s", project_layout.src_dir)
-        return BuildResult(summary=OperationSummary(total=0, ok=0, skipped=0, failed=0), results=[])
+        return []
 
     results: list[BuildDatasourceResult] = []
     failed = 0
@@ -103,20 +100,19 @@ def build(
             )
 
     ok = sum(1 for result in results if result.status == DatasourceStatus.OK)
-    summary = OperationSummary(total=len(datasource_ids), ok=ok, skipped=skipped, failed=failed)
     logger.debug(
         "Successfully built %d/%d datasources. %s",
-        summary.ok,
-        summary.total,
-        f"Skipped {summary.skipped}. Failed {summary.failed}." if (summary.skipped or summary.failed) else "",
+        ok,
+        len(datasource_ids),
+        f"Skipped {skipped}. Failed {failed}." if (skipped or failed) else "",
     )
 
-    return BuildResult(summary=summary, results=results)
+    return results
 
 
 def run_indexing(
     *, project_layout: ProjectLayout, build_service: BuildService, contexts: list[DatasourceContext]
-) -> IndexResult:
+) -> list[IndexDatasourceResult]:
     """Index a list of built datasource contexts.
 
     1) Load available plugins
@@ -124,7 +120,7 @@ def run_indexing(
     3) For each context, call index_built_context
 
     Returns:
-        A summary of the indexing run.
+        A list of per-context indexing results.
     """
     plugins = load_plugins()
 
@@ -163,12 +159,11 @@ def run_indexing(
                 IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.FAILED, error=str(e))
             )
 
-    summary = OperationSummary(total=len(contexts), ok=ok, skipped=skipped, failed=failed)
     logger.debug(
         "Successfully indexed %d/%d datasource(s). %s",
-        summary.ok,
-        summary.total,
-        f"Skipped {summary.skipped}. Failed {summary.failed}." if (summary.skipped or summary.failed) else "",
+        ok,
+        len(contexts),
+        f"Skipped {skipped}. Failed {failed}." if (skipped or failed) else "",
     )
 
-    return IndexResult(summary=summary, results=results)
+    return results

@@ -7,23 +7,6 @@ from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
 
-@dataclass(frozen=True)
-class OperationSummary:
-    """Aggregate summary for an operation run across multiple datasources.
-
-    Attributes:
-        total: Total number of datasources attempted.
-        ok: Number of datasources completed successfully.
-        skipped: Number of datasources skipped.
-        failed: Number of datasources that failed due to an error.
-    """
-
-    total: int
-    ok: int
-    skipped: int
-    failed: int
-
-
 class DatasourceStatus(Enum):
     """Status of an operation for a single datasource."""
 
@@ -72,33 +55,3 @@ class IndexDatasourceResult(DatasourceResult):
     """Index result for a single datasource."""
 
     pass
-
-
-@dataclass(frozen=True)
-class BuildResult:
-    """Result of the build operation across multiple datasources.
-
-    Contains a summary plus per-datasource results.
-
-    Attributes:
-        summary: Aggregate counts for the build run.
-        results: Per-datasource results for the build run.
-    """
-
-    summary: OperationSummary
-    results: list[BuildDatasourceResult]
-
-
-@dataclass(frozen=True)
-class IndexResult:
-    """Result of the index operation across multiple datasources.
-
-    Contains a summary plus per-datasource results.
-
-    Attributes:
-        summary: Aggregate counts for the index run.
-        results: Per-datasource results for the index run.
-    """
-
-    summary: OperationSummary
-    results: list[IndexDatasourceResult]

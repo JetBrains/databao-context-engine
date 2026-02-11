@@ -1,11 +1,8 @@
 from databao_context_engine.build_sources.types import (
     BuildDatasourceResult,
-    BuildResult,
     DatasourceResult,
     DatasourceStatus,
     IndexDatasourceResult,
-    IndexResult,
-    OperationSummary,
 )
 from databao_context_engine.databao_context_engine import ContextSearchResult, DatabaoContextEngine
 from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
@@ -70,11 +67,8 @@ __all__ = [
     "OllamaTransientError",
     "OllamaPermanentError",
     "BuildDatasourceResult",
-    "BuildResult",
     "DatasourceResult",
     "DatasourceStatus",
     "IndexDatasourceResult",
-    "IndexResult",
-    "OperationSummary",
     "CheckDatasourceConnectionResult",
 ]
