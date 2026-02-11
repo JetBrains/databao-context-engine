@@ -103,7 +103,7 @@ def test_e2e_build_with_fake_provider(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
-    assert len(result.results) == 1
+    assert len(result) == 1
 
     chunks = chunk_repo.list()
     assert len(chunks) >= 1
@@ -135,7 +135,7 @@ def test_one_source_fails_but_others_succeed(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
-    assert len(result.results) == 1
+    assert len(result) == 1
 
     chunks = chunk_repo.list()
     assert len(chunks) >= 1
