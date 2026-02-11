@@ -50,9 +50,7 @@ class IndexSummary:
 
 
 def build(
-    project_layout: ProjectLayout,
-    *,
-    build_service: BuildService,
+    project_layout: ProjectLayout, *, build_service: BuildService, generate_embeddings: bool = True
 ) -> list[BuildContextResult]:
     """Build the context for all datasources in the project.
 
@@ -96,8 +94,7 @@ def build(
                 continue
 
             result = build_service.process_prepared_source(
-                prepared_source=prepared_source,
-                plugin=plugin,
+                prepared_source=prepared_source, plugin=plugin, generate_embeddings=generate_embeddings
             )
 
             output_dir = project_layout.output_dir
