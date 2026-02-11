@@ -159,3 +159,18 @@ def test_index_built_context_no_chunks_skips_embed(svc, chunk_embed_svc, mocker)
     svc.index_built_context(context=ctx, plugin=plugin)
 
     chunk_embed_svc.embed_chunks.assert_not_called()
+
+
+def test_process_prepared_source_generate_embeddings_false_skips_chunking_and_embed(svc, chunk_embed_svc, mocker):
+    plugin = mocker.Mock(name="Plugin")
+    plugin.name = "pluggy"
+    prepared = mk_prepared(Path("files") / "noembed.md", full_type="files/md")
+
+    result = mk_result(name="files/noembed.md", typ="files/md", result={"context": "ok"})
+    mocker.patch("databao_context_engine.build_sources.build_service.execute_plugin", return_value=result)
+
+    out = svc.process_prepared_source(prepared_source=prepared, plugin=plugin, generate_embeddings=False)
+
+    plugin.divide_context_into_chunks.assert_not_called()
+    chunk_embed_svc.embed_chunks.assert_not_called()
+    assert out is result

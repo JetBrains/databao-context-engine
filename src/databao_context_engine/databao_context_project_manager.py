@@ -63,6 +63,8 @@ class DatabaoContextProjectManager:
         self,
         datasource_ids: list[DatasourceId] | None = None,
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        *,
+        semantic_index: bool = True,
     ) -> list[BuildContextResult]:
         """Build the context for datasources in the project.
 
@@ -71,6 +73,7 @@ class DatabaoContextProjectManager:
         Args:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
             chunk_embedding_mode: The mode to use for chunk embedding.
+            semantic_index: Whether to build a semantic index for the context.
 
         Returns:
             The list of all built results.
@@ -80,6 +83,7 @@ class DatabaoContextProjectManager:
         return build_all_datasources(
             project_layout=self._project_layout,
             chunk_embedding_mode=chunk_embedding_mode,
+            generate_embeddings=semantic_index,
             ollama_model_id=project_config.ollama_model_id,
             ollama_model_dim=project_config.ollama_model_dim,
         )

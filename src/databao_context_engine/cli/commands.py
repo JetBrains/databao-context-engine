@@ -138,12 +138,19 @@ def check_datasource_config(ctx: Context, datasources_config_files: list[str] | 
     default="embeddable_text_only",
     help="Choose how chunks will be embedded. If a mode with the generated_description is selected, a local LLM model will be downloaded and used.",
 )
+@click.option(
+    "--semantic-index/--no-semantic-index",
+    default=True,
+    show_default=True,
+    help="Whether to index the context. If disabled, the context will be built but not indexed.",
+)
 @click.pass_context
 def build(
     ctx: Context,
     chunk_embedding_mode: Literal[
         "embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"
     ],
+    semantic_index: bool,
 ) -> None:
     """Build context for all datasources.
 
@@ -152,7 +159,9 @@ def build(
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
     result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
-        datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper())
+        datasource_ids=None,
+        chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()),
+        semantic_index=semantic_index,
     )
 
     click.echo(f"Build complete. Processed {len(result)} datasources.")
