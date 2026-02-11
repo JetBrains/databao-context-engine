@@ -7,6 +7,7 @@ from databao_context_engine import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.dbt.dbt_plugin import DbtPlugin
 from databao_context_engine.plugins.dbt.types import (
+    DbtConfigFile,
     DbtContext,
     DbtSemanticDimension,
     DbtSemanticEntity,
@@ -53,6 +54,23 @@ def test_dbt_plugin_with_semantic_models__build_context(dbt_target_folder_path, 
         if semantic_model.id == expected_order_payments_semantic_model.id
     )
     assert order_payments_semantic_model == expected_order_payments_semantic_model
+
+
+def test_dbt_plugin_with_semantic_models__divide_context_into_chunks(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    context = under_test.build_context(
+        "dbt",
+        "test_config",
+        DbtConfigFile(name="test_config", type="dbt", dbt_target_folder_path=dbt_target_folder_path),
+    )
+
+    result = under_test.divide_context_into_chunks(context)
+
+    expected_number_of_chunks = (
+        len(context.semantic_models) + len(context.models) + sum(len(model.columns) for model in context.models)
+    )
+    assert len(result) == expected_number_of_chunks
 
 
 @pytest.fixture
