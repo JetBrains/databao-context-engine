@@ -53,8 +53,38 @@ class DbtManifestOtherNode(BaseModel):
 DbtManifestNode = Annotated[DbtManifestModel | DbtManifestTest | DbtManifestOtherNode, Discriminator("resource_type")]
 
 
+class DbtManifestSemanticEntity(BaseModel):
+    name: str
+    type: Literal["foreign", "natural", "primary", "unique"]
+    description: str | None = None
+
+
+class DbtManifestSemanticMeasure(BaseModel):
+    name: str
+    agg: Literal["sum", "min", "max", "count_distinct", "sum_boolean", "average", "percentile", "median", "count"]
+    description: str | None = None
+
+
+class DbtManifestSemanticDimension(BaseModel):
+    name: str
+    type: Literal["time", "categorical"]
+    description: str | None = None
+
+
+class DbtManifestSemanticModel(BaseModel):
+    name: str
+    resource_type: Literal["semantic_model"]
+    unique_id: str
+    model: str
+    description: str | None = None
+    entities: list[DbtManifestSemanticEntity] | None = None
+    measures: list[DbtManifestSemanticMeasure] | None = None
+    dimensions: list[DbtManifestSemanticDimension] | None = None
+
+
 class DbtManifest(BaseModel):
     nodes: dict[str, DbtManifestNode]
+    semantic_models: dict[str, DbtManifestSemanticModel]
 
 
 class DbtCatalogColumn(BaseModel):

@@ -71,5 +71,38 @@ class DbtModel:
 
 
 @dataclass(kw_only=True)
+class DbtSemanticEntity:
+    name: str
+    type: Literal["foreign", "natural", "primary", "unique"]
+    description: str | None = None
+
+
+@dataclass(kw_only=True)
+class DbtSemanticMeasure:
+    name: str
+    agg: Literal["sum", "min", "max", "count_distinct", "sum_boolean", "average", "percentile", "median", "count"]
+    description: str | None = None
+
+
+@dataclass(kw_only=True)
+class DbtSemanticDimension:
+    name: str
+    type: Literal["time", "categorical"]
+    description: str | None = None
+
+
+@dataclass(kw_only=True)
+class DbtSemanticModel:
+    id: str
+    name: str
+    model: str
+    description: str | None = None
+    entities: list[DbtSemanticEntity]
+    measures: list[DbtSemanticMeasure]
+    dimensions: list[DbtSemanticDimension]
+
+
+@dataclass(kw_only=True)
 class DbtContext:
     models: list[DbtModel]
+    semantic_models: list[DbtSemanticModel]
