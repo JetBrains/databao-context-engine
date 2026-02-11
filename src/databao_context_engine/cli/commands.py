@@ -1,7 +1,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Sequence
 
 import click
 from click import Context
@@ -11,6 +11,7 @@ from databao_context_engine import (
     DatabaoContextEngine,
     DatabaoContextProjectManager,
     DatasourceId,
+    DatasourceStatus,
     InitErrorReason,
     InitProjectError,
     init_dce_project,
@@ -155,13 +156,13 @@ def build(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper())
     )
 
-    suffix = []
-    if result.summary.skipped:
-        suffix.append(f"skipped {result.summary.skipped}")
-    if result.summary.failed:
-        suffix.append(f"failed {result.summary.failed}")
-    extra = f" ({', '.join(suffix)})" if suffix else ""
-    click.echo(f"Build complete. Processed {result.summary.ok}/{result.summary.total} datasources{extra}.")
+    _echo_operation_result(
+        heading="Build complete",
+        verb="Processed",
+        noun="datasource(s)",
+        summary=result.summary,
+        results=result.results,
+    )
 
 
 @dce.command()
@@ -185,14 +186,13 @@ def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
         datasource_ids=datasource_ids
     )
 
-    suffix = []
-    if result.summary.skipped:
-        suffix.append(f"skipped {result.summary.skipped}")
-    if result.summary.failed:
-        suffix.append(f"failed {result.summary.failed}")
-
-    extra = f" ({', '.join(suffix)})" if suffix else ""
-    click.echo(f"Indexing complete. Indexed {result.summary.indexed}/{result.summary.total} datasource(s){extra}.")
+    _echo_operation_result(
+        heading="Indexing complete",
+        verb="Indexed",
+        noun="datasource(s)",
+        summary=result.summary,
+        results=result.results,
+    )
 
 
 @dce.command()
@@ -276,3 +276,34 @@ def mcp(ctx: Context, host: str | None, port: int | None, transport: McpTranspor
     if transport == "stdio":
         configure_logging(verbose=False, quiet=True, project_dir=ctx.obj["project_dir"])
     run_mcp_server(project_dir=ctx.obj["project_dir"], transport=transport, host=host, port=port)
+
+
+def _echo_operation_result(
+    *,
+    heading: str,
+    verb: str,
+    noun: str,
+    summary,
+    results: Sequence,
+) -> None:
+    suffix_parts: list[str] = []
+    if summary.skipped:
+        suffix_parts.append(f"skipped {summary.skipped}")
+    if summary.failed:
+        suffix_parts.append(f"failed {summary.failed}")
+
+    suffix = f" ({', '.join(suffix_parts)})" if suffix_parts else ""
+    click.echo(f"{heading}. {verb} {summary.ok}/{summary.total} {noun}{suffix}.")
+
+    if not summary.failed:
+        return
+
+    failed_results = [r for r in results if r.status == DatasourceStatus.FAILED]
+    if not failed_results:
+        return
+
+    click.echo("Failed:")
+    for r in failed_results:
+        datasource = r.datasource_id.relative_path_to_config_file()
+        message = (r.error or "").strip() or "(no error message)"
+        click.echo(f"  - {datasource}: {message}")

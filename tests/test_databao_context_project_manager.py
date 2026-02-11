@@ -197,6 +197,8 @@ def assert_build_context_result(
 ):
     assert context_result.datasource_id == datasource_id
     assert context_result.datasource_type == datasource_type
+    assert context_result.context_built_at is not None
     assert context_result.context_built_at < datetime.now()
+    assert context_result.context_file_path is not None
     assert str(context_result.context_file_path).endswith(context_file_relative_path)
     assert context_result.context_file_path.is_relative_to(get_output_dir(project_dir))
