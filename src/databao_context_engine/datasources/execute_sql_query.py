@@ -12,6 +12,7 @@ from databao_context_engine.project.layout import ProjectLayout, logger
 
 def run_sql(
     project_layout: ProjectLayout,
+    loader: DatabaoContextPluginLoader,
     datasource_id: DatasourceId,
     sql: str,
     params: list[Any] | None = None,
@@ -28,7 +29,6 @@ def run_sql(
     if not isinstance(prepared, PreparedConfig):
         raise NotSupportedError("SQL execution is only supported for config-backed datasources")
 
-    loader = DatabaoContextPluginLoader()
     plugin = loader.get_plugin_for_datasource_type(prepared.datasource_type)
     if not isinstance(plugin, SqlRunnablePlugin):
         raise NotSupportedError("Plugin doesn't support SQL execution")

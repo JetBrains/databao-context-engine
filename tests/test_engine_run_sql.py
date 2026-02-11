@@ -3,6 +3,7 @@ import pytest
 from databao_context_engine import DatabaoContextEngine, DatasourceId
 from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.pluginlib.build_plugin import (
+    BuildPlugin,
     DatasourceType,
     DefaultBuildDatasourcePlugin,
     NotSupportedError,
@@ -41,30 +42,16 @@ class DummyNonSqlPlugin(DefaultBuildDatasourcePlugin):
 
 
 def _plugins_map_with(*plugins):
-    mapping: dict[DatasourceType, object] = {}
+    mapping: dict[DatasourceType, BuildPlugin] = {}
     for p in plugins:
         for t in p.supported_types():
             mapping[DatasourceType(full_type=t)] = p
     return mapping
 
 
-@pytest.fixture
-def patch_plugins(mocker):
-    def _apply(plugins_map):
-        mocker.patch(
-            "databao_context_engine.plugin_loader.load_plugins",
-            new=lambda: plugins_map,
-        )
-        return DatabaoContextPluginLoader()
-
-    return _apply
-
-
-def test_engine_run_sql_happy_path(project_path, patch_plugins):
+def test_engine_run_sql_happy_path(project_path):
     plugins_map = _plugins_map_with(DummySqlPlugin())
-    patch_plugins(plugins_map)
-
-    engine = DatabaoContextEngine(project_dir=project_path)
+    engine = DatabaoContextEngine(project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
     given_datasource_config_file(
         engine._project_layout,
         datasource_name="databases/my_ds",
@@ -79,7 +66,7 @@ def test_engine_run_sql_happy_path(project_path, patch_plugins):
     assert res.rows and isinstance(res.rows[0], tuple)
 
 
-def test_engine_run_sql_params_passthrough(project_path, patch_plugins):
+def test_engine_run_sql_params_passthrough(project_path):
     received = {}
 
     class CapturingSqlPlugin(DummySqlPlugin):
@@ -91,9 +78,7 @@ def test_engine_run_sql_params_passthrough(project_path, patch_plugins):
             return super().run_sql(file_config, sql, params, read_only)
 
     plugins_map = _plugins_map_with(CapturingSqlPlugin())
-    patch_plugins(plugins_map)
-
-    engine = DatabaoContextEngine(project_dir=project_path)
+    engine = DatabaoContextEngine(project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
     given_datasource_config_file(
         engine._project_layout,
         datasource_name="databases/my_ds2",
@@ -108,11 +93,9 @@ def test_engine_run_sql_params_passthrough(project_path, patch_plugins):
     assert received["params"] == params
 
 
-def test_engine_run_sql_unsupported_plugin(project_path, patch_plugins):
+def test_engine_run_sql_unsupported_plugin(project_path):
     plugins_map = _plugins_map_with(DummyNonSqlPlugin())
-    patch_plugins(plugins_map)
-
-    engine = DatabaoContextEngine(project_dir=project_path)
+    engine = DatabaoContextEngine(project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
     given_datasource_config_file(
         engine._project_layout,
         datasource_name="databases/no_sql",
