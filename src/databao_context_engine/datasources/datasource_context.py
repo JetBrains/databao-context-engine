@@ -68,8 +68,8 @@ def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Data
     result = []
     all_introspected_datasource_ids = _get_datasources_with_context(project_layout)
     for datasource_id in all_introspected_datasource_ids:
+        context_file = datasource_id.absolute_path_to_context_file(project_layout)
         try:
-            context_file = datasource_id.absolute_path_to_context_file(project_layout)
             result.append(
                 Datasource(
                     id=datasource_id,
