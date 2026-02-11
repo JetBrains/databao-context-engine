@@ -108,8 +108,13 @@ class DatabaoContextProjectManager:
             wanted_paths = {d.datasource_path for d in datasource_ids}
             contexts = [c for c in contexts if c.datasource_id.datasource_path in wanted_paths]
 
+        project_config = self._project_layout.read_config_file()
         return index_built_contexts(
-            project_layout=self._project_layout, contexts=contexts, chunk_embedding_mode=chunk_embedding_mode
+            project_layout=self._project_layout,
+            contexts=contexts,
+            chunk_embedding_mode=chunk_embedding_mode,
+            ollama_model_id=project_config.ollama_model_id,
+            ollama_model_dim=project_config.ollama_model_dim,
         )
 
     def check_datasource_connection(

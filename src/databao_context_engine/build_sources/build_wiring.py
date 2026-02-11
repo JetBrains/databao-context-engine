@@ -74,6 +74,8 @@ def index_built_contexts(
     project_layout: ProjectLayout,
     contexts: list[DatasourceContext],
     chunk_embedding_mode: ChunkEmbeddingMode,
+    ollama_model_id: str | None = None,
+    ollama_model_dim: int | None = None,
 ) -> IndexSummary:
     """Index the contexts into the database.
 
@@ -92,7 +94,9 @@ def index_built_contexts(
 
     with open_duckdb_connection(db_path) as conn:
         ollama_service = create_ollama_service()
-        embedding_provider = create_ollama_embedding_provider(ollama_service)
+        embedding_provider = create_ollama_embedding_provider(
+            ollama_service, model_id=ollama_model_id, dim=ollama_model_dim
+        )
         description_provider = (
             create_ollama_description_provider(ollama_service)
             if chunk_embedding_mode.should_generate_description()

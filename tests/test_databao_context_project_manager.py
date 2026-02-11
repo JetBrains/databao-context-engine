@@ -148,6 +148,8 @@ def test_databao_context_project_manager__index_built_contexts_indexes_all_when_
         project_layout=pm._project_layout,
         contexts=[c1, c2],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        ollama_model_id=None,
+        ollama_model_dim=None,
     )
 
 
@@ -180,6 +182,8 @@ def test_databao_context_project_manager__index_built_contexts_filters_by_dataso
         project_layout=pm._project_layout,
         contexts=[c1, c3],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        ollama_model_id=None,
+        ollama_model_dim=None,
     )
 
 
