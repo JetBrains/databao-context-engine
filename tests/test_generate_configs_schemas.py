@@ -7,6 +7,8 @@ from tests.utils.dummy_build_plugin import (
     DummyBuildDatasourcePlugin,
     DummyDefaultDatasourcePlugin,
     DummyPluginWithNoConfigType,
+    DummyPluginWithOtherPydanticConfig,
+    DummyPluginWithSimplePydanticConfig,
     load_dummy_plugins,
 )
 
@@ -23,7 +25,7 @@ def test_generate_configs_schemas__all(mocker):
 
     results = _generate_json_schema_output_for_plugins(tuple(), None)
 
-    assert len(results) == 2
+    assert len(results) == 4
     assert next((result for result in results if DummyBuildDatasourcePlugin.id in result), None) is not None
     assert next((result for result in results if AdditionalDummyPlugin.id in result), None) is not None
 
@@ -72,7 +74,7 @@ def test_generate_configs_schemas__with_exclude(mocker):
 
     results = _generate_json_schema_output_for_plugins(tuple(), (DummyBuildDatasourcePlugin.id,))
 
-    assert len(results) == 1
+    assert len(results) == 3
     assert next((result for result in results if AdditionalDummyPlugin.id in result), None) is not None
 
 
@@ -87,6 +89,8 @@ def test_generate_configs_schemas__with_all_excluded(mocker):
                 AdditionalDummyPlugin.id,
                 DummyDefaultDatasourcePlugin.id,
                 DummyPluginWithNoConfigType.id,
+                DummyPluginWithSimplePydanticConfig.id,
+                DummyPluginWithOtherPydanticConfig.id,
             ),
         )
 
