@@ -59,6 +59,14 @@ class DatasourceId:
             return DatasourceKind.FILE
         raise ValueError("Unknown datasource kind %s" % self)
 
+    @property
+    def name(self) -> str:
+        match self.kind:
+            case DatasourceKind.CONFIG:
+                return self.datasource_path.split("/")[-1]
+            case DatasourceKind.FILE:
+                return (self.datasource_path + self.config_file_suffix).split("/")[-1]
+
     def __post_init__(self):
         if not self.datasource_path.strip():
             raise ValueError(f"Invalid DatasourceId ({str(self)}): datasource_path must not be empty")
