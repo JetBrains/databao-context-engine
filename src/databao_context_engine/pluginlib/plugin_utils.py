@@ -10,7 +10,6 @@ from databao_context_engine.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildFilePlugin,
     DatasourceType,
-    SqlRunnablePlugin,
 )
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 
@@ -82,9 +81,6 @@ def execute_sql_for_datasource(
     params: list[Any] | None = None,
     read_only: bool = True,
 ) -> SqlExecutionResult:
-    if not isinstance(plugin, SqlRunnablePlugin):
-        raise ValueError("Sql query execution can only be performed on SqlRunnablePlugin")
-
     validated_config = _validate_datasource_config_file(config, plugin)
 
     return plugin.run_sql(

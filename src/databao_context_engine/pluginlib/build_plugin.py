@@ -59,6 +59,23 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
         """
         raise NotSupportedError("This method is not implemented for this plugin")
 
+    def run_sql(
+        self,
+        file_config: T,
+        sql: str,
+        params: list[Any] | None = None,
+        read_only: bool = True,
+    ) -> SqlExecutionResult:
+        """Execute SQL against the datasource represented by `file_config`.
+
+        Implementations should honor `read_only=True` by default and refuse mutating statements
+        unless explicitly allowed.
+
+        Raises:
+            NotSupportedError: If the plugin doesn't support this method.
+        """
+        raise NotSupportedError("This method is not implemented for this plugin")
+
 
 class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):
     """Use this as a base class for plugins that don't need a specific config file type."""
@@ -91,23 +108,3 @@ class DatasourceType:
     """
 
     full_type: str
-
-
-@runtime_checkable
-class SqlRunnablePlugin[T](BuildDatasourcePlugin[T], Protocol):
-    def run_sql(
-        self,
-        file_config: T,
-        sql: str,
-        params: list[Any] | None = None,
-        read_only: bool = True,
-    ) -> SqlExecutionResult:
-        """Execute SQL against the datasource represented by `file_config`.
-
-        Implementations should honor `read_only=True` by default and refuse mutating statements
-        unless explicitly allowed.
-
-        Raises:
-            NotSupportedError: If the plugin doesn't support this method.
-        """
-        raise NotSupportedError("This method is not implemented for this plugin")
