@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 
-class SqlClass(Enum):
+class SqlQueryAccessType(Enum):
     READ_ONLY = "read_only"
     WRITE = "write"
     UNKNOWN = "unknown"
@@ -10,12 +10,12 @@ class SqlClass(Enum):
 
 @dataclass
 class SqlReadOnlyDecision:
-    classification: SqlClass
+    classification: SqlQueryAccessType
     reason: str | None = None
 
 
 def classify_sql(sql: str) -> SqlReadOnlyDecision:
-    return SqlReadOnlyDecision(classification=SqlClass.READ_ONLY)
+    return SqlReadOnlyDecision(classification=SqlQueryAccessType.READ_ONLY)
 
 
 def is_read_only_sql(sql: str) -> bool:
