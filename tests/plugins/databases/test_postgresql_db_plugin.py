@@ -609,9 +609,12 @@ def test_postgres_introspection_contract(create_db_schema, postgres_container: P
         )
 
 
-def _create_config_file_from_container(postgres_container_with_columns: PostgresContainer) -> Mapping[str, Any]:
+def _create_config_file_from_container(
+    postgres_container_with_columns: PostgresContainer, datasource_name: str | None = "file_name"
+) -> Mapping[str, Any]:
     return {
         "type": "databases/postgres",
+        "name": datasource_name,
         "connection": {
             "host": postgres_container_with_columns.get_container_host_ip(),
             "port": postgres_container_with_columns.get_exposed_port(postgres_container_with_columns.port),

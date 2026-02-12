@@ -9,7 +9,12 @@ from databao_context_engine.datasources.check_config import (
     check_datasource_connection,
 )
 from databao_context_engine.datasources.types import DatasourceId
-from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
+from databao_context_engine.pluginlib.build_plugin import (
+    AbstractConfigFile,
+    BuildDatasourcePlugin,
+    BuildPlugin,
+    DatasourceType,
+)
 from databao_context_engine.project.layout import ProjectLayout
 from tests.utils.dummy_build_plugin import (
     DummyDefaultDatasourcePlugin,
@@ -18,7 +23,7 @@ from tests.utils.project_creation import given_datasource_config_file
 
 
 @dataclass
-class ConfigToValidate:
+class ConfigToValidate(AbstractConfigFile):
     host: str
     port: int
 

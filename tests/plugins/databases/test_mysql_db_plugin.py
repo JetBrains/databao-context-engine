@@ -519,9 +519,12 @@ def test_mysql_samples_in_big(mysql_container_with_demo_schema, create_mysql_con
         )
 
 
-def _create_config_file_from_container(mysql: MySqlContainer) -> Mapping[str, Any]:
+def _create_config_file_from_container(
+    mysql: MySqlContainer, datasource_name: str | None = "file_name"
+) -> Mapping[str, Any]:
     return {
         "type": "databases/mysql",
+        "name": datasource_name,
         "connection": {
             "host": mysql.get_container_host_ip(),
             "port": int(mysql.get_exposed_port(mysql.port)),
