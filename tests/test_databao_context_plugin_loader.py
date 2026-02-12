@@ -25,6 +25,8 @@ def test_databao_context_plugin_loader__get_all_supported_datasource_types(plugi
         DatasourceType(full_type="no_config_type"),
         DatasourceType(full_type="dummy_db"),
         DatasourceType(full_type="dummy_default"),
+        DatasourceType(full_type="dummy_simple_pydantic"),
+        DatasourceType(full_type="dummy_other_pydantic"),
     }
 
 
@@ -38,6 +40,8 @@ def test_databao_context_plugin_loader__get_all_supported_datasource_types_exclu
         DatasourceType(full_type="dummy_default"),
         DatasourceType(full_type="dummy_db"),
         DatasourceType(full_type="additional_dummy_type"),
+        DatasourceType(full_type="dummy_simple_pydantic"),
+        DatasourceType(full_type="dummy_other_pydantic"),
     }
 
 

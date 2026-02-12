@@ -2,11 +2,13 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from databao_context_engine import (
     BuildDatasourceResult,
     ChunkEmbeddingMode,
     ConfiguredDatasource,
+    DatabaoContextPluginLoader,
     DatabaoContextProjectManager,
     Datasource,
     DatasourceContext,
@@ -14,7 +16,7 @@ from databao_context_engine import (
     DatasourceType,
 )
 from databao_context_engine.project.layout import get_output_dir
-from tests.utils.dummy_build_plugin import load_dummy_plugins
+from tests.utils.dummy_build_plugin import SimplePydanticConfig, load_dummy_plugins
 from tests.utils.project_creation import (
     given_datasource_config_file,
     given_raw_source_file,
@@ -29,6 +31,11 @@ def patch_load_plugins(mocker):
 @pytest.fixture(autouse=True)
 def use_test_db(create_db):
     pass
+
+
+@pytest.fixture()
+def dummy_plugins_by_type():
+    return load_dummy_plugins()
 
 
 def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
@@ -185,6 +192,126 @@ def test_databao_context_project_manager__index_built_contexts_filters_by_dataso
         ollama_model_id=None,
         ollama_model_dim=None,
     )
+
+
+def test_databao_context_project_manager__create_datasource_config__fails_invalid_config_content(
+    project_path, dummy_plugins_by_type
+):
+    project_manager = DatabaoContextProjectManager(
+        project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=dummy_plugins_by_type)
+    )
+
+    with pytest.raises(ValidationError) as e:
+        project_manager.create_datasource_config(
+            datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+            datasource_name="my_datasource",
+            config_content={
+                "a": "not_an_int",
+            },
+        )
+
+    validation_errors = e.value.errors()
+    assert len(validation_errors) == 2
+    assert len([error for error in validation_errors if error["type"] == "missing"]) == 1
+    assert len([error for error in validation_errors if error["type"] == "int_parsing"]) == 1
+
+
+def test_databao_context_project_manager__create_datasource_config__fails_invalid_config_content_non_validated(
+    project_path, dummy_plugins_by_type
+):
+    project_manager = DatabaoContextProjectManager(
+        project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=dummy_plugins_by_type)
+    )
+
+    configured_datasource = project_manager.create_datasource_config(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content={
+            "a": "not_an_int",
+        },
+        validate_config_content=False,
+    )
+
+    assert configured_datasource.datasource.id.absolute_path_to_config_file(project_manager._project_layout).is_file()
+    assert configured_datasource.config == {
+        "name": "my_datasource",
+        "type": "dummy_simple_pydantic",
+        "a": "not_an_int",
+    }
+
+
+def test_databao_context_project_manager__create_datasource_config__valid_config_content_dict(
+    project_path, dummy_plugins_by_type
+):
+    project_manager = DatabaoContextProjectManager(
+        project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=dummy_plugins_by_type)
+    )
+
+    configured_datasource = project_manager.create_datasource_config(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content={
+            "a": "12",
+            "b": "some string",
+        },
+    )
+
+    assert configured_datasource.datasource.id.absolute_path_to_config_file(project_manager._project_layout).is_file()
+    assert configured_datasource.config == {
+        "name": "my_datasource",
+        "type": "dummy_simple_pydantic",
+        "a": "12",
+        "b": "some string",
+    }
+
+
+def test_databao_context_project_manager__create_datasource_config__valid_config_content_from_config_type(
+    project_path, dummy_plugins_by_type
+):
+    project_manager = DatabaoContextProjectManager(
+        project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=dummy_plugins_by_type)
+    )
+
+    configured_datasource = project_manager.create_datasource_config(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content=SimplePydanticConfig(
+            name="my_datasource",
+            a=12,
+            b="some string",
+        ),
+    )
+
+    assert configured_datasource.datasource.id.absolute_path_to_config_file(project_manager._project_layout).is_file()
+    assert configured_datasource.config == {
+        "name": "my_datasource",
+        "type": "dummy_simple_pydantic",
+        "a": 12,
+        "b": "some string",
+    }
+
+
+def test_databao_context_project_manager__create_datasource_config__wrong_config_content_type_for_plugin(
+    project_path, dummy_plugins_by_type
+):
+    project_manager = DatabaoContextProjectManager(
+        project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=dummy_plugins_by_type)
+    )
+
+    with pytest.raises(ValidationError) as e:
+        project_manager.create_datasource_config(
+            datasource_type=DatasourceType(full_type="dummy_other_pydantic"),
+            datasource_name="my_datasource",
+            config_content=SimplePydanticConfig(
+                name="my_datasource",
+                a=12,
+                b="some string",
+            ),
+        )
+
+    validation_errors = e.value.errors()
+    assert len(validation_errors) == 1
+    assert validation_errors[0]["type"] == "model_type"
 
 
 def assert_build_context_result(
