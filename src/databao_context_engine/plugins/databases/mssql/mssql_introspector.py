@@ -1,36 +1,13 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, Mapping
+from typing import Any, Mapping
 
 from mssql_python import connect  # type: ignore[import-untyped]
-from pydantic import BaseModel, Field
 
-from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
-from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema, DatabaseTable
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
-
-
-class MSSQLConnectionProperties(BaseModel):
-    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
-    port: int | None = None
-    instance_name: str | None = None
-    database: str | None = None
-    user: str | None = None
-    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
-    encrypt: str | None = None
-    additional_properties: dict[str, Any] = {}
-
-    def to_mssql_kwargs(self) -> dict[str, Any]:
-        kwargs = self.model_dump(exclude={"additional_properties"}, exclude_none=True)
-        kwargs.update(self.additional_properties)
-        return kwargs
-
-
-class MSSQLConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="mssql")
-    connection: MSSQLConnectionProperties
+from databao_context_engine.plugins.databases.mssql.config_file import MSSQLConfigFile
 
 
 class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):

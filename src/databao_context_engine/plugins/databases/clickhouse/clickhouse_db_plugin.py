@@ -1,8 +1,8 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
 from databao_context_engine.plugins.databases.clickhouse.clickhouse_introspector import (
-    ClickhouseConfigFile,
     ClickhouseIntrospector,
 )
+from databao_context_engine.plugins.databases.clickhouse.config_file import ClickhouseConfigFile
 
 
 class ClickhouseDbPlugin(BaseDatabasePlugin[ClickhouseConfigFile]):
