@@ -42,10 +42,15 @@ def create_ollama_service(
 def create_ollama_embedding_provider(
     service: OllamaService,
     *,
-    model_id: str = DEFAULT_EMBED_MODEL_ID,
-    dim: int = 768,
+    model_id: str | None = None,
+    dim: int | None = None,
     pull_if_needed: bool = True,
 ) -> OllamaEmbeddingProvider:
+    if model_id is None:
+        model_id = DEFAULT_EMBED_MODEL_ID
+    if dim is None:
+        dim = 768
+
     if pull_if_needed:
         service.pull_model_if_needed(model=model_id, timeout=900)
 

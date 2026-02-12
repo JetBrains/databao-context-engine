@@ -70,6 +70,7 @@ def test_loaded_plugins_all_extras():
         "jetbrains/duckdb",
         "jetbrains/mssql",
         "jetbrains/mysql",
+        "jetbrains/pdf",
         "jetbrains/postgres",
         "jetbrains/snowflake",
         "jetbrains/parquet",

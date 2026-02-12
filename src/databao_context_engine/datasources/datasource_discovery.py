@@ -6,8 +6,8 @@ from typing import Any
 import yaml
 
 from databao_context_engine.datasources.types import (
+    ConfiguredDatasource,
     Datasource,
-    DatasourceDescriptor,
     DatasourceId,
     DatasourceKind,
     PreparedConfig,
@@ -21,27 +21,31 @@ from databao_context_engine.templating.renderer import render_template
 logger = logging.getLogger(__name__)
 
 
-def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
+def get_datasource_list(project_layout: ProjectLayout) -> list[ConfiguredDatasource]:
     result = []
-    for discovered_datasource in discover_datasources(project_layout=project_layout):
+    for datasource_id in discover_datasources(project_layout=project_layout):
+        datasource_path = datasource_id.relative_path_to_config_file()
         try:
-            prepared_source = prepare_source(discovered_datasource)
+            prepared_source = prepare_source(project_layout, datasource_id)
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
-            logger.info(f"Invalid source at ({discovered_datasource.path}): {str(e)}")
+            logger.info(f"Invalid source at ({datasource_path}): {str(e)}")
             continue
 
         result.append(
-            Datasource(
-                id=DatasourceId.from_datasource_config_file_path(project_layout, discovered_datasource.path),
-                type=prepared_source.datasource_type,
+            ConfiguredDatasource(
+                datasource=Datasource(
+                    id=datasource_id,
+                    type=prepared_source.datasource_type,
+                ),
+                config=prepared_source.config if isinstance(prepared_source, PreparedConfig) else None,
             )
         )
 
     return result
 
 
-def discover_datasources(project_layout: ProjectLayout) -> list[DatasourceDescriptor]:
+def discover_datasources(project_layout: ProjectLayout) -> list[DatasourceId]:
     """Scan the project's src/ directory and return all discovered sources.
 
     Rules:
@@ -53,17 +57,17 @@ def discover_datasources(project_layout: ProjectLayout) -> list[DatasourceDescri
         project_layout: ProjectLayout instance representing the project directory and configuration.
 
     Returns:
-        A list of DatasourceDescriptor instances representing the discovered datasources.
+        A list of DatasourceId representing the discovered datasources.
     """
-    datasources: list[DatasourceDescriptor] = []
+    datasource_ids: list[DatasourceId] = []
     for dirpath, dirnames, filenames in os.walk(project_layout.src_dir):
         for config_file_name in filenames:
             context_file = Path(dirpath).joinpath(config_file_name)
-            datasource = _load_datasource_descriptor(project_layout, context_file)
-            if datasource is not None:
-                datasources.append(datasource)
+            datasource_id = _load_datasource_id(project_layout, context_file)
+            if datasource_id is not None:
+                datasource_ids.append(datasource_id)
 
-    return sorted(datasources, key=lambda ds: str(ds.datasource_id.relative_path_to_config_file()).lower())
+    return sorted(datasource_ids, key=lambda id: str(id.relative_path_to_config_file()).lower())
 
 
 def _is_datasource_file(p: Path) -> bool:
@@ -71,73 +75,59 @@ def _is_datasource_file(p: Path) -> bool:
     return p.is_file() and not p.suffix.endswith("~")
 
 
-def get_datasource_descriptors(
-    project_layout: ProjectLayout, datasource_ids: list[DatasourceId]
-) -> list[DatasourceDescriptor]:
-    datasources: list[DatasourceDescriptor] = []
+def validate_datasource_ids(project_layout: ProjectLayout, datasource_ids: list[DatasourceId]) -> list[DatasourceId]:
     for datasource_id in sorted(datasource_ids, key=lambda id: str(id)):
         config_file_path = project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
         if not config_file_path.is_file():
             raise ValueError(f"Datasource config file not found: {config_file_path}")
 
-        datasource = _load_datasource_descriptor(project_layout, config_file_path)
-        if datasource is not None:
-            datasources.append(datasource)
+    def _is_datasource_id_valid(datasource_id: DatasourceId) -> bool:
+        config_file_path = project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
+        return _is_valid_config_file(config_file_path)
 
-    return datasources
+    return [datasource_id for datasource_id in datasource_ids if _is_datasource_id_valid(datasource_id)]
 
 
-def _load_datasource_descriptor(project_layout: ProjectLayout, config_file: Path) -> DatasourceDescriptor | None:
-    """Load a single file with src/<parent_name>/ into a DatasourceDescriptor."""
-    if not config_file.is_file():
+def _load_datasource_id(project_layout: ProjectLayout, config_file: Path) -> DatasourceId | None:
+    if not _is_valid_config_file(config_file):
+        logger.debug("Skipping config file: %s", config_file)
         return None
 
-    parent_name = config_file.parent.name
-    extension = config_file.suffix.lower().lstrip(".")
-    relative_config_file = config_file.relative_to(project_layout.src_dir)
-
-    if parent_name == "files" and len(relative_config_file.parts) == 2:
-        datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.FILE)
-
-    if extension in {"yaml", "yml"}:
-        datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.CONFIG)
-
-    if extension:
-        datasource_id = DatasourceId.from_datasource_config_file_path(project_layout, config_file)
-        return DatasourceDescriptor(datasource_id=datasource_id, path=config_file.resolve(), kind=DatasourceKind.FILE)
-
-    logger.debug("Skipping file without extension: %s", config_file)
-    return None
+    return DatasourceId.from_datasource_config_file_path(project_layout, config_file)
 
 
-def prepare_source(datasource: DatasourceDescriptor) -> PreparedDatasource:
+def _is_valid_config_file(config_file: Path) -> bool:
+    if config_file.suffix.lower().lstrip("."):
+        return config_file.is_file()
+    return False
+
+
+def prepare_source(project_layout: ProjectLayout, datasource_id: DatasourceId) -> PreparedDatasource:
     """Convert a discovered datasource into a prepared datasource ready for plugin execution."""
-    if datasource.kind is DatasourceKind.FILE:
-        file_subtype = datasource.path.suffix.lower().lstrip(".")
+    if datasource_id.kind is DatasourceKind.FILE:
+        file_subtype = datasource_id.config_file_suffix.lower().lstrip(".")
         return PreparedFile(
-            datasource_id=datasource.datasource_id,
+            datasource_id=datasource_id,
             datasource_type=DatasourceType(full_type=file_subtype),
-            path=datasource.path,
         )
 
-    config = _parse_config_file(datasource.path)
+    absolute_datasource_path = datasource_id.absolute_path_to_config_file(project_layout)
+    config = _parse_config_file(absolute_datasource_path)
 
+    datasource_path = datasource_id.relative_path_to_config_file()
     ds_type = config.get("type")
     if not ds_type or not isinstance(ds_type, str):
-        raise ValueError("Config missing 'type' at %s - skipping", datasource.path)
+        raise ValueError("Config missing 'type' at %s - skipping", datasource_path)
 
     return PreparedConfig(
-        datasource_id=datasource.datasource_id,
+        datasource_id=datasource_id,
         datasource_type=DatasourceType(full_type=ds_type),
-        path=datasource.path,
         config=config,
-        datasource_name=datasource.path.stem,
+        datasource_name=datasource_path.stem,
     )
 
 
-def _parse_config_file(file_path: Path) -> dict[Any, Any]:
+def _parse_config_file(file_path: Path) -> dict[str, Any]:
     rendered_file = render_template(file_path.read_text())
 
     return yaml.safe_load(rendered_file) or {}

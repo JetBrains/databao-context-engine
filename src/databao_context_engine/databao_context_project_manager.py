@@ -1,8 +1,9 @@
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, overload
 
-from databao_context_engine.build_sources import BuildContextResult, build_all_datasources
+from databao_context_engine import BuildDatasourceResult, IndexDatasourceResult
+from databao_context_engine.build_sources import build_all_datasources
+from databao_context_engine.build_sources.build_wiring import index_built_contexts
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
@@ -10,8 +11,9 @@ from databao_context_engine.datasources.check_config import (
 from databao_context_engine.datasources.check_config import (
     check_datasource_connection as check_datasource_connection_internal,
 )
+from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
-from databao_context_engine.datasources.types import Datasource, DatasourceId
+from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import (
     ProjectLayout,
@@ -22,19 +24,6 @@ from databao_context_engine.project.layout import (
 )
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
-
-
-@dataclass
-class DatasourceConfigFile:
-    """A datasource config file that was created by the DatabaoContextProjectManager.
-
-    Attributes:
-        datasource_id: The unique identifier for the datasource.
-        config_file_path: The path to the datasource configuration file.
-    """
-
-    datasource_id: DatasourceId
-    config_file_path: Path
 
 
 class DatabaoContextProjectManager:
@@ -59,7 +48,7 @@ class DatabaoContextProjectManager:
         self._project_layout = ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
 
-    def get_configured_datasource_list(self) -> list[Datasource]:
+    def get_configured_datasource_list(self) -> list[ConfiguredDatasource]:
         """Return the list of datasources configured in the project.
 
         This method returns all datasources configured in the src folder of the project,
@@ -74,7 +63,9 @@ class DatabaoContextProjectManager:
         self,
         datasource_ids: list[DatasourceId] | None = None,
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
-    ) -> list[BuildContextResult]:
+        *,
+        should_index: bool = True,
+    ) -> list[BuildDatasourceResult]:
         """Build the context for datasources in the project.
 
         Any datasource with an invalid configuration will be skipped.
@@ -82,12 +73,53 @@ class DatabaoContextProjectManager:
         Args:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
             chunk_embedding_mode: The mode to use for chunk embedding.
+            should_index: Whether to build a semantic index for the context.
 
         Returns:
             The list of all built results.
         """
         # TODO: Filter which datasources to build by datasource_ids
-        return build_all_datasources(project_layout=self._project_layout, chunk_embedding_mode=chunk_embedding_mode)
+        project_config = self._project_layout.read_config_file()
+        return build_all_datasources(
+            project_layout=self._project_layout,
+            chunk_embedding_mode=chunk_embedding_mode,
+            generate_embeddings=should_index,
+            ollama_model_id=project_config.ollama_model_id,
+            ollama_model_dim=project_config.ollama_model_dim,
+        )
+
+    def index_built_contexts(
+        self,
+        datasource_ids: list[DatasourceId] | None = None,
+        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+    ) -> list[IndexDatasourceResult]:
+        """Index built datasource contexts into the embeddings database.
+
+        It reads already built context files from the output directory, chunks them using the appropriate plugin,
+        embeds the chunks and persists both the chunks and embeddings.
+
+        Args:
+            datasource_ids: The list of datsource ids to index. If None, all datsources will be indexed.
+            chunk_embedding_mode: The mode to use for chunk embedding.
+
+        Returns:
+            The summary of the index operation.
+        """
+        engine: DatabaoContextEngine = self.get_engine_for_project()
+        contexts: list[DatasourceContext] = engine.get_all_contexts()
+
+        if datasource_ids is not None:
+            wanted_paths = {d.datasource_path for d in datasource_ids}
+            contexts = [c for c in contexts if c.datasource_id.datasource_path in wanted_paths]
+
+        project_config = self._project_layout.read_config_file()
+        return index_built_contexts(
+            project_layout=self._project_layout,
+            contexts=contexts,
+            chunk_embedding_mode=chunk_embedding_mode,
+            ollama_model_id=project_config.ollama_model_id,
+            ollama_model_dim=project_config.ollama_model_dim,
+        )
 
     def check_datasource_connection(
         self, datasource_ids: list[DatasourceId] | None = None
@@ -113,7 +145,7 @@ class DatabaoContextProjectManager:
         datasource_name: str,
         config_content: dict[str, Any],
         overwrite_existing: bool = False,
-    ) -> DatasourceConfigFile:
+    ) -> ConfiguredDatasource:
         """Create a new datasource configuration file in the project.
 
         Args:
@@ -127,17 +159,12 @@ class DatabaoContextProjectManager:
             The path to the created datasource configuration file.
         """
         # TODO: Before creating the datasource, validate the config content based on which plugin will be used
-        config_file = _create_datasource_config_file(
+        return _create_datasource_config_file(
             project_layout=self._project_layout,
             datasource_type=datasource_type,
             datasource_name=datasource_name,
             config_content=config_content,
             overwrite_existing=overwrite_existing,
-        )
-
-        return DatasourceConfigFile(
-            datasource_id=DatasourceId.from_datasource_config_file_path(self._project_layout, config_file),
-            config_file_path=config_file,
         )
 
     @overload
@@ -182,6 +209,17 @@ class DatabaoContextProjectManager:
         except ValueError:
             return None
 
+    def get_config_file_path_for_datasource(self, datasource_id: DatasourceId) -> Path:
+        """Return the path to the config file (or to the raw file) for the given datasource id.
+
+        Args:
+              datasource_id: The datasource id we need the config file path for.
+
+        Returns:
+              The path to the config file (or to the raw file) for the given datasource id.
+        """
+        return datasource_id.absolute_path_to_config_file(self._project_layout)
+
     def get_engine_for_project(self) -> DatabaoContextEngine:
         """Instantiate a DatabaoContextEngine for the project.
 
@@ -197,13 +235,22 @@ def _create_datasource_config_file(
     datasource_name: str,
     config_content: dict[str, Any],
     overwrite_existing: bool,
-) -> Path:
+) -> ConfiguredDatasource:
     last_datasource_name = datasource_name.split("/")[-1]
     basic_config = {"type": datasource_type.full_type, "name": last_datasource_name}
 
-    return create_datasource_config_file_internal(
+    actual_config_content = basic_config | config_content
+    config_file = create_datasource_config_file_internal(
         project_layout,
         f"{datasource_name}.yaml",
-        to_yaml_string(basic_config | config_content),
+        to_yaml_string(actual_config_content),
         overwrite_existing=overwrite_existing,
+    )
+
+    return ConfiguredDatasource(
+        datasource=Datasource(
+            id=DatasourceId.from_datasource_config_file_path(project_layout, config_file),
+            type=datasource_type,
+        ),
+        config=actual_config_content,
     )

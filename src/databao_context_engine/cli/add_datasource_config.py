@@ -39,13 +39,15 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
         plugin_loader.get_config_file_structure_for_datasource_type(datasource_type)
     )
 
-    config_file = project_manager.create_datasource_config(
+    created_datasource = project_manager.create_datasource_config(
         datasource_type, datasource_name, config_content, overwrite_existing=True
     )
 
-    click.echo(f"{os.linesep}We've created a new config file for your datasource at: {config_file.config_file_path}")
+    click.echo(
+        f"{os.linesep}We've created a new config file for your datasource at: {project_manager.get_config_file_path_for_datasource(created_datasource.datasource.id)}"
+    )
 
-    return config_file.datasource_id
+    return created_datasource.datasource.id
 
 
 def _ask_for_datasource_type(supported_datasource_types: set[DatasourceType]) -> DatasourceType:

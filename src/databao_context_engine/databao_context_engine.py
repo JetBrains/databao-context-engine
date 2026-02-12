@@ -114,8 +114,14 @@ class DatabaoContextEngine:
         Returns:
             A list of the results found for the search, sorted by distance.
         """
+        project_config = self._project_layout.read_config_file()
         results = retrieve_embeddings(
-            project_layout=self._project_layout, retrieve_text=retrieve_text, limit=limit, datasource_ids=datasource_ids
+            project_layout=self._project_layout,
+            retrieve_text=retrieve_text,
+            limit=limit,
+            datasource_ids=datasource_ids,
+            ollama_model_id=project_config.ollama_model_id,
+            ollama_model_dim=project_config.ollama_model_dim,
         )
 
         return [

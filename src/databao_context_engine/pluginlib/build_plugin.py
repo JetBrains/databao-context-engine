@@ -22,6 +22,7 @@ class EmbeddableChunk:
 class BaseBuildPlugin(Protocol):
     id: str
     name: str
+    context_type: type[Any]
 
     def supported_types(self) -> set[str]: ...
 

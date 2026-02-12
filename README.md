@@ -171,6 +171,94 @@ you can still use the context built by Databao Context Engine by pasting it dire
 
 1. Attach the `all_results.yaml` file to your chat with the AI assistant or copy and paste its contents into your chat.
 
+## API Usage
+
+### 1. Create a project
+
+```python
+# Initialise the project in an existing directory
+from databao_context_engine import init_dce_project
+project_manager = init_dce_project(Path(tempfile.mkdtemp()))
+
+# Or use an existing project
+from databao_context_engine import DatabaoContextProjectManager
+project_manager = DatabaoContextProjectManager(project_dir=Path("path/to/project"))
+```
+
+### 2. Configure data sources
+
+```python
+from databao_context_engine import (
+    DatasourceConnectionStatus,
+    DatasourceType,
+)
+
+# Create a new datasource
+postgres_datasource_id = project_manager.create_datasource_config(
+    DatasourceType(full_type="postgres"),
+    datasource_name="my_postgres_datasource",
+    config_content={
+        "connection": {"host": "localhost", "user": "dev", "password": "pass"}
+    },
+).datasource.id
+
+# Check the connection to the datasource is valid
+check_result = project_manager.check_datasource_connection()
+
+assert len(check_result) == 1
+assert check_result[0].datasource_id == postgres_datasource_id
+assert check_result[0].connection_status == DatasourceConnectionStatus.VALID
+```
+
+### 3. Build context
+
+```python
+build_result = project_manager.build_context()
+
+assert len(build_result) == 1
+assert build_result[0].datasource_id == postgres_datasource_id
+assert build_result[0].datasource_type == DatasourceType(full_type="postgres")
+assert build_result[0].context_file_path.is_file()
+```
+
+### 4. Use the built contexts
+
+#### Create a context engine
+
+```python
+# Switch to the engine if you're already using a project_manager
+context_engine = project_manager.get_engine_for_project()
+
+# Or directly create a context engine from the path to your DCE project
+from databao_context_engine import DatabaoContextEngine
+context_engine = DatabaoContextEngine(project_dir=Path("path/to/project"))
+```
+
+#### Get all built contexts
+
+```python
+# Switch to the engine to use the context built
+all_built_contexts = context_engine.get_all_contexts()
+assert len(all_built_contexts) == 1
+assert all_built_contexts[0].datasource_id == postgres_datasource_id
+
+print(all_built_contexts[0].context)
+```
+
+#### Search in built contexts
+
+```python
+# Run a vector similarity search
+results = context_engine.search_context("my search query")
+
+print(f"Found {len(results)} results for query")
+print(
+    "\n\n".join(
+        [f"{str(result.datasource_id)}\n{result.context_result}" for result in results]
+    )
+)
+```
+
 ##  Contributing
 
 We’d love your help! Here’s how to get involved:
@@ -198,5 +286,5 @@ Apache 2.0 — use it however you want. See the [LICENSE](LICENSE.md) file for d
 
 <p align="center">
  <a href="https://databao.app">Website</a> •
- <a href="https://discord.gg/databao">Discord</a>
+ <a href="https://discord.gg/hEUqCcWdVh">Discord</a>
 </p>

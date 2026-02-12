@@ -13,18 +13,10 @@ class DatasourceKind(StrEnum):
 
 
 @dataclass(frozen=True)
-class DatasourceDescriptor:
-    datasource_id: "DatasourceId"
-    path: Path
-    kind: DatasourceKind
-
-
-@dataclass(frozen=True)
 class PreparedConfig:
     datasource_id: "DatasourceId"
     datasource_type: DatasourceType
-    path: Path
-    config: dict[Any, Any]
+    config: dict[str, Any]
     datasource_name: str
 
 
@@ -32,7 +24,6 @@ class PreparedConfig:
 class PreparedFile:
     datasource_id: "DatasourceId"
     datasource_type: DatasourceType
-    path: Path
 
 
 PreparedDatasource = PreparedConfig | PreparedFile
@@ -56,6 +47,17 @@ class DatasourceId:
 
     datasource_path: str
     config_file_suffix: str
+
+    @property
+    def kind(self) -> DatasourceKind:
+        parts = self.datasource_path.split("/")
+        if len(parts) == 2 and parts[0] == "files":
+            return DatasourceKind.FILE
+        if self.config_file_suffix in {".yaml", ".yml"}:
+            return DatasourceKind.CONFIG
+        if self.config_file_suffix:
+            return DatasourceKind.FILE
+        raise ValueError("Unknown datasource kind %s" % self)
 
     def __post_init__(self):
         if not self.datasource_path.strip():
@@ -84,6 +86,17 @@ class DatasourceId:
         """
         return Path(self.datasource_path + self.config_file_suffix)
 
+    def absolute_path_to_config_file(self, project_layout: ProjectLayout) -> Path:
+        """Return an absolute path to the config file for this datasource.
+
+        Args:
+            project_layout: The databao context engine project layout.
+
+        Returns:
+            The absolute path to the config file.
+        """
+        return project_layout.src_dir / self.relative_path_to_config_file()
+
     def relative_path_to_context_file(self) -> Path:
         """Return a path to the config file for this datasource.
 
@@ -100,6 +113,17 @@ class DatasourceId:
         )
 
         return Path(self.datasource_path + suffix)
+
+    def absolute_path_to_context_file(self, project_layout: ProjectLayout) -> Path:
+        """Return an absolute path to the context file for this datasource.
+
+        Args:
+            project_layout: The databao context engine project layout.
+
+        Returns:
+            The absolute path to the context file.
+        """
+        return project_layout.output_dir / self.relative_path_to_context_file()
 
     @classmethod
     def from_string_repr(cls, datasource_id_as_string: str) -> "DatasourceId":
@@ -192,3 +216,16 @@ class Datasource:
 
     id: DatasourceId
     type: DatasourceType
+
+
+@dataclass
+class ConfiguredDatasource:
+    """A datasource configured in the project.
+
+    Attributes:
+        datasource: An object describing the datasource.
+        config: The config dictionary for the datasource, or None if the datasource is a raw file.
+    """
+
+    datasource: Datasource
+    config: dict[str, Any] | None

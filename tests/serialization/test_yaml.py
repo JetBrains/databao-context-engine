@@ -75,7 +75,7 @@ dataclass:
   my_str: hello
   my_nested_class:
     nested_var: nested
-    enum_value: MyEnum.KEY_2
+    enum_value: VALUE_2
   my_int: 12
   my_uuid: {str(my_uuid)}
   my_date: {now.isoformat(" ")}

@@ -12,6 +12,7 @@ from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector
 from databao_context_engine.plugins.databases.database_chunker import build_database_chunks
+from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
 
 
@@ -30,6 +31,7 @@ T = TypeVar("T", bound=BaseDatabaseConfigFile)
 class BaseDatabasePlugin(BuildDatasourcePlugin[T]):
     name: str
     supported: set[str]
+    context_type = DatabaseIntrospectionResult
 
     def __init__(self, introspector: BaseIntrospector):
         self._introspector = introspector

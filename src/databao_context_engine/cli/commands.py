@@ -1,7 +1,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Sequence
 
 import click
 from click import Context
@@ -11,6 +11,7 @@ from databao_context_engine import (
     DatabaoContextEngine,
     DatabaoContextProjectManager,
     DatasourceId,
+    DatasourceStatus,
     InitErrorReason,
     InitProjectError,
     init_dce_project,
@@ -157,12 +158,19 @@ def run_sql_query(ctx: Context, datasource_config_file: str, sql: str) -> None:
     default="embeddable_text_only",
     help="Choose how chunks will be embedded. If a mode with the generated_description is selected, a local LLM model will be downloaded and used.",
 )
+@click.option(
+    "--should-index/--should-not-index",
+    default=True,
+    show_default=True,
+    help="Whether to index the context. If disabled, the context will be built but not indexed.",
+)
 @click.pass_context
 def build(
     ctx: Context,
     chunk_embedding_mode: Literal[
         "embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"
     ],
+    should_index: bool,
 ) -> None:
     """Build context for all datasources.
 
@@ -170,11 +178,47 @@ def build(
 
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
-    result = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
-        datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper())
+    results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
+        datasource_ids=None,
+        chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()),
+        should_index=should_index,
     )
 
-    click.echo(f"Build complete. Processed {len(result)} datasources.")
+    _echo_operation_result(
+        heading="Build complete",
+        verb="Processed",
+        noun="datasource(s)",
+        results=results,
+    )
+
+
+@dce.command()
+@click.argument(
+    "datasources-config-files",
+    nargs=-1,
+    type=click.STRING,
+)
+@click.pass_context
+def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
+    """Index and create embeddings for built context files into duckdb.
+
+    If one or more datasource config files are provided, only those datasources will be indexed.
+    If no paths are provided, all built contexts found in the output directory will be indexed.
+    """
+    datasource_ids = (
+        [DatasourceId.from_string_repr(p) for p in datasources_config_files] if datasources_config_files else None
+    )
+
+    results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
+        datasource_ids=datasource_ids
+    )
+
+    _echo_operation_result(
+        heading="Indexing complete",
+        verb="Indexed",
+        noun="datasource(s)",
+        results=results,
+    )
 
 
 @dce.command()
@@ -258,3 +302,37 @@ def mcp(ctx: Context, host: str | None, port: int | None, transport: McpTranspor
     if transport == "stdio":
         configure_logging(verbose=False, quiet=True, project_dir=ctx.obj["project_dir"])
     run_mcp_server(project_dir=ctx.obj["project_dir"], transport=transport, host=host, port=port)
+
+
+def _echo_operation_result(
+    *,
+    heading: str,
+    verb: str,
+    noun: str,
+    results: Sequence,
+) -> None:
+    total = len(results)
+    ok = sum(1 for r in results if r.status == DatasourceStatus.OK)
+    skipped = sum(1 for r in results if r.status == DatasourceStatus.SKIPPED)
+    failed = sum(1 for r in results if r.status == DatasourceStatus.FAILED)
+
+    suffix_parts: list[str] = []
+    if skipped:
+        suffix_parts.append(f"skipped {skipped}")
+    if failed:
+        suffix_parts.append(f"failed {failed}")
+
+    suffix = f" ({', '.join(suffix_parts)})" if suffix_parts else ""
+    click.echo(f"{heading}. {verb} {ok}/{total} {noun}{suffix}.")
+    if failed == 0:
+        return
+
+    failed_results = [r for r in results if r.status == DatasourceStatus.FAILED]
+    if not failed_results:
+        return
+
+    click.echo("Failed:")
+    for r in failed_results:
+        datasource = r.datasource_id.relative_path_to_config_file()
+        message = (r.error or "").strip() or "(no error message)"
+        click.echo(f"  - {datasource}: {message}")

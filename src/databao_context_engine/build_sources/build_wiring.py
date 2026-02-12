@@ -2,8 +2,13 @@ import logging
 
 from duckdb import DuckDBPyConnection
 
-from databao_context_engine.build_sources.build_runner import BuildContextResult, build
+from databao_context_engine.build_sources.build_runner import (
+    build,
+    run_indexing,
+)
 from databao_context_engine.build_sources.build_service import BuildService
+from databao_context_engine.build_sources.types import BuildDatasourceResult, IndexDatasourceResult
+from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.factory import (
@@ -22,8 +27,12 @@ logger = logging.getLogger(__name__)
 
 
 def build_all_datasources(
-    project_layout: ProjectLayout, chunk_embedding_mode: ChunkEmbeddingMode
-) -> list[BuildContextResult]:
+    project_layout: ProjectLayout,
+    chunk_embedding_mode: ChunkEmbeddingMode,
+    generate_embeddings: bool = True,
+    ollama_model_id: str | None = None,
+    ollama_model_dim: int | None = None,
+) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
     - Instantiates the build service
@@ -45,7 +54,9 @@ def build_all_datasources(
     migrate(db_path)
     with open_duckdb_connection(db_path) as conn:
         ollama_service = create_ollama_service()
-        embedding_provider = create_ollama_embedding_provider(ollama_service)
+        embedding_provider = create_ollama_embedding_provider(
+            ollama_service, model_id=ollama_model_id, dim=ollama_model_dim
+        )
         description_provider = (
             create_ollama_description_provider(ollama_service)
             if chunk_embedding_mode.should_generate_description()
@@ -53,19 +64,63 @@ def build_all_datasources(
         )
         build_service = _create_build_service(
             conn,
+            project_layout=project_layout,
             embedding_provider=embedding_provider,
             description_provider=description_provider,
             chunk_embedding_mode=chunk_embedding_mode,
         )
         return build(
-            project_layout=project_layout,
-            build_service=build_service,
+            project_layout=project_layout, build_service=build_service, generate_embeddings=generate_embeddings
         )
+
+
+def index_built_contexts(
+    project_layout: ProjectLayout,
+    contexts: list[DatasourceContext],
+    chunk_embedding_mode: ChunkEmbeddingMode,
+    ollama_model_id: str | None = None,
+    ollama_model_dim: int | None = None,
+) -> list[IndexDatasourceResult]:
+    """Index the contexts into the database.
+
+    - Instantiates the build service
+    - If the database does not exist, it creates it.
+
+    Returns:
+        A list of all the contexts indexed.
+    """
+    logger.debug("Starting to index %d context(s) for project %s", len(contexts), project_layout.project_dir.resolve())
+
+    db_path = get_db_path(project_layout.project_dir)
+    if not db_path.exists():
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        migrate(db_path)
+
+    with open_duckdb_connection(db_path) as conn:
+        ollama_service = create_ollama_service()
+        embedding_provider = create_ollama_embedding_provider(
+            ollama_service, model_id=ollama_model_id, dim=ollama_model_dim
+        )
+        description_provider = (
+            create_ollama_description_provider(ollama_service)
+            if chunk_embedding_mode.should_generate_description()
+            else None
+        )
+
+        build_service = _create_build_service(
+            conn,
+            project_layout=project_layout,
+            embedding_provider=embedding_provider,
+            description_provider=description_provider,
+            chunk_embedding_mode=chunk_embedding_mode,
+        )
+        return run_indexing(project_layout=project_layout, build_service=build_service, contexts=contexts)
 
 
 def _create_build_service(
     conn: DuckDBPyConnection,
     *,
+    project_layout: ProjectLayout,
     embedding_provider: EmbeddingProvider,
     description_provider: DescriptionProvider | None,
     chunk_embedding_mode: ChunkEmbeddingMode,
@@ -78,5 +133,6 @@ def _create_build_service(
     )
 
     return BuildService(
+        project_layout=project_layout,
         chunk_embedding_service=chunk_embedding_service,
     )

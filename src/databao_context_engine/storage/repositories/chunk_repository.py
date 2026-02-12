@@ -108,6 +108,18 @@ class ChunkRepository:
         )
         return 1 if row else 0
 
+    def delete_by_datasource_id(self, *, datasource_id: str) -> int:
+        deleted = self._conn.execute(
+            """
+            DELETE FROM
+                chunk
+            WHERE
+                datasource_id = ?
+            """,
+            [datasource_id],
+        ).rowcount
+        return int(deleted or 0)
+
     def list(self) -> list[ChunkDTO]:
         rows = self._conn.execute(
             """
