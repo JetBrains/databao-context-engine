@@ -9,6 +9,7 @@ import duckdb
 from duckdb import DuckDBPyConnection
 from pydantic import BaseModel, Field
 
+from databao_context_engine.pluginlib.build_plugin import AbstractConfigFile
 from databao_context_engine.pluginlib.config import DuckDBSecret
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts, generate_create_secret_sql
 
@@ -17,8 +18,8 @@ parquet_type = "parquet"
 logger = logging.getLogger(__name__)
 
 
-class ParquetConfigFile(BaseModel):
-    name: str | None = Field(default=None)
+class ParquetConfigFile(BaseModel, AbstractConfigFile):
+    name: str
     type: str = Field(default="parquet")
     url: str = Field(
         description="Parquet resource location. Should be a valid URL or a path to a local file. "

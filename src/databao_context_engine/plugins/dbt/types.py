@@ -5,9 +5,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from databao_context_engine.pluginlib.build_plugin import AbstractConfigFile
 
-class DbtConfigFile(BaseModel):
-    name: str | None = Field(default=None)
+
+class DbtConfigFile(BaseModel, AbstractConfigFile):
+    name: str
     type: str = Field(default="dbt")
     dbt_target_folder_path: Path
 
