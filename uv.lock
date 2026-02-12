@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -539,7 +539,7 @@ requires-dist = [
     { name = "docling", marker = "extra == 'pdf'", specifier = ">=2.70.0" },
     { name = "duckdb", specifier = ">=1.4.3" },
     { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "mcp", specifier = ">=1.23.3" },
+    { name = "mcp", specifier = "==1.26.0" },
     { name = "mssql-python", marker = "extra == 'mssql'", specifier = ">=1.0.0" },
     { name = "pyathena", marker = "extra == 'athena'", specifier = ">=3.25.0" },
     { name = "pydantic", specifier = ">=2.12.4" },
