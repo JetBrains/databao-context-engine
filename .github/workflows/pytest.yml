@@ -18,19 +18,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  prepare-ollama-cache:
-    name: Prepare Ollama cache
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: ./.github/actions/prepare-ollama-cache
-        with:
-          model-name: ${{ env.OLLAMA_MODEL }}
-          model-version: ${{ env.OLLAMA_MODEL_VERSION }}
-
   tests:
-    needs: prepare-ollama-cache
     name: Run pytest on ${{ matrix.python-version }}
     runs-on: ubuntu-latest
 
@@ -55,15 +43,8 @@ jobs:
           sudo mkdir -p /mnt/tmp
           sudo chmod 1777 /mnt/tmp
 
-      - name: Restore Ollama models cache
-        uses: ./.github/actions/ollama-cache-restore
-        with:
-          key: ollama-${{ runner.os }}-${{ env.OLLAMA_MODEL }}-${{ env.OLLAMA_MODEL_VERSION }}
-
-      - name: Start Ollama (uses cached models)
-        uses: ./.github/actions/run-ollama-with-model
-        with:
-          model: ${{ env.OLLAMA_MODEL}}:${{ env.OLLAMA_MODEL_VERSION}}
+      - name: Setup Ollama
+        uses: ai-action/setup-ollama@v2
 
       - name: Set up project
         uses: ./.github/actions/setup-project
