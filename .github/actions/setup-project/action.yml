@@ -24,4 +24,4 @@ runs:
 
     - name: Install the project
       shell: bash
-      run: uv sync --locked --all-extras --dev
+      run: uv sync --locked --dev --extra mssql --extra clickhouse --extra athena --extra snowflake --extra mysql --extra postgresql
