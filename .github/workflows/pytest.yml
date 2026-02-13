@@ -61,8 +61,9 @@ jobs:
       - name: Setup Ollama
         uses: ai-action/setup-ollama@v2
 
-      - name: Start Ollama
-        run: ollama serve
+# Ollama is already started by the setup?
+#      - name: Start Ollama
+#        run: ollama serve
 
       - name: Pull model for tests
         run: |
