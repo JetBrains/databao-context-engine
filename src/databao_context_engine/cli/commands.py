@@ -17,7 +17,11 @@ from databao_context_engine import (
     init_dce_project,
     install_ollama_if_needed,
 )
-from databao_context_engine.cli.datasources import add_datasource_config_cli, check_datasource_connection_cli
+from databao_context_engine.cli.datasources import (
+    add_datasource_config_cli,
+    check_datasource_connection_cli,
+    run_sql_query_cli,
+)
 from databao_context_engine.cli.info import echo_info
 from databao_context_engine.config.logging import configure_logging
 from databao_context_engine.mcp.mcp_runner import McpTransport, run_mcp_server
@@ -127,6 +131,21 @@ def check_datasource_config(ctx: Context, datasources_config_files: list[str] | 
     )
 
     check_datasource_connection_cli(ctx.obj["project_dir"], datasource_ids=datasource_ids)
+
+
+@datasource.command(name="run_sql")
+@click.argument(
+    "datasource-config-file",
+    type=click.STRING,
+)
+@click.argument(
+    "sql",
+    type=click.STRING,
+)
+@click.pass_context
+def run_sql_query(ctx: Context, datasource_config_file: str, sql: str) -> None:
+    datasource_id = DatasourceId.from_string_repr(datasource_config_file)
+    run_sql_query_cli(ctx.obj["project_dir"], datasource_id=datasource_id, sql=sql)
 
 
 @dce.command()

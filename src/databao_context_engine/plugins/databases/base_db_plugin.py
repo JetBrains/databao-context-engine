@@ -9,6 +9,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     EmbeddableChunk,
 )
 from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
+from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector
 from databao_context_engine.plugins.databases.database_chunker import build_database_chunks
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
@@ -46,3 +47,13 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T]):
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return build_database_chunks(context)
+
+    def run_sql(
+        self, file_config: T, sql: str, params: list[Any] | None = None, read_only: bool = True
+    ) -> SqlExecutionResult:
+        return self._introspector.run_sql(
+            file_config=file_config,
+            sql=sql,
+            params=params,
+            read_only=read_only,
+        )

@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from io import BufferedReader
 from typing import Any, Protocol, runtime_checkable
 
+from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
+
 
 @dataclass
 class EmbeddableChunk:
@@ -97,6 +99,23 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
             datasource_name: The name of the datasource to build
             file_config: The config file of the datasource to build.
                 This argument will be an object of type `self.config_file_type`.
+
+        Raises:
+            NotSupportedError: If the plugin doesn't support this method.
+        """
+        raise NotSupportedError("This method is not implemented for this plugin")
+
+    def run_sql(
+        self,
+        file_config: T,
+        sql: str,
+        params: list[Any] | None = None,
+        read_only: bool = True,
+    ) -> SqlExecutionResult:
+        """Execute SQL against the datasource represented by `file_config`.
+
+        Implementations should honor `read_only=True` by default and refuse mutating statements
+        unless explicitly allowed.
 
         Raises:
             NotSupportedError: If the plugin doesn't support this method.
