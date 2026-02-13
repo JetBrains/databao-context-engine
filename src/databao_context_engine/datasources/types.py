@@ -50,6 +50,14 @@ class DatasourceId:
 
     @property
     def kind(self) -> DatasourceKind:
+        """The datasource kind.
+
+        Returns:
+            Whether this datasource is a raw file or a config file
+
+        Raises:
+            ValueError: If no kind was found for the datasource. Should never happen.
+        """
         parts = self.datasource_path.split("/")
         if len(parts) == 2 and parts[0] == "files":
             return DatasourceKind.FILE
@@ -61,6 +69,7 @@ class DatasourceId:
 
     @property
     def name(self) -> str:
+        """The datasource name."""
         match self.kind:
             case DatasourceKind.CONFIG:
                 return self.datasource_path.split("/")[-1]

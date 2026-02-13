@@ -86,6 +86,13 @@ class DatabaoContextEngine:
         return get_all_contexts(project_layout=self._project_layout)
 
     def get_all_contexts_formatted(self) -> str:
+        """Return a fprmatted string of all datasource contexts in the project.
+
+        The returned string is a concatenation of all datasource contexts, adding a header to separate each context.
+
+        Returns:
+            A fprmatted string of all datasource contexts in the project.
+        """
         all_contexts = self.get_all_contexts()
 
         return os.linesep.join(
