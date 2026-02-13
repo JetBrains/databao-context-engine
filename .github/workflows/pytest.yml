@@ -38,10 +38,25 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Cleanup Docker (post)
+        if: always()
+        run: |
+          docker rm -f ollama || true
+          docker system prune -af --volumes || true
+          docker system df || true
+
       - name: Prepare /mnt tmp
         run: |
           sudo mkdir -p /mnt/tmp
           sudo chmod 1777 /mnt/tmp
+
+      - name: Disk + inode usage (before Ollama)
+        if: always()
+        run: |
+          df -h
+          df -i
+          echo "Big dirs:"
+          sudo du -xh -d 2 /home/runner /var/lib/docker 2>/dev/null | sort -h | tail -n 40
 
       - name: Setup Ollama
         uses: ai-action/setup-ollama@v2
