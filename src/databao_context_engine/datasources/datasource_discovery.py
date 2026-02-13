@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 
 from databao_context_engine.datasources.types import (
+    ConfiguredDatasource,
     Datasource,
     DatasourceId,
     DatasourceKind,
@@ -20,7 +21,7 @@ from databao_context_engine.templating.renderer import render_template
 logger = logging.getLogger(__name__)
 
 
-def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
+def get_datasource_list(project_layout: ProjectLayout) -> list[ConfiguredDatasource]:
     result = []
     for datasource_id in discover_datasources(project_layout=project_layout):
         datasource_path = datasource_id.relative_path_to_config_file()
@@ -32,9 +33,12 @@ def get_datasource_list(project_layout: ProjectLayout) -> list[Datasource]:
             continue
 
         result.append(
-            Datasource(
-                id=datasource_id,
-                type=prepared_source.datasource_type,
+            ConfiguredDatasource(
+                datasource=Datasource(
+                    id=datasource_id,
+                    type=prepared_source.datasource_type,
+                ),
+                config=prepared_source.config if isinstance(prepared_source, PreparedConfig) else None,
             )
         )
 
@@ -123,7 +127,7 @@ def prepare_source(project_layout: ProjectLayout, datasource_id: DatasourceId) -
     )
 
 
-def _parse_config_file(file_path: Path) -> dict[Any, Any]:
+def _parse_config_file(file_path: Path) -> dict[str, Any]:
     rendered_file = render_template(file_path.read_text())
 
     return yaml.safe_load(rendered_file) or {}

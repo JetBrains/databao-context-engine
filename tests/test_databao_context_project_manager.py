@@ -4,8 +4,9 @@ from pathlib import Path
 import pytest
 
 from databao_context_engine import (
-    BuildContextResult,
+    BuildDatasourceResult,
     ChunkEmbeddingMode,
+    ConfiguredDatasource,
     DatabaoContextProjectManager,
     Datasource,
     DatasourceContext,
@@ -57,9 +58,24 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     datasource_list = project_manager.get_configured_datasource_list()
 
     assert datasource_list == [
-        Datasource(id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="any")),
-        Datasource(id=DatasourceId.from_string_repr("full/c.yaml"), type=DatasourceType(full_type="type2")),
-        Datasource(id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="type")),
+        ConfiguredDatasource(
+            datasource=Datasource(
+                id=DatasourceId.from_string_repr("full/a.yaml"), type=DatasourceType(full_type="any")
+            ),
+            config={"type": "any", "name": "a"},
+        ),
+        ConfiguredDatasource(
+            datasource=Datasource(
+                id=DatasourceId.from_string_repr("full/c.yaml"), type=DatasourceType(full_type="type2")
+            ),
+            config={"type": "type2", "name": "c"},
+        ),
+        ConfiguredDatasource(
+            datasource=Datasource(
+                id=DatasourceId.from_string_repr("other/b.yaml"), type=DatasourceType(full_type="type")
+            ),
+            config={"type": "type", "name": "b"},
+        ),
     ]
 
 
@@ -132,6 +148,8 @@ def test_databao_context_project_manager__index_built_contexts_indexes_all_when_
         project_layout=pm._project_layout,
         contexts=[c1, c2],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        ollama_model_id=None,
+        ollama_model_dim=None,
         progress=None,
     )
 
@@ -165,12 +183,14 @@ def test_databao_context_project_manager__index_built_contexts_filters_by_dataso
         project_layout=pm._project_layout,
         contexts=[c1, c3],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        ollama_model_id=None,
+        ollama_model_dim=None,
         progress=None,
     )
 
 
 def assert_build_context_result(
-    context_result: BuildContextResult,
+    context_result: BuildDatasourceResult,
     project_dir: Path,
     *,
     datasource_id: DatasourceId,
@@ -179,6 +199,8 @@ def assert_build_context_result(
 ):
     assert context_result.datasource_id == datasource_id
     assert context_result.datasource_type == datasource_type
+    assert context_result.context_built_at is not None
     assert context_result.context_built_at < datetime.now()
+    assert context_result.context_file_path is not None
     assert str(context_result.context_file_path).endswith(context_file_relative_path)
     assert context_result.context_file_path.is_relative_to(get_output_dir(project_dir))

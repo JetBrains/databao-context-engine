@@ -36,6 +36,7 @@ class BuildService:
         *,
         prepared_source: PreparedDatasource,
         plugin: BuildPlugin,
+        generate_embeddings: bool = True,
         progress: ProgressCallback | None = None,
     ) -> BuiltDatasourceContext:
         """Process a single source to build its context.
@@ -48,6 +49,9 @@ class BuildService:
             The built context.
         """
         result = execute_plugin(self._project_layout, prepared_source, plugin)
+
+        if not generate_embeddings:
+            return result
 
         chunks = plugin.divide_context_into_chunks(result.context)
 

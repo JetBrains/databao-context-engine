@@ -97,7 +97,6 @@ def rich_progress() -> Iterator[ProgressCallback]:
             app_logger.handlers = prev_handlers
             app_logger.propagate = prev_propagate
 
-
     tasks: dict[str, TaskID] = {}
     ui_state: _UIState = {
         "datasource_index": None,
