@@ -70,8 +70,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Docker space details (pre)
+        if: always()
+        run: |
+          docker system df -v || true
+
       - name: Run tests with all-extras
         run: uv run pytest -v
+
+      - name: Docker space details (post)
+        if: always()
+        run: |
+          docker system df -v || true
 
       - name: Cleanup Docker (post)
         if: always()
