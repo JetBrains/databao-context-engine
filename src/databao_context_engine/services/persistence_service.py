@@ -2,6 +2,7 @@ from collections.abc import Sequence
 
 import duckdb
 
+from databao_context_engine.progress.progress import EMIT_EVERY, ProgressCallback, ProgressEmitter
 from databao_context_engine.services.models import ChunkEmbedding
 from databao_context_engine.storage.models import ChunkDTO
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
@@ -31,6 +32,7 @@ class PersistenceService:
         full_type: str,
         datasource_id: str,
         override: bool = False,
+        progress: ProgressCallback | None = None,
     ):
         """Atomically persist chunks and their vectors.
 
@@ -43,6 +45,9 @@ class PersistenceService:
         if not chunk_embeddings:
             raise ValueError("chunk_embeddings must be a non-empty list")
 
+        emitter = ProgressEmitter(progress)
+        total_items = len(chunk_embeddings)
+
         # Outside the transaction due to duckdb limitations.
         # DuckDB FK checks can behave unexpectedly across multiple statements in the same transaction when deleting
         # and re-inserting related rows. It also does not support on delete cascade yet.
@@ -52,7 +57,7 @@ class PersistenceService:
             self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
 
         with transaction(self._conn):
-            for chunk_embedding in chunk_embeddings:
+            for i, chunk_embedding in enumerate(chunk_embeddings, start=1):
                 chunk_dto = self.create_chunk(
                     full_type=full_type,
                     datasource_id=datasource_id,
@@ -60,6 +65,19 @@ class PersistenceService:
                     display_text=chunk_embedding.display_text,
                 )
                 self.create_embedding(table_name=table_name, chunk_id=chunk_dto.chunk_id, vec=chunk_embedding.vec)
+
+                if i % EMIT_EVERY == 0 or i == total_items:
+                    total_units = total_items * 2
+                    emitter.datasource_progress_units(
+                        datasource_id=datasource_id,
+                        completed_units=total_items + i,
+                        total_units=total_units,
+                    )
+        emitter.datasource_progress_units(
+            datasource_id=datasource_id,
+            completed_units=total_items * 2,
+            total_units=total_items * 2,
+        )
 
     def create_chunk(self, *, full_type: str, datasource_id: str, embeddable_text: str, display_text: str) -> ChunkDTO:
         return self._chunk_repo.create(

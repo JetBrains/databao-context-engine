@@ -7,7 +7,7 @@ from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
 
-class DatasourceStatus(Enum):
+class DatasourceExecutionStatus(Enum):
     """Status of an operation for a single datasource."""
 
     OK = "ok"
@@ -29,7 +29,7 @@ class DatasourceResult:
     """
 
     datasource_id: DatasourceId
-    status: DatasourceStatus
+    status: DatasourceExecutionStatus
     error: str | None = None
 
 

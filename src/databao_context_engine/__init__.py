@@ -1,7 +1,7 @@
 from databao_context_engine.build_sources.types import (
     BuildDatasourceResult,
+    DatasourceExecutionStatus,
     DatasourceResult,
-    DatasourceStatus,
     IndexDatasourceResult,
 )
 from databao_context_engine.databao_context_engine import ContextSearchResult, DatabaoContextEngine
@@ -68,7 +68,7 @@ __all__ = [
     "OllamaPermanentError",
     "BuildDatasourceResult",
     "DatasourceResult",
-    "DatasourceStatus",
+    "DatasourceExecutionStatus",
     "IndexDatasourceResult",
     "CheckDatasourceConnectionResult",
 ]

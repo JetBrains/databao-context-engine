@@ -13,6 +13,7 @@ from databao_context_engine.datasources.types import PreparedDatasource
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
+from databao_context_engine.progress.progress import ProgressCallback
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
@@ -31,7 +32,12 @@ class BuildService:
         self._chunk_embedding_service = chunk_embedding_service
 
     def process_prepared_source(
-        self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin, generate_embeddings: bool = True
+        self,
+        *,
+        prepared_source: PreparedDatasource,
+        plugin: BuildPlugin,
+        generate_embeddings: bool = True,
+        progress: ProgressCallback | None = None,
     ) -> BuiltDatasourceContext:
         """Process a single source to build its context.
 
@@ -58,11 +64,14 @@ class BuildService:
             result=to_yaml_string(result.context),
             full_type=prepared_source.datasource_type.full_type,
             datasource_id=result.datasource_id,
+            progress=progress,
         )
 
         return result
 
-    def index_built_context(self, *, context: DatasourceContext, plugin: BuildPlugin) -> None:
+    def index_built_context(
+        self, *, context: DatasourceContext, plugin: BuildPlugin, progress: ProgressCallback | None = None
+    ) -> None:
         """Index a context file using the given plugin.
 
         1) Parses the yaml context file contents
@@ -85,6 +94,7 @@ class BuildService:
             full_type=built.datasource_type,
             datasource_id=built.datasource_id,
             override=True,
+            progress=progress,
         )
 
     def _deserialize_built_context(

@@ -10,8 +10,8 @@ from databao_context_engine import (
     ChunkEmbeddingMode,
     DatabaoContextEngine,
     DatabaoContextProjectManager,
+    DatasourceExecutionStatus,
     DatasourceId,
-    DatasourceStatus,
     InitErrorReason,
     InitProjectError,
     init_dce_project,
@@ -21,6 +21,7 @@ from databao_context_engine.cli.datasources import add_datasource_config_cli, ch
 from databao_context_engine.cli.info import echo_info
 from databao_context_engine.config.logging import configure_logging
 from databao_context_engine.mcp.mcp_runner import McpTransport, run_mcp_server
+from databao_context_engine.progress.rich_progress import rich_progress
 
 
 @click.group()
@@ -159,11 +160,13 @@ def build(
 
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
-    results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
-        datasource_ids=None,
-        chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()),
-        should_index=should_index,
-    )
+    with rich_progress() as progress_cb:
+        results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
+            datasource_ids=None,
+            chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()),
+            should_index=should_index,
+            progress=progress_cb,
+        )
 
     _echo_operation_result(
         heading="Build complete",
@@ -190,9 +193,11 @@ def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
         [DatasourceId.from_string_repr(p) for p in datasources_config_files] if datasources_config_files else None
     )
 
-    results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
-        datasource_ids=datasource_ids
-    )
+    with rich_progress() as progress_cb:
+        results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
+            datasource_ids=datasource_ids,
+            progress=progress_cb,
+        )
 
     _echo_operation_result(
         heading="Indexing complete",
@@ -293,9 +298,9 @@ def _echo_operation_result(
     results: Sequence,
 ) -> None:
     total = len(results)
-    ok = sum(1 for r in results if r.status == DatasourceStatus.OK)
-    skipped = sum(1 for r in results if r.status == DatasourceStatus.SKIPPED)
-    failed = sum(1 for r in results if r.status == DatasourceStatus.FAILED)
+    ok = sum(1 for r in results if r.status == DatasourceExecutionStatus.OK)
+    skipped = sum(1 for r in results if r.status == DatasourceExecutionStatus.SKIPPED)
+    failed = sum(1 for r in results if r.status == DatasourceExecutionStatus.FAILED)
 
     suffix_parts: list[str] = []
     if skipped:
@@ -308,7 +313,7 @@ def _echo_operation_result(
     if failed == 0:
         return
 
-    failed_results = [r for r in results if r.status == DatasourceStatus.FAILED]
+    failed_results = [r for r in results if r.status == DatasourceExecutionStatus.FAILED]
     if not failed_results:
         return
 

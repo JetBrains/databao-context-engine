@@ -15,6 +15,7 @@ from databao_context_engine.datasources.datasource_context import DatasourceCont
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
 from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.progress.progress import ProgressCallback
 from databao_context_engine.project.layout import (
     ProjectLayout,
     ensure_project_dir,
@@ -65,6 +66,7 @@ class DatabaoContextProjectManager:
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         *,
         should_index: bool = True,
+        progress: ProgressCallback | None = None,
     ) -> list[BuildDatasourceResult]:
         """Build the context for datasources in the project.
 
@@ -74,6 +76,7 @@ class DatabaoContextProjectManager:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
             chunk_embedding_mode: The mode to use for chunk embedding.
             should_index: Whether to build a semantic index for the context.
+            progress: Optional callback that receives progress events during execution.
 
         Returns:
             The list of all built results.
@@ -86,12 +89,15 @@ class DatabaoContextProjectManager:
             generate_embeddings=should_index,
             ollama_model_id=project_config.ollama_model_id,
             ollama_model_dim=project_config.ollama_model_dim,
+            progress=progress,
         )
 
     def index_built_contexts(
         self,
         datasource_ids: list[DatasourceId] | None = None,
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        *,
+        progress: ProgressCallback | None = None,
     ) -> list[IndexDatasourceResult]:
         """Index built datasource contexts into the embeddings database.
 
@@ -101,6 +107,7 @@ class DatabaoContextProjectManager:
         Args:
             datasource_ids: The list of datsource ids to index. If None, all datsources will be indexed.
             chunk_embedding_mode: The mode to use for chunk embedding.
+            progress: Optional callback that receives progress events during execution.
 
         Returns:
             The summary of the index operation.
@@ -119,6 +126,7 @@ class DatabaoContextProjectManager:
             chunk_embedding_mode=chunk_embedding_mode,
             ollama_model_id=project_config.ollama_model_id,
             ollama_model_dim=project_config.ollama_model_dim,
+            progress=progress,
         )
 
     def check_datasource_connection(

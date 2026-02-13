@@ -25,6 +25,9 @@ Homepage = "https://databao.app/"
 Source = "https://github.com/JetBrains/databao-context-engine"
 
 [project.optional-dependencies]
+cli = [
+    "rich>=14.3.2"
+]
 mssql = [
     "mssql-python>=1.0.0"
 ]
