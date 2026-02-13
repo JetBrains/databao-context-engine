@@ -46,6 +46,15 @@ jobs:
       - name: Setup Ollama
         uses: ai-action/setup-ollama@v2
 
+      - name: Start Ollama
+        run: ollama serve
+
+      - name: Pull model for tests
+        run: |
+          curl -fsS -H 'Content-Type: application/json' \
+            -d '{"name":"nomic-embed-text:latest"}' \
+            http://localhost:11434/api/pull || true
+
       - name: Set up project
         uses: ./.github/actions/setup-project
         with:
