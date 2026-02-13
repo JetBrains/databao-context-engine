@@ -44,6 +44,14 @@ class CheckDatasourceConnectionResult:
     full_message: str | None = None
 
     def format(self, show_summary_only: bool = True) -> str:
+        """Format the connection result in a human-readable string.
+
+        Args:
+            show_summary_only: Whether to show only the summary or show everything.
+
+        Returns:
+            A formatted string of the connection result.
+        """
         formatted_string = str(self.connection_status.value)
         if self.summary:
             formatted_string += f" - {self.summary}"

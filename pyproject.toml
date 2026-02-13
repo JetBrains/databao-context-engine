@@ -1,9 +1,11 @@
 [project]
 name = "databao-context-engine"
-version = "0.2.0"
+version = "0.2.2"
 description = "Semantic context for your LLMs — generated automatically"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "Apache-2.0 AND LicenseRef-Additional-Terms"
+license-files = ["LICENSE.md"]
 dependencies = [
     "click>=8.3.0",
     "duckdb>=1.4.3",
@@ -17,6 +19,10 @@ default-optional-dependency-keys = [
     "mysql",
     "postgresql"
 ]
+
+[project.urls]
+Homepage = "https://databao.app/"
+Source = "https://github.com/JetBrains/databao-context-engine"
 
 [project.optional-dependencies]
 mssql = [

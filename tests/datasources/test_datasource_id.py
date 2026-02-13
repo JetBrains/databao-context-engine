@@ -176,7 +176,22 @@ def test_datasource_id__relative_path_to_context_file_from_raw_file():
 def test_datasource_id__serialize_and_deserialize():
     input = "parent/my_datasource.yaml"
 
-    deserialized = DatasourceId.from_string_repr("parent/my_datasource.yaml")
+    deserialized = DatasourceId.from_string_repr(input)
 
     assert str(deserialized) == input
     assert DatasourceId.from_string_repr(str(deserialized)) == deserialized
+
+
+@pytest.mark.parametrize(
+    ["input_datasource_id", "expected_datasource_name"],
+    [
+        ("my_datasource.yaml", "my_datasource"),
+        ("parent/my_datasource.yaml", "my_datasource"),
+        ("parent/my_datasource.txt", "my_datasource.txt"),
+        ("files/my_datasource.yaml", "my_datasource.yaml"),
+    ],
+)
+def test_datasource_id__datasource_name(input_datasource_id: str, expected_datasource_name: str):
+    datasource_id = DatasourceId.from_string_repr(input_datasource_id)
+
+    assert datasource_id.name == expected_datasource_name

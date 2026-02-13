@@ -31,6 +31,12 @@ class InitProjectError(Exception):
     reason: InitErrorReason
 
     def __init__(self, reason: InitErrorReason, message: str | None):
+        """Initialize the InitProjectError.
+
+        Args:
+            reason: The reason why the initialization failed.
+            message: An optional error message.
+        """
         super().__init__(message or "")
 
         self.reason = reason

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import duckdb
 from pydantic import BaseModel, Field
 
@@ -25,7 +27,11 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     supports_catalogs = True
 
     def _connect(self, file_config: DuckDBConfigFile, *, catalog: str | None = None):
-        database_path = str(file_config.connection.database_path)
+        duckdb_path = Path(file_config.connection.database_path)
+        if not duckdb_path.is_file():
+            raise ConnectionError(f"No DuckDB database was found at path {duckdb_path.resolve()}")
+
+        database_path = str(duckdb_path.resolve())
         return duckdb.connect(database=database_path)
 
     def _get_catalogs(self, connection, file_config: DuckDBConfigFile) -> list[str]:
