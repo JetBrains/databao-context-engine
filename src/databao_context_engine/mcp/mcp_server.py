@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import date
@@ -7,7 +8,7 @@ from typing import Literal
 from mcp.server import FastMCP
 from mcp.types import ToolAnnotations
 
-from databao_context_engine import DatabaoContextEngine
+from databao_context_engine import DatabaoContextEngine, DatasourceId
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,19 @@ class McpServer:
             display_results.append(f"\nToday's date is {date.today()}")
 
             return "\n".join(display_results)
+
+        @mcp.tool(
+            description="Execute a SQL query against a configured datasource. Defaults to read-only queries; set read_only=false to allow mutations.",
+            annotations=ToolAnnotations(readOnlyHint=False, idempotentHint=False, openWorldHint=False),
+        )
+        async def run_sql_tool(
+            datasource_id: str,
+            sql: str,
+            read_only: bool = True,
+        ):
+            ds = DatasourceId.from_string_repr(datasource_id)
+            res = await asyncio.to_thread(self._databao_context_engine.run_sql, ds, sql, read_only=read_only)
+            return {"columns": res.columns, "rows": res.rows}
 
         return mcp
 
