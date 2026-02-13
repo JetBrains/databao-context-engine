@@ -1,3 +1,4 @@
+import asyncio
 import time
 from contextlib import asynccontextmanager
 from multiprocessing import Process, set_start_method
@@ -19,6 +20,20 @@ set_start_method("spawn")
 @pytest.fixture
 def anyio_backend(request):
     return "asyncio"
+
+
+async def _wait_for_port(host: str, port: int, timeout: float = 5.0):
+    start = time.monotonic()
+    while True:
+        try:
+            reader, writer = await asyncio.open_connection(host, port)
+            writer.close()
+            await writer.wait_closed()
+            return
+        except OSError:
+            if time.monotonic() - start > timeout:
+                raise TimeoutError(f"Server did not open {host}:{port}")
+            await asyncio.sleep(0.1)
 
 
 @asynccontextmanager
@@ -56,43 +71,37 @@ async def run_mcp_server_http_test(
 ):
     """Runs a MCP Server integration test by:
     1. Spawning a new process to run the MCP server in streamable-http mode
-    2. Creating a client connecting with the MCP Server (we're retrying 5 times to wait for the server to be up and running)
-    3. Yielding the MCP client session for the test to run
+    2. Waiting until the server is ready and listening on the specified host and port
+    3. Creating a client connected to the MCP Server
+    4. Yielding the MCP client session for the test to run
     """
-    server_process = Process(target=run_mcp_server, args=(project_dir, "streamable-http", host, port))
+    host = host or "127.0.0.1"
+    port = port or 8000
+
+    server_process = Process(
+        target=run_mcp_server,
+        args=(project_dir, "streamable-http", host, port),
+    )
+
     with env_variable("DATABAO_CONTEXT_ENGINE_PATH", str(dce_path.resolve())):
         server_process.start()
 
     try:
-        server_started = False
-        attempts_left = 10
-        while not server_started:
-            try:
-                async with streamable_http_client(f"http://{host or '127.0.0.1'}:{port or 8000}/mcp") as (
-                    read_stream,
-                    write_stream,
-                    _,
-                ):
-                    # Create a session using the client streams
-                    async with ClientSession(read_stream, write_stream) as session:
-                        # Initialize the connection
-                        await session.initialize()
+        await _wait_for_port(host, port)
 
-                        server_started = True
+        async with streamable_http_client(f"http://{host}:{port}/mcp") as (
+            read_stream,
+            write_stream,
+            _,
+        ):
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                yield session
 
-                        yield session
-            except Exception as e:
-                if _is_connection_error(e):
-                    attempts_left -= 1
-                    if attempts_left == 0:
-                        raise AssertionError("Failed to connect to the MCP Server") from e
-                    time.sleep(0.2)
-                    continue
-
-                # Don't ignore other failures (most importantly assertion failures)
-                raise e
     finally:
-        server_process.kill()
+        if server_process.is_alive():
+            server_process.kill()
+        server_process.join()
 
 
 def _is_connection_error(e: Exception) -> bool:
