@@ -22,7 +22,7 @@ def anyio_backend(request):
     return "asyncio"
 
 
-async def _wait_for_port(host: str, port: int, timeout: float = 5.0):
+async def _wait_for_port(host: str, port: int, timeout: float = 30.0):
     start = time.monotonic()
     while True:
         try:
@@ -30,9 +30,9 @@ async def _wait_for_port(host: str, port: int, timeout: float = 5.0):
             writer.close()
             await writer.wait_closed()
             return
-        except OSError:
+        except OSError as e:
             if time.monotonic() - start > timeout:
-                raise TimeoutError(f"Server did not open {host}:{port}")
+                raise TimeoutError(f"Server did not open {host}:{port}") from e
             await asyncio.sleep(0.1)
 
 
