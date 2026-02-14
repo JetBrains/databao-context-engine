@@ -1,6 +1,7 @@
+from abc import ABC
 from dataclasses import dataclass
 from io import BufferedReader
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Mapping, Protocol, runtime_checkable
 
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 
@@ -58,7 +59,7 @@ class BaseBuildPlugin(Protocol):
 
 
 @runtime_checkable
-class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
+class BuildDatasourcePlugin[T: ConfigFile](BaseBuildPlugin, Protocol):
     """A plugin that can be used to build the context of datasource, using a config file.
 
     Attributes:
@@ -172,3 +173,14 @@ class DatasourceType:
     """
 
     full_type: str
+
+
+class AbstractConfigFile(ABC):
+    type: str
+    name: str
+
+
+# Config files can either be defined:
+# - as a class inheriting AbstractConfigFile
+# - or as a Mappping for Plugins that didn't declare a config type or used a TypedDict
+ConfigFile = Mapping[str, Any] | AbstractConfigFile

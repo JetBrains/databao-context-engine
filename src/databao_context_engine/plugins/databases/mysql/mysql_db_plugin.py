@@ -1,5 +1,6 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
-from databao_context_engine.plugins.databases.mysql.mysql_introspector import MySQLConfigFile, MySQLIntrospector
+from databao_context_engine.plugins.databases.mysql.config_file import MySQLConfigFile
+from databao_context_engine.plugins.databases.mysql.mysql_introspector import MySQLIntrospector
 
 
 class MySQLDbPlugin(BaseDatabasePlugin[MySQLConfigFile]):

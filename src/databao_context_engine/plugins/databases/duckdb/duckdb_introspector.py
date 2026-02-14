@@ -3,22 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import duckdb
-from pydantic import BaseModel, Field
 
-from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
+from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
-
-
-class DuckDBConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="duckdb")
-    connection: DuckDBConnectionConfig
-
-
-class DuckDBConnectionConfig(BaseModel):
-    database_path: str = Field(description="Path to the DuckDB database file")
 
 
 class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):

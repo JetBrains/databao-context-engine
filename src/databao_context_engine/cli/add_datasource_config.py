@@ -42,7 +42,7 @@ def add_datasource_config_interactive(
     )
 
     created_datasource = project_manager.create_datasource_config(
-        datasource_type, datasource_name, config_content, overwrite_existing=True
+        datasource_type, datasource_name, config_content, overwrite_existing=True, validate_config_content=False
     )
 
     click.echo(

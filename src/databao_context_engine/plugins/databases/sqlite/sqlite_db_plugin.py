@@ -1,5 +1,6 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
-from databao_context_engine.plugins.databases.sqlite.sqlite_introspector import SQLiteConfigFile, SQLiteIntrospector
+from databao_context_engine.plugins.databases.sqlite.config_file import SQLiteConfigFile
+from databao_context_engine.plugins.databases.sqlite.sqlite_introspector import SQLiteIntrospector
 
 
 class SQLiteDbPlugin(BaseDatabasePlugin[SQLiteConfigFile]):
