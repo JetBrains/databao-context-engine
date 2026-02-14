@@ -48,6 +48,7 @@ def mssql_container():
     container.start()
     yield container
     container.stop()
+    container.get_docker_client().client.images.remove(container.image)
 
 
 @pytest.fixture

@@ -18,19 +18,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  prepare-ollama-cache:
-    name: Prepare Ollama cache
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: ./.github/actions/prepare-ollama-cache
-        with:
-          model-name: ${{ env.OLLAMA_MODEL }}
-          model-version: ${{ env.OLLAMA_MODEL_VERSION }}
-
   tests:
-    needs: prepare-ollama-cache
     name: Run pytest on ${{ matrix.python-version }}
     runs-on: ubuntu-latest
 
@@ -50,28 +38,76 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Cleanup Docker (post)
+        if: always()
+        run: |
+          docker rm -f ollama || true
+          docker system prune -af --volumes || true
+          docker system df || true
+
       - name: Prepare /mnt tmp
         run: |
           sudo mkdir -p /mnt/tmp
           sudo chmod 1777 /mnt/tmp
 
-      - name: Restore Ollama models cache
-        uses: ./.github/actions/ollama-cache-restore
-        with:
-          key: ollama-${{ runner.os }}-${{ env.OLLAMA_MODEL }}-${{ env.OLLAMA_MODEL_VERSION }}
+      - name: Disk + inode usage (before anything)
+        if: always()
+        run: |
+          df -h
+          df -i
+          echo "Big dirs:"
+          sudo du -xh -d 2 /home/runner /var/lib/docker 2>/dev/null | sort -h | tail -n 40
 
-      - name: Start Ollama (uses cached models)
-        uses: ./.github/actions/run-ollama-with-model
-        with:
-          model: ${{ env.OLLAMA_MODEL}}:${{ env.OLLAMA_MODEL_VERSION}}
+      - name: Setup Ollama
+        uses: ai-action/setup-ollama@v2
+
+      - name: Pull model for tests
+        run: |
+          curl -fsS -H 'Content-Type: application/json' \
+            -d '{"name":"nomic-embed-text:latest"}' \
+            http://localhost:11434/api/pull || true
+
+      - name: Disk + inode usage (after Ollama)
+        if: always()
+        run: |
+          df -h
+          df -i
+          echo "Big dirs:"
+          sudo du -xh -d 2 /home/runner /var/lib/docker 2>/dev/null | sort -h | tail -n 40
 
       - name: Set up project
         uses: ./.github/actions/setup-project
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Disk + inode usage (after project install)
+        if: always()
+        run: |
+          df -h
+          df -i
+          echo "Big dirs:"
+          sudo du -xh -d 2 /home/runner /var/lib/docker 2>/dev/null | sort -h | tail -n 40
+
+      - name: Docker space details (pre)
+        if: always()
+        run: |
+          docker system df -v || true
+
       - name: Run tests with all-extras
         run: uv run pytest -v
+
+      - name: Docker space details (post)
+        if: always()
+        run: |
+          docker system df -v || true
+
+      - name: Disk + inode usage (post)
+        if: always()
+        run: |
+          df -h
+          df -i
+          echo "Big dirs:"
+          sudo du -xh -d 2 /home/runner /var/lib/docker 2>/dev/null | sort -h | tail -n 40
 
       - name: Cleanup Docker (post)
         if: always()
