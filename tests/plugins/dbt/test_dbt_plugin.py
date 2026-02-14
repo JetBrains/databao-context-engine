@@ -23,7 +23,7 @@ from databao_context_engine.plugins.dbt.types import (
 @pytest.fixture
 def dbt_target_folder_path(tmp_path):
     dbt_target_folder_path = tmp_path.joinpath("dbt_target")
-    shutil.copytree(Path(__file__).parent.joinpath("data"), dbt_target_folder_path)
+    shutil.copytree(Path(__file__).parent.joinpath("data").joinpath("toastie_winkel"), dbt_target_folder_path)
 
     return dbt_target_folder_path
 
