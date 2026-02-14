@@ -8,9 +8,8 @@ from pydantic import BaseModel, Field
 
 class DuckDBSecret(BaseModel):
     name: str | None = Field(default=None)
-    type: str | None = Field(
-        description="DuckDB secret type. Examples: s3, postgres, iceberg, etc. See https://duckdb.org/docs/stable/configuration/secrets_manager#types-of-secrets",
-        default=None,
+    type: str = Field(
+        description="DuckDB secret type. Examples: s3, postgres, iceberg, etc. See https://duckdb.org/docs/stable/configuration/secrets_manager#types-of-secrets"
     )
     properties: dict[str, Any] = Field(
         default={},

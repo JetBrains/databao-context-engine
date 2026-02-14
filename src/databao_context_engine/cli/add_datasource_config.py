@@ -14,9 +14,11 @@ from databao_context_engine import (
 from databao_context_engine.pluginlib.config import ConfigUnionPropertyDefinition
 
 
-def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
+def add_datasource_config_interactive(
+    project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None
+) -> DatasourceId:
     project_manager = DatabaoContextProjectManager(project_dir=project_dir)
-    plugin_loader = DatabaoContextPluginLoader()
+    plugin_loader = plugin_loader if plugin_loader else DatabaoContextPluginLoader()
 
     click.echo(
         f"We will guide you to add a new datasource in your Databao Context Engine project, at {project_dir.resolve()}"
@@ -107,11 +109,18 @@ def _build_config_content_from_properties(
             continue
 
         if config_file_property.nested_properties is not None and len(config_file_property.nested_properties) > 0:
+            fq_property_name = (
+                f"{properties_prefix}.{config_file_property.property_key}"
+                if properties_prefix
+                else f"{config_file_property.property_key}"
+            )
+            if not config_file_property.required:
+                if not click.confirm(f"\nAdd {fq_property_name}?"):
+                    continue
+
             nested_content = _build_config_content_from_properties(
                 config_file_property.nested_properties,
-                properties_prefix=f"{properties_prefix}.{config_file_property.property_key}."
-                if properties_prefix
-                else f"{config_file_property.property_key}.",
+                properties_prefix=f"{fq_property_name}.",
             )
             if len(nested_content.keys()) > 0:
                 config_content[config_file_property.property_key] = nested_content
