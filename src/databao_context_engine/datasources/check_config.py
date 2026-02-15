@@ -13,7 +13,7 @@ from databao_context_engine.datasources.datasource_discovery import (
 from databao_context_engine.datasources.types import DatasourceId, PreparedConfig
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
 from databao_context_engine.pluginlib.plugin_utils import check_connection_for_datasource
-from databao_context_engine.plugins.plugin_loader import load_plugins
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
 
 logger = logging.getLogger(__name__)
@@ -62,15 +62,16 @@ class CheckDatasourceConnectionResult:
 
 
 def check_datasource_connection(
-    project_layout: ProjectLayout, *, datasource_ids: list[DatasourceId] | None = None
+    project_layout: ProjectLayout,
+    *,
+    plugin_loader: DatabaoContextPluginLoader,
+    datasource_ids: list[DatasourceId] | None = None,
 ) -> dict[DatasourceId, CheckDatasourceConnectionResult]:
     if datasource_ids:
         logger.info(f"Validating datasource(s): {datasource_ids}")
         datasources_to_traverse = validate_datasource_ids(project_layout, datasource_ids)
     else:
         datasources_to_traverse = discover_datasources(project_layout)
-
-    plugins = load_plugins(exclude_file_plugins=True)
 
     result = {}
     for datasource_id in datasources_to_traverse:
@@ -87,7 +88,7 @@ def check_datasource_connection(
             )
             continue
 
-        plugin = plugins.get(prepared_source.datasource_type)
+        plugin = plugin_loader.get_plugin_for_datasource_type(prepared_source.datasource_type)
         if plugin is None:
             logger.debug(
                 "No plugin for '%s' (datasource=%s) — skipping.",

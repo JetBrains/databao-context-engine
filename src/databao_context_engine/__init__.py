@@ -20,7 +20,6 @@ from databao_context_engine.llm import (
     download_ollama_models_if_needed,
     install_ollama_if_needed,
 )
-from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildFilePlugin,
@@ -28,6 +27,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     DatasourceType,
 )
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.info import (
     DceInfo,
     DceProjectInfo,

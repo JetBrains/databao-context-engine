@@ -3,7 +3,7 @@ from importlib.metadata import version
 from pathlib import Path
 from uuid import UUID
 
-from databao_context_engine.plugins.plugin_loader import load_plugins
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import validate_project_dir
 from databao_context_engine.system.properties import get_dce_path
 
@@ -46,7 +46,7 @@ def get_databao_context_engine_info() -> DceInfo:
     return DceInfo(
         version=get_dce_version(),
         dce_path=get_dce_path(),
-        plugin_ids=[plugin.id for plugin in load_plugins().values()],
+        plugin_ids=list(DatabaoContextPluginLoader().get_loaded_plugin_ids()),
     )
 
 

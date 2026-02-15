@@ -1,9 +1,8 @@
-from databao_context_engine.plugins.plugin_loader import load_plugins
+from databao_context_engine import DatabaoContextPluginLoader
 
 
 def main():
-    plugins = load_plugins()
-    plugin_ids = {plugin.id for plugin in plugins.values()}
+    plugin_ids = DatabaoContextPluginLoader().get_loaded_plugin_ids()
     print(repr(plugin_ids))
 
 

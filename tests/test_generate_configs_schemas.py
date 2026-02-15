@@ -15,7 +15,7 @@ def _patch_load_plugins(mocker, return_value: dict[DatasourceType, BuildPlugin] 
     if return_value is None:
         return_value = load_dummy_plugins(exclude_file_plugins=True)
 
-    mocker.patch("databao_context_engine.generate_configs_schemas.load_plugins", return_value=return_value)
+    mocker.patch("databao_context_engine.generate_configs_schemas._load_plugins", return_value=return_value)
 
 
 def test_generate_configs_schemas__all(mocker):

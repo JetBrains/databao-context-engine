@@ -7,6 +7,7 @@ from databao_context_engine import (
     BuildDatasourceResult,
     ChunkEmbeddingMode,
     ConfiguredDatasource,
+    DatabaoContextPluginLoader,
     DatabaoContextProjectManager,
     Datasource,
     DatasourceContext,
@@ -21,9 +22,11 @@ from tests.utils.project_creation import (
 )
 
 
-@pytest.fixture(autouse=True)
-def patch_load_plugins(mocker):
-    mocker.patch("databao_context_engine.build_sources.build_runner.load_plugins", new=load_dummy_plugins)
+@pytest.fixture
+def project_manager(project_path: Path) -> DatabaoContextProjectManager:
+    return DatabaoContextProjectManager(
+        project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=load_dummy_plugins())
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -31,14 +34,13 @@ def use_test_db(create_db):
     pass
 
 
-def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
-    datasource_list = DatabaoContextProjectManager(project_dir=project_path).get_configured_datasource_list()
+def test_databao_engine__get_datasource_list_with_no_datasources(project_manager):
+    datasource_list = project_manager.get_configured_datasource_list()
 
     assert datasource_list == []
 
 
-def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path):
-    project_manager = DatabaoContextProjectManager(project_dir=project_path)
+def test_databao_engine__get_datasource_list_with_multiple_datasources(project_manager):
     given_datasource_config_file(
         project_manager._project_layout,
         datasource_name="full/a",
@@ -79,9 +81,7 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     ]
 
 
-def test_databao_context_project_manager__build_with_no_datasource(project_path):
-    project_manager = DatabaoContextProjectManager(project_dir=project_path)
-
+def test_databao_context_project_manager__build_with_no_datasource(project_manager):
     result = project_manager.build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
@@ -89,9 +89,7 @@ def test_databao_context_project_manager__build_with_no_datasource(project_path)
     assert result == []
 
 
-def test_databao_context_project_manager__build_with_multiple_datasource(project_path, create_db):
-    project_manager = DatabaoContextProjectManager(project_dir=project_path)
-
+def test_databao_context_project_manager__build_with_multiple_datasource(project_manager, create_db):
     given_datasource_config_file(
         project_manager._project_layout,
         datasource_name="dummy/my_dummy_data",
@@ -125,15 +123,13 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
     )
 
 
-def test_databao_context_project_manager__index_built_contexts_indexes_all_when_no_ids(project_path, mocker):
-    pm = DatabaoContextProjectManager(project_dir=project_path)
-
+def test_databao_context_project_manager__index_built_contexts_indexes_all_when_no_ids(project_manager, mocker):
     c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
     c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
 
     engine = mocker.Mock()
     engine.get_all_contexts.return_value = [c1, c2]
-    mocker.patch.object(pm, "get_engine_for_project", return_value=engine)
+    mocker.patch.object(project_manager, "get_engine_for_project", return_value=engine)
 
     index_fn = mocker.patch(
         "databao_context_engine.databao_context_project_manager.index_built_contexts",
@@ -141,11 +137,12 @@ def test_databao_context_project_manager__index_built_contexts_indexes_all_when_
         return_value="OK",
     )
 
-    result = pm.index_built_contexts(datasource_ids=None)
+    result = project_manager.index_built_contexts(datasource_ids=None)
 
     assert result == "OK"
     index_fn.assert_called_once_with(
-        project_layout=pm._project_layout,
+        project_layout=project_manager._project_layout,
+        plugin_loader=project_manager._plugin_loader,
         contexts=[c1, c2],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         ollama_model_id=None,
@@ -153,16 +150,14 @@ def test_databao_context_project_manager__index_built_contexts_indexes_all_when_
     )
 
 
-def test_databao_context_project_manager__index_built_contexts_filters_by_datasource_path(project_path, mocker):
-    pm = DatabaoContextProjectManager(project_dir=project_path)
-
+def test_databao_context_project_manager__index_built_contexts_filters_by_datasource_path(project_manager, mocker):
     c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
     c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
     c3 = DatasourceContext(DatasourceId.from_string_repr("full/c.yaml"), context="C")
 
     engine = mocker.Mock()
     engine.get_all_contexts.return_value = [c1, c2, c3]
-    mocker.patch.object(pm, "get_engine_for_project", return_value=engine)
+    mocker.patch.object(project_manager, "get_engine_for_project", return_value=engine)
 
     index_fn = mocker.patch(
         "databao_context_engine.databao_context_project_manager.index_built_contexts",
@@ -175,11 +170,12 @@ def test_databao_context_project_manager__index_built_contexts_filters_by_dataso
         DatasourceId.from_string_repr("full/c.yaml"),
     ]
 
-    result = pm.index_built_contexts(datasource_ids=wanted)
+    result = project_manager.index_built_contexts(datasource_ids=wanted)
 
     assert result == "OK"
     index_fn.assert_called_once_with(
-        project_layout=pm._project_layout,
+        project_layout=project_manager._project_layout,
+        plugin_loader=project_manager._plugin_loader,
         contexts=[c1, c3],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         ollama_model_id=None,

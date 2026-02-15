@@ -55,10 +55,12 @@ def test_databao_context_plugin_loader__get_plugin_for_datasource_type(
 
 
 def test_databao_context_plugin_loader__get_plugin_for_datasource_type_unknown(plugin_loader_under_test):
-    with pytest.raises(ValueError):
+    assert (
         plugin_loader_under_test.get_plugin_for_datasource_type(
             datasource_type=DatasourceType(full_type="unknown/unknown")
         )
+        is None
+    )
 
 
 @pytest.mark.parametrize(

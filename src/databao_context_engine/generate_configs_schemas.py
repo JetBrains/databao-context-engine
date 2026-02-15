@@ -6,7 +6,7 @@ import click
 
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin
 from databao_context_engine.pluginlib.plugin_utils import format_json_schema_for_output, generate_json_schema
-from databao_context_engine.plugins.plugin_loader import load_plugins
+from databao_context_engine.plugins.plugin_loader import _load_plugins
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ def _generate_json_schema_output_for_plugins(
 def _get_plugins_for_schema_generation(
     include_plugins: tuple[str, ...] | None = None, exclude_plugins: tuple[str, ...] | None = None
 ) -> list[BuildDatasourcePlugin]:
-    all_plugins = load_plugins(exclude_file_plugins=True).values()
+    all_plugins = _load_plugins(exclude_file_plugins=True).values()
 
     return [
         cast(BuildDatasourcePlugin, plugin)

@@ -15,6 +15,7 @@ from databao_context_engine.datasources.datasource_context import DatasourceCont
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
 from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import (
     ProjectLayout,
     ensure_project_dir,
@@ -39,14 +40,17 @@ class DatabaoContextProjectManager:
     project_dir: Path
     _project_layout: ProjectLayout
 
-    def __init__(self, project_dir: Path) -> None:
+    def __init__(self, project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
         """Initialize the DatabaoContextProjectManager.
 
         Args:
             project_dir: The root directory of the Databao Context Project.
+            plugin_loader: Plugin loader which will be created anew by default unless provided.
+            This object could be reused betwee project managers to reduce some overhead on the plugin discovery.
         """
         self._project_layout = ensure_project_dir(project_dir=project_dir)
         self.project_dir = project_dir
+        self._plugin_loader = plugin_loader if plugin_loader else DatabaoContextPluginLoader()
 
     def get_configured_datasource_list(self) -> list[ConfiguredDatasource]:
         """Return the list of datasources configured in the project.
@@ -82,6 +86,7 @@ class DatabaoContextProjectManager:
         project_config = self._project_layout.read_config_file()
         return build_all_datasources(
             project_layout=self._project_layout,
+            plugin_loader=self._plugin_loader,
             chunk_embedding_mode=chunk_embedding_mode,
             generate_embeddings=should_index,
             ollama_model_id=project_config.ollama_model_id,
@@ -115,6 +120,7 @@ class DatabaoContextProjectManager:
         project_config = self._project_layout.read_config_file()
         return index_built_contexts(
             project_layout=self._project_layout,
+            plugin_loader=self._plugin_loader,
             contexts=contexts,
             chunk_embedding_mode=chunk_embedding_mode,
             ollama_model_id=project_config.ollama_model_id,
@@ -134,7 +140,7 @@ class DatabaoContextProjectManager:
         """
         return sorted(
             check_datasource_connection_internal(
-                project_layout=self._project_layout, datasource_ids=datasource_ids
+                project_layout=self._project_layout, plugin_loader=self._plugin_loader, datasource_ids=datasource_ids
             ).values(),
             key=lambda result: str(result.datasource_id),
         )
