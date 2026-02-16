@@ -1,4 +1,5 @@
-from databao_context_engine.plugins.databases.athena.athena_introspector import AthenaConfigFile, AthenaIntrospector
+from databao_context_engine.plugins.databases.athena.athena_introspector import AthenaIntrospector
+from databao_context_engine.plugins.databases.athena.config_file import AthenaConfigFile
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
 
 

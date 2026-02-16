@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
-from databao_context_engine.plugins.resources.parquet_introspector import ParquetColumn, ParquetIntrospectionResult
+from databao_context_engine.plugins.resources.types import ParquetColumn, ParquetIntrospectionResult
 
 
 @dataclass

@@ -1,9 +1,14 @@
 from pathlib import Path
-from typing import Any, overload
+from typing import Any, Mapping, overload
 
-from databao_context_engine import BuildDatasourceResult, IndexDatasourceResult
-from databao_context_engine.build_sources import build_all_datasources
-from databao_context_engine.build_sources.build_wiring import index_built_contexts
+from pydantic import TypeAdapter
+
+from databao_context_engine.build_sources import (
+    BuildDatasourceResult,
+    IndexDatasourceResult,
+    build_all_datasources,
+    index_built_contexts,
+)
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
@@ -14,7 +19,7 @@ from databao_context_engine.datasources.check_config import (
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
 from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
-from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.pluginlib.build_plugin import ConfigFile, DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import (
     ProjectLayout,
@@ -149,27 +154,35 @@ class DatabaoContextProjectManager:
         self,
         datasource_type: DatasourceType,
         datasource_name: str,
-        config_content: dict[str, Any],
+        config_content: ConfigFile | dict[str, Any],
         overwrite_existing: bool = False,
+        validate_config_content: bool = True,
     ) -> ConfiguredDatasource:
         """Create a new datasource configuration file in the project.
+
+        The config content can be either a dict representation of the config or directly using the config type declared by a Datasource plugin.
+        If the content is provided as a dict, the dict will be validated against the configuration expected by the plugin.
 
         Args:
             datasource_type: The type of the datasource to create.
             datasource_name: The name of the datasource to create.
-            config_content: The content of the datasource configuration. This is a dictionary that will be written as-is in a yaml file.
-                The actual content of the configuration is not checked and might not be valid for the requested type..
+            config_content: The content of the datasource configuration.
             overwrite_existing: Whether to overwrite an existing datasource configuration file if it already exists.
+            validate_config_content: Whether to validate that the content of the config file is valid for that datasource type.
 
         Returns:
             The path to the created datasource configuration file.
         """
-        # TODO: Before creating the datasource, validate the config content based on which plugin will be used
+        datasource_name_without_folders = datasource_name.split("/")[-1]
+        actual_config_content = self._validate_and_dump_config_content(
+            config_content, datasource_name_without_folders, datasource_type, validate_config_content
+        )
+
         return _create_datasource_config_file(
             project_layout=self._project_layout,
             datasource_type=datasource_type,
             datasource_name=datasource_name,
-            config_content=config_content,
+            config_content=actual_config_content,
             overwrite_existing=overwrite_existing,
         )
 
@@ -234,6 +247,30 @@ class DatabaoContextProjectManager:
         """
         return DatabaoContextEngine(project_dir=self.project_dir)
 
+    def _validate_and_dump_config_content(
+        self,
+        config_content: ConfigFile | dict[str, Any],
+        datasource_name: str,
+        datasource_type: DatasourceType,
+        validate_config_content: bool,
+    ) -> dict[str, Any]:
+        config_file_type = self._plugin_loader.get_config_file_type_for_datasource_type(datasource_type)
+        config_type_adapter: TypeAdapter[ConfigFile] = TypeAdapter(config_file_type)
+
+        if isinstance(config_content, Mapping):
+            # If the config content is a Mapping, we should add in the type and name to make sure they are correct
+            actual_config_content = {"type": datasource_type.full_type, "name": datasource_name}
+
+            actual_config_content.update(config_content)
+            if validate_config_content:
+                config_type_adapter.validate_python(actual_config_content)
+        else:
+            if validate_config_content:
+                config_type_adapter.validate_python(config_content)
+            actual_config_content = config_type_adapter.dump_python(config_content)
+
+        return actual_config_content
+
 
 def _create_datasource_config_file(
     project_layout: ProjectLayout,
@@ -242,14 +279,10 @@ def _create_datasource_config_file(
     config_content: dict[str, Any],
     overwrite_existing: bool,
 ) -> ConfiguredDatasource:
-    last_datasource_name = datasource_name.split("/")[-1]
-    basic_config = {"type": datasource_type.full_type, "name": last_datasource_name}
-
-    actual_config_content = basic_config | config_content
     config_file = create_datasource_config_file_internal(
         project_layout,
         f"{datasource_name}.yaml",
-        to_yaml_string(actual_config_content),
+        to_yaml_string(config_content),
         overwrite_existing=overwrite_existing,
     )
 
@@ -258,5 +291,5 @@ def _create_datasource_config_file(
             id=DatasourceId.from_datasource_config_file_path(project_layout, config_file),
             type=datasource_type,
         ),
-        config=actual_config_content,
+        config=config_content,
     )

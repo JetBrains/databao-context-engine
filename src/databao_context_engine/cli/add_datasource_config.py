@@ -17,8 +17,8 @@ from databao_context_engine.pluginlib.config import ConfigUnionPropertyDefinitio
 def add_datasource_config_interactive(
     project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None
 ) -> DatasourceId:
-    project_manager = DatabaoContextProjectManager(project_dir=project_dir)
     plugin_loader = plugin_loader if plugin_loader else DatabaoContextPluginLoader()
+    project_manager = DatabaoContextProjectManager(project_dir=project_dir, plugin_loader=plugin_loader)
 
     click.echo(
         f"We will guide you to add a new datasource in your Databao Context Engine project, at {project_dir.resolve()}"
@@ -42,7 +42,7 @@ def add_datasource_config_interactive(
     )
 
     created_datasource = project_manager.create_datasource_config(
-        datasource_type, datasource_name, config_content, overwrite_existing=True
+        datasource_type, datasource_name, config_content, overwrite_existing=True, validate_config_content=False
     )
 
     click.echo(

@@ -27,7 +27,17 @@ from databao_context_engine.pluginlib.build_plugin import (
     DatasourceType,
 )
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
+from databao_context_engine.plugins.databases.athena.config_file import AthenaConfigFile
+from databao_context_engine.plugins.databases.clickhouse.config_file import ClickhouseConfigFile
+from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConnectionConfig
+from databao_context_engine.plugins.databases.mssql.config_file import MSSQLConfigFile
+from databao_context_engine.plugins.databases.mysql.config_file import MySQLConfigFile
+from databao_context_engine.plugins.databases.postgresql.config_file import PostgresConfigFile
+from databao_context_engine.plugins.databases.snowflake.config_file import SnowflakeConfigFile
+from databao_context_engine.plugins.databases.sqlite.config_file import SQLiteConfigFile
+from databao_context_engine.plugins.dbt.types import DbtConfigFile
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
+from databao_context_engine.plugins.resources.types import ParquetConfigFile
 from databao_context_engine.project.info import (
     DceInfo,
     DceProjectInfo,
@@ -71,4 +81,14 @@ __all__ = [
     "DatasourceStatus",
     "IndexDatasourceResult",
     "CheckDatasourceConnectionResult",
+    "AthenaConfigFile",
+    "ClickhouseConfigFile",
+    "DuckDBConnectionConfig",
+    "MSSQLConfigFile",
+    "MySQLConfigFile",
+    "PostgresConfigFile",
+    "SnowflakeConfigFile",
+    "SQLiteConfigFile",
+    "DbtConfigFile",
+    "ParquetConfigFile",
 ]

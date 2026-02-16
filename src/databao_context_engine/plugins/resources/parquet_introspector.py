@@ -2,52 +2,22 @@ import contextlib
 import logging
 import uuid
 from collections import defaultdict
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from urllib.parse import urlparse
 
 import duckdb
 from duckdb import DuckDBPyConnection
-from pydantic import BaseModel, Field
 
 from databao_context_engine.pluginlib.config import DuckDBSecret
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts, generate_create_secret_sql
-
-parquet_type = "parquet"
+from databao_context_engine.plugins.resources.types import (
+    ParquetColumn,
+    ParquetConfigFile,
+    ParquetFile,
+    ParquetIntrospectionResult,
+)
 
 logger = logging.getLogger(__name__)
-
-
-class ParquetConfigFile(BaseModel):
-    name: str | None = Field(default=None)
-    type: str = Field(default="parquet")
-    url: str = Field(
-        description="Parquet resource location. Should be a valid URL or a path to a local file. "
-        "Examples: s3://your_bucket/file.parquet, s3://your-bucket/*.parquet, https://some.url/some_file.parquet, ~/path_to/file.parquet",
-    )
-    duckdb_secret: DuckDBSecret | None = None
-
-
-@dataclass
-class ParquetColumn:
-    name: str
-    type: str
-    row_groups: int
-    num_values: int
-    stats_min: str
-    stats_max: str
-    stats_null_count: int | None
-    stats_distinct_count: int | None
-
-
-@dataclass
-class ParquetFile:
-    name: str
-    columns: list[ParquetColumn]
-
-
-@dataclass
-class ParquetIntrospectionResult:
-    files: list[ParquetFile]
 
 
 @contextlib.contextmanager

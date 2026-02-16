@@ -143,9 +143,10 @@ def sqlite_with_demo_schema(temp_sqlite_file: Path):
     return temp_sqlite_file
 
 
-def _create_config_file_from_sqlite(sqlite_path: Path) -> Mapping[str, Any]:
+def _create_config_file_from_sqlite(sqlite_path: Path, datasource_name: str | None = "file_name") -> Mapping[str, Any]:
     return {
         "type": "databases/sqlite",
+        "name": datasource_name,
         "connection": dict(database_path=str(sqlite_path)),
     }
 
