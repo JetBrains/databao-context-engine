@@ -255,7 +255,7 @@ class DatabaoContextProjectManager:
         validate_config_content: bool,
     ) -> dict[str, Any]:
         config_file_type = self._plugin_loader.get_config_file_type_for_datasource_type(datasource_type)
-        config_type_adapter = TypeAdapter(config_file_type)
+        config_type_adapter: TypeAdapter[ConfigFile] = TypeAdapter(config_file_type)
 
         if isinstance(config_content, Mapping):
             # If the config content is a Mapping, we should add in the type and name to make sure they are correct
