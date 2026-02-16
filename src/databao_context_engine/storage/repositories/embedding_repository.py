@@ -1,6 +1,8 @@
+from array import array
 from typing import Optional, Sequence, Tuple
 
 import duckdb
+import pyarrow as pa
 from _duckdb import ConstraintException
 
 from databao_context_engine.services.table_name_policy import TableNamePolicy
@@ -123,6 +125,39 @@ class EmbeddingRepository:
             """
         ).fetchall()
         return [self._row_to_dto(r) for r in rows]
+
+    def bulk_insert(
+        self,
+        *,
+        table_name: str,
+        chunk_ids: Sequence[int],
+        vecs: Sequence[Sequence[float]],
+        dim: int,
+    ) -> None:
+        flat = array("f")
+        flat_extend = flat.extend
+        for v in vecs:
+            flat_extend(v)
+
+        tbl = pa.table(
+            {
+                "chunk_id": pa.array(chunk_ids, type=pa.int64()),
+                "vec": pa.FixedSizeListArray.from_arrays(pa.array(flat), dim),
+            }
+        )
+
+        view_name = "__tmp_embeddings"
+        self._conn.register(view_name, tbl)
+        try:
+            self._conn.execute(
+                f"""
+                INSERT INTO {table_name} (chunk_id, vec)
+                SELECT chunk_id, vec
+                FROM {view_name}
+                """
+            )
+        finally:
+            self._conn.unregister(view_name)
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> EmbeddingDTO:

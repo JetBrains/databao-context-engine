@@ -1,4 +1,5 @@
 import logging
+import time
 from enum import Enum
 from typing import cast
 
@@ -58,7 +59,14 @@ class ChunkEmbeddingService:
             raise ValueError("A DescriptionProvider must be provided when generating descriptions")
 
     def embed_chunks(
-        self, *, chunks: list[EmbeddableChunk], result: str, full_type: str, datasource_id: str, override: bool = False
+        self,
+        *,
+        chunks: list[EmbeddableChunk],
+        result: str,
+        full_type: str,
+        datasource_id: str,
+        override: bool = False,
+        bench: dict[str, float | int | str] | None = None,
     ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
@@ -74,7 +82,9 @@ class ChunkEmbeddingService:
             f"Embedding {len(chunks)} chunks for datasource {datasource_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
         )
 
-        enriched_embeddings: list[ChunkEmbedding] = []
+        embedding_texts: list[str] = []
+        chunk_display_texts: list[str] = []
+        generated_descriptions: list[str] = []
         for chunk in chunks:
             chunk_display_text = chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)
 
@@ -93,8 +103,24 @@ class ChunkEmbeddingService:
                     )
                     embedding_text = generated_description + "\n" + chunk.embeddable_text
 
-            vec = self._embedding_provider.embed(embedding_text)
+            embedding_texts.append(embedding_text)
+            chunk_display_texts.append(chunk_display_text)
+            generated_descriptions.append(generated_description)
 
+        batch_size = 64
+        vecs: list[list[float]] = []
+        start_embed_many = time.perf_counter()
+        for i in range(0, len(embedding_texts), batch_size):
+            batch = embedding_texts[i : i + batch_size]
+            vecs.extend(self._embedding_provider.embed_many(batch))
+        end_embed_many = time.perf_counter()
+        if bench is not None:
+            bench["embed_many_s"] = end_embed_many - start_embed_many
+
+        enriched_embeddings: list[ChunkEmbedding] = []
+        for chunk, vec, chunk_display_text, generated_description in zip(
+            chunks, vecs, chunk_display_texts, generated_descriptions
+        ):
             enriched_embeddings.append(
                 ChunkEmbedding(
                     chunk=chunk,
@@ -110,10 +136,15 @@ class ChunkEmbeddingService:
             dim=self._embedding_provider.dim,
         )
 
+        start_write = time.perf_counter()
         self._persistence_service.write_chunks_and_embeddings(
             chunk_embeddings=enriched_embeddings,
             table_name=table_name,
             full_type=full_type,
             datasource_id=datasource_id,
             override=override,
+            bench=bench,
         )
+        end_write = time.perf_counter()
+        if bench is not None:
+            bench["write_chunks_and_embeddings_s"] = end_write - start_write

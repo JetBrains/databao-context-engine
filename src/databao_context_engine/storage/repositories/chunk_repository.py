@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 import duckdb
 from _duckdb import ConstraintException
@@ -132,6 +132,31 @@ class ChunkRepository:
             """
         ).fetchall()
         return [self._row_to_dto(r) for r in rows]
+
+    def bulk_insert(
+        self,
+        *,
+        full_type: str,
+        datasource_id: str,
+        embeddable_texts: Sequence[str],
+        display_texts: Sequence[Optional[str]],
+    ) -> Sequence[int]:
+        values_sql = ", ".join(["(?, ?, ?, ?)"] * len(embeddable_texts))
+        sql = f"""
+            INSERT INTO
+                chunk(full_type, datasource_id, embeddable_text, display_text)
+            VALUES
+                {values_sql}
+            RETURNING
+                chunk_id
+        """
+
+        params: list[Any] = []
+        for embeddable_text, display_text in zip(embeddable_texts, display_texts):
+            params.extend([full_type, datasource_id, embeddable_text, display_text])
+
+        rows = self._conn.execute(sql, params).fetchall()
+        return [int(r[0]) for r in rows]
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> ChunkDTO:

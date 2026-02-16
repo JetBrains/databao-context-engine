@@ -35,3 +35,6 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
             raise ValueError(f"provider returned dim={len(vec)} but expected {self._dim}")
 
         return [float(x) for x in vec]
+
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
+        return self._service.embed_many(model=self._model_id, texts=texts)
