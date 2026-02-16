@@ -47,16 +47,10 @@ def test_mid_batch_failure_rolls_back(persistence, chunk_repo, embedding_repo, m
         ChunkEmbedding(EmbeddableChunk("C", "c"), _vec(2.0), display_text="c", generated_description="c"),
     ]
 
-    calls = {"n": 0}
-    real_create = embedding_repo.create
+    def boom_bulk_insert(*, table_name: str, chunk_ids, vecs, dim):
+        raise RuntimeError("boom")
 
-    def flaky_create(*, table_name: str, chunk_id: int, vec):
-        calls["n"] += 1
-        if calls["n"] == 2:
-            raise RuntimeError("boom")
-        return real_create(table_name=table_name, chunk_id=chunk_id, vec=vec)
-
-    monkeypatch.setattr(embedding_repo, "create", flaky_create)
+    monkeypatch.setattr(embedding_repo, "bulk_insert", boom_bulk_insert)
 
     with pytest.raises(RuntimeError):
         persistence.write_chunks_and_embeddings(

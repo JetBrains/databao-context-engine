@@ -47,7 +47,7 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
     embedding_provider.model_id = "nomic-embed-text:v1.5"
     embedding_provider.dim = 768
 
-    embedding_provider.embed.side_effect = [
+    embedding_provider.embed_many.return_value = [
         _vec(0.0, embedding_provider.dim),
         _vec(1.0, embedding_provider.dim),
         _vec(2.0, embedding_provider.dim),
@@ -87,8 +87,7 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
     rows = embedding_repo.list(table_name=expected_table)
     assert len(rows) == 3
 
-    embedding_provider.embed.assert_called()
-    assert embedding_provider.embed.call_count == 3
+    embedding_provider.embed_many.assert_called_once()
 
 
 def test_provider_failure_writes_nothing(persistence, resolver, chunk_repo, embedding_repo, registry_repo):
@@ -99,11 +98,7 @@ def test_provider_failure_writes_nothing(persistence, resolver, chunk_repo, embe
     embedding_provider.model_id = "model:v1"
     embedding_provider.dim = 768
 
-    embedding_provider.embed.side_effect = [
-        _vec(2.0, embedding_provider.dim),
-        RuntimeError("provider embed failed"),
-    ]
-
+    embedding_provider.embed_many.side_effect = RuntimeError("provider embed failed")
     description_provider.describe.side_effect = lambda *, text, context: f"desc-{text}"
 
     service = ChunkEmbeddingService(

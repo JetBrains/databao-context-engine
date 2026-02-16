@@ -75,6 +75,12 @@ class _StubProvider:
         self._calls += 1
         return [float(self._calls)] * self.dim
 
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
+        out: list[list[float]] = []
+        for t in texts:
+            out.append(self.embed(t))
+        return out
+
 
 class _StubDescriptionProvider(DescriptionProvider):
     def __init__(self, *, fail_at: set[int] | None = None):

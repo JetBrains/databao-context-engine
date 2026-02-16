@@ -2,7 +2,7 @@ from array import array
 from typing import Optional, Sequence, Tuple
 
 import duckdb
-import pyarrow as pa
+import pyarrow
 from _duckdb import ConstraintException
 
 from databao_context_engine.services.table_name_policy import TableNamePolicy
@@ -139,10 +139,10 @@ class EmbeddingRepository:
         for v in vecs:
             flat_extend(v)
 
-        tbl = pa.table(
+        tbl = pyarrow.table(
             {
-                "chunk_id": pa.array(chunk_ids, type=pa.int64()),
-                "vec": pa.FixedSizeListArray.from_arrays(pa.array(flat), dim),
+                "chunk_id": pyarrow.array(chunk_ids, type=pyarrow.int64()),
+                "vec": pyarrow.FixedSizeListArray.from_arrays(pyarrow.array(flat), dim),
             }
         )
 
