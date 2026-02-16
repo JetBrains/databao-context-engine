@@ -71,5 +71,58 @@ class DbtModel:
 
 
 @dataclass(kw_only=True)
+class DbtSemanticEntity:
+    name: str
+    type: Literal["foreign", "natural", "primary", "unique"]
+    description: str | None = None
+
+
+@dataclass(kw_only=True)
+class DbtSemanticMeasure:
+    name: str
+    agg: Literal["sum", "min", "max", "count_distinct", "sum_boolean", "average", "percentile", "median", "count"]
+    description: str | None = None
+
+
+@dataclass(kw_only=True)
+class DbtSemanticDimension:
+    name: str
+    type: Literal["time", "categorical"]
+    description: str | None = None
+
+
+@dataclass(kw_only=True)
+class DbtSemanticModel:
+    id: str
+    name: str
+    model: str | None
+    description: str | None = None
+    entities: list[DbtSemanticEntity]
+    measures: list[DbtSemanticMeasure]
+    dimensions: list[DbtSemanticDimension]
+
+
+@dataclass(kw_only=True)
+class DbtMetric:
+    id: str
+    name: str
+    description: str
+    type: Literal["simple", "ratio", "cumulative", "derived", "conversion"]
+    label: str
+    depends_on_nodes: list[str]
+
+    @property
+    def depends_on_semantic_model(self) -> str | None:
+        return next((node for node in self.depends_on_nodes if node.startswith("semantic_model.")), None)
+
+
+@dataclass(kw_only=True)
+class DbtSemanticLayer:
+    semantic_models: list[DbtSemanticModel]
+    metrics: list[DbtMetric]
+
+
+@dataclass(kw_only=True)
 class DbtContext:
     models: list[DbtModel]
+    semantic_layer: DbtSemanticLayer

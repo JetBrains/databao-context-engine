@@ -10,8 +10,14 @@ from databao_context_engine.plugins.dbt.types import (
     DbtConstraint,
     DbtContext,
     DbtMaterialization,
+    DbtMetric,
     DbtModel,
     DbtRelationshipConstraint,
+    DbtSemanticDimension,
+    DbtSemanticEntity,
+    DbtSemanticLayer,
+    DbtSemanticMeasure,
+    DbtSemanticModel,
     DbtSimpleConstraint,
 )
 from databao_context_engine.plugins.dbt.types_artifacts import (
@@ -21,7 +27,9 @@ from databao_context_engine.plugins.dbt.types_artifacts import (
     DbtCatalogNode,
     DbtManifest,
     DbtManifestColumn,
+    DbtManifestMetric,
     DbtManifestModel,
+    DbtManifestSemanticModel,
     DbtManifestTest,
 )
 
@@ -75,6 +83,16 @@ def _extract_context_from_artifacts(artifacts: DbtArtifacts) -> DbtContext:
             )
             for manifest_model in manifest_models
         ],
+        semantic_layer=DbtSemanticLayer(
+            semantic_models=[
+                _manifest_semantic_model_to_dbt_semantic_model(manifest_semantic_model)
+                for manifest_semantic_model in artifacts.manifest.semantic_models.values()
+            ],
+            metrics=[
+                _manifest_metric_to_dbt_metric(manifest_metric)
+                for manifest_metric in artifacts.manifest.metrics.values()
+            ],
+        ),
     )
 
 
@@ -189,6 +207,52 @@ def _manifest_test_to_dbt_constraint(test_nodes: list[DbtManifestTest]) -> list[
                 continue
 
     return result
+
+
+def _manifest_semantic_model_to_dbt_semantic_model(
+    manifest_semantic_model: DbtManifestSemanticModel,
+) -> DbtSemanticModel:
+    return DbtSemanticModel(
+        id=manifest_semantic_model.unique_id,
+        name=manifest_semantic_model.name,
+        model=_extract_ref_model(manifest_semantic_model.model),
+        description=manifest_semantic_model.description,
+        entities=[
+            DbtSemanticEntity(
+                name=manifest_entity.name, type=manifest_entity.type, description=manifest_entity.description
+            )
+            for manifest_entity in manifest_semantic_model.entities
+        ]
+        if manifest_semantic_model.entities
+        else [],
+        measures=[
+            DbtSemanticMeasure(
+                name=manifest_measure.name, agg=manifest_measure.agg, description=manifest_measure.description
+            )
+            for manifest_measure in manifest_semantic_model.measures
+        ]
+        if manifest_semantic_model.measures
+        else [],
+        dimensions=[
+            DbtSemanticDimension(
+                name=manifest_dimension.name, type=manifest_dimension.type, description=manifest_dimension.description
+            )
+            for manifest_dimension in manifest_semantic_model.dimensions
+        ]
+        if manifest_semantic_model.dimensions
+        else [],
+    )
+
+
+def _manifest_metric_to_dbt_metric(manifest_metric: DbtManifestMetric) -> DbtMetric:
+    return DbtMetric(
+        id=manifest_metric.unique_id,
+        name=manifest_metric.name,
+        description=manifest_metric.description,
+        type=manifest_metric.type,
+        label=manifest_metric.label,
+        depends_on_nodes=manifest_metric.depends_on.get("nodes", []) if manifest_metric.depends_on else [],
+    )
 
 
 def _extract_ref_model(target_model_with_ref: str | None) -> str | None:
