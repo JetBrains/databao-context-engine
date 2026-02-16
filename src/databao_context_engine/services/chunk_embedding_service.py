@@ -1,5 +1,4 @@
 import logging
-import time
 from enum import Enum
 from typing import cast
 
@@ -66,7 +65,6 @@ class ChunkEmbeddingService:
         full_type: str,
         datasource_id: str,
         override: bool = False,
-        bench: dict[str, float | int | str] | None = None,
     ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
@@ -109,13 +107,9 @@ class ChunkEmbeddingService:
 
         batch_size = 64
         vecs: list[list[float]] = []
-        start_embed_many = time.perf_counter()
         for i in range(0, len(embedding_texts), batch_size):
             batch = embedding_texts[i : i + batch_size]
             vecs.extend(self._embedding_provider.embed_many(batch))
-        end_embed_many = time.perf_counter()
-        if bench is not None:
-            bench["embed_many_s"] = end_embed_many - start_embed_many
 
         enriched_embeddings: list[ChunkEmbedding] = []
         for chunk, vec, chunk_display_text, generated_description in zip(
@@ -136,15 +130,10 @@ class ChunkEmbeddingService:
             dim=self._embedding_provider.dim,
         )
 
-        start_write = time.perf_counter()
         self._persistence_service.write_chunks_and_embeddings(
             chunk_embeddings=enriched_embeddings,
             table_name=table_name,
             full_type=full_type,
             datasource_id=datasource_id,
             override=override,
-            bench=bench,
         )
-        end_write = time.perf_counter()
-        if bench is not None:
-            bench["write_chunks_and_embeddings_s"] = end_write - start_write

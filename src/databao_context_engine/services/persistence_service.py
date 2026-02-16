@@ -1,5 +1,4 @@
 import duckdb
-import time
 
 from databao_context_engine.services.models import ChunkEmbedding
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
@@ -29,7 +28,6 @@ class PersistenceService:
         full_type: str,
         datasource_id: str,
         override: bool = False,
-        bench: dict[str, float | int | str] | None = None,
     ):
         """Atomically persist chunks and their vectors.
 
@@ -51,24 +49,16 @@ class PersistenceService:
             self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
 
         with transaction(self._conn):
-            start = time.perf_counter()
             chunk_ids = self._chunk_repo.bulk_insert(
                 full_type=full_type,
                 datasource_id=datasource_id,
                 embeddable_texts=[ce.chunk.embeddable_text for ce in chunk_embeddings],
                 display_texts=[ce.display_text for ce in chunk_embeddings],
             )
-            end = time.perf_counter()
-            if bench is not None:
-                bench["chunk_insert_s"] = end - start
 
-            start = time.perf_counter()
             self._embedding_repo.bulk_insert(
                 table_name=table_name,
                 chunk_ids=chunk_ids,
                 vecs=[ce.vec for ce in chunk_embeddings],
                 dim=self._dim,
             )
-            end = time.perf_counter()
-            if bench is not None:
-                bench["embedding_insert_s"] = end - start
