@@ -1,9 +1,6 @@
-from collections.abc import Sequence
-
 import duckdb
 
 from databao_context_engine.services.models import ChunkEmbedding
-from databao_context_engine.storage.models import ChunkDTO
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
 from databao_context_engine.storage.transaction import transaction
@@ -52,26 +49,15 @@ class PersistenceService:
             self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
 
         with transaction(self._conn):
-            for chunk_embedding in chunk_embeddings:
-                chunk_dto = self.create_chunk(
-                    full_type=full_type,
-                    datasource_id=datasource_id,
-                    embeddable_text=chunk_embedding.chunk.embeddable_text,
-                    display_text=chunk_embedding.display_text,
-                )
-                self.create_embedding(table_name=table_name, chunk_id=chunk_dto.chunk_id, vec=chunk_embedding.vec)
+            chunk_ids = self._chunk_repo.bulk_insert(
+                full_type=full_type,
+                datasource_id=datasource_id,
+                chunk_contents=[(ce.chunk.embeddable_text, ce.display_text) for ce in chunk_embeddings],
+            )
 
-    def create_chunk(self, *, full_type: str, datasource_id: str, embeddable_text: str, display_text: str) -> ChunkDTO:
-        return self._chunk_repo.create(
-            full_type=full_type,
-            datasource_id=datasource_id,
-            embeddable_text=embeddable_text,
-            display_text=display_text,
-        )
-
-    def create_embedding(self, *, table_name: str, chunk_id: int, vec: Sequence[float]):
-        self._embedding_repo.create(
-            table_name=table_name,
-            chunk_id=chunk_id,
-            vec=vec,
-        )
+            self._embedding_repo.bulk_insert(
+                table_name=table_name,
+                chunk_ids=chunk_ids,
+                vecs=[ce.vec for ce in chunk_embeddings],
+                dim=self._dim,
+            )

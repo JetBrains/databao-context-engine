@@ -74,7 +74,9 @@ class ChunkEmbeddingService:
             f"Embedding {len(chunks)} chunks for datasource {datasource_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
         )
 
-        enriched_embeddings: list[ChunkEmbedding] = []
+        embedding_texts: list[str] = []
+        chunk_display_texts: list[str] = []
+        generated_descriptions: list[str] = []
         for chunk in chunks:
             chunk_display_text = chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)
 
@@ -93,8 +95,16 @@ class ChunkEmbeddingService:
                     )
                     embedding_text = generated_description + "\n" + chunk.embeddable_text
 
-            vec = self._embedding_provider.embed(embedding_text)
+            embedding_texts.append(embedding_text)
+            chunk_display_texts.append(chunk_display_text)
+            generated_descriptions.append(generated_description)
 
+        vecs: list[list[float]] = self._embedding_provider.embed_many(embedding_texts)
+
+        enriched_embeddings: list[ChunkEmbedding] = []
+        for chunk, vec, chunk_display_text, generated_description in zip(
+            chunks, vecs, chunk_display_texts, generated_descriptions
+        ):
             enriched_embeddings.append(
                 ChunkEmbedding(
                     chunk=chunk,

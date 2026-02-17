@@ -22,6 +22,9 @@ class _FakeProvider:
         seed = float(len(text) % 10)
         return [seed] * self.dim
 
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
+        return [self.embed(t) for t in texts]
+
 
 def _write_project(project_dir: Path) -> None:
     src = project_dir / "src"

@@ -1,6 +1,8 @@
+from array import array
 from typing import Optional, Sequence, Tuple
 
 import duckdb
+import pyarrow  # type: ignore[import-untyped]
 from _duckdb import ConstraintException
 
 from databao_context_engine.services.table_name_policy import TableNamePolicy
@@ -123,6 +125,44 @@ class EmbeddingRepository:
             """
         ).fetchall()
         return [self._row_to_dto(r) for r in rows]
+
+    def bulk_insert(
+        self,
+        *,
+        table_name: str,
+        chunk_ids: Sequence[int],
+        vecs: Sequence[Sequence[float]],
+        dim: int,
+    ) -> None:
+        """Bulk insert embeddings efficiently.
+
+        DuckDB has a fast ingestion path for Arrow/columnar data. By registering a pyarrow.Table as a temporary view
+        and inserting via INSERT ... SELECT, DuckDB ingests the data in native code and avoids the conversion from the
+        Python binder at each float, which is very slow for large vectors.
+        """
+        flat = array("f")
+        for v in vecs:
+            flat.extend(v)
+
+        tbl = pyarrow.table(
+            {
+                "chunk_id": pyarrow.array(chunk_ids, type=pyarrow.int64()),
+                "vec": pyarrow.FixedSizeListArray.from_arrays(pyarrow.array(flat), dim),
+            }
+        )
+
+        view_name = "__tmp_embeddings"
+        self._conn.register(view_name, tbl)
+        try:
+            self._conn.execute(
+                f"""
+                INSERT INTO {table_name} (chunk_id, vec)
+                SELECT chunk_id, vec
+                FROM {view_name}
+                """
+            )
+        finally:
+            self._conn.unregister(view_name)
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> EmbeddingDTO:
