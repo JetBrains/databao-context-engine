@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import click
 
@@ -11,21 +11,38 @@ from databao_context_engine import (
     DatasourceId,
     DatasourceType,
 )
-from databao_context_engine.datasources.config_wizard import UserInputCallback, build_config_content_interactively
+from databao_context_engine.datasources.config_wizard import (
+    Choice,
+    UserInputCallback,
+    build_config_content_interactively,
+)
 
 
 class ClickUserInputCallback(UserInputCallback):
     def prompt(
         self,
         text: str,
-        type: Iterable[str] | Any | None = None,
-        default: Any | None = None,
-        hide_input: bool = False,
-        show_default: bool = True,
-    ) -> str:
-        final_type = click.Choice(type) if isinstance(type, Iterable) else type
+        type: Choice | Any | None = None,
+        default_value: Any | None = None,
+        is_secret: bool = False,
+    ) -> Any:
+        show_default: bool = default_value is not None and default_value != ""
+        final_type = click.Choice(type.choices) if isinstance(type, Choice) else str
+
+        # click goes infinite loop if user gives emptry string as an input AND default_value is None
+        # in order to exit this loop we need to set default value to '' (so it gets accepted)
+        #
+        # Code snippet from click:
+        # while True:
+        #   value = prompt_func(prompt)
+        #     if value:
+        #       break
+        #     elif default is not None:
+        #       value = default
+        #       break
+        default_value = default_value if default_value else "" if final_type is str else None
         return click.prompt(
-            text=text, default=default, hide_input=hide_input, type=final_type, show_default=show_default
+            text=text, default=default_value, hide_input=is_secret, type=final_type, show_default=show_default
         )
 
     def confirm(self, text: str) -> bool:
