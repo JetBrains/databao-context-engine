@@ -58,13 +58,7 @@ class ChunkEmbeddingService:
             raise ValueError("A DescriptionProvider must be provided when generating descriptions")
 
     def embed_chunks(
-        self,
-        *,
-        chunks: list[EmbeddableChunk],
-        result: str,
-        full_type: str,
-        datasource_id: str,
-        override: bool = False,
+        self, *, chunks: list[EmbeddableChunk], result: str, full_type: str, datasource_id: str, override: bool = False
     ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
@@ -105,11 +99,8 @@ class ChunkEmbeddingService:
             chunk_display_texts.append(chunk_display_text)
             generated_descriptions.append(generated_description)
 
-        batch_size = 64
         vecs: list[list[float]] = []
-        for i in range(0, len(embedding_texts), batch_size):
-            batch = embedding_texts[i : i + batch_size]
-            vecs.extend(self._embedding_provider.embed_many(batch))
+        vecs.extend(self._embedding_provider.embed_many(embedding_texts))
 
         enriched_embeddings: list[ChunkEmbedding] = []
         for chunk, vec, chunk_display_text, generated_description in zip(

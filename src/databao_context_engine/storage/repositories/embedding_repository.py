@@ -2,7 +2,7 @@ from array import array
 from typing import Optional, Sequence, Tuple
 
 import duckdb
-import pyarrow
+import pyarrow  # type: ignore[import-untyped]
 from _duckdb import ConstraintException
 
 from databao_context_engine.services.table_name_policy import TableNamePolicy
