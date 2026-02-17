@@ -138,10 +138,9 @@ class ChunkRepository:
         *,
         full_type: str,
         datasource_id: str,
-        embeddable_texts: Sequence[str],
-        display_texts: Sequence[Optional[str]],
+        chunk_contents: Sequence[Tuple[str, Optional[str]]],
     ) -> Sequence[int]:
-        values_sql = ", ".join(["(?, ?, ?, ?)"] * len(embeddable_texts))
+        values_sql = ", ".join(["(?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
             INSERT INTO
                 chunk(full_type, datasource_id, embeddable_text, display_text)
@@ -152,7 +151,7 @@ class ChunkRepository:
         """
 
         params: list[Any] = []
-        for embeddable_text, display_text in zip(embeddable_texts, display_texts):
+        for embeddable_text, display_text in chunk_contents:
             params.extend([full_type, datasource_id, embeddable_text, display_text])
 
         rows = self._conn.execute(sql, params).fetchall()

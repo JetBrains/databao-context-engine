@@ -99,8 +99,7 @@ class ChunkEmbeddingService:
             chunk_display_texts.append(chunk_display_text)
             generated_descriptions.append(generated_description)
 
-        vecs: list[list[float]] = []
-        vecs.extend(self._embedding_provider.embed_many(embedding_texts))
+        vecs: list[list[float]] = self._embedding_provider.embed_many(embedding_texts)
 
         enriched_embeddings: list[ChunkEmbedding] = []
         for chunk, vec, chunk_display_text, generated_description in zip(

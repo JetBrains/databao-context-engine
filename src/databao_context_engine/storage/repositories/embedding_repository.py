@@ -134,10 +134,15 @@ class EmbeddingRepository:
         vecs: Sequence[Sequence[float]],
         dim: int,
     ) -> None:
+        """Bulk insert embeddings efficiently.
+
+        DuckDB has a fast ingestion path for Arrow/columnar data. By registering a pyarrow.Table as a temporary view
+        and inserting via INSERT ... SELECT, DuckDB ingests the data in native code and avoids the conversion from the
+        Python binder at each float, which is very slow for large vectors.
+        """
         flat = array("f")
-        flat_extend = flat.extend
         for v in vecs:
-            flat_extend(v)
+            flat.extend(v)
 
         tbl = pyarrow.table(
             {
