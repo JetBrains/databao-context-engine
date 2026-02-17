@@ -16,6 +16,10 @@ from databao_context_engine.datasources.check_config import (
 from databao_context_engine.datasources.check_config import (
     check_datasource_connection as check_datasource_connection_internal,
 )
+from databao_context_engine.datasources.config_wizard import (
+    UserInputCallback,
+    build_config_content_interactively,
+)
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.datasource_discovery import get_datasource_list
 from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
@@ -173,6 +177,48 @@ class DatabaoContextProjectManager:
         Returns:
             The path to the created datasource configuration file.
         """
+        datasource_name_without_folders = datasource_name.split("/")[-1]
+        actual_config_content = self._validate_and_dump_config_content(
+            config_content, datasource_name_without_folders, datasource_type, validate_config_content
+        )
+
+        return _create_datasource_config_file(
+            project_layout=self._project_layout,
+            datasource_type=datasource_type,
+            datasource_name=datasource_name,
+            config_content=actual_config_content,
+            overwrite_existing=overwrite_existing,
+        )
+
+    def create_datasource_config_interactively(
+        self,
+        datasource_type: DatasourceType,
+        datasource_name: str,
+        user_input_callback: UserInputCallback,
+        overwrite_existing: bool = False,
+        validate_config_content: bool = True,
+    ) -> ConfiguredDatasource:
+        """Create a new datasource configuration file in the project interactively.
+
+        Args:
+            datasource_type: The type of the datasource to create.
+            datasource_name: The name of the datasource to create.
+            user_input_callback: A callback to ask user for an input during the creation process.
+            overwrite_existing: Whether to overwrite an existing datasource configuration file if it already exists.
+            validate_config_content: Whether to validate that the content of the config file is valid for that datasource type.
+
+        Returns:
+            The path to the created datasource configuration file.
+
+        """
+        config_properties = self._plugin_loader.get_config_file_structure_for_datasource_type(
+            datasource_type=datasource_type
+        )
+
+        config_content = build_config_content_interactively(
+            properties=config_properties, user_input_callback=user_input_callback
+        )
+
         datasource_name_without_folders = datasource_name.split("/")[-1]
         actual_config_content = self._validate_and_dump_config_content(
             config_content, datasource_name_without_folders, datasource_type, validate_config_content
