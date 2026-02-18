@@ -5,11 +5,12 @@ from databao_context_engine.build_sources.types import (
     IndexDatasourceResult,
 )
 from databao_context_engine.databao_context_engine import ContextSearchResult, DatabaoContextEngine
-from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager, UserInputCallback
+from databao_context_engine.databao_context_project_manager import DatabaoContextProjectManager
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
     DatasourceConnectionStatus,
 )
+from databao_context_engine.datasources.config_wizard import Choice, UserInputCallback
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
 from databao_context_engine.init_project import init_dce_project, init_or_get_dce_project
@@ -75,6 +76,7 @@ __all__ = [
     "ContextSearchResult",
     "DatabaoContextProjectManager",
     "UserInputCallback",
+    "Choice",
     "ChunkEmbeddingMode",
     "DatasourceConnectionStatus",
     "DatasourceType",
