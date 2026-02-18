@@ -13,12 +13,12 @@ class PersistenceService:
         chunk_repo: ChunkRepository,
         embedding_repo: EmbeddingRepository,
         *,
-        dim: int = 768,
+        dim: int | None = None,
     ):
         self._conn = conn
         self._chunk_repo = chunk_repo
         self._embedding_repo = embedding_repo
-        self._dim = dim
+        self._dim = dim or 768
 
     def write_chunks_and_embeddings(
         self,
