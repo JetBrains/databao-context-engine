@@ -48,7 +48,7 @@ def test_append_result_to_all_results_appends(tmp_path: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     a = _make_result(id="files/A.txt", full_type="files/txt", payload={"chunks": 1})
-    b = _make_result(id="databases/B.yaml", full_type="databases/postgres", payload={"ok": True})
+    b = _make_result(id="databases/B.yaml", full_type="postgres", payload={"ok": True})
 
     append_result_to_all_results(output_dir, a)
     append_result_to_all_results(output_dir, b)
@@ -62,4 +62,4 @@ def test_append_result_to_all_results_appends(tmp_path: Path) -> None:
     assert "datasource_type: files/txt" in txt
     assert "# ===== databases/B.yaml =====\n" in txt
     assert "datasource_id: databases/B.yaml" in txt
-    assert "datasource_type: databases/postgres" in txt
+    assert "datasource_type: postgres" in txt

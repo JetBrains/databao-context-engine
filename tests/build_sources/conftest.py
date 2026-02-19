@@ -7,14 +7,6 @@ from tests.utils.fakes import FakeSource
 
 
 @pytest.fixture
-def stub_plugins(mocker):
-    def _stub(mapping):
-        return mocker.patch.object(build_runner, "load_plugins", return_value=mapping)
-
-    return _stub
-
-
-@pytest.fixture
 def stub_sources(mocker):
     def _stub(sources):
         return mocker.patch.object(build_runner, "discover_datasources", return_value=sources)

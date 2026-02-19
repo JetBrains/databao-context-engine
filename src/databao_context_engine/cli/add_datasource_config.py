@@ -11,12 +11,49 @@ from databao_context_engine import (
     DatasourceId,
     DatasourceType,
 )
-from databao_context_engine.pluginlib.config import ConfigUnionPropertyDefinition
+from databao_context_engine.datasources.config_wizard import (
+    Choice,
+    UserInputCallback,
+    build_config_content_interactively,
+)
 
 
-def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
-    project_manager = DatabaoContextProjectManager(project_dir=project_dir)
-    plugin_loader = DatabaoContextPluginLoader()
+class ClickUserInputCallback(UserInputCallback):
+    def prompt(
+        self,
+        text: str,
+        type: Choice | Any | None = None,
+        default_value: Any | None = None,
+        is_secret: bool = False,
+    ) -> Any:
+        show_default: bool = default_value is not None and default_value != ""
+        final_type = click.Choice(type.choices) if isinstance(type, Choice) else str
+
+        # click goes infinite loop if user gives emptry string as an input AND default_value is None
+        # in order to exit this loop we need to set default value to '' (so it gets accepted)
+        #
+        # Code snippet from click:
+        # while True:
+        #   value = prompt_func(prompt)
+        #     if value:
+        #       break
+        #     elif default is not None:
+        #       value = default
+        #       break
+        default_value = default_value if default_value else "" if final_type is str else None
+        return click.prompt(
+            text=text, default=default_value, hide_input=is_secret, type=final_type, show_default=show_default
+        )
+
+    def confirm(self, text: str) -> bool:
+        return click.confirm(text=text)
+
+
+def add_datasource_config_interactive(
+    project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None
+) -> DatasourceId:
+    plugin_loader = plugin_loader if plugin_loader else DatabaoContextPluginLoader()
+    project_manager = DatabaoContextProjectManager(project_dir=project_dir, plugin_loader=plugin_loader)
 
     click.echo(
         f"We will guide you to add a new datasource in your Databao Context Engine project, at {project_dir.resolve()}"
@@ -35,12 +72,12 @@ def add_datasource_config_interactive(project_dir: Path) -> DatasourceId:
             default=False,
         )
 
-    config_content = _ask_for_config_details(
-        plugin_loader.get_config_file_structure_for_datasource_type(datasource_type)
-    )
-
-    created_datasource = project_manager.create_datasource_config(
-        datasource_type, datasource_name, config_content, overwrite_existing=True
+    created_datasource = project_manager.create_datasource_config_interactively(
+        datasource_type,
+        datasource_name,
+        ClickUserInputCallback(),
+        overwrite_existing=True,
+        validate_config_content=False,
     )
 
     click.echo(
@@ -72,66 +109,4 @@ def _ask_for_config_details(config_file_structure: list[ConfigPropertyDefinition
         )
         return {}
 
-    return _build_config_content_from_properties(config_file_structure, properties_prefix="")
-
-
-def _build_config_content_from_properties(
-    properties: list[ConfigPropertyDefinition], properties_prefix: str, in_union: bool = False
-) -> dict[str, Any]:
-    config_content: dict[str, Any] = {}
-    for config_file_property in properties:
-        if config_file_property.property_key in ["type", "name"] and len(properties_prefix) == 0:
-            # We ignore type and name properties as they've already been filled
-            continue
-        if in_union and config_file_property.property_key == "type":
-            continue
-
-        if isinstance(config_file_property, ConfigUnionPropertyDefinition):
-            choices = {t.__name__: t for t in config_file_property.types}
-
-            chosen = click.prompt(
-                f"{properties_prefix}{config_file_property.property_key}.type?",
-                type=click.Choice(sorted(choices.keys())),
-            )
-
-            chosen_type = choices[chosen]
-
-            nested_props = config_file_property.type_properties[chosen_type]
-            nested_content = _build_config_content_from_properties(
-                nested_props, f"{properties_prefix}{config_file_property.property_key}.", in_union=True
-            )
-
-            config_content[config_file_property.property_key] = {
-                **nested_content,
-            }
-            continue
-
-        if config_file_property.nested_properties is not None and len(config_file_property.nested_properties) > 0:
-            nested_content = _build_config_content_from_properties(
-                config_file_property.nested_properties,
-                properties_prefix=f"{properties_prefix}.{config_file_property.property_key}."
-                if properties_prefix
-                else f"{config_file_property.property_key}.",
-            )
-            if len(nested_content.keys()) > 0:
-                config_content[config_file_property.property_key] = nested_content
-        else:
-            default_value: str | None
-            if config_file_property.default_value:
-                default_value = config_file_property.default_value
-            else:
-                # We need to add an empty string default value for non-required fields
-                default_value = None if config_file_property.required else ""
-
-            property_value = click.prompt(
-                f"{properties_prefix}{config_file_property.property_key}? {'(Optional)' if not config_file_property.required else ''}",
-                type=str,
-                default=default_value,
-                show_default=default_value is not None and default_value != "",
-                hide_input=config_file_property.secret,
-            )
-
-            if property_value.strip():
-                config_content[config_file_property.property_key] = property_value
-
-    return config_content
+    return build_config_content_interactively(config_file_structure, ClickUserInputCallback())

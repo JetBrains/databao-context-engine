@@ -536,9 +536,12 @@ def test_mssql_samples_in_big(mssql_container_with_demo_schema, create_mssql_con
         )
 
 
-def _create_config_file_from_container(mssql: SqlServerContainer) -> Mapping[str, Any]:
+def _create_config_file_from_container(
+    mssql: SqlServerContainer, datasource_name: str | None = "file_name"
+) -> Mapping[str, Any]:
     return {
-        "type": "databases/mssql",
+        "name": datasource_name,
+        "type": "mssql",
         "connection": {
             "host": MSSQL_HOST,
             "port": int(mssql.get_exposed_port(MSSQL_HTTP_PORT)),

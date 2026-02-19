@@ -1,6 +1,6 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
+from databao_context_engine.plugins.databases.postgresql.config_file import PostgresConfigFile
 from databao_context_engine.plugins.databases.postgresql.postgresql_introspector import (
-    PostgresConfigFile,
     PostgresqlIntrospector,
 )
 

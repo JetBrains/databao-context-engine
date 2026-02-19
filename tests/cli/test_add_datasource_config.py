@@ -5,16 +5,13 @@ import pytest
 from click import Abort
 from click.testing import CliRunner
 
+from databao_context_engine import DatabaoContextPluginLoader, DatasourceType
 from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
+from databao_context_engine.plugins.resources.parquet_plugin import ParquetPlugin
 from databao_context_engine.project.layout import ProjectLayout, get_source_dir
 from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.dummy_build_plugin import load_dummy_plugins
 from tests.utils.project_creation import given_datasource_config_file
-
-
-@pytest.fixture(autouse=True)
-def patch_load_plugins(mocker):
-    mocker.patch("databao_context_engine.plugin_loader.load_plugins", new=load_dummy_plugins)
 
 
 def test_add_datasource_config__with_no_custom_properties(project_path: Path):
@@ -23,7 +20,7 @@ def test_add_datasource_config__with_no_custom_properties(project_path: Path):
     inputs = ["dummy_default", "my datasource name"]
 
     with cli_runner.isolation(input=os.linesep.join(inputs)):
-        add_datasource_config_interactive(project_path)
+        _add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -38,13 +35,14 @@ def test_add_datasource_config__with_all_values_filled(project_path: Path):
         "databases/my datasource name",
         "15.356",
         "property_with_default",
+        "y",
         "nested_field",
         "other_nested_property",
         "87654",
     ]
 
     with cli_runner.isolation(input=os.linesep.join(inputs)):
-        add_datasource_config_interactive(project_path)
+        _add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("databases").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -71,13 +69,14 @@ def test_add_datasource_config__with_partial_values_filled(project_path: Path):
         "databases/my datasource name",
         "3.14",
         "",
+        "y",
         "nested_field",
         "5",
         "\n",  # TextIOWrapper hack: For some reason, having two \n at the end of the input is considered the end of the file. Adding a third one make sure that the last property will actually be read as an empty string
     ]
 
     with cli_runner.isolation(input="\n".join(inputs)):
-        add_datasource_config_interactive(project_path)
+        _add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("databases").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -103,6 +102,7 @@ def test_add_datasource_config__with_custom_property_list(project_path: Path):
         "no_config_type",
         "dummy/my datasource name",
         "3.14",
+        "y",
         "value",
         "nested_field",
         "other_nested_property",
@@ -110,7 +110,7 @@ def test_add_datasource_config__with_custom_property_list(project_path: Path):
     ]
 
     with cli_runner.isolation(input="\n".join(inputs)):
-        add_datasource_config_interactive(project_path)
+        _add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -145,7 +145,7 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
     ]
 
     with cli_runner.isolation(input="\n".join(inputs)):
-        add_datasource_config_interactive(project_path)
+        _add_datasource_config(project_path)
 
     result_config_file = get_source_dir(project_path).joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -157,6 +157,38 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
             "nested_dict": {
                 "optional_with_default": "1111",
             },
+        }
+    )
+
+
+def test_add_parquet_datasource_config(project_path: Path):
+    cli_runner = CliRunner()
+
+    inputs = [
+        "parquet",
+        "res/my_parq",
+        "my_url_to_file.parquet",
+        "N",
+        "\n",  # TextIOWrapper hack: For some reason, having two \n at the end of the input is considered the end of the file. Adding a third one make sure that the last property will actually be read as an empty string
+    ]
+
+    with cli_runner.isolation(input="\n".join(inputs)):
+        add_datasource_config_interactive(
+            project_path,
+            plugin_loader=DatabaoContextPluginLoader(
+                plugins_by_type={
+                    DatasourceType(full_type="parquet"): ParquetPlugin(),
+                }
+            ),
+        )
+
+    result_config_file = get_source_dir(project_path) / "res" / "my_parq.yaml"
+    assert result_config_file.is_file()
+    assert result_config_file.read_text() == to_yaml_string(
+        {
+            "type": "parquet",
+            "name": "my_parq",
+            "url": "my_url_to_file.parquet",
         }
     )
 
@@ -178,7 +210,7 @@ def test_add_datasource_config__abort_if_existing_config_and_no_overwrite(projec
 
     with cli_runner.isolation(input="\n".join(inputs)):
         with pytest.raises(Abort):
-            add_datasource_config_interactive(project_layout.project_dir)
+            _add_datasource_config(project_layout.project_dir)
 
     result_config_file = project_layout.src_dir.joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -208,7 +240,7 @@ def test_add_datasource_config__overwrite_existing_config(project_layout: Projec
     ]
 
     with cli_runner.isolation(input="\n".join(inputs)):
-        add_datasource_config_interactive(project_layout.project_dir)
+        _add_datasource_config(project_layout.project_dir)
 
     result_config_file = project_layout.src_dir.joinpath("dummy").joinpath("my datasource name.yaml")
     assert result_config_file.is_file()
@@ -221,4 +253,10 @@ def test_add_datasource_config__overwrite_existing_config(project_layout: Projec
                 "optional_with_default": "1111",
             },
         }
+    )
+
+
+def _add_datasource_config(project_path: Path):
+    add_datasource_config_interactive(
+        project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=load_dummy_plugins())
     )

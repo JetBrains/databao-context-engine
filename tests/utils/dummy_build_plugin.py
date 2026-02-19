@@ -1,9 +1,12 @@
 import uuid
 from dataclasses import dataclass
 from io import BufferedReader
-from typing import Annotated, Any, Mapping, TypedDict
+from typing import Annotated, Any, TypedDict
+
+from pydantic import BaseModel
 
 from databao_context_engine.pluginlib.build_plugin import (
+    AbstractConfigFile,
     BuildDatasourcePlugin,
     BuildFilePlugin,
     BuildPlugin,
@@ -44,13 +47,12 @@ class DummyConfigNested:
     optional_with_default: Annotated[int, ConfigPropertyAnnotation(default_value="1111", required=False)] = 1111
 
 
-class DummyConfigFileType(TypedDict):
-    type: str
-    name: str
+@dataclass
+class DummyConfigFileType(AbstractConfigFile):
     other_property: float
     property_with_default: Annotated[str, ConfigPropertyAnnotation(default_value="default_value", required=True)]
-    nested_dict: DummyConfigNested
     ignored_dict: dict[str, str]
+    nested_dict: DummyConfigNested | None = None
 
 
 class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
@@ -62,7 +64,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
     def supported_types(self) -> set[str]:
         return {"dummy_db"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: DummyConfigFileType) -> Any:
         return {
             "catalogs": [
                 {
@@ -129,8 +131,8 @@ class DummyFilePlugin(BuildFilePlugin):
         return []
 
 
-class AdditionalDummyConfigFile(TypedDict):
-    type: str
+@dataclass
+class AdditionalDummyConfigFile(AbstractConfigFile):
     other_field: str
 
 
@@ -194,12 +196,66 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigP
         ]
 
 
+class SimplePydanticConfig(BaseModel, AbstractConfigFile):
+    type: str = "dummy_simple_pydantic"
+    name: str
+    a: int
+    b: str
+
+
+class DummyPluginWithSimplePydanticConfig(BuildDatasourcePlugin[SimplePydanticConfig]):
+    id = "dummy/simple_pydantic_config"
+    name = "Dummy Plugin with a simple Pydantic Config"
+    config_file_type = SimplePydanticConfig
+    context_type = dict
+
+    def supported_types(self) -> set[str]:
+        return {"dummy_simple_pydantic"}
+
+    def build_context(self, full_type: str, datasource_name: str, file_config: SimplePydanticConfig) -> Any:
+        return {"simple_pydantic_ok": True}
+
+    def check_connection(self, full_type: str, datasource_name: str, file_config: SimplePydanticConfig) -> None:
+        pass
+
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+        return []
+
+
+class OtherPydanticConfig(BaseModel, AbstractConfigFile):
+    type: str = "dummy_simple_pydantic"
+    name: str
+    a: int
+    b: str
+
+
+class DummyPluginWithOtherPydanticConfig(BuildDatasourcePlugin[OtherPydanticConfig]):
+    id = "dummy/other_pydantic_config"
+    name = "Dummy Plugin with an other Pydantic Config"
+    config_file_type = OtherPydanticConfig
+    context_type = dict
+
+    def supported_types(self) -> set[str]:
+        return {"dummy_other_pydantic"}
+
+    def build_context(self, full_type: str, datasource_name: str, file_config: OtherPydanticConfig) -> Any:
+        return {"simple_pydantic_ok": True}
+
+    def check_connection(self, full_type: str, datasource_name: str, file_config: OtherPydanticConfig) -> None:
+        pass
+
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+        return []
+
+
 def load_dummy_plugins(exclude_file_plugins: bool = False) -> dict[DatasourceType, BuildPlugin]:
     result: dict[DatasourceType, BuildPlugin] = {
         DatasourceType(full_type="dummy_db"): DummyBuildDatasourcePlugin(),
         DatasourceType(full_type="dummy_default"): DummyDefaultDatasourcePlugin(),
         DatasourceType(full_type="additional_dummy_type"): AdditionalDummyPlugin(),
         DatasourceType(full_type="no_config_type"): DummyPluginWithNoConfigType(),
+        DatasourceType(full_type="dummy_simple_pydantic"): DummyPluginWithSimplePydanticConfig(),
+        DatasourceType(full_type="dummy_other_pydantic"): DummyPluginWithOtherPydanticConfig(),
     }
 
     if not exclude_file_plugins:

@@ -1,9 +1,9 @@
 [project]
 name = "databao-context-engine"
-version = "0.2.2"
+version = "0.3.0"
 description = "Semantic context for your LLMs — generated automatically"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = "Apache-2.0 AND LicenseRef-Additional-Terms"
 license-files = ["LICENSE.md"]
 dependencies = [
@@ -15,6 +15,7 @@ dependencies = [
     "pydantic>=2.12.4",
     "jinja2>=3.1.6",
     "sqlparse>=0.5.5",
+    "pyarrow>=19.0.1"
 ]
 default-optional-dependency-keys = [
     "mysql",

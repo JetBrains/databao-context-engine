@@ -1,5 +1,6 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
-from databao_context_engine.plugins.databases.mssql.mssql_introspector import MSSQLConfigFile, MSSQLIntrospector
+from databao_context_engine.plugins.databases.mssql.config_file import MSSQLConfigFile
+from databao_context_engine.plugins.databases.mssql.mssql_introspector import MSSQLIntrospector
 
 
 class MSSQLDbPlugin(BaseDatabasePlugin[MSSQLConfigFile]):

@@ -2,11 +2,13 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from databao_context_engine import (
     BuildDatasourceResult,
     ChunkEmbeddingMode,
     ConfiguredDatasource,
+    DatabaoContextPluginLoader,
     DatabaoContextProjectManager,
     Datasource,
     DatasourceContext,
@@ -14,16 +16,18 @@ from databao_context_engine import (
     DatasourceType,
 )
 from databao_context_engine.project.layout import get_output_dir
-from tests.utils.dummy_build_plugin import load_dummy_plugins
+from tests.utils.dummy_build_plugin import SimplePydanticConfig, load_dummy_plugins
 from tests.utils.project_creation import (
     given_datasource_config_file,
     given_raw_source_file,
 )
 
 
-@pytest.fixture(autouse=True)
-def patch_load_plugins(mocker):
-    mocker.patch("databao_context_engine.build_sources.build_runner.load_plugins", new=load_dummy_plugins)
+@pytest.fixture
+def project_manager(project_path: Path) -> DatabaoContextProjectManager:
+    return DatabaoContextProjectManager(
+        project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=load_dummy_plugins())
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -31,14 +35,13 @@ def use_test_db(create_db):
     pass
 
 
-def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
-    datasource_list = DatabaoContextProjectManager(project_dir=project_path).get_configured_datasource_list()
+def test_databao_engine__get_datasource_list_with_no_datasources(project_manager):
+    datasource_list = project_manager.get_configured_datasource_list()
 
     assert datasource_list == []
 
 
-def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path):
-    project_manager = DatabaoContextProjectManager(project_dir=project_path)
+def test_databao_engine__get_datasource_list_with_multiple_datasources(project_manager):
     given_datasource_config_file(
         project_manager._project_layout,
         datasource_name="full/a",
@@ -79,9 +82,7 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     ]
 
 
-def test_databao_context_project_manager__build_with_no_datasource(project_path):
-    project_manager = DatabaoContextProjectManager(project_dir=project_path)
-
+def test_databao_context_project_manager__build_with_no_datasource(project_manager):
     result = project_manager.build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
@@ -89,9 +90,7 @@ def test_databao_context_project_manager__build_with_no_datasource(project_path)
     assert result == []
 
 
-def test_databao_context_project_manager__build_with_multiple_datasource(project_path, create_db):
-    project_manager = DatabaoContextProjectManager(project_dir=project_path)
-
+def test_databao_context_project_manager__build_with_multiple_datasource(project_manager, create_db):
     given_datasource_config_file(
         project_manager._project_layout,
         datasource_name="dummy/my_dummy_data",
@@ -125,15 +124,13 @@ def test_databao_context_project_manager__build_with_multiple_datasource(project
     )
 
 
-def test_databao_context_project_manager__index_built_contexts_indexes_all_when_no_ids(project_path, mocker):
-    pm = DatabaoContextProjectManager(project_dir=project_path)
-
+def test_databao_context_project_manager__index_built_contexts_indexes_all_when_no_ids(project_manager, mocker):
     c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
     c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
 
     engine = mocker.Mock()
     engine.get_all_contexts.return_value = [c1, c2]
-    mocker.patch.object(pm, "get_engine_for_project", return_value=engine)
+    mocker.patch.object(project_manager, "get_engine_for_project", return_value=engine)
 
     index_fn = mocker.patch(
         "databao_context_engine.databao_context_project_manager.index_built_contexts",
@@ -141,11 +138,12 @@ def test_databao_context_project_manager__index_built_contexts_indexes_all_when_
         return_value="OK",
     )
 
-    result = pm.index_built_contexts(datasource_ids=None)
+    result = project_manager.index_built_contexts(datasource_ids=None)
 
     assert result == "OK"
     index_fn.assert_called_once_with(
-        project_layout=pm._project_layout,
+        project_layout=project_manager._project_layout,
+        plugin_loader=project_manager._plugin_loader,
         contexts=[c1, c2],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         ollama_model_id=None,
@@ -153,16 +151,14 @@ def test_databao_context_project_manager__index_built_contexts_indexes_all_when_
     )
 
 
-def test_databao_context_project_manager__index_built_contexts_filters_by_datasource_path(project_path, mocker):
-    pm = DatabaoContextProjectManager(project_dir=project_path)
-
+def test_databao_context_project_manager__index_built_contexts_filters_by_datasource_path(project_manager, mocker):
     c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
     c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
     c3 = DatasourceContext(DatasourceId.from_string_repr("full/c.yaml"), context="C")
 
     engine = mocker.Mock()
     engine.get_all_contexts.return_value = [c1, c2, c3]
-    mocker.patch.object(pm, "get_engine_for_project", return_value=engine)
+    mocker.patch.object(project_manager, "get_engine_for_project", return_value=engine)
 
     index_fn = mocker.patch(
         "databao_context_engine.databao_context_project_manager.index_built_contexts",
@@ -175,16 +171,113 @@ def test_databao_context_project_manager__index_built_contexts_filters_by_dataso
         DatasourceId.from_string_repr("full/c.yaml"),
     ]
 
-    result = pm.index_built_contexts(datasource_ids=wanted)
+    result = project_manager.index_built_contexts(datasource_ids=wanted)
 
     assert result == "OK"
     index_fn.assert_called_once_with(
-        project_layout=pm._project_layout,
+        project_layout=project_manager._project_layout,
+        plugin_loader=project_manager._plugin_loader,
         contexts=[c1, c3],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         ollama_model_id=None,
         ollama_model_dim=None,
     )
+
+
+def test_databao_context_project_manager__create_datasource_config__fails_invalid_config_content(project_manager):
+    with pytest.raises(ValidationError) as e:
+        project_manager.create_datasource_config(
+            datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+            datasource_name="my_datasource",
+            config_content={
+                "a": "not_an_int",
+            },
+        )
+
+    validation_errors = e.value.errors()
+    assert len(validation_errors) == 2
+    assert len([error for error in validation_errors if error["type"] == "missing"]) == 1
+    assert len([error for error in validation_errors if error["type"] == "int_parsing"]) == 1
+
+
+def test_databao_context_project_manager__create_datasource_config__fails_invalid_config_content_non_validated(
+    project_manager,
+):
+    configured_datasource = project_manager.create_datasource_config(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content={
+            "a": "not_an_int",
+        },
+        validate_config_content=False,
+    )
+
+    assert configured_datasource.datasource.id.absolute_path_to_config_file(project_manager._project_layout).is_file()
+    assert configured_datasource.config == {
+        "name": "my_datasource",
+        "type": "dummy_simple_pydantic",
+        "a": "not_an_int",
+    }
+
+
+def test_databao_context_project_manager__create_datasource_config__valid_config_content_dict(project_manager):
+    configured_datasource = project_manager.create_datasource_config(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content={
+            "a": "12",
+            "b": "some string",
+        },
+    )
+
+    assert configured_datasource.datasource.id.absolute_path_to_config_file(project_manager._project_layout).is_file()
+    assert configured_datasource.config == {
+        "name": "my_datasource",
+        "type": "dummy_simple_pydantic",
+        "a": "12",
+        "b": "some string",
+    }
+
+
+def test_databao_context_project_manager__create_datasource_config__valid_config_content_from_config_type(
+    project_manager,
+):
+    configured_datasource = project_manager.create_datasource_config(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content=SimplePydanticConfig(
+            name="my_datasource",
+            a=12,
+            b="some string",
+        ),
+    )
+
+    assert configured_datasource.datasource.id.absolute_path_to_config_file(project_manager._project_layout).is_file()
+    assert configured_datasource.config == {
+        "name": "my_datasource",
+        "type": "dummy_simple_pydantic",
+        "a": 12,
+        "b": "some string",
+    }
+
+
+def test_databao_context_project_manager__create_datasource_config__wrong_config_content_type_for_plugin(
+    project_manager,
+):
+    with pytest.raises(ValidationError) as e:
+        project_manager.create_datasource_config(
+            datasource_type=DatasourceType(full_type="dummy_other_pydantic"),
+            datasource_name="my_datasource",
+            config_content=SimplePydanticConfig(
+                name="my_datasource",
+                a=12,
+                b="some string",
+            ),
+        )
+
+    validation_errors = e.value.errors()
+    assert len(validation_errors) == 1
+    assert validation_errors[0]["type"] == "model_type"
 
 
 def assert_build_context_result(

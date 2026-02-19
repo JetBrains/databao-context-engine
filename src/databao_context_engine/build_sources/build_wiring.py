@@ -16,6 +16,7 @@ from databao_context_engine.llm.factory import (
     create_ollama_embedding_provider,
     create_ollama_service,
 )
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 from databao_context_engine.services.factories import create_chunk_embedding_service
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 def build_all_datasources(
     project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
     chunk_embedding_mode: ChunkEmbeddingMode,
     generate_embeddings: bool = True,
     ollama_model_id: str | None = None,
@@ -70,12 +72,16 @@ def build_all_datasources(
             chunk_embedding_mode=chunk_embedding_mode,
         )
         return build(
-            project_layout=project_layout, build_service=build_service, generate_embeddings=generate_embeddings
+            project_layout=project_layout,
+            plugin_loader=plugin_loader,
+            build_service=build_service,
+            generate_embeddings=generate_embeddings,
         )
 
 
 def index_built_contexts(
     project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
     contexts: list[DatasourceContext],
     chunk_embedding_mode: ChunkEmbeddingMode,
     ollama_model_id: str | None = None,
@@ -114,7 +120,9 @@ def index_built_contexts(
             description_provider=description_provider,
             chunk_embedding_mode=chunk_embedding_mode,
         )
-        return run_indexing(project_layout=project_layout, build_service=build_service, contexts=contexts)
+        return run_indexing(
+            project_layout=project_layout, plugin_loader=plugin_loader, build_service=build_service, contexts=contexts
+        )
 
 
 def _create_build_service(

@@ -1,5 +1,6 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
-from databao_context_engine.plugins.databases.duckdb.duckdb_introspector import DuckDBConfigFile, DuckDBIntrospector
+from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
+from databao_context_engine.plugins.databases.duckdb.duckdb_introspector import DuckDBIntrospector
 
 
 class DuckDbPlugin(BaseDatabasePlugin[DuckDBConfigFile]):

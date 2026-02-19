@@ -3,11 +3,9 @@ from typing import Any
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, EmbeddableChunk
 from databao_context_engine.plugins.resources.parquet_chunker import build_parquet_chunks
 from databao_context_engine.plugins.resources.parquet_introspector import (
-    ParquetConfigFile,
-    ParquetIntrospectionResult,
     ParquetIntrospector,
-    parquet_type,
 )
+from databao_context_engine.plugins.resources.types import ParquetConfigFile, ParquetIntrospectionResult, parquet_type
 
 
 class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):

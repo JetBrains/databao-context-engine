@@ -7,6 +7,8 @@ from tests.utils.dummy_build_plugin import (
     DummyBuildDatasourcePlugin,
     DummyDefaultDatasourcePlugin,
     DummyPluginWithNoConfigType,
+    DummyPluginWithOtherPydanticConfig,
+    DummyPluginWithSimplePydanticConfig,
     load_dummy_plugins,
 )
 
@@ -15,7 +17,7 @@ def _patch_load_plugins(mocker, return_value: dict[DatasourceType, BuildPlugin] 
     if return_value is None:
         return_value = load_dummy_plugins(exclude_file_plugins=True)
 
-    mocker.patch("databao_context_engine.generate_configs_schemas.load_plugins", return_value=return_value)
+    mocker.patch("databao_context_engine.generate_configs_schemas._load_plugins", return_value=return_value)
 
 
 def test_generate_configs_schemas__all(mocker):
@@ -23,7 +25,7 @@ def test_generate_configs_schemas__all(mocker):
 
     results = _generate_json_schema_output_for_plugins(tuple(), None)
 
-    assert len(results) == 2
+    assert len(results) == 4
     assert next((result for result in results if DummyBuildDatasourcePlugin.id in result), None) is not None
     assert next((result for result in results if AdditionalDummyPlugin.id in result), None) is not None
 
@@ -72,7 +74,7 @@ def test_generate_configs_schemas__with_exclude(mocker):
 
     results = _generate_json_schema_output_for_plugins(tuple(), (DummyBuildDatasourcePlugin.id,))
 
-    assert len(results) == 1
+    assert len(results) == 3
     assert next((result for result in results if AdditionalDummyPlugin.id in result), None) is not None
 
 
@@ -87,6 +89,8 @@ def test_generate_configs_schemas__with_all_excluded(mocker):
                 AdditionalDummyPlugin.id,
                 DummyDefaultDatasourcePlugin.id,
                 DummyPluginWithNoConfigType.id,
+                DummyPluginWithSimplePydanticConfig.id,
+                DummyPluginWithOtherPydanticConfig.id,
             ),
         )
 

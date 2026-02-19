@@ -1,6 +1,7 @@
+from abc import ABC
 from dataclasses import dataclass
 from io import BufferedReader
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Mapping, Protocol, TypeVar, runtime_checkable
 
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 
@@ -57,8 +58,11 @@ class BaseBuildPlugin(Protocol):
         ...
 
 
+T = TypeVar("T", bound="ConfigFile")
+
+
 @runtime_checkable
-class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
+class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
     """A plugin that can be used to build the context of datasource, using a config file.
 
     Attributes:
@@ -77,7 +81,7 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
 
         Args:
             full_type: The type of the datasource to build.
-              This type should be exactly the same than the one found in the file_config
+              This type should be exactly the same as the one found in the file_config
             datasource_name: The name of the datasource to build
             file_config: The config file of the datasource to build.
                 This argument will be an object of type `self.config_file_type`.
@@ -95,7 +99,7 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
 
         Args:
             full_type: The type of the datasource to build.
-              This type should be exactly the same than the one found in the file_config
+              This type should be exactly the same as the one found in the file_config
             datasource_name: The name of the datasource to build
             file_config: The config file of the datasource to build.
                 This argument will be an object of type `self.config_file_type`.
@@ -126,7 +130,7 @@ class BuildDatasourcePlugin[T](BaseBuildPlugin, Protocol):
 class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):
     """Defines a protocol to implement for plugins that don't want to strongly type their config file.
 
-    This is the same than BuildDatasourcePlugin but it offers a shortcut to always get the config file as a dict.
+    This is the same as BuildDatasourcePlugin, but it offers a shortcut to always get the config file as a dict.
     """
 
     config_file_type: type[dict[str, Any]] = dict[str, Any]
@@ -165,10 +169,21 @@ BuildPlugin = BuildDatasourcePlugin | BuildFilePlugin
 
 @dataclass(kw_only=True, frozen=True)
 class DatasourceType:
-    """The type of a Datasource.
+    """The type of Datasource.
 
     Attributes:
         full_type: The full type of the datasource, in the format `<main_type>/<subtype>`.
     """
 
     full_type: str
+
+
+class AbstractConfigFile(ABC):
+    type: str
+    name: str
+
+
+# Config files can either be defined:
+# - as a class inheriting AbstractConfigFile
+# - or as a Mappping for Plugins that didn't declare a config type or used a TypedDict
+ConfigFile = Mapping[str, Any] | AbstractConfigFile

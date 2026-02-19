@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from abc import ABC
 from typing import Annotated, Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from databao_context_engine.pluginlib.build_plugin import (
+    AbstractConfigFile,
     BuildDatasourcePlugin,
     EmbeddableChunk,
 )
@@ -16,19 +18,19 @@ from databao_context_engine.plugins.databases.databases_types import DatabaseInt
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
 
 
-class BaseDatabaseConfigFile(BaseModel):
+class BaseDatabaseConfigFile(BaseModel, AbstractConfigFile):
     model_config = ConfigDict(populate_by_name=True)
-    name: str | None = Field(default=None)
+    name: str
     type: str
     introspection_scope: Annotated[
         IntrospectionScope | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)
     ] = Field(default=None, alias="introspection-scope")
 
 
-T = TypeVar("T", bound=BaseDatabaseConfigFile)
+T = TypeVar("T", bound="BaseDatabaseConfigFile")
 
 
-class BaseDatabasePlugin(BuildDatasourcePlugin[T]):
+class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
     name: str
     supported: set[str]
     context_type = DatabaseIntrospectionResult

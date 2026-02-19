@@ -3,10 +3,10 @@ from typing import Any
 from databao_context_engine.datasources.datasource_discovery import prepare_source
 from databao_context_engine.datasources.sql_read_only import is_read_only_sql
 from databao_context_engine.datasources.types import DatasourceId, PreparedConfig
-from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, NotSupportedError
 from databao_context_engine.pluginlib.plugin_utils import execute_sql_for_datasource
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout, logger
 
 

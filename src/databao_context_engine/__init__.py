@@ -10,6 +10,7 @@ from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
     DatasourceConnectionStatus,
 )
+from databao_context_engine.datasources.config_wizard import Choice, UserInputCallback
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
 from databao_context_engine.init_project import init_dce_project, init_or_get_dce_project
@@ -20,7 +21,6 @@ from databao_context_engine.llm import (
     download_ollama_models_if_needed,
     install_ollama_if_needed,
 )
-from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.pluginlib.build_plugin import (
     BuildDatasourcePlugin,
     BuildFilePlugin,
@@ -28,6 +28,36 @@ from databao_context_engine.pluginlib.build_plugin import (
     DatasourceType,
 )
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition
+from databao_context_engine.plugins.databases.athena.config_file import (
+    AthenaConfigFile,
+    AthenaConnectionProperties,
+    AwsAssumeRoleAuth,
+    AwsDefaultAuth,
+    AwsIamAuth,
+    AwsProfileAuth,
+)
+from databao_context_engine.plugins.databases.clickhouse.config_file import (
+    ClickhouseConfigFile,
+    ClickhouseConnectionProperties,
+)
+from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile, DuckDBConnectionConfig
+from databao_context_engine.plugins.databases.mssql.config_file import MSSQLConfigFile, MSSQLConnectionProperties
+from databao_context_engine.plugins.databases.mysql.config_file import MySQLConfigFile, MySQLConnectionProperties
+from databao_context_engine.plugins.databases.postgresql.config_file import (
+    PostgresConfigFile,
+    PostgresConnectionProperties,
+)
+from databao_context_engine.plugins.databases.snowflake.config_file import (
+    SnowflakeConfigFile,
+    SnowflakeConnectionProperties,
+    SnowflakeKeyPairAuth,
+    SnowflakePasswordAuth,
+    SnowflakeSSOAuth,
+)
+from databao_context_engine.plugins.databases.sqlite.config_file import SQLiteConfigFile, SQLiteConnectionConfig
+from databao_context_engine.plugins.dbt.types import DbtConfigFile
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
+from databao_context_engine.plugins.resources.types import ParquetConfigFile
 from databao_context_engine.project.info import (
     DceInfo,
     DceProjectInfo,
@@ -45,6 +75,8 @@ __all__ = [
     "DatasourceContext",
     "ContextSearchResult",
     "DatabaoContextProjectManager",
+    "UserInputCallback",
+    "Choice",
     "ChunkEmbeddingMode",
     "DatasourceConnectionStatus",
     "DatasourceType",
@@ -71,4 +103,29 @@ __all__ = [
     "DatasourceStatus",
     "IndexDatasourceResult",
     "CheckDatasourceConnectionResult",
+    "AthenaConfigFile",
+    "AthenaConnectionProperties",
+    "AwsDefaultAuth",
+    "AwsAssumeRoleAuth",
+    "AwsIamAuth",
+    "AwsProfileAuth",
+    "ClickhouseConfigFile",
+    "ClickhouseConnectionProperties",
+    "DuckDBConfigFile",
+    "DuckDBConnectionConfig",
+    "MSSQLConfigFile",
+    "MSSQLConnectionProperties",
+    "MySQLConfigFile",
+    "MySQLConnectionProperties",
+    "PostgresConfigFile",
+    "PostgresConnectionProperties",
+    "SnowflakeConfigFile",
+    "SnowflakeConnectionProperties",
+    "SnowflakeSSOAuth",
+    "SnowflakeKeyPairAuth",
+    "SnowflakePasswordAuth",
+    "SQLiteConfigFile",
+    "SQLiteConnectionConfig",
+    "DbtConfigFile",
+    "ParquetConfigFile",
 ]

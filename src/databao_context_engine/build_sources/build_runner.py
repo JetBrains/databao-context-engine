@@ -17,14 +17,18 @@ from databao_context_engine.datasources.datasource_context import (
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.plugins.plugin_loader import load_plugins
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
 
 logger = logging.getLogger(__name__)
 
 
 def build(
-    project_layout: ProjectLayout, *, build_service: BuildService, generate_embeddings: bool = True
+    *,
+    project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
+    build_service: BuildService,
+    generate_embeddings: bool = True,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -38,8 +42,6 @@ def build(
     Returns:
         A list of per-datasource build results.
     """
-    plugins = load_plugins()
-
     datasource_ids = discover_datasources(project_layout)
 
     if not datasource_ids:
@@ -58,7 +60,7 @@ def build(
                 f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
             )
 
-            plugin = plugins.get(prepared_source.datasource_type)
+            plugin = plugin_loader.get_plugin_for_datasource_type(prepared_source.datasource_type)
             if plugin is None:
                 logger.warning(
                     "No plugin for '%s' (datasource=%s) — skipping.",
@@ -108,7 +110,11 @@ def build(
 
 
 def run_indexing(
-    *, project_layout: ProjectLayout, build_service: BuildService, contexts: list[DatasourceContext]
+    *,
+    project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
+    build_service: BuildService,
+    contexts: list[DatasourceContext],
 ) -> list[IndexDatasourceResult]:
     """Index a list of built datasource contexts.
 
@@ -119,8 +125,6 @@ def run_indexing(
     Returns:
         A list of per-context indexing results.
     """
-    plugins = load_plugins()
-
     results: list[IndexDatasourceResult] = []
     ok = 0
     skipped = 0
@@ -132,7 +136,7 @@ def run_indexing(
 
             datasource_type = read_datasource_type_from_context(context)
 
-            plugin = plugins.get(datasource_type)
+            plugin = plugin_loader.get_plugin_for_datasource_type(datasource_type)
             if plugin is None:
                 logger.warning(
                     "No plugin for datasource type '%s' — skipping indexing for %s.",

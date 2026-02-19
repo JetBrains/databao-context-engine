@@ -68,7 +68,7 @@ def _get_property_list_from_dataclass(parent_type: type) -> list[ConfigPropertyD
 
     result = []
     for field in dataclass_fields:
-        has_field_default = field.default is not None and field.default != MISSING
+        has_field_default = field.default != MISSING
 
         # Use the type hints if the field type wasn't resolved (aka. if it is a ForwardRef or a str)
         property_type = type_hints[field.name] if isinstance(field.type, ForwardRef | str) else field.type

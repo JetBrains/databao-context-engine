@@ -33,6 +33,16 @@ class OllamaService:
 
         raise ValueError(f"Unexpected Ollama embedding response schema. {data}")
 
+    def embed_many(self, *, model: str, texts: list[str]) -> list[list[float]]:
+        payload = {"model": model, "input": texts, "truncate": True}
+        data = self._request_json(method="POST", path="/api/embed", json=payload)
+
+        vectors = data.get("embeddings")
+        if not (isinstance(vectors, list) and all(isinstance(v, list) for v in vectors)):
+            raise ValueError(f"Unexpected embedding response schema. {data}")
+
+        return [[float(n) for n in vec] for vec in vectors]
+
     def describe(self, *, model: str, text: str, context: str) -> str:
         """Ask Ollama to generate a short description for `text`."""
         prompt = self._build_description_prompt(text=text, context=context)

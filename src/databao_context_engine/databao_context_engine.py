@@ -12,9 +12,9 @@ from databao_context_engine.datasources.datasource_context import (
 )
 from databao_context_engine.datasources.execute_sql_query import run_sql
 from databao_context_engine.datasources.types import Datasource, DatasourceId
-from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
 from databao_context_engine.retrieve_embeddings import retrieve_embeddings
 

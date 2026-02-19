@@ -1,20 +1,9 @@
 import sqlite3
 
-from pydantic import BaseModel, Field
-
-from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabaseConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
-
-
-class SQLiteConnectionConfig(BaseModel):
-    database_path: str = Field(description="Path to the SQLite database file")
-
-
-class SQLiteConfigFile(BaseDatabaseConfigFile):
-    type: str = Field(default="sqlite")
-    connection: SQLiteConnectionConfig
+from databao_context_engine.plugins.databases.sqlite.config_file import SQLiteConfigFile
 
 
 class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):

@@ -2,13 +2,19 @@ from dataclasses import dataclass
 
 import pytest
 
+from databao_context_engine import DatabaoContextPluginLoader
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
     DatasourceConnectionStatus,
     check_datasource_connection,
 )
 from databao_context_engine.datasources.types import DatasourceId
-from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, BuildPlugin, DatasourceType
+from databao_context_engine.pluginlib.build_plugin import (
+    AbstractConfigFile,
+    BuildDatasourcePlugin,
+    BuildPlugin,
+    DatasourceType,
+)
 from databao_context_engine.project.layout import ProjectLayout
 from tests.utils.dummy_build_plugin import (
     DummyDefaultDatasourcePlugin,
@@ -17,7 +23,7 @@ from tests.utils.project_creation import given_datasource_config_file
 
 
 @dataclass
-class ConfigToValidate:
+class ConfigToValidate(AbstractConfigFile):
     host: str
     port: int
 
@@ -36,12 +42,9 @@ class DummyPluginWithSimpleConfig(BuildDatasourcePlugin[ConfigToValidate]):
             raise ValueError("Port must be 1234 or 5678")
 
 
-@pytest.fixture(autouse=True)
-def patch_load_plugins(mocker):
-    mocker.patch(
-        "databao_context_engine.datasources.check_config.load_plugins",
-        return_value=load_dummy_plugins(),
-    )
+@pytest.fixture
+def plugin_loader():
+    return DatabaoContextPluginLoader(plugins_by_type=load_dummy_plugins())
 
 
 def load_dummy_plugins() -> dict[DatasourceType, BuildPlugin]:
@@ -51,7 +54,7 @@ def load_dummy_plugins() -> dict[DatasourceType, BuildPlugin]:
     }
 
 
-def test_check_datasource_connection_with_failing_config_validation(project_layout: ProjectLayout):
+def test_check_datasource_connection_with_failing_config_validation(project_layout: ProjectLayout, plugin_loader):
     given_datasource_config_file(project_layout, "databases/unknown", {"type": "unknown", "name": "my datasource name"})
     given_datasource_config_file(
         project_layout, "dummy/not_implemented", {"type": "dummy_default", "name": "my datasource name"}
@@ -72,7 +75,7 @@ def test_check_datasource_connection_with_failing_config_validation(project_layo
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "9876"},
     )
 
-    result = check_datasource_connection(project_layout)
+    result = check_datasource_connection(project_layout, plugin_loader=plugin_loader)
 
     assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
         "databases/unknown.yaml": "Invalid - No compatible plugin found",
@@ -83,14 +86,14 @@ def test_check_datasource_connection_with_failing_config_validation(project_layo
     }
 
 
-def test_check_datasource_connection_with_valid_connections(project_layout: ProjectLayout):
+def test_check_datasource_connection_with_valid_connections(project_layout: ProjectLayout, plugin_loader):
     given_datasource_config_file(
         project_layout,
         "dummy/valid",
         {"type": "simple_config", "name": "my datasource name", "host": "localhost", "port": "1234"},
     )
 
-    result = check_datasource_connection(project_layout)
+    result = check_datasource_connection(project_layout, plugin_loader=plugin_loader)
 
     assert result == {
         DatasourceId.from_string_repr("dummy/valid.yaml"): CheckDatasourceConnectionResult(
@@ -101,7 +104,7 @@ def test_check_datasource_connection_with_valid_connections(project_layout: Proj
     }
 
 
-def test_check_datasource_connection_with_filter(project_layout: ProjectLayout):
+def test_check_datasource_connection_with_filter(project_layout: ProjectLayout, plugin_loader):
     given_datasource_config_file(
         project_layout,
         "dummy/valid",
@@ -123,6 +126,7 @@ def test_check_datasource_connection_with_filter(project_layout: ProjectLayout):
 
     result = check_datasource_connection(
         project_layout,
+        plugin_loader=plugin_loader,
         datasource_ids=[
             DatasourceId.from_string_repr("dummy/not_implemented.yaml"),
             DatasourceId.from_string_repr("dummy/invalid3.yaml"),
@@ -135,7 +139,7 @@ def test_check_datasource_connection_with_filter(project_layout: ProjectLayout):
     }
 
 
-def test_check_datasource_connection_with_single_filter(project_layout: ProjectLayout):
+def test_check_datasource_connection_with_single_filter(project_layout: ProjectLayout, plugin_loader):
     given_datasource_config_file(
         project_layout,
         "dummy/valid",
@@ -156,7 +160,7 @@ def test_check_datasource_connection_with_single_filter(project_layout: ProjectL
     )
 
     result = check_datasource_connection(
-        project_layout, datasource_ids=[DatasourceId.from_string_repr("dummy/valid.yaml")]
+        project_layout, plugin_loader=plugin_loader, datasource_ids=[DatasourceId.from_string_repr("dummy/valid.yaml")]
     )
 
     assert result == {
@@ -168,7 +172,7 @@ def test_check_datasource_connection_with_single_filter(project_layout: ProjectL
     }
 
 
-def test_check_datasource_connection_with_invalid_filter(project_layout: ProjectLayout):
+def test_check_datasource_connection_with_invalid_filter(project_layout: ProjectLayout, plugin_loader):
     given_datasource_config_file(
         project_layout,
         "dummy/valid",
@@ -190,11 +194,13 @@ def test_check_datasource_connection_with_invalid_filter(project_layout: Project
 
     with pytest.raises(ValueError):
         check_datasource_connection(
-            project_layout, datasource_ids=[DatasourceId.from_string_repr("dummy/not_a_file.yaml")]
+            project_layout,
+            plugin_loader=plugin_loader,
+            datasource_ids=[DatasourceId.from_string_repr("dummy/not_a_file.yaml")],
         )
 
 
-def test_check_datasource_connection_with_no_type(project_layout: ProjectLayout):
+def test_check_datasource_connection_with_no_type(project_layout: ProjectLayout, plugin_loader):
     given_datasource_config_file(
         project_layout,
         "dummy/valid",
@@ -207,7 +213,7 @@ def test_check_datasource_connection_with_no_type(project_layout: ProjectLayout)
     )
     given_datasource_config_file(project_layout, "dummy/no_type", {"name": "no_type"})
 
-    result = check_datasource_connection(project_layout)
+    result = check_datasource_connection(project_layout, plugin_loader=plugin_loader)
 
     assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
         "dummy/valid.yaml": "Valid",
@@ -216,7 +222,7 @@ def test_check_datasource_connection_with_no_type(project_layout: ProjectLayout)
     }
 
 
-def test_check_datasource_connection_with_invalid_template(project_layout: ProjectLayout):
+def test_check_datasource_connection_with_invalid_template(project_layout: ProjectLayout, plugin_loader):
     given_datasource_config_file(
         project_layout,
         "dummy/valid",
@@ -233,7 +239,7 @@ def test_check_datasource_connection_with_invalid_template(project_layout: Proje
         {"name": "{{ unexisting_function() }}", "type": "dummy_default"},
     )
 
-    result = check_datasource_connection(project_layout)
+    result = check_datasource_connection(project_layout, plugin_loader=plugin_loader)
 
     assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
         "dummy/valid.yaml": "Valid",

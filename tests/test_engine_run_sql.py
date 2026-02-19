@@ -1,7 +1,6 @@
 import pytest
 
 from databao_context_engine import DatabaoContextEngine, DatasourceId
-from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
     DatasourceType,
@@ -9,6 +8,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     NotSupportedError,
 )
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from tests.utils.project_creation import given_datasource_config_file
 
 
