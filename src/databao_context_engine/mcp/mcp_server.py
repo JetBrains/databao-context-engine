@@ -8,6 +8,7 @@ from mcp.server import FastMCP
 from mcp.types import ToolAnnotations
 
 from databao_context_engine import DatabaoContextEngine, DatasourceId
+from databao_context_engine.datasources.datasource_discovery import get_datasource_list
 
 logger = logging.getLogger(__name__)
 
@@ -56,15 +57,46 @@ class McpServer:
             return "\n".join(display_results)
 
         @mcp.tool(
-            description="Execute a SQL query against a configured datasource. Defaults to read-only queries; set read_only=false to allow mutations.",
-            annotations=ToolAnnotations(readOnlyHint=False, idempotentHint=False, openWorldHint=False),
+            description="List all configured datasources in the project. Returns datasource IDs, names, and types.",
+            annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
+        )
+        def list_datasources_tool():
+            datasources = get_datasource_list(self._databao_context_engine._project_layout)
+            return {
+                "datasources": [
+                    {
+                        "id": str(ds.datasource.id),
+                        "name": ds.datasource.id.datasource_name,
+                        "type": ds.datasource.type.full_type,
+                    }
+                    for ds in datasources
+                ]
+            }
+
+        @mcp.tool(
+            description="Execute a SQL query against a configured datasource. Defaults to read-only queries; set read_only=false to allow mutations. If datasource_id is not provided and only one datasource exists, it will be used automatically.",
+            annotations=ToolAnnotations(readOnlyHint=False, idempotentHint=False, openWorldHint=True),
         )
         async def run_sql_tool(
-            datasource_id: str,
             sql: str,
+            datasource_id: str | None = None,
             read_only: bool = True,
         ):
-            ds = DatasourceId.from_string_repr(datasource_id)
+            # If no datasource_id provided, try to use the only one available
+            if datasource_id is None:
+                datasources = get_datasource_list(self._databao_context_engine._project_layout)
+                if len(datasources) == 0:
+                    raise ValueError("No datasources configured in the project")
+                if len(datasources) > 1:
+                    available_ids = [str(ds.datasource.id) for ds in datasources]
+                    raise ValueError(
+                        f"Multiple datasources configured. Please specify datasource_id. "
+                        f"Available datasources: {', '.join(available_ids)}"
+                    )
+                ds = datasources[0].datasource.id
+            else:
+                ds = DatasourceId.from_string_repr(datasource_id)
+
             res = self._databao_context_engine.run_sql(ds, sql, read_only=read_only)
             return {"columns": res.columns, "rows": res.rows}
 
