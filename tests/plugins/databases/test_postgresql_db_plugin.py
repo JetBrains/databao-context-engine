@@ -613,7 +613,7 @@ def _create_config_file_from_container(
     postgres_container_with_columns: PostgresContainer, datasource_name: str | None = "file_name"
 ) -> Mapping[str, Any]:
     return {
-        "type": "databases/postgres",
+        "type": "postgres",
         "name": datasource_name,
         "connection": {
             "host": postgres_container_with_columns.get_container_host_ip(),

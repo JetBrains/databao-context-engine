@@ -354,7 +354,7 @@ def _create_config_file_from_container(
     clickhouse: ClickHouseContainer, datasource_name: str | None = "file_name"
 ) -> Mapping[str, Any]:
     return {
-        "type": "databases/clickhouse",
+        "type": "clickhouse",
         "name": datasource_name,
         "connection": {
             "host": clickhouse.get_container_host_ip(),
