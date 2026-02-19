@@ -5,8 +5,7 @@ import asyncpg
 import pytest
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
-from databao_context_engine import DatabaoContextEngine, DatasourceId
-from databao_context_engine.plugin_loader import DatabaoContextPluginLoader
+from databao_context_engine import DatabaoContextEngine, DatabaoContextPluginLoader, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import BuildPlugin, DatasourceType
 from databao_context_engine.plugins.databases.postgresql.postgresql_db_plugin import (
     PostgresqlDbPlugin,
@@ -67,6 +66,7 @@ def pg_table(postgres_container: PostgresContainer):
 @pytest.fixture()
 def engine_with_pg(project_path, postgres_container: PostgresContainer) -> DatabaoContextEngine:
     config = {
+        "name": "pg_demo",
         "type": "postgres",
         "connection": {
             "host": postgres_container.get_container_host_ip(),

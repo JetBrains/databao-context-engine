@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import date
@@ -66,7 +65,7 @@ class McpServer:
             read_only: bool = True,
         ):
             ds = DatasourceId.from_string_repr(datasource_id)
-            res = await asyncio.to_thread(self._databao_context_engine.run_sql, ds, sql, read_only=read_only)
+            res = self._databao_context_engine.run_sql(ds, sql, read_only=read_only)
             return {"columns": res.columns, "rows": res.rows}
 
         return mcp
