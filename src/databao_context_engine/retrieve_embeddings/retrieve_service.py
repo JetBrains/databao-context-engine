@@ -52,9 +52,8 @@ class RetrieveService:
             if search_results:
                 top_index = min(10, limit)
                 top_results = search_results[0:top_index]
-                logger.debug(
-                    f"Top {top_index} results:\n{'\n'.join([f'({r.cosine_distance}, {r.embeddable_text})' for r in top_results])}"
-                )
+                msg = "\n".join([f"({r.cosine_distance}, {r.embeddable_text})" for r in top_results])
+                logger.debug(f"Top {top_index} results:\n{msg}")
                 farthest_result = max(search_results, key=lambda result: result.cosine_distance)
                 logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
             else:

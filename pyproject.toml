@@ -3,7 +3,7 @@ name = "databao-context-engine"
 version = "0.3.0"
 description = "Semantic context for your LLMs — generated automatically"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = "Apache-2.0 AND LicenseRef-Additional-Terms"
 license-files = ["LICENSE.md"]
 dependencies = [

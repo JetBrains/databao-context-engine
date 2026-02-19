@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Mapping, Protocol, Sequence, Union
+from typing import Any, Generic, Mapping, Protocol, Sequence, TypeVar, Union
 
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.databases_types import (
@@ -21,7 +21,10 @@ class SupportsIntrospectionScope(Protocol):
     introspection_scope: IntrospectionScope | None
 
 
-class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
+T = TypeVar("T", bound="SupportsIntrospectionScope")
+
+
+class BaseIntrospector(Generic[T], ABC):
     supports_catalogs: bool = True
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
     _SAMPLE_LIMIT: int = 5

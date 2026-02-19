@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Annotated, Any
+from typing import Annotated, Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,7 +27,10 @@ class BaseDatabaseConfigFile(BaseModel, AbstractConfigFile):
     ] = Field(default=None, alias="introspection-scope")
 
 
-class BaseDatabasePlugin[T: BaseDatabaseConfigFile](BuildDatasourcePlugin[T], ABC):
+T = TypeVar("T", bound="BaseDatabaseConfigFile")
+
+
+class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
     name: str
     supported: set[str]
     context_type = DatabaseIntrospectionResult

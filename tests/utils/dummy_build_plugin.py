@@ -1,7 +1,7 @@
 import uuid
 from dataclasses import dataclass
 from io import BufferedReader
-from typing import Annotated, Any, Mapping, TypedDict
+from typing import Annotated, Any, TypedDict
 
 from pydantic import BaseModel
 
@@ -47,13 +47,12 @@ class DummyConfigNested:
     optional_with_default: Annotated[int, ConfigPropertyAnnotation(default_value="1111", required=False)] = 1111
 
 
-class DummyConfigFileType(TypedDict):
-    type: str
-    name: str
+@dataclass
+class DummyConfigFileType(AbstractConfigFile):
     other_property: float
     property_with_default: Annotated[str, ConfigPropertyAnnotation(default_value="default_value", required=True)]
-    nested_dict: DummyConfigNested
     ignored_dict: dict[str, str]
+    nested_dict: DummyConfigNested | None = None
 
 
 class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
@@ -65,7 +64,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
     def supported_types(self) -> set[str]:
         return {"dummy_db"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: Mapping[str, Any]) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: DummyConfigFileType) -> Any:
         return {
             "catalogs": [
                 {
@@ -132,8 +131,8 @@ class DummyFilePlugin(BuildFilePlugin):
         return []
 
 
-class AdditionalDummyConfigFile(TypedDict):
-    type: str
+@dataclass
+class AdditionalDummyConfigFile(AbstractConfigFile):
     other_field: str
 
 
