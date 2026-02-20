@@ -45,10 +45,12 @@ def _build_config_content_from_properties(
 
         if isinstance(config_file_property, ConfigUnionPropertyDefinition):
             choices = {t.__name__: t for t in config_file_property.types}
+            default_choice = config_file_property.default_type.__name__ if config_file_property.default_type else None
 
             chosen = user_input_callback.prompt(
                 text=f"{properties_prefix}{config_file_property.property_key}.type?",
                 type=Choice(sorted(choices.keys())),
+                default_value=default_choice,
             )
 
             chosen_type = choices[chosen]

@@ -184,6 +184,13 @@ def _load_builtin_datasource_plugins() -> list[BuildDatasourcePlugin]:
         pass
 
     try:
+        from databao_context_engine.plugins.databases.bigquery.bigquery_db_plugin import BigQueryDbPlugin
+
+        optional_plugins.append(BigQueryDbPlugin())
+    except ImportError:
+        pass
+
+    try:
         from databao_context_engine.plugins.databases.mysql.mysql_db_plugin import MySQLDbPlugin
 
         optional_plugins.append(MySQLDbPlugin())
