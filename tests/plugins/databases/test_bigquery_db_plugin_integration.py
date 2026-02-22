@@ -65,9 +65,7 @@ def _create_config(
         "name": datasource_name,
         "connection": {
             "project": project,
-        },
-        "introspection_scope": {
-            "include": [{"catalog": project, "schemas": [dataset]}],
+            "dataset": dataset,
         },
     }
     if location:

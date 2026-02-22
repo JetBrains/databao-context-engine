@@ -25,7 +25,26 @@ def test_bigquery_config_validation():
         }
     )
     assert config.connection.project == "my-project"
+    assert config.connection.dataset is None
     assert config.connection.location is None
+
+
+def test_bigquery_config_with_dataset():
+    from pydantic import TypeAdapter
+
+    from databao_context_engine.plugins.databases.bigquery.config_file import BigQueryConfigFile
+
+    adapter = TypeAdapter(BigQueryConfigFile)
+
+    config = adapter.validate_python(
+        {
+            "name": "my-bq",
+            "type": "bigquery",
+            "connection": {"project": "my-project", "dataset": "my_dataset"},
+        }
+    )
+    assert config.connection.project == "my-project"
+    assert config.connection.dataset == "my_dataset"
 
 
 def test_bigquery_config_with_service_account_key_file():
@@ -42,7 +61,7 @@ def test_bigquery_config_with_service_account_key_file():
             "connection": {
                 "project": "my-project",
                 "location": "US",
-                "auth": {"type": "service_account_key_file", "credentials_file": "/path/to/key.json"},
+                "auth": {"credentials_file": "/path/to/key.json"},
             },
         }
     )
@@ -63,7 +82,7 @@ def test_bigquery_config_with_service_account_json():
             "type": "bigquery",
             "connection": {
                 "project": "my-project",
-                "auth": {"type": "service_account_json", "credentials_json": '{"type": "service_account"}'},
+                "auth": {"credentials_json": '{"type": "service_account"}'},
             },
         }
     )
@@ -322,6 +341,39 @@ def test_bigquery_composite_foreign_key_model_builder():
     assert fk.enforced is True
 
 
+def test_bigquery_list_schemas_with_dataset_configured():
+    from unittest.mock import MagicMock
+
+    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+
+    introspector = BigQueryIntrospector()
+    introspector._configured_dataset = "my_dataset"
+    connection = MagicMock()
+
+    schemas = introspector._list_schemas_for_catalog(connection, "my-project")
+    assert schemas == ["my_dataset"]
+    connection.list_datasets.assert_not_called()
+
+
+def test_bigquery_list_schemas_discovers_all_datasets():
+    from unittest.mock import MagicMock
+
+    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+
+    introspector = BigQueryIntrospector()
+    introspector._configured_dataset = None
+    mock_ds1 = MagicMock()
+    mock_ds1.dataset_id = "dataset_a"
+    mock_ds2 = MagicMock()
+    mock_ds2.dataset_id = "dataset_b"
+    connection = MagicMock()
+    connection.list_datasets.return_value = [mock_ds1, mock_ds2]
+
+    schemas = introspector._list_schemas_for_catalog(connection, "my-project")
+    assert schemas == ["dataset_a", "dataset_b"]
+    connection.list_datasets.assert_called_once()
+
+
 def test_bigquery_credentials_invalid_file():
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
     from databao_context_engine.plugins.databases.bigquery.config_file import (
@@ -331,9 +383,7 @@ def test_bigquery_credentials_invalid_file():
 
     conn = BigQueryConnectionProperties(
         project="p",
-        auth=BigQueryServiceAccountKeyFileAuth(
-            type="service_account_key_file", credentials_file="/nonexistent/key.json"
-        ),
+        auth=BigQueryServiceAccountKeyFileAuth(credentials_file="/nonexistent/key.json"),
     )
     with pytest.raises(FileNotFoundError, match="credentials file not found"):
         BigQueryIntrospector._build_credentials(conn)
@@ -346,8 +396,6 @@ def test_bigquery_credentials_invalid_json():
         BigQueryServiceAccountJsonAuth,
     )
 
-    conn = BigQueryConnectionProperties(
-        project="p", auth=BigQueryServiceAccountJsonAuth(type="service_account_json", credentials_json="not-json")
-    )
+    conn = BigQueryConnectionProperties(project="p", auth=BigQueryServiceAccountJsonAuth(credentials_json="not-json"))
     with pytest.raises(ValueError, match="not valid JSON"):
         BigQueryIntrospector._build_credentials(conn)
