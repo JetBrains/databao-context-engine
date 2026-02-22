@@ -108,7 +108,7 @@ def _get_property_list_from_pydantic_base_model(parent_type: type):
         if has_field_default:
             resolved_default = field_info.default
         elif has_default_factory:
-            resolved_default = field_info.default_factory()
+            resolved_default = field_info.default_factory()  # type: ignore[call-arg,misc]
         else:
             resolved_default = None
 
