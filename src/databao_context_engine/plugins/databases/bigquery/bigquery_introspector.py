@@ -12,7 +12,7 @@ from databao_context_engine.plugins.databases.bigquery.config_file import (
     BigQueryServiceAccountJsonAuth,
     BigQueryServiceAccountKeyFileAuth,
 )
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult, DatabaseSchema
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
@@ -66,29 +66,33 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
         return [dict(row) for row in query_job.result()]
 
     @staticmethod
+    def _infer_bq_type(v: Any) -> str:
+        if isinstance(v, bool):
+            return "BOOL"
+        if isinstance(v, int):
+            return "INT64"
+        if isinstance(v, float):
+            return "FLOAT64"
+        return "STRING"
+
+    @staticmethod
     def _to_query_param(value: Any) -> bigquery.ScalarQueryParameter | bigquery.ArrayQueryParameter:
         if isinstance(value, (list, tuple)):
-            return bigquery.ArrayQueryParameter(None, "STRING", [str(v) for v in value])
-        if isinstance(value, bool):
-            bq_type = "BOOL"
-        elif isinstance(value, int):
-            bq_type = "INT64"
-        elif isinstance(value, float):
-            bq_type = "FLOAT64"
-        else:
-            bq_type = "STRING"
-        return bigquery.ScalarQueryParameter(None, bq_type, value)
-
-    def introspect_database(self, file_config: BigQueryConfigFile) -> DatabaseIntrospectionResult:
-        self._configured_dataset = file_config.connection.dataset
-        return super().introspect_database(file_config)
+            element_type = "STRING"
+            for elem in value:
+                if elem is not None:
+                    element_type = BigQueryIntrospector._infer_bq_type(elem)
+                    break
+            return bigquery.ArrayQueryParameter(None, element_type, list(value))
+        return bigquery.ScalarQueryParameter(None, BigQueryIntrospector._infer_bq_type(value), value)
 
     def _get_catalogs(self, connection: bigquery.Client, file_config: BigQueryConfigFile) -> list[str]:
         return [file_config.connection.project]
 
     def _list_schemas_for_catalog(self, connection: bigquery.Client, catalog: str) -> list[str]:
-        if self._configured_dataset:
-            return [self._configured_dataset]
+        default_job_config = connection.default_query_job_config
+        if default_job_config and default_job_config.default_dataset:
+            return [default_job_config.default_dataset.dataset_id]
         return [ds.dataset_id for ds in connection.list_datasets()]
 
     def collect_catalog_model(
