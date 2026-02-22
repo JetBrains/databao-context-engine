@@ -12,7 +12,7 @@ from databao_context_engine.plugins.databases.bigquery.config_file import (
     BigQueryServiceAccountJsonAuth,
     BigQueryServiceAccountKeyFileAuth,
 )
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
+from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult, DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
@@ -23,10 +23,19 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
     def _connect(self, file_config: BigQueryConfigFile, *, catalog: str | None = None) -> Any:
         conn = file_config.connection
         credentials = self._build_credentials(conn)
+        project = catalog or conn.project
+
+        default_query_job_config = None
+        if conn.dataset:
+            default_query_job_config = bigquery.QueryJobConfig(
+                default_dataset=bigquery.DatasetReference(project, conn.dataset),
+            )
+
         return bigquery.Client(
-            project=catalog or conn.project,
+            project=project,
             credentials=credentials,
             location=conn.location,
+            default_query_job_config=default_query_job_config,
         )
 
     @staticmethod
@@ -70,10 +79,16 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
             bq_type = "STRING"
         return bigquery.ScalarQueryParameter(None, bq_type, value)
 
+    def introspect_database(self, file_config: BigQueryConfigFile) -> DatabaseIntrospectionResult:
+        self._configured_dataset = file_config.connection.dataset
+        return super().introspect_database(file_config)
+
     def _get_catalogs(self, connection: bigquery.Client, file_config: BigQueryConfigFile) -> list[str]:
         return [file_config.connection.project]
 
     def _list_schemas_for_catalog(self, connection: bigquery.Client, catalog: str) -> list[str]:
+        if self._configured_dataset:
+            return [self._configured_dataset]
         return [ds.dataset_id for ds in connection.list_datasets()]
 
     def collect_catalog_model(
