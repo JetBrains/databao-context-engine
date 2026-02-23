@@ -10,14 +10,6 @@ from databao_context_engine import (
     DatasourceConnectionStatus,
     DatasourceId,
 )
-from databao_context_engine.cli.add_datasource_config import add_datasource_config_interactive
-
-
-def add_datasource_config_cli(project_dir: Path) -> None:
-    datasource_id = add_datasource_config_interactive(project_dir)
-
-    if click.confirm("\nDo you want to check the connection to this new datasource?"):
-        check_datasource_connection_cli(project_dir, datasource_ids=[datasource_id])
 
 
 def check_datasource_connection_cli(project_dir: Path, *, datasource_ids: list[DatasourceId] | None) -> None:
