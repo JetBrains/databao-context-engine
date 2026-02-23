@@ -606,7 +606,7 @@ requires-dist = [
     { name = "clickhouse-connect", marker = "extra == 'clickhouse'", specifier = ">=0.10.0" },
     { name = "docling", marker = "extra == 'pdf'", specifier = ">=2.70.0" },
     { name = "duckdb", specifier = ">=1.4.3" },
-    { name = "google-cloud-bigquery", marker = "extra == 'bigquery'", specifier = ">=3.25.0" },
+    { name = "google-cloud-bigquery", marker = "extra == 'bigquery'", specifier = ">=3.40.1" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "mcp", specifier = ">=1.23.3" },
     { name = "mssql-python", marker = "extra == 'mssql'", specifier = ">=1.0.0" },
