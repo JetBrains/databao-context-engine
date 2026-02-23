@@ -9,7 +9,11 @@ from pydantic import BaseModel, Field
 from pytest_unordered import unordered
 
 from databao_context_engine.introspection.property_extract import get_property_list_from_type
-from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation, ConfigSinglePropertyDefinition
+from databao_context_engine.pluginlib.config import (
+    ConfigPropertyAnnotation,
+    ConfigSinglePropertyDefinition,
+    ConfigUnionPropertyDefinition,
+)
 
 
 class TestSubclass:
@@ -291,3 +295,56 @@ def test_get_property_list__from_pydantic_base_model():
             ),
         ]
     )
+
+
+# --- Union property with default_type ---
+
+
+class UnionOptionA(BaseModel):
+    pass
+
+
+class UnionOptionB(BaseModel):
+    key_file: str
+
+
+class UnionOptionC(BaseModel):
+    token: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+
+
+class ModelWithUnionDefaultFactory(BaseModel):
+    auth: UnionOptionA | UnionOptionB | UnionOptionC = Field(default_factory=UnionOptionA)
+
+
+class ModelWithUnionExplicitDefault(BaseModel):
+    auth: UnionOptionA | UnionOptionB | UnionOptionC = Field(default=UnionOptionB(key_file="/tmp/key"))
+
+
+class ModelWithUnionNoDefault(BaseModel):
+    auth: UnionOptionA | UnionOptionB | UnionOptionC
+
+
+def test_get_property_list__union_with_default_factory():
+    property_list = get_property_list_from_type(ModelWithUnionDefaultFactory)
+    assert len(property_list) == 1
+    prop = property_list[0]
+    assert isinstance(prop, ConfigUnionPropertyDefinition)
+    assert prop.property_key == "auth"
+    assert prop.default_type is UnionOptionA
+    assert set(prop.types) == {UnionOptionA, UnionOptionB, UnionOptionC}
+
+
+def test_get_property_list__union_with_explicit_default():
+    property_list = get_property_list_from_type(ModelWithUnionExplicitDefault)
+    assert len(property_list) == 1
+    prop = property_list[0]
+    assert isinstance(prop, ConfigUnionPropertyDefinition)
+    assert prop.default_type is UnionOptionB
+
+
+def test_get_property_list__union_without_default():
+    property_list = get_property_list_from_type(ModelWithUnionNoDefault)
+    assert len(property_list) == 1
+    prop = property_list[0]
+    assert isinstance(prop, ConfigUnionPropertyDefinition)
+    assert prop.default_type is None

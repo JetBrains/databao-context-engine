@@ -9,6 +9,10 @@ from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabase
 
 
 class BigQueryDefaultAuth(BaseModel):
+    # Uses Google Application Default Credentials (ADC):
+    # locally via `gcloud auth application-default login`,
+    # in CI/CD via GOOGLE_APPLICATION_CREDENTIALS env var pointing to a service-account key file,
+    # or automatically on GCP (Compute Engine, Cloud Run, GKE, etc.)
     pass
 
 
