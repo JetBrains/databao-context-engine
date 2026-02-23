@@ -12,13 +12,8 @@ from databao_context_engine import (
     DatabaoContextProjectManager,
     DatasourceId,
     DatasourceStatus,
-    InitErrorReason,
-    InitProjectError,
-    init_dce_project,
-    install_ollama_if_needed,
 )
 from databao_context_engine.cli.datasources import (
-    add_datasource_config_cli,
     check_datasource_connection_cli,
     run_sql_query_cli,
 )
@@ -62,51 +57,10 @@ def info(ctx: Context) -> None:
     echo_info(ctx.obj["project_dir"])
 
 
-@dce.command()
-@click.pass_context
-def init(ctx: Context) -> None:
-    """Create an empty Databao Context Engine project."""
-    project_dir = ctx.obj["project_dir"]
-    try:
-        init_dce_project(project_dir=project_dir)
-    except InitProjectError as e:
-        if e.reason == InitErrorReason.PROJECT_DIR_DOESNT_EXIST:
-            if click.confirm(
-                f"The directory {ctx.obj['project_dir'].resolve()} does not exist. Do you want to create it?",
-                default=True,
-            ):
-                project_dir.mkdir(parents=True, exist_ok=False)
-                init_dce_project(project_dir=project_dir)
-            else:
-                return
-        else:
-            raise e
-
-    click.echo(f"Project initialized successfully at {project_dir.resolve()}")
-
-    try:
-        install_ollama_if_needed()
-    except RuntimeError as e:
-        click.echo(str(e), err=True)
-
-    if click.confirm("\nDo you want to configure a datasource now?"):
-        add_datasource_config_cli(project_dir)
-
-
 @dce.group()
 def datasource() -> None:
     """Manage datasource configurations."""
     pass
-
-
-@datasource.command(name="add")
-@click.pass_context
-def add_datasource_config(ctx: Context) -> None:
-    """Add a new datasource configuration.
-
-    The command will ask all relevant information for that datasource and save it in your Databao Context Engine project.
-    """
-    add_datasource_config_cli(ctx.obj["project_dir"])
 
 
 @datasource.command(name="check")
