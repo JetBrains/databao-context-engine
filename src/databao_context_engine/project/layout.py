@@ -11,7 +11,7 @@ LOGS_FOLDER_NAME = "logs"
 DEPRECATED_CONFIG_FILE_NAME = "nemory.ini"
 CONFIG_FILE_NAME = "dce.ini"
 ALL_RESULTS_FILE_NAME = "all_results.yaml"
-
+PERF_LOGS_FILE_NAME = "perf.jsonl"
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,10 @@ def get_config_file(project_dir: Path) -> Path:
 
 def get_logs_dir(project_dir: Path) -> Path:
     return project_dir.joinpath(LOGS_FOLDER_NAME)
+
+
+def get_performance_logs_file(project_dir: Path) -> Path:
+    return get_logs_dir(project_dir).joinpath(PERF_LOGS_FILE_NAME)
 
 
 def create_datasource_config_file(

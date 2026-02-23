@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence, Union
 
+from databao_context_engine.perf.core import perf_span
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.databases_types import (
     DatabaseCatalog,
@@ -30,6 +31,7 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
         with self._connect(file_config) as connection:
             self._fetchall_dicts(connection, "SELECT 1 as test", None)
 
+    @perf_span("db.introspect_database")
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
         scope_matcher = IntrospectionScopeMatcher(
             file_config.introspection_scope,
@@ -52,19 +54,36 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
                 continue
 
             with self._connect(file_config, catalog=catalog) as catalog_connection:
-                introspected_schemas = self.collect_catalog_model(catalog_connection, catalog, schemas_to_introspect)
+                introspected_schemas = self._collect_catalog_model_timed(
+                    connection=catalog_connection, catalog=catalog, schemas=schemas_to_introspect
+                )
 
                 if not introspected_schemas:
                     continue
 
-                for schema in introspected_schemas:
-                    for table in schema.tables:
-                        table.samples = self._collect_samples_for_table(
-                            catalog_connection, catalog, schema.name, table.name
-                        )
+                self._collect_samples_for_schemas_timed(
+                    connection=catalog_connection, catalog=catalog, schemas=introspected_schemas
+                )
 
                 introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=introspected_schemas))
         return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
+
+    @perf_span(
+        "db.collect_catalog_model",
+        attrs=lambda self, *, catalog, schemas, **_: {"catalog": catalog, "schema_count": len(schemas)},
+    )
+    def _collect_catalog_model_timed(
+        self, *, connection: Any, catalog: str, schemas: list[str]
+    ) -> list[DatabaseSchema] | None:
+        return self.collect_catalog_model(connection, catalog, schemas)
+
+    @perf_span("db.collect_samples", attrs=lambda self, *, catalog, **_: {"catalog": catalog})
+    def _collect_samples_for_schemas_timed(
+        self, *, connection: Any, catalog: str, schemas: list[DatabaseSchema]
+    ) -> None:
+        for schema in schemas:
+            for table in schema.tables:
+                table.samples = self._collect_samples_for_table(connection, catalog, schema.name, table.name)
 
     def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
         if self.supports_catalogs:
