@@ -64,6 +64,16 @@ class Index:
 
 
 @dataclass
+class ColumnStats:
+    null_count: int | None = None
+    non_null_count: int | None = None
+    distinct_count: int | None = None
+    min_value: Any | None = None
+    max_value: Any | None = None
+    top_values: list[tuple[Any, int]] | None = None  # (value, frequency) pairs
+
+
+@dataclass
 class DatabaseColumn:
     name: str
     type: str
@@ -72,12 +82,19 @@ class DatabaseColumn:
     default_expression: str | None = None
     generated: Literal["identity", "computed"] | None = None
     checks: list[CheckConstraint] = field(default_factory=list)
+    stats: ColumnStats | None = None
 
 
 @dataclass
 class DatabasePartitionInfo:
     meta: dict[str, Any]
     partition_tables: list[str]
+
+
+@dataclass
+class TableStats:
+    row_count: int | None = None
+    approximate: bool = True
 
 
 @dataclass
@@ -93,6 +110,7 @@ class DatabaseTable:
     checks: list[CheckConstraint] = field(default_factory=list)
     indexes: list[Index] = field(default_factory=list)
     foreign_keys: list[ForeignKey] = field(default_factory=list)
+    stats: TableStats | None = None
 
 
 @dataclass

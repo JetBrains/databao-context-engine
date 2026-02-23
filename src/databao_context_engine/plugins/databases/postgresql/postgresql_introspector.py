@@ -210,6 +210,8 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
             partitions=results.get("partitions", []),
+            table_stats=results.get("table_stats", []),
+            column_stats=results.get("column_stats", []),
         )
 
     def _component_queries(self) -> dict[str, str]:
@@ -222,6 +224,8 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             "fks": self._sql_foreign_keys(),
             "idx": self._sql_indexes(),
             "partitions": self._sql_partitions(),
+            "table_stats": self._sql_table_stats(),
+            "column_stats": self._sql_column_stats(),
         }
 
     def _sql_relations(self) -> str:
@@ -468,6 +472,49 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 part.partstrat, 
                 partitions.partition_tables
                """
+
+    def _sql_table_stats(self) -> str:
+        return """
+            SELECT
+                n.nspname AS schema_name,
+                c.relname AS table_name,
+                CASE
+                    WHEN c.relkind = 'p' THEN (
+                        SELECT COALESCE(SUM(child.reltuples), 0)::bigint
+                        FROM pg_inherits i
+                        JOIN pg_class child ON child.oid = i.inhrelid
+                        WHERE i.inhparent = c.oid
+                    )
+                    ELSE c.reltuples::bigint
+                END AS row_count
+            FROM
+                pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE
+                n.nspname = ANY($1)
+                AND c.relkind IN ('r','p')
+                AND NOT c.relispartition
+        """
+
+    def _sql_column_stats(self) -> str:
+        return """
+            SELECT
+                s.schemaname AS schema_name,
+                s.tablename AS table_name,
+                s.attname AS column_name,
+                s.null_frac,
+                s.n_distinct,
+                s.most_common_vals::text AS most_common_vals,
+                s.most_common_freqs::text AS most_common_freqs
+            FROM
+                pg_stats s
+            WHERE
+                s.schemaname = ANY($1)
+            ORDER BY
+                s.schemaname,
+                s.tablename,
+                s.attname
+        """
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT $1'
