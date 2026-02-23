@@ -791,6 +791,8 @@ def test_postgres_statistics(create_db_schema, postgres_container: PostgresConta
                         "value",
                         null_count=0,
                         non_null_count=100,
+                        min_value="1",
+                        max_value="100",
                     ),
                 ],
             )

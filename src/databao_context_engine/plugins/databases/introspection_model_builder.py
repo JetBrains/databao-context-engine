@@ -298,12 +298,21 @@ class IntrospectionModelBuilder:
                         except (ValueError, TypeError):
                             pass
 
+                min_value = None
+                max_value = None
+                histogram_bounds = stat_row.get("histogram_bounds")
+                if histogram_bounds:
+                    bounds = _parse_pg_array_simple(histogram_bounds)
+                    if bounds:
+                        min_value = bounds[0]
+                        max_value = bounds[-1]
+
                 col.stats = ColumnStats(
                     null_count=null_count,
                     non_null_count=non_null_count,
                     distinct_count=distinct_count,
-                    min_value=None,  # TODO
-                    max_value=None,  # TODO
+                    min_value=min_value,
+                    max_value=max_value,
                     top_values=top_values,
                 )
 

@@ -511,7 +511,8 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 s.null_frac,
                 s.n_distinct,
                 s.most_common_vals::text AS most_common_vals,
-                s.most_common_freqs::text AS most_common_freqs
+                s.most_common_freqs::text AS most_common_freqs,
+                s.histogram_bounds::text AS histogram_bounds
             FROM
                 pg_stats s
             WHERE
