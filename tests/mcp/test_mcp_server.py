@@ -129,8 +129,13 @@ async def test_run_mcp_server__list_tools(dce_path: Path, project: Project):
     async with run_mcp_server_stdio_test(project.project_dir, dce_path=dce_path) as session:
         # List available tools
         tools = await session.list_tools()
-        assert len(tools.tools) == 2
-        assert {tool.name for tool in tools.tools} == {"all_results_tool", "retrieve_tool"}
+        assert len(tools.tools) == 4
+        assert {tool.name for tool in tools.tools} == {
+            "all_results_tool",
+            "retrieve_tool",
+            "run_sql_tool",
+            "list_datasources_tool",
+        }
 
 
 @pytest.mark.anyio
