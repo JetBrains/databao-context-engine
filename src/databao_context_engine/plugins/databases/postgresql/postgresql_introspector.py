@@ -480,11 +480,17 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname AS table_name,
                 CASE
                     WHEN c.relkind = 'p' THEN (
-                        SELECT COALESCE(SUM(child.reltuples), 0)::bigint
+                        SELECT
+                            CASE
+                                -- If any partition is unanalyzed (< 0), we can't trust the sum
+                                WHEN MIN(child.reltuples) < 0 THEN NULL
+                                ELSE COALESCE(SUM(child.reltuples), 0)::bigint
+                            END
                         FROM pg_inherits i
                         JOIN pg_class child ON child.oid = i.inhrelid
                         WHERE i.inhparent = c.oid
                     )
+                    WHEN c.reltuples < 0 THEN NULL
                     ELSE c.reltuples::bigint
                 END AS row_count
             FROM
