@@ -90,7 +90,7 @@ class PerfRecorder:
         self._exporter.write(record)
 
     def end(self, *, status: str, error_type: str | None) -> None:
-        duration_ms = (time.perf_counter_ns() - self.run_start_perf_ns) / 1_000_000
+        duration_ms = (time.perf_counter_ns() - self.run_start_perf_ns) // 1_000_000
         record: dict[str, Any] = {
             "type": "run_end",
             "ts": _utc_iso(),
