@@ -44,6 +44,23 @@ Your data sources → Context Engine → Unified semantic graph → Any LLM
 | **Governed & versioned**   | Track, version, and share context across your team             |
 | **Dynamic or static**      | Serve context via MCP server or export as artifact             |
 
+## Installation
+
+Databao Context Engine is [available on PyPI](https://pypi.org/project/databao-context-engine/) 
+and can be installed with uv, pip, or another package manager.
+
+### Using uv
+
+```bash
+uv add databao-context-engine
+```
+
+### Using pip
+
+```bash
+pip install databao-context-engine
+```
+
 ##  Supported data sources
 
 * Athena
