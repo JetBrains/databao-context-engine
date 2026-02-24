@@ -14,7 +14,6 @@ from databao_context_engine import (
     DatasourceStatus,
 )
 from databao_context_engine.cli.datasources import (
-    check_datasource_connection_cli,
     run_sql_query_cli,
 )
 from databao_context_engine.cli.info import echo_info
@@ -61,30 +60,6 @@ def info(ctx: Context) -> None:
 def datasource() -> None:
     """Manage datasource configurations."""
     pass
-
-
-@datasource.command(name="check")
-@click.argument(
-    "datasources-config-files",
-    type=click.STRING,
-    nargs=-1,
-)
-@click.pass_context
-def check_datasource_config(ctx: Context, datasources_config_files: list[str] | None) -> None:
-    """Check whether a datasource configuration is valid.
-
-    The configuration is considered as valid if a connection with the datasource can be established.
-
-    By default, all datasources declared in the project will be checked.
-    You can explicitely list which datasources to validate by using the [DATASOURCES_CONFIG_FILES] argument. Each argument must be the path to the file within the src folder (e.g: my-folder/my-config.yaml)
-    """
-    datasource_ids = (
-        [DatasourceId.from_string_repr(datasource_config_file) for datasource_config_file in datasources_config_files]
-        if datasources_config_files is not None
-        else None
-    )
-
-    check_datasource_connection_cli(ctx.obj["project_dir"], datasource_ids=datasource_ids)
 
 
 @datasource.command(name="run_sql")
