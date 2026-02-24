@@ -1,12 +1,19 @@
+import subprocess
 import sys
 
 from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
 
 
 def test_pdf_plugin_does_not_import_docling_on_import_or_init():
-    PDFPlugin()
-    assert "docling" not in sys.modules
-    assert "docling_core" not in sys.modules
+    code = r"""
+import sys
+from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
+PDFPlugin()
+assert "docling" not in sys.modules
+assert "docling_core" not in sys.modules
+    """
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
 
 def test_context_type_triggers_docling_core_import():
