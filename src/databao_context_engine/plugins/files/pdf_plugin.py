@@ -1,25 +1,36 @@
 from io import BufferedReader, BytesIO
 from typing import Any
 
-from docling.datamodel.base_models import DocumentStream, InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling_core.types import DoclingDocument
-
 from databao_context_engine import BuildFilePlugin
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
-from databao_context_engine.services.docling_chunker import DoclingChunker
+
+
+class _LazyDoclingDocumentType:
+    """Descriptor that resolves DoclingDocument only when accessed."""
+
+    _cached: type | None = None
+
+    def __get__(self, obj: object, objtype: type | None = None) -> type:
+        if self._cached is None:
+            from docling_core.types import DoclingDocument
+
+            self._cached = DoclingDocument
+        return self._cached
 
 
 class PDFPlugin(BuildFilePlugin):
     id = "jetbrains/pdf"
     name = "PDF Plugin"
-    context_type = DoclingDocument
+    context_type = _LazyDoclingDocumentType()
 
     def supported_types(self) -> set[str]:
         return {"pdf"}
 
     def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
+        from docling.datamodel.base_models import DocumentStream, InputFormat
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        from docling.document_converter import DocumentConverter, PdfFormatOption
+
         pdf_bytes = file_buffer.read()
 
         opts = PdfPipelineOptions()
@@ -34,5 +45,6 @@ class PDFPlugin(BuildFilePlugin):
         return converter.convert(stream).document
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
-        indexer = DoclingChunker()
-        return indexer.index(context)
+        from databao_context_engine.services.docling_chunker import DoclingChunker
+
+        return DoclingChunker().index(context)
