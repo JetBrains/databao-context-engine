@@ -21,7 +21,6 @@ def test_duckdb_secret_sql():
     with duckdb.connect() as conn:
         conn.sql(create_secret_sql)
         res = fetchall_dicts(conn.cursor(), "FROM duckdb_secrets();")
-        print(f"res : {res}")
         assert len(res) == 1
         assert res[0]["name"] == "test_secret"
         assert res[0]["type"] == "s3"
