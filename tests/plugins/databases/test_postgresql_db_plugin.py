@@ -311,6 +311,7 @@ def test_postgres_partitioned_table_statistics(create_db_schema, postgres_contai
                         non_null_count=100,
                         distinct_count=3,
                         top_values={"active": 70, "pending": 20, "completed": 10},
+                        total_row_count=100,
                     ),
                 ],
             )
@@ -773,6 +774,7 @@ def test_postgres_statistics(create_db_schema, postgres_container: PostgresConta
                         non_null_count=100,
                         distinct_count=2,
                         top_values={"active": 70, "inactive": 30},
+                        total_row_count=100,
                     ),
                     ColumnStatsExists(
                         "test",
@@ -783,6 +785,7 @@ def test_postgres_statistics(create_db_schema, postgres_container: PostgresConta
                         non_null_count=80,
                         distinct_count=2,
                         top_values={"A": 50, "B": 30},
+                        total_row_count=100,
                     ),
                     ColumnStatsExists(
                         "test",
@@ -793,6 +796,7 @@ def test_postgres_statistics(create_db_schema, postgres_container: PostgresConta
                         non_null_count=100,
                         min_value="1",
                         max_value="100",
+                        total_row_count=100,
                     ),
                 ],
             )

@@ -434,6 +434,7 @@ class ColumnStatsExists(Fact):
     max_value: Any | None = None
     has_top_values: bool | None = None
     top_values: dict[Any, int] | None = None
+    total_row_count: int | None = None
 
     def check(self, a: IntrospectionAsserter) -> None:
         c = a.column(self.catalog, self.schema, self.table, self.column)
@@ -489,6 +490,11 @@ class ColumnStatsExists(Fact):
                         f"Full actual: {actual_dict}",
                         path,
                     )
+
+        if self.total_row_count is not None:
+            actual = getattr(stats, "total_row_count", None)
+            if actual != self.total_row_count:
+                a.fail(f"Expected total_row_count={self.total_row_count}, got {actual}", path)
 
 
 def assert_contract(result: DatabaseIntrospectionResult, facts: Iterable[Fact]) -> None:

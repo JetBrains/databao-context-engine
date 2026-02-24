@@ -71,6 +71,19 @@ class ColumnStats:
     min_value: Any | None = None
     max_value: Any | None = None
     top_values: list[tuple[Any, int]] | None = None  # (value, frequency) pairs
+    total_row_count: int | None = None
+
+    @property
+    def proportion_null(self) -> float | None:
+        if self.null_count is not None and self.total_row_count is not None and self.total_row_count > 0:
+            return (self.null_count / self.total_row_count) * 100
+        return None
+
+    @property
+    def proportion_distinct(self) -> float | None:
+        if self.distinct_count is not None and self.total_row_count is not None and self.total_row_count > 0:
+            return (self.distinct_count / self.total_row_count) * 100
+        return None
 
 
 @dataclass

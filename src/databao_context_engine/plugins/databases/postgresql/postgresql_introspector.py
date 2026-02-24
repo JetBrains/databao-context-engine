@@ -200,6 +200,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         for cq, sql in comps.items():
             results[cq] = self._fetchall_dicts(connection, sql, (schemas,)) or []
 
+        # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
+        results["column_stats"] = self._parse_column_stats_arrays(results.get("column_stats", []))
+
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results.get("relations", []),
@@ -213,6 +216,29 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             table_stats=results.get("table_stats", []),
             column_stats=results.get("column_stats", []),
         )
+
+    def _parse_column_stats_arrays(self, column_stats: list[dict]) -> list[dict]:
+        """Simple parser that doesn't handle quoted strings with commas or escapes."""
+
+        def parse_pg_array(arr_str: str | None) -> list[str] | None:
+            if not arr_str or not isinstance(arr_str, str):
+                return None
+            if not arr_str.startswith("{") or not arr_str.endswith("}"):
+                return None
+            content = arr_str[1:-1]
+            if not content:
+                return []
+            return [v.strip() for v in content.split(",") if v.strip()]
+
+        for row in column_stats:
+            if "most_common_vals" in row:
+                row["most_common_vals"] = parse_pg_array(row["most_common_vals"])
+            if "most_common_freqs" in row:
+                row["most_common_freqs"] = parse_pg_array(row["most_common_freqs"])
+            if "histogram_bounds" in row:
+                row["histogram_bounds"] = parse_pg_array(row["histogram_bounds"])
+
+        return column_stats
 
     def _component_queries(self) -> dict[str, str]:
         return {
@@ -492,7 +518,8 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                     )
                     WHEN c.reltuples < 0 THEN NULL
                     ELSE c.reltuples::bigint
-                END AS row_count
+                END AS row_count,
+                TRUE AS approximate
             FROM
                 pg_class c
                 JOIN pg_namespace n ON n.oid = c.relnamespace

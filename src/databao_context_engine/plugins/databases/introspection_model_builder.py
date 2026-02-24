@@ -251,7 +251,8 @@ class IntrospectionModelBuilder:
             t = self.get_or_create_table(r["table_name"])
             row_count = r.get("row_count")
             if row_count is not None:
-                t.stats = TableStats(row_count=int(row_count), approximate=True)
+                approximate = r.get("approximate", True)
+                t.stats = TableStats(row_count=int(row_count), approximate=bool(approximate))
 
     def apply_column_stats(self, column_stats: list[dict] | None) -> None:
         stats_by_table_col: dict[tuple[str, str], dict] = {}
@@ -286,12 +287,10 @@ class IntrospectionModelBuilder:
 
                 top_values = None
                 top_n = 5
-                mcv = stat_row.get("most_common_vals")
-                mcf = stat_row.get("most_common_freqs")
-                if mcv is not None and mcf is not None:
-                    vals = _parse_pg_array_simple(mcv)
-                    freqs = _parse_pg_array_simple(mcf)
-                    if vals and freqs and len(vals) == len(freqs) and table.stats and table.stats.row_count:
+                vals = stat_row.get("most_common_vals")
+                freqs = stat_row.get("most_common_freqs")
+                if vals is not None and freqs is not None and isinstance(vals, list) and isinstance(freqs, list):
+                    if len(vals) == len(freqs) and table.stats and table.stats.row_count:
                         try:
                             row_count = table.stats.row_count
                             top_values = [(str(v), round(float(f) * row_count)) for v, f in zip(vals, freqs)][:top_n]
@@ -300,12 +299,10 @@ class IntrospectionModelBuilder:
 
                 min_value = None
                 max_value = None
-                histogram_bounds = stat_row.get("histogram_bounds")
-                if histogram_bounds:
-                    bounds = _parse_pg_array_simple(histogram_bounds)
-                    if bounds:
-                        min_value = bounds[0]
-                        max_value = bounds[-1]
+                bounds = stat_row.get("histogram_bounds")
+                if bounds and isinstance(bounds, list) and len(bounds) > 0:
+                    min_value = bounds[0]
+                    max_value = bounds[-1]
 
                 col.stats = ColumnStats(
                     null_count=null_count,
@@ -314,26 +311,11 @@ class IntrospectionModelBuilder:
                     min_value=min_value,
                     max_value=max_value,
                     top_values=top_values,
+                    total_row_count=table.stats.row_count if table.stats else None,
                 )
 
     def finish(self) -> list[DatabaseTable]:
         return [self.by_table[k] for k in sorted(self.by_table)]
-
-
-def _parse_pg_array_simple(arr_str: str) -> list[str]:
-    """Parse PostgreSQL array format like '{value1,value2,value3}'.
-
-    Note: Simple parser that doesn't handle quoted strings with commas or escapes.
-
-    Returns:
-        List of string values from the array, or empty list if parsing fails.
-    """
-    if not arr_str or not isinstance(arr_str, str):
-        return []
-    if not arr_str.startswith("{") or not arr_str.endswith("}"):
-        return []
-    content = arr_str[1:-1]
-    return [v.strip() for v in content.split(",") if v.strip()]
 
 
 def coerce_bool(value: Any, default: bool | None = None) -> bool | None:
