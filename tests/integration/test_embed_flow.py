@@ -37,7 +37,18 @@ def test_embed_flow_persists_chunks_and_embeddings(
     chunks = chunk_repo.list()
     assert len(chunks) == 3
     assert [s.display_text for s in chunks] == ["Gamma", "Beta", "Alpha"]
-    assert [s.embeddable_text for s in chunks] == ["gamma", "beta", "alpha"]
+
+    match chunk_embedding_mode:
+        case ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY:
+            assert [s.embeddable_text for s in chunks] == ["gamma", "beta", "alpha"]
+        case ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY:
+            assert [s.embeddable_text for s in chunks] == ["desc-2-Gamma", "desc-1-Beta", "desc-0-Alpha"]
+        case ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION:
+            assert [s.embeddable_text for s in chunks] == [
+                "desc-2-Gamma\ngamma",
+                "desc-1-Beta\nbeta",
+                "desc-0-Alpha\nalpha",
+            ]
 
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3

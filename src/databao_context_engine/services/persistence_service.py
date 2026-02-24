@@ -52,7 +52,7 @@ class PersistenceService:
             chunk_ids = self._chunk_repo.bulk_insert(
                 full_type=full_type,
                 datasource_id=datasource_id,
-                chunk_contents=[(ce.chunk.embeddable_text, ce.display_text) for ce in chunk_embeddings],
+                chunk_contents=[(ce.embedded_text, ce.display_text) for ce in chunk_embeddings],
             )
 
             self._embedding_repo.bulk_insert(
