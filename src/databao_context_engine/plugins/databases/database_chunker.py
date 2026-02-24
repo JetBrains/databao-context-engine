@@ -1,5 +1,5 @@
+import os
 from dataclasses import dataclass
-from os import environ
 
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.plugins.databases.databases_types import (
@@ -63,22 +63,24 @@ def _create_column_chunk(
 
 
 def _should_use_old_table_chunk_text():
-    return environ.get("DATABAO_OLD_TABLE_CHUNK_TEXT")
+    return os.environ.get("DATABAO_OLD_TABLE_CHUNK_TEXT")
 
 
 def _should_use_old_column_chunk_text():
-    return environ.get("DATABAO_OLD_COLUMN_CHUNK_TEXT")
+    return os.environ.get("DATABAO_OLD_COLUMN_CHUNK_TEXT")
 
 
 def _build_table_chunk_text(table: DatabaseTable) -> str:
     if _should_use_old_table_chunk_text():
         return f"Table {table.name} with columns {','.join([column.name for column in table.columns])}"
 
+    should_include_column_names = not os.environ.get("DATABAO_TABLE_CHUNK_REMOVE_COLUMN_NAMES")
+
     sections = [
         f"{table.name} is a database {table.kind.value} with {len(table.columns)} columns",
         _build_table_primary_key_text(table),
         _build_table_foreign_keys_section(table),
-        _build_table_all_columns_section(table),
+        _build_table_all_columns_section(table) if should_include_column_names else "",
         table.description if table.description else "",
     ]
 
@@ -86,6 +88,11 @@ def _build_table_chunk_text(table: DatabaseTable) -> str:
 
 
 def _build_table_all_columns_section(table: DatabaseTable) -> str:
+    MAX_COLUMNS_TO_ADD = 50
+    if len(table.columns) > MAX_COLUMNS_TO_ADD:
+        truncated_columns = ", ".join([column.name for column in table.columns[:MAX_COLUMNS_TO_ADD]])
+        return f"Here are the first {MAX_COLUMNS_TO_ADD} columns for the {table.kind.value}: {truncated_columns}"
+
     all_columns = ", ".join([column.name for column in table.columns])
     return f"Here is the full list of columns for the {table.kind.value}: {all_columns}"
 
