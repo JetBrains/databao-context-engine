@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -8,44 +7,10 @@ from databao_context_engine import (
     DatabaoContextProjectManager,
     DatasourceType,
 )
-from databao_context_engine.datasources.config_wizard import Choice, UserInputCallback
-from databao_context_engine.plugins.resources.parquet_plugin import ParquetPlugin
 from databao_context_engine.project.layout import ProjectLayout
+from tests.utils.config_wizard import MockUserInputCallback
 from tests.utils.dummy_build_plugin import load_dummy_plugins
 from tests.utils.project_creation import given_datasource_config_file
-
-
-class MockUserInputCallback(UserInputCallback):
-    def __init__(self, inputs: list[Any] | None = None):
-        self.inputs = inputs or []
-        self.input_index = 0
-
-    def prompt(
-        self,
-        text: str,
-        type: Choice | Any | None = None,
-        default_value: Any | None = None,
-        is_secret: bool = False,
-    ) -> Any:
-        if self.input_index >= len(self.inputs):
-            raise AssertionError("Not enough inputs")
-
-        val = self.inputs[self.input_index]
-        self.input_index += 1
-
-        if val == "" and default_value is not None:
-            return default_value
-
-        return val
-
-    def confirm(self, text: str) -> bool:
-        if self.input_index >= len(self.inputs):
-            raise AssertionError("Not enough inputs")
-        val = self.inputs[self.input_index]
-        self.input_index += 1
-        if isinstance(val, bool):
-            return val
-        raise AssertionError(f"Expected boolean val but {type(val)}:{repr(val)} is provided")
 
 
 @pytest.fixture
@@ -179,34 +144,6 @@ def test_add_datasource_config__with_custom_property_list_and_optionals(project_
         "nested_dict": {
             "optional_with_default": "1111",
         },
-    }
-
-
-def test_add_parquet_datasource_config(project_path: Path):
-    plugin_loader = DatabaoContextPluginLoader(
-        plugins_by_type={
-            DatasourceType(full_type="parquet"): ParquetPlugin(),
-        }
-    )
-    project_manager = DatabaoContextProjectManager(project_dir=project_path, plugin_loader=plugin_loader)
-
-    inputs = [
-        "my_url_to_file.parquet",  # url
-        False,  # is_local_file
-    ]
-    user_input_callback = MockUserInputCallback(inputs=inputs)
-
-    configured_datasource = project_manager.create_datasource_config_interactively(
-        datasource_type=DatasourceType(full_type="parquet"),
-        datasource_name="res/my_parq",
-        user_input_callback=user_input_callback,
-        validate_config_content=False,
-    )
-
-    assert configured_datasource.config == {
-        "type": "parquet",
-        "name": "my_parq",
-        "url": "my_url_to_file.parquet",
     }
 
 

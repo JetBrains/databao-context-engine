@@ -4,7 +4,7 @@ import pytest
 
 from databao_context_engine import DatabaoContextPluginLoader, DatabaoContextProjectManager, DatasourceType
 from databao_context_engine.plugins.databases.bigquery.bigquery_db_plugin import BigQueryDbPlugin
-from tests.datasources.test_create_datasource_interactively import MockUserInputCallback
+from tests.utils.config_wizard import MockUserInputCallback
 
 
 @pytest.fixture
