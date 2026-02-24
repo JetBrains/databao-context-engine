@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence, Union
 
-from databao_context_engine.perf.core import perf_span
+import databao_context_engine.perf.core as perf
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.databases_types import (
     DatabaseCatalog,
@@ -31,7 +31,7 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
         with self._connect(file_config) as connection:
             self._fetchall_dicts(connection, "SELECT 1 as test", None)
 
-    @perf_span("db.introspect_database")
+    @perf.perf_span("db.introspect_database")
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
         scope_matcher = IntrospectionScopeMatcher(
             file_config.introspection_scope,
@@ -68,7 +68,7 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
                 introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=introspected_schemas))
         return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
 
-    @perf_span(
+    @perf.perf_span(
         "db.collect_catalog_model",
         attrs=lambda self, *, catalog, schemas, **_: {"catalog": catalog, "schema_count": len(schemas)},
     )
@@ -77,7 +77,7 @@ class BaseIntrospector[T: SupportsIntrospectionScope](ABC):
     ) -> list[DatabaseSchema] | None:
         return self.collect_catalog_model(connection, catalog, schemas)
 
-    @perf_span("db.collect_samples", attrs=lambda self, *, catalog, **_: {"catalog": catalog})
+    @perf.perf_span("db.collect_samples", attrs=lambda self, *, catalog, **_: {"catalog": catalog})
     def _collect_samples_for_schemas_timed(
         self, *, connection: Any, catalog: str, schemas: list[DatabaseSchema]
     ) -> None:

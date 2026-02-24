@@ -1,5 +1,6 @@
 import logging
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.export_results import (
     append_result_to_all_results,
@@ -16,7 +17,6 @@ from databao_context_engine.datasources.datasource_context import (
     read_datasource_type_from_context,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
-from databao_context_engine.perf.core import perf_run, perf_span, set_attribute
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
@@ -24,11 +24,11 @@ from databao_context_engine.project.layout import ProjectLayout
 logger = logging.getLogger(__name__)
 
 
-@perf_run(
+@perf.perf_run(
     operation="build",
     attrs=lambda *, generate_embeddings=True, **_: {"generate_embeddings": generate_embeddings},
 )
-@perf_span("build.total")
+@perf.perf_span("build.total")
 def build(
     *,
     project_layout: ProjectLayout,
@@ -90,7 +90,7 @@ def build(
     return results
 
 
-@perf_span(
+@perf.perf_span(
     "datasource.total",
     datasource_id=lambda *, datasource_id, **_: str(datasource_id),
 )
@@ -104,7 +104,7 @@ def _build_one_datasource(
 ) -> BuildDatasourceResult:
     prepared_source = prepare_source(project_layout, datasource_id)
 
-    set_attribute("datasource_type", prepared_source.datasource_type.full_type)
+    perf.set_attribute("datasource_type", prepared_source.datasource_type.full_type)
 
     logger.info(
         f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
@@ -128,7 +128,7 @@ def _build_one_datasource(
     output_dir = project_layout.output_dir
     context_file_path = export_build_result(output_dir, result)
 
-    set_attribute("context_size_bytes", context_file_path.stat().st_size)
+    perf.set_attribute("context_size_bytes", context_file_path.stat().st_size)
 
     append_result_to_all_results(output_dir, result)
 
@@ -141,8 +141,8 @@ def _build_one_datasource(
     )
 
 
-@perf_run(operation="index")
-@perf_span("index.total")
+@perf.perf_run(operation="index")
+@perf.perf_span("index.total")
 def run_indexing(
     *,
     project_layout: ProjectLayout,
@@ -193,7 +193,7 @@ def run_indexing(
     return results
 
 
-@perf_span(
+@perf.perf_span(
     "datasource.total",
     datasource_id=lambda *, context, **_: str(context.datasource_id),
 )
@@ -203,10 +203,10 @@ def _index_one_context(
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
 ) -> IndexDatasourceResult:
-    set_attribute("context_size_bytes", len(context.context.encode("utf-8")))
+    perf.set_attribute("context_size_bytes", len(context.context.encode("utf-8")))
 
     datasource_type = read_datasource_type_from_context(context)
-    set_attribute("datasource_type", getattr(datasource_type, "full_type", datasource_type))
+    perf.set_attribute("datasource_type", getattr(datasource_type, "full_type", datasource_type))
 
     plugin = plugin_loader.get_plugin_for_datasource_type(datasource_type)
     if plugin is None:

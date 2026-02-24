@@ -7,10 +7,10 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, TypeAdapter
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute_plugin
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import PreparedDatasource
-from databao_context_engine.perf.core import perf_span, set_attribute
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
@@ -50,7 +50,7 @@ class BuildService:
 
         chunks = plugin.divide_context_into_chunks(result.context)
 
-        set_attribute("chunk_count", len(chunks))
+        perf.set_attribute("chunk_count", len(chunks))
 
         if not chunks:
             logger.info("No chunks for %s — skipping.", prepared_source.datasource_id.relative_path_to_config_file())
@@ -65,7 +65,7 @@ class BuildService:
 
         return result
 
-    @perf_span("plugin.execute")
+    @perf.perf_span("plugin.execute")
     def _execute_plugin(self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
         return execute_plugin(self._project_layout, prepared_source, plugin)
 
@@ -80,7 +80,7 @@ class BuildService:
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
         chunks = plugin.divide_context_into_chunks(built.context)
-        set_attribute("chunk_count", len(chunks))
+        perf.set_attribute("chunk_count", len(chunks))
 
         if not chunks:
             logger.info(

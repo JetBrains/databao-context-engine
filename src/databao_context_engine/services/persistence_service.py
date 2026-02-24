@@ -1,6 +1,6 @@
 import duckdb
 
-from databao_context_engine.perf.core import perf_span
+import databao_context_engine.perf.core as perf
 from databao_context_engine.services.models import ChunkEmbedding
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
@@ -21,7 +21,7 @@ class PersistenceService:
         self._embedding_repo = embedding_repo
         self._dim = dim
 
-    @perf_span(
+    @perf.perf_span(
         "persistence.write_chunks_and_embeddings",
         attrs=lambda self, *, chunk_embeddings, table_name, override, **_: {
             "chunk_count": len(chunk_embeddings),
@@ -69,15 +69,15 @@ class PersistenceService:
                 chunk_embeddings=chunk_embeddings,
             )
 
-    @perf_span("persistence.override.delete_embeddings")
+    @perf.perf_span("persistence.override.delete_embeddings")
     def _delete_existing_embeddings(self, *, table_name: str, datasource_id: str) -> None:
         self._embedding_repo.delete_by_datasource_id(table_name=table_name, datasource_id=datasource_id)
 
-    @perf_span("persistence.override.delete_chunks")
+    @perf.perf_span("persistence.override.delete_chunks")
     def _delete_existing_chunks(self, *, datasource_id: str) -> None:
         self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
 
-    @perf_span("persistence.bulk_insert_chunks")
+    @perf.perf_span("persistence.bulk_insert_chunks")
     def _insert_chunks(
         self,
         *,
@@ -91,7 +91,7 @@ class PersistenceService:
             chunk_contents=[(ce.chunk.embeddable_text, ce.display_text) for ce in chunk_embeddings],
         )
 
-    @perf_span("persistence.bulk_insert_embeddings")
+    @perf.perf_span("persistence.bulk_insert_embeddings")
     def _insert_embeddings(
         self,
         *,

@@ -2,9 +2,9 @@ import logging
 from enum import Enum
 from typing import cast
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
-from databao_context_engine.perf.core import perf_span
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
@@ -115,7 +115,7 @@ class ChunkEmbeddingService:
             override=override,
         )
 
-    @perf_span("description.generate")
+    @perf.perf_span("description.generate")
     def _prepare_embedding_texts_with_descriptions(
         self,
         *,
@@ -140,6 +140,6 @@ class ChunkEmbeddingService:
 
         return embedding_texts, generated_descriptions
 
-    @perf_span("embedding.embed_many")
+    @perf.perf_span("embedding.embed_many")
     def _embed_many(self, embedding_texts: list[str]) -> list[list[float]]:
         return self._embedding_provider.embed_many(embedding_texts)

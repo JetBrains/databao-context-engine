@@ -16,7 +16,7 @@ from databao_context_engine.project.layout import get_performance_logs_file
 
 logger = logging.getLogger(__name__)
 
-_recorder_var: ContextVar["PerfRecorder | None"] = ContextVar("dce_perf_recorder", default=None)
+_recorder_var: ContextVar["_PerfRecorder | None"] = ContextVar("dce_perf_recorder", default=None)
 _current_span_var: ContextVar["_Span | None"] = ContextVar("dce_perf_span", default=None)
 
 
@@ -69,7 +69,7 @@ class _JsonlExporter:
             logger.debug("Failed to write perf record", exc_info=True)
 
 
-class PerfRecorder:
+class _PerfRecorder:
     def __init__(self, *, exporter: _JsonlExporter, operation: str, run_attrs: Mapping[str, Any] | None = None):
         self.run_id: str = uuid.uuid4().hex
         self.operation = operation
@@ -118,7 +118,7 @@ class PerfRecorder:
 
 @dataclass
 class _Span:
-    recorder: PerfRecorder
+    recorder: _PerfRecorder
     name: str
     span_id: str
     parent_span_id: str | None
@@ -262,7 +262,7 @@ def perf_run(
                 logger.warning("Failed to open perf log at %s; perf disabled", path, exc_info=True)
                 return fn(*args, **kwargs)
 
-            recorder = PerfRecorder(exporter=exporter, operation=operation, run_attrs=run_attrs)
+            recorder = _PerfRecorder(exporter=exporter, operation=operation, run_attrs=run_attrs)
             token = _recorder_var.set(recorder)
 
             status = "ok"
