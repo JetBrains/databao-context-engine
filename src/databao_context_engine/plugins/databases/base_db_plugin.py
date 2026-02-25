@@ -16,6 +16,7 @@ from databao_context_engine.plugins.databases.base_introspector import BaseIntro
 from databao_context_engine.plugins.databases.database_chunker import build_database_chunks
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
+from databao_context_engine.plugins.databases.sampling_scope import SamplingConfig
 
 
 class BaseDatabaseConfigFile(BaseModel, AbstractConfigFile):
@@ -25,6 +26,9 @@ class BaseDatabaseConfigFile(BaseModel, AbstractConfigFile):
     introspection_scope: Annotated[
         IntrospectionScope | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)
     ] = Field(default=None, alias="introspection-scope")
+    sampling: Annotated[SamplingConfig | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)] = Field(
+        default=None
+    )
 
 
 T = TypeVar("T", bound="BaseDatabaseConfigFile")
