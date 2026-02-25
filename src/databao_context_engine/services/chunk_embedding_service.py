@@ -6,7 +6,10 @@ from databao_context_engine.build_sources.plugin_execution import BuiltDatasourc
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
-from databao_context_engine.plugins.databases.database_chunker import DatabaseTableChunkContent
+from databao_context_engine.plugins.databases.database_chunker import (
+    DatabaseColumnChunkContent,
+    DatabaseTableChunkContent,
+)
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
@@ -166,11 +169,12 @@ class ChunkEmbeddingService:
                 (schema for schema in chunk_catalog.schemas if schema.name == chunk_content.schema_name), None
             )
             if chunk_schema:
+                chunk_table = None
                 if isinstance(chunk_content, DatabaseTableChunkContent):
                     chunk_table = next(
                         (table for table in chunk_schema.tables if table.name == chunk_content.table.name), None
                     )
-                else:
+                elif isinstance(chunk_content, DatabaseColumnChunkContent):
                     chunk_table = next(
                         (table for table in chunk_schema.tables if table.name == chunk_content.table_name), None
                     )
