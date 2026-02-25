@@ -3,6 +3,7 @@ from typing import Any, Iterable, cast
 
 from databao_context_engine.plugins.databases.databases_types import (
     CheckConstraint,
+    ColumnStats,
     DatabaseColumn,
     DatabasePartitionInfo,
     DatabaseSchema,
@@ -12,6 +13,7 @@ from databao_context_engine.plugins.databases.databases_types import (
     ForeignKeyColumnMap,
     Index,
     KeyConstraint,
+    TableStats,
 )
 
 
@@ -32,6 +34,8 @@ class IntrospectionModelBuilder:
         fk_cols: list[dict] | None = None,
         idx_cols: list[dict] | None = None,
         partitions: list[dict] | None = None,
+        table_stats: list[dict] | None = None,
+        column_stats: list[dict] | None = None,
         schema_field: str = "schema_name",
     ) -> list[DatabaseSchema]:
         def group_by_schema(rows: list[dict] | None) -> dict[str, list[dict]]:
@@ -51,6 +55,8 @@ class IntrospectionModelBuilder:
             "fks": group_by_schema(fk_cols),
             "idx": group_by_schema(idx_cols),
             "parts": group_by_schema(partitions),
+            "table_stats": group_by_schema(table_stats),
+            "column_stats": group_by_schema(column_stats),
         }
 
         out: list[DatabaseSchema] = []
@@ -65,6 +71,8 @@ class IntrospectionModelBuilder:
                     fk_cols=grouped["fks"].get(schema, []),
                     idx_cols=grouped["idx"].get(schema, []),
                     partitions=grouped["parts"].get(schema, []),
+                    table_stats=grouped["table_stats"].get(schema, []),
+                    column_stats=grouped["column_stats"].get(schema, []),
                 )
                 or []
             )
@@ -86,6 +94,8 @@ class IntrospectionModelBuilder:
         fk_cols: list[dict] | None = None,
         idx_cols: list[dict] | None = None,
         partitions: list[dict] | None = None,
+        table_stats: list[dict] | None = None,
+        column_stats: list[dict] | None = None,
     ) -> list[DatabaseTable]:
         b = cls()
         b.apply_relations(rels)
@@ -96,6 +106,8 @@ class IntrospectionModelBuilder:
         b.apply_foreign_keys(fk_cols)
         b.apply_indexes(idx_cols)
         b.apply_partitions(partitions)
+        b.apply_table_stats(table_stats)
+        b.apply_column_stats(column_stats)
         return b.finish()
 
     def get_or_create_table(self, table_name: str) -> DatabaseTable:
@@ -233,6 +245,74 @@ class IntrospectionModelBuilder:
                 meta=meta,
                 partition_tables=part_tables_list,
             )
+
+    def apply_table_stats(self, table_stats: list[dict] | None) -> None:
+        for r in table_stats or []:
+            t = self.get_or_create_table(r["table_name"])
+            row_count = r.get("row_count")
+            if row_count is not None:
+                approximate = r.get("approximate", True)
+                t.stats = TableStats(row_count=int(row_count), approximate=bool(approximate))
+
+    def apply_column_stats(self, column_stats: list[dict] | None) -> None:
+        stats_by_table_col: dict[tuple[str, str], dict] = {}
+        for r in column_stats or []:
+            table_name = r.get("table_name")
+            column_name = r.get("column_name")
+            if table_name and column_name:
+                stats_by_table_col[(table_name, column_name)] = r
+
+        for table_name, table in self.by_table.items():
+            for col in table.columns:
+                stat_row = stats_by_table_col.get((table_name, col.name))
+                if not stat_row:
+                    continue
+
+                null_count = None
+                non_null_count = None
+                if table.stats and table.stats.row_count is not None:
+                    null_frac = stat_row.get("null_frac")
+                    if null_frac is not None:
+                        row_count = table.stats.row_count
+                        null_count = round(row_count * null_frac)
+                        non_null_count = row_count - null_count
+
+                distinct_count = None
+                n_distinct = stat_row.get("n_distinct")
+                if n_distinct is not None:
+                    if n_distinct < 0 and table.stats and table.stats.row_count:
+                        distinct_count = round(abs(n_distinct) * table.stats.row_count)
+                    elif n_distinct > 0:
+                        distinct_count = round(n_distinct)
+
+                top_values = None
+                top_n = 5
+                vals = stat_row.get("most_common_vals")
+                freqs = stat_row.get("most_common_freqs")
+                if vals is not None and freqs is not None and isinstance(vals, list) and isinstance(freqs, list):
+                    if len(vals) == len(freqs) and table.stats and table.stats.row_count:
+                        try:
+                            row_count = table.stats.row_count
+                            top_values = [(str(v), round(float(f) * row_count)) for v, f in zip(vals, freqs)][:top_n]
+                        except (ValueError, TypeError):
+                            pass
+
+                min_value = None
+                max_value = None
+                bounds = stat_row.get("histogram_bounds")
+                if bounds and isinstance(bounds, list) and len(bounds) > 0:
+                    min_value = bounds[0]
+                    max_value = bounds[-1]
+
+                col.stats = ColumnStats(
+                    null_count=null_count,
+                    non_null_count=non_null_count,
+                    distinct_count=distinct_count,
+                    min_value=min_value,
+                    max_value=max_value,
+                    top_values=top_values,
+                    total_row_count=table.stats.row_count if table.stats else None,
+                )
 
     def finish(self) -> list[DatabaseTable]:
         return [self.by_table[k] for k in sorted(self.by_table)]

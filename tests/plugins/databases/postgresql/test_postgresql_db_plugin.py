@@ -26,6 +26,7 @@ from databao_context_engine.plugins.databases.postgresql.postgresql_db_plugin im
 from tests.plugins.databases.database_contracts import (
     CheckConstraintExists,
     ColumnIs,
+    ColumnStatsExists,
     ForeignKeyExists,
     IndexExists,
     PartitionMetaContains,
@@ -35,6 +36,7 @@ from tests.plugins.databases.database_contracts import (
     TableDescriptionContains,
     TableExists,
     TableKindIs,
+    TableStatsRowCountIs,
     UniqueConstraintExists,
     assert_contract,
 )
@@ -218,41 +220,101 @@ def test_postgres_partitions(create_db_schema, postgres_container):
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
 
-        assert (
-            result
-            == DatabaseIntrospectionResult(
-                [
-                    DatabaseCatalog(
-                        "test",
-                        [
-                            DatabaseSchema(
-                                db_schema,
-                                tables=[
-                                    DatabaseTable(
-                                        "test_partitions",
-                                        [
-                                            DatabaseColumn("id", "integer", False),
-                                            DatabaseColumn("name", "character varying(255)", True),
-                                        ],
-                                        [],
-                                        partition_info=DatabasePartitionInfo(
-                                            meta={
-                                                "columns_in_partition_key": ["id"],
-                                                "partitioning_strategy": "range partitioned",
-                                            },
-                                            partition_tables=[
-                                                "test_partitions_2",  # In a subsequent PR, this will be fixed when we order keys and values in the introspections
+        assert result == DatabaseIntrospectionResult(
+            [
+                DatabaseCatalog(
+                    "test",
+                    [
+                        DatabaseSchema(
+                            db_schema,
+                            tables=[
+                                DatabaseTable(
+                                    "test_partitions",
+                                    [
+                                        DatabaseColumn("id", "integer", False),
+                                        DatabaseColumn("name", "character varying(255)", True),
+                                    ],
+                                    [],
+                                    partition_info=DatabasePartitionInfo(
+                                        meta={
+                                            "columns_in_partition_key": ["id"],
+                                            "partitioning_strategy": "range partitioned",
+                                        },
+                                        partition_tables=unordered(
+                                            [
                                                 "test_partitions_1",
-                                            ],
+                                                "test_partitions_2",
+                                            ]
                                         ),
-                                    )
-                                ],
-                            ),
-                        ],
-                    )
-                ]
-            )
+                                    ),
+                                )
+                            ],
+                        ),
+                    ],
+                )
+            ]
         )
+
+
+def test_postgres_partitioned_table_statistics(create_db_schema, postgres_container: PostgresContainer):
+    schema_name = "partition_stats"
+    with create_db_schema(schema_name):
+        _execute(
+            postgres_container,
+            f"""
+            CREATE TABLE {schema_name}.orders (
+                order_id integer PRIMARY KEY,
+                status text NOT NULL
+            ) PARTITION BY RANGE (order_id);
+
+            CREATE TABLE {schema_name}.orders_p1 PARTITION OF {schema_name}.orders
+            FOR VALUES FROM (0) TO (50);
+
+            CREATE TABLE {schema_name}.orders_p2 PARTITION OF {schema_name}.orders
+            FOR VALUES FROM (50) TO (100);
+            """,
+        )
+
+        # Create rows with different status values in each partition to verify aggregation
+        # Partition 1 (0-49): 30 'active', 20 'pending'
+        # Partition 2 (50-99): 40 'active', 10 'completed'
+        # Total: 70 'active', 20 'pending', 10 'completed' = 3 distinct values
+        rows = []
+        for i in range(0, 50):
+            status = "active" if i < 30 else "pending"
+            rows.append({"order_id": i, "status": status})
+        for i in range(50, 100):
+            status = "active" if i < 90 else "completed"
+            rows.append({"order_id": i, "status": status})
+
+        with seed_rows(postgres_container, schema_name, "orders", rows):
+            _execute(postgres_container, f"ANALYZE {schema_name}.orders;")
+
+            plugin = PostgresqlDbPlugin()
+            config_file = _create_config_file_from_container(postgres_container)
+            result = execute_datasource_plugin(
+                plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+            )
+            assert isinstance(result, DatabaseIntrospectionResult)
+
+            assert_contract(
+                result,
+                [
+                    TableExists("test", schema_name, "orders"),
+                    TableStatsRowCountIs("test", schema_name, "orders", row_count=100, approximate=True),
+                    ColumnStatsExists(
+                        "test",
+                        schema_name,
+                        "orders",
+                        "status",
+                        null_count=0,
+                        non_null_count=100,
+                        distinct_count=3,
+                        top_values={"active": 70, "pending": 20, "completed": 10},
+                        total_row_count=100,
+                    ),
+                ],
+            )
 
 
 def test_postgres_plugin_divide_into_chunks():
@@ -656,3 +718,85 @@ def test_postgres_run_sql_in_async_env(postgres_container: PostgresContainer, tm
 
     result = asyncio.run(async_execute_sql())
     assert result.rows == [(1,)]
+
+
+def test_postgres_statistics(create_db_schema, postgres_container: PostgresContainer):
+    schema_name = "stats_test"
+    with create_db_schema(schema_name):
+        _execute(
+            postgres_container,
+            f"""
+            CREATE TABLE {schema_name}.test_stats (
+                id integer PRIMARY KEY,
+                status text NOT NULL,
+                category text NULL,
+                value integer NOT NULL
+            );
+            """,
+        )
+
+        # Insert data with known distribution
+        # Status: 70% 'active', 30% 'inactive'
+        # Category: 50% 'A', 30% 'B', 20% NULL
+        # Value: integers 1-100
+        rows = []
+        for i in range(1, 101):
+            status = "active" if i <= 70 else "inactive"
+            if i <= 50:
+                category = "A"
+            elif i <= 80:
+                category = "B"
+            else:
+                category = None
+            rows.append({"id": i, "status": status, "category": category, "value": i})
+
+        with seed_rows(postgres_container, schema_name, "test_stats", rows):
+            _execute(postgres_container, f"ANALYZE {schema_name}.test_stats;")
+
+            plugin = PostgresqlDbPlugin()
+            config_file = _create_config_file_from_container(postgres_container)
+            result = execute_datasource_plugin(
+                plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+            )
+            assert isinstance(result, DatabaseIntrospectionResult)
+
+            assert_contract(
+                result,
+                [
+                    TableExists("test", schema_name, "test_stats"),
+                    TableStatsRowCountIs("test", schema_name, "test_stats", row_count=100, approximate=True),
+                    ColumnStatsExists(
+                        "test",
+                        schema_name,
+                        "test_stats",
+                        "status",
+                        null_count=0,
+                        non_null_count=100,
+                        distinct_count=2,
+                        top_values={"active": 70, "inactive": 30},
+                        total_row_count=100,
+                    ),
+                    ColumnStatsExists(
+                        "test",
+                        schema_name,
+                        "test_stats",
+                        "category",
+                        null_count=20,
+                        non_null_count=80,
+                        distinct_count=2,
+                        top_values={"A": 50, "B": 30},
+                        total_row_count=100,
+                    ),
+                    ColumnStatsExists(
+                        "test",
+                        schema_name,
+                        "test_stats",
+                        "value",
+                        null_count=0,
+                        non_null_count=100,
+                        min_value="1",
+                        max_value="100",
+                        total_row_count=100,
+                    ),
+                ],
+            )

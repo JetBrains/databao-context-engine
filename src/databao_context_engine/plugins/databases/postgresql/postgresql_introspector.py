@@ -200,6 +200,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         for cq, sql in comps.items():
             results[cq] = self._fetchall_dicts(connection, sql, (schemas,)) or []
 
+        # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
+        results["column_stats"] = self._parse_column_stats_arrays(results.get("column_stats", []))
+
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results.get("relations", []),
@@ -210,7 +213,32 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
             partitions=results.get("partitions", []),
+            table_stats=results.get("table_stats", []),
+            column_stats=results.get("column_stats", []),
         )
+
+    def _parse_column_stats_arrays(self, column_stats: list[dict]) -> list[dict]:
+        """Simple parser that doesn't handle quoted strings with commas or escapes."""
+
+        def parse_pg_array(arr_str: str | None) -> list[str] | None:
+            if not arr_str or not isinstance(arr_str, str):
+                return None
+            if not arr_str.startswith("{") or not arr_str.endswith("}"):
+                return None
+            content = arr_str[1:-1]
+            if not content:
+                return []
+            return [v.strip() for v in content.split(",") if v.strip()]
+
+        for row in column_stats:
+            if "most_common_vals" in row:
+                row["most_common_vals"] = parse_pg_array(row["most_common_vals"])
+            if "most_common_freqs" in row:
+                row["most_common_freqs"] = parse_pg_array(row["most_common_freqs"])
+            if "histogram_bounds" in row:
+                row["histogram_bounds"] = parse_pg_array(row["histogram_bounds"])
+
+        return column_stats
 
     def _component_queries(self) -> dict[str, str]:
         return {
@@ -222,6 +250,8 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             "fks": self._sql_foreign_keys(),
             "idx": self._sql_indexes(),
             "partitions": self._sql_partitions(),
+            "table_stats": self._sql_table_stats(),
+            "column_stats": self._sql_column_stats(),
         }
 
     def _sql_relations(self) -> str:
@@ -468,6 +498,57 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 part.partstrat, 
                 partitions.partition_tables
                """
+
+    def _sql_table_stats(self) -> str:
+        return """
+            SELECT
+                n.nspname AS schema_name,
+                c.relname AS table_name,
+                CASE
+                    WHEN c.relkind = 'p' THEN (
+                        SELECT
+                            CASE
+                                -- If any partition is unanalyzed (< 0), we can't trust the sum
+                                WHEN MIN(child.reltuples) < 0 THEN NULL
+                                ELSE COALESCE(SUM(child.reltuples), 0)::bigint
+                            END
+                        FROM pg_inherits i
+                        JOIN pg_class child ON child.oid = i.inhrelid
+                        WHERE i.inhparent = c.oid
+                    )
+                    WHEN c.reltuples < 0 THEN NULL
+                    ELSE c.reltuples::bigint
+                END AS row_count,
+                TRUE AS approximate
+            FROM
+                pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE
+                n.nspname = ANY($1)
+                AND c.relkind IN ('r','p')
+                AND NOT c.relispartition
+        """
+
+    def _sql_column_stats(self) -> str:
+        return """
+            SELECT
+                s.schemaname AS schema_name,
+                s.tablename AS table_name,
+                s.attname AS column_name,
+                s.null_frac,
+                s.n_distinct,
+                s.most_common_vals::text AS most_common_vals,
+                s.most_common_freqs::text AS most_common_freqs,
+                s.histogram_bounds::text AS histogram_bounds
+            FROM
+                pg_stats s
+            WHERE
+                s.schemaname = ANY($1)
+            ORDER BY
+                s.schemaname,
+                s.tablename,
+                s.attname
+        """
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT $1'
