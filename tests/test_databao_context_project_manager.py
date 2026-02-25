@@ -11,6 +11,7 @@ from databao_context_engine import (
     DatabaoContextPluginLoader,
     DatabaoContextProjectManager,
     Datasource,
+    DatasourceConnectionStatus,
     DatasourceContext,
     DatasourceId,
     DatasourceType,
@@ -278,6 +279,20 @@ def test_databao_context_project_manager__create_datasource_config__wrong_config
     validation_errors = e.value.errors()
     assert len(validation_errors) == 1
     assert validation_errors[0]["type"] == "model_type"
+
+
+def test_databao_context_project_manager__check_datasource_config_connection(project_manager):
+    result = project_manager.check_datasource_config_connection(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content=SimplePydanticConfig(
+            name="my_datasource",
+            a=12,
+            b="some string",
+        ),
+    )
+
+    assert result.connection_status == DatasourceConnectionStatus.VALID
 
 
 def assert_build_context_result(

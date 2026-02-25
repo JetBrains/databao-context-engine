@@ -12,6 +12,7 @@ from databao_context_engine.build_sources import (
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
+    check_datasource_config_connection,
 )
 from databao_context_engine.datasources.check_config import (
     check_datasource_connection as check_datasource_connection_internal,
@@ -138,20 +139,44 @@ class DatabaoContextProjectManager:
 
     def check_datasource_connection(
         self, datasource_ids: list[DatasourceId] | None = None
-    ) -> list[CheckDatasourceConnectionResult]:
+    ) -> dict[DatasourceId, CheckDatasourceConnectionResult]:
         """Check the connection for datasources in the project.
 
         Args:
             datasource_ids: The list of datasource ids to check. If None, all datasources will be checked.
 
         Returns:
-            The list of all connection check results, sorted by datasource id.
+            The dict of all connection check results
         """
-        return sorted(
-            check_datasource_connection_internal(
-                project_layout=self._project_layout, plugin_loader=self._plugin_loader, datasource_ids=datasource_ids
-            ).values(),
-            key=lambda result: str(result.datasource_id),
+        return check_datasource_connection_internal(
+            project_layout=self._project_layout, plugin_loader=self._plugin_loader, datasource_ids=datasource_ids
+        )
+
+    def check_datasource_config_connection(
+        self,
+        datasource_type: DatasourceType,
+        datasource_name: str,
+        config_content: ConfigFile | dict[str, Any],
+    ) -> CheckDatasourceConnectionResult:
+        """Validate config and check the connection for it without creating datasource.
+
+        Args:
+            datasource_type: The type of the datasource to verify.
+            datasource_name: The name of the datasource to verify.
+            config_content: The content of the datasource configuration to verify.
+
+        Returns:
+            The connection check result
+        """
+        datasource_name_without_folders = datasource_name.split("/")[-1]
+        actual_config_content = self._validate_and_dump_config_content(
+            config_content, datasource_name_without_folders, datasource_type, True
+        )
+        return check_datasource_config_connection(
+            plugin_loader=self._plugin_loader,
+            datasource_type=datasource_type,
+            datasource_name=datasource_name,
+            config_content=actual_config_content,
         )
 
     def create_datasource_config(

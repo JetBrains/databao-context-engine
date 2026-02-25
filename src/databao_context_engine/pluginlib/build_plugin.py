@@ -91,7 +91,7 @@ class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
         """
         ...
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> None:
+    def check_connection(self, full_type: str, file_config: T) -> None:
         """Check whether the configuration to the datasource is working.
 
         The function is expected to succeed without a result if the connection is working.
@@ -100,7 +100,6 @@ class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
         Args:
             full_type: The type of the datasource to build.
               This type should be exactly the same as the one found in the file_config
-            datasource_name: The name of the datasource to build
             file_config: The config file of the datasource to build.
                 This argument will be an object of type `self.config_file_type`.
 

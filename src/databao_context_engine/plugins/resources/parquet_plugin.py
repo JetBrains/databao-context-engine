@@ -26,5 +26,5 @@ class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):
     def build_context(self, full_type: str, datasource_name: str, file_config: ParquetConfigFile) -> Any:
         return self._introspector.introspect(file_config)
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: ParquetConfigFile) -> None:
+    def check_connection(self, full_type: str, file_config: ParquetConfigFile) -> None:
         self._introspector.check_connection(file_config)

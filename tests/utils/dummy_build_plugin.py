@@ -215,7 +215,7 @@ class DummyPluginWithSimplePydanticConfig(BuildDatasourcePlugin[SimplePydanticCo
     def build_context(self, full_type: str, datasource_name: str, file_config: SimplePydanticConfig) -> Any:
         return {"simple_pydantic_ok": True}
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: SimplePydanticConfig) -> None:
+    def check_connection(self, full_type: str, file_config: SimplePydanticConfig) -> None:
         pass
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
@@ -241,7 +241,7 @@ class DummyPluginWithOtherPydanticConfig(BuildDatasourcePlugin[OtherPydanticConf
     def build_context(self, full_type: str, datasource_name: str, file_config: OtherPydanticConfig) -> Any:
         return {"simple_pydantic_ok": True}
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: OtherPydanticConfig) -> None:
+    def check_connection(self, full_type: str, file_config: OtherPydanticConfig) -> None:
         pass
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
