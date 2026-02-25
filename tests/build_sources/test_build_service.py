@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -70,7 +69,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, chunk_em
 
     chunk_embed_svc.embed_chunks.assert_called_once_with(
         chunks=chunks,
-        result=f"context: ok{os.linesep}",
+        result=result,
         datasource_id="files/two.md",
         full_type="files/md",
     )
@@ -131,7 +130,12 @@ def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
     plugin.divide_context_into_chunks.assert_called_once_with({"hello": "world"})
     chunk_embed_svc.embed_chunks.assert_called_once_with(
         chunks=chunks,
-        result=yaml_text,
+        result=BuiltDatasourceContext(
+            datasource_id="files/two.md",
+            datasource_type="files/md",
+            context_built_at=built_at,
+            context={"hello": "world"},
+        ),
         full_type="files/md",
         datasource_id="files/two.md",
         override=True,
