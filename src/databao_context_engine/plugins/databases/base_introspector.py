@@ -13,6 +13,8 @@ from databao_context_engine.plugins.databases.databases_types import (
 )
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
 from databao_context_engine.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
+from databao_context_engine.plugins.databases.sampling_scope import SamplingConfig
+from databao_context_engine.plugins.databases.sampling_scope_matcher import SamplingScopeMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,17 @@ class SupportsIntrospectionScope(Protocol):
     introspection_scope: IntrospectionScope | None
 
 
-T = TypeVar("T", bound="SupportsIntrospectionScope")
+class SupportsSamplingScope(Protocol):
+    sampling: SamplingConfig | None
+
+
+class SupportsDatabaseScopes(SupportsIntrospectionScope, SupportsSamplingScope, Protocol):
+    """Marker protocol for configs usable with BaseIntrospector."""
+
+    pass
+
+
+T = TypeVar("T", bound="SupportsDatabaseScopes")
 
 
 class BaseIntrospector(Generic[T], ABC):
@@ -60,11 +72,13 @@ class BaseIntrospector(Generic[T], ABC):
                 if not introspected_schemas:
                     continue
 
+                sampling_matcher = SamplingScopeMatcher(file_config.sampling, ignored_schemas=self._ignored_schemas())
                 for schema in introspected_schemas:
                     for table in schema.tables:
-                        table.samples = self._collect_samples_for_table(
-                            catalog_connection, catalog, schema.name, table.name
-                        )
+                        if sampling_matcher.should_sample(catalog, schema.name, table.name):
+                            table.samples = self._collect_samples_for_table(
+                                catalog_connection, catalog, schema.name, table.name
+                            )
 
                 introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=introspected_schemas))
         return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
