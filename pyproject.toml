@@ -1,6 +1,6 @@
 [project]
 name = "databao-context-engine"
-version = "0.3.0"
+version = "0.4.1"
 description = "Semantic context for your LLMs — generated automatically"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -38,6 +38,9 @@ athena = [
 ]
 snowflake = [
     "snowflake-connector-python>=4.2.0",
+]
+bigquery = [
+    "google-cloud-bigquery>=3.40.1",
 ]
 mysql = [
     "pymysql>=1.1.2"

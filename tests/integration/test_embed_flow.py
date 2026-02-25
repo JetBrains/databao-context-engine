@@ -1,5 +1,8 @@
+from datetime import datetime
+
 import pytest
 
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode, ChunkEmbeddingService
@@ -28,7 +31,14 @@ def test_embed_flow_persists_chunks_and_embeddings(
         EmbeddableChunk("beta", "Beta"),
         EmbeddableChunk("gamma", "Gamma"),
     ]
-    chunk_embedding_service.embed_chunks(chunks=chunks, result="", full_type="folder/type", datasource_id="src-1")
+    chunk_embedding_service.embed_chunks(
+        chunks=chunks,
+        result=BuiltDatasourceContext(
+            datasource_id="", datasource_type="", context="", context_built_at=datetime.now()
+        ),
+        full_type="folder/type",
+        datasource_id="src-1",
+    )
 
     table_name = TableNamePolicy().build(embedder="tests", model_id="dummy:v1", dim=768)
     reg = registry_repo.get(embedder="tests", model_id="dummy:v1")
@@ -37,7 +47,18 @@ def test_embed_flow_persists_chunks_and_embeddings(
     chunks = chunk_repo.list()
     assert len(chunks) == 3
     assert [s.display_text for s in chunks] == ["Gamma", "Beta", "Alpha"]
-    assert [s.embeddable_text for s in chunks] == ["gamma", "beta", "alpha"]
+
+    match chunk_embedding_mode:
+        case ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY:
+            assert [s.embeddable_text for s in chunks] == ["gamma", "beta", "alpha"]
+        case ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY:
+            assert [s.embeddable_text for s in chunks] == ["desc-2-gamma", "desc-1-beta", "desc-0-alpha"]
+        case ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION:
+            assert [s.embeddable_text for s in chunks] == [
+                "desc-2-gamma\ngamma",
+                "desc-1-beta\nbeta",
+                "desc-0-alpha\nalpha",
+            ]
 
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3

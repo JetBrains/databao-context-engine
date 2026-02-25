@@ -47,8 +47,17 @@ class OllamaService:
         """Ask Ollama to generate a short description for `text`."""
         prompt = self._build_description_prompt(text=text, context=context)
 
-        payload: dict[str, Any] = {"model": model, "prompt": prompt, "stream": False, "options": {"temperature": 0.1}}
-        data = self._request_json(method="POST", path="/api/generate", json=payload)
+        return self.prompt(model=model, prompt=prompt)
+
+    def prompt(self, *, model: str, prompt: str, temperature: float = 0.1, timeout: float | None = None) -> str:
+        """Ask Ollama to generate a response for `text`."""
+        payload: dict[str, Any] = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": temperature},
+        }
+        data = self._request_json(method="POST", path="/api/generate", json=payload, timeout=timeout)
 
         response_text = data.get("response")
         if not isinstance(response_text, str):

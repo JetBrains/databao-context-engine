@@ -8,6 +8,8 @@ class DatasetKind(str, Enum):
     VIEW = "view"
     MATERIALIZED_VIEW = "materialized_view"
     EXTERNAL_TABLE = "external_table"
+    SNAPSHOT = "snapshot"
+    CLONE = "clone"
 
     @classmethod
     def from_raw(cls, raw: str | None) -> "DatasetKind":

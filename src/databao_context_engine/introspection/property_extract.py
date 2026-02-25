@@ -99,16 +99,24 @@ def _get_property_list_from_pydantic_base_model(parent_type: type):
 
     for field_name, field_info in pydantic_fields.items():
         has_field_default = type(field_info.default) is not PydanticUndefinedType
+        has_default_factory = field_info.default_factory is not None
 
         if field_info.annotation is None:
             # No type: ignore the field
             continue
 
+        if has_field_default:
+            resolved_default = field_info.default
+        elif has_default_factory:
+            resolved_default = field_info.default_factory()  # type: ignore[call-arg,misc]
+        else:
+            resolved_default = None
+
         property_for_field = _create_property(
             property_type=field_info.annotation,
             property_name=field_name,
-            property_default=field_info.default if has_field_default else None,
-            is_property_required=not has_field_default,
+            property_default=resolved_default,
+            is_property_required=not (has_field_default or has_default_factory),
             annotation=next(
                 (metadata for metadata in field_info.metadata if isinstance(metadata, ConfigPropertyAnnotation)), None
             ),
@@ -146,10 +154,15 @@ def _create_property(
 
             type_properties[union_type] = nested_props
 
+        default_type = type(property_default) if property_default is not None else None
+        if default_type is not None and default_type not in actual_property_types:
+            default_type = None
+
         return ConfigUnionPropertyDefinition(
             property_key=property_name,
             types=actual_property_types,
             type_properties=type_properties,
+            default_type=default_type,
         )
 
     actual_property_type = actual_property_types[0]
@@ -181,8 +194,12 @@ def _is_mapping_or_iterable(property_type: type):
     # For types like list[str], we need to get the origin (ie. list) to use in issubclass
     origin = get_origin(property_type)
 
-    # We make sure to not return True for str, which is an Iterable
-    return property_type is not str and issubclass(origin if origin else property_type, (Mapping, Iterable))
+    try:
+        # We make sure to not return True for str, which is an Iterable
+        return property_type is not str and issubclass(origin if origin else property_type, (Mapping, Iterable))
+    except TypeError:
+        # Special typing forms like Literal are not classes; issubclass raises TypeError
+        return False
 
 
 def _get_config_property_annotation(property_type) -> ConfigPropertyAnnotation | None:

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+
+logger = logging.getLogger(__name__)
 
 
 class IntrospectionAsserter:
@@ -504,3 +507,43 @@ def assert_contract(result: DatabaseIntrospectionResult, facts: Iterable[Fact]) 
             fact.check(a)
         except AssertionError as e:
             raise AssertionError(f"{e}\nFact: {fact!r}") from e
+
+
+def log_introspection_result(result: DatabaseIntrospectionResult) -> None:
+    """Log the full introspection result tree. Use with ``--log-cli-level=INFO``."""
+    for catalog in result.catalogs:
+        logger.info("Catalog: %s", catalog.name)
+        for schema in catalog.schemas:
+            logger.info("  Schema: %s (%d tables)", schema.name, len(schema.tables))
+            for table in schema.tables:
+                pk_cols = table.primary_key.columns if table.primary_key else []
+                logger.info(
+                    "    Table: %s (kind=%s, columns=%d, samples=%d, pk=%s)%s",
+                    table.name,
+                    table.kind.value,
+                    len(table.columns),
+                    len(table.samples),
+                    pk_cols or "none",
+                    f" — {table.description}" if table.description else "",
+                )
+                for col in table.columns:
+                    extras = []
+                    if col.nullable:
+                        extras.append("nullable")
+                    if col.default_expression:
+                        extras.append(f"default={col.default_expression}")
+                    if col.generated:
+                        extras.append(f"generated={col.generated}")
+                    if col.description:
+                        extras.append(f"desc={col.description!r}")
+                    suffix = f"  [{', '.join(extras)}]" if extras else ""
+                    logger.info("      %s %s%s", col.name, col.type, suffix)
+                for fk in table.foreign_keys:
+                    mapping = ", ".join(f"{m.from_column}->{m.to_column}" for m in fk.mapping)
+                    logger.info("      FK %s: (%s) -> %s", fk.name, mapping, fk.referenced_table)
+                for idx in table.indexes:
+                    logger.info(
+                        "      IDX %s: %s (unique=%s, method=%s)", idx.name, idx.columns, idx.unique, idx.method
+                    )
+                if table.samples:
+                    logger.info("      Samples (first row): %s", table.samples[0])
