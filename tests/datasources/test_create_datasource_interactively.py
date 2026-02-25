@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 
 from databao_context_engine import (
+    DatabaoContextDomainManager,
     DatabaoContextPluginLoader,
-    DatabaoContextProjectManager,
     DatasourceType,
 )
 from databao_context_engine.project.layout import ProjectLayout
@@ -14,9 +14,9 @@ from tests.utils.project_creation import given_datasource_config_file
 
 
 @pytest.fixture
-def project_manager(project_path: Path) -> DatabaoContextProjectManager:
+def project_manager(project_path: Path) -> DatabaoContextDomainManager:
     plugin_loader = DatabaoContextPluginLoader(plugins_by_type=load_dummy_plugins())
-    return DatabaoContextProjectManager(project_dir=project_path, plugin_loader=plugin_loader)
+    return DatabaoContextDomainManager(domain_dir=project_path, plugin_loader=plugin_loader)
 
 
 def test_add_datasource_config__with_no_custom_properties(project_manager):

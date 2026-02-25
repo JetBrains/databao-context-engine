@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from databao_context_engine.project.init_project import InitErrorReason, InitProjectError, init_project_dir
+from databao_context_engine.project.init_project import InitDomainError, InitErrorReason, init_project_dir
 from databao_context_engine.project.layout import (
     CONFIG_FILE_NAME,
     DEPRECATED_CONFIG_FILE_NAME,
@@ -46,7 +46,7 @@ def test_init_project_dir_fails_when_dir_doesnt_exist(tmp_path: Path):
 
     assert not project_dir.is_dir()
 
-    with pytest.raises(InitProjectError) as e:
+    with pytest.raises(InitDomainError) as e:
         init_project_dir(project_dir=project_dir)
 
     assert e.value.reason == InitErrorReason.PROJECT_DIR_DOESNT_EXIST
@@ -63,7 +63,7 @@ def test_init_project_dir_fails_when_dir_already_has_a_config(tmp_path: Path, co
     assert project_dir.is_dir()
     assert config_file.is_file()
 
-    with pytest.raises(InitProjectError) as e:
+    with pytest.raises(InitDomainError) as e:
         init_project_dir(project_dir=project_dir)
 
     assert e.value.reason == InitErrorReason.PROJECT_DIR_ALREADY_INITIALIZED
@@ -79,7 +79,7 @@ def test_init_project_dir_fails_when_dir_already_has_a_src_dir(tmp_path: Path):
     assert project_dir.is_dir()
     assert src_dir.is_dir()
 
-    with pytest.raises(InitProjectError) as e:
+    with pytest.raises(InitDomainError) as e:
         init_project_dir(project_dir=project_dir)
 
     assert e.value.reason == InitErrorReason.PROJECT_DIR_ALREADY_INITIALIZED

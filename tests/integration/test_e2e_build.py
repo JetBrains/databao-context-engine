@@ -8,7 +8,7 @@ from uuid import uuid4
 import duckdb
 import pytest
 
-from databao_context_engine import ChunkEmbeddingMode, DatabaoContextProjectManager
+from databao_context_engine import ChunkEmbeddingMode, DatabaoContextDomainManager
 from databao_context_engine.storage.migrate import migrate
 
 
@@ -102,7 +102,7 @@ def use_fake_provider(mocker, fake_provider):
 def test_e2e_build_with_fake_provider(
     project_dir, db_path, conn, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
 ):
-    result = DatabaoContextProjectManager(project_dir=project_dir).build_context(
+    result = DatabaoContextDomainManager(domain_dir=project_dir).build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
@@ -134,7 +134,7 @@ def test_one_source_fails_but_others_succeed(
 
     mocker.patch.object(execmod, "execute_plugin", side_effect=flaky_execute)
 
-    result = DatabaoContextProjectManager(project_dir=project_dir).build_context(
+    result = DatabaoContextDomainManager(domain_dir=project_dir).build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 

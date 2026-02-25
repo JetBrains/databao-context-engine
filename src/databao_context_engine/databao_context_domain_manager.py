@@ -37,39 +37,39 @@ from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 
-class DatabaoContextProjectManager:
-    """Project Manager for Databao Context Projects.
+class DatabaoContextDomainManager:
+    """Domain Manager for Databao Context Projects.
 
-    This project manager is responsible for configuring and building a Databao Context Project.
-    The project_dir should already have been initialized before a Project manager can be used.
+    This domain manager is responsible for configuring and building a Databao Context Domain.
+    The domain_dir should already have been initialized before a Domain manager can be used.
 
     Attributes:
-        project_dir: The root directory of the Databao Context Project.
+        domain_dir: The root directory of the Databao Context Domain.
     """
 
-    project_dir: Path
+    domain_dir: Path
     _project_layout: ProjectLayout
 
-    def __init__(self, project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
-        """Initialize the DatabaoContextProjectManager.
+    def __init__(self, domain_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
+        """Initialize the DatabaoContextDomainManager.
 
         Args:
-            project_dir: The root directory of the Databao Context Project.
+            domain_dir: The root directory of the Databao Context Domain.
             plugin_loader: Plugin loader which will be created anew by default unless provided.
-            This object could be reused betwee project managers to reduce some overhead on the plugin discovery.
+            This object could be reused between domain managers to reduce some overhead on the plugin discovery.
         """
-        self._project_layout = ensure_project_dir(project_dir=project_dir)
-        self.project_dir = project_dir
+        self._project_layout = ensure_project_dir(project_dir=domain_dir)
+        self.domain_dir = domain_dir
         self._plugin_loader = plugin_loader if plugin_loader else DatabaoContextPluginLoader()
 
     def get_configured_datasource_list(self) -> list[ConfiguredDatasource]:
-        """Return the list of datasources configured in the project.
+        """Return the list of datasources configured in the domain.
 
-        This method returns all datasources configured in the src folder of the project,
+        This method returns all datasources configured in the src folder of the domain,
         no matter whether the datasource configuration is valid or not.
 
         Returns:
-            The list of datasources configured in the project.
+            The list of datasources configured in the domain.
         """
         return get_datasource_list(self._project_layout)
 
@@ -80,7 +80,7 @@ class DatabaoContextProjectManager:
         *,
         should_index: bool = True,
     ) -> list[BuildDatasourceResult]:
-        """Build the context for datasources in the project.
+        """Build the context for datasources in the domain.
 
         Any datasource with an invalid configuration will be skipped.
 
@@ -120,7 +120,7 @@ class DatabaoContextProjectManager:
         Returns:
             The summary of the index operation.
         """
-        engine: DatabaoContextEngine = self.get_engine_for_project()
+        engine: DatabaoContextEngine = self.get_engine_for_domain()
         contexts: list[DatasourceContext] = engine.get_all_contexts()
 
         if datasource_ids is not None:
@@ -140,7 +140,7 @@ class DatabaoContextProjectManager:
     def check_datasource_connection(
         self, datasource_ids: list[DatasourceId] | None = None
     ) -> dict[DatasourceId, CheckDatasourceConnectionResult]:
-        """Check the connection for datasources in the project.
+        """Check the connection for datasources in the domain.
 
         Args:
             datasource_ids: The list of datasource ids to check. If None, all datasources will be checked.
@@ -187,7 +187,7 @@ class DatabaoContextProjectManager:
         overwrite_existing: bool = False,
         validate_config_content: bool = True,
     ) -> ConfiguredDatasource:
-        """Create a new datasource configuration file in the project.
+        """Create a new datasource configuration file in the domain.
 
         The config content can be either a dict representation of the config or directly using the config type declared by a Datasource plugin.
         If the content is provided as a dict, the dict will be validated against the configuration expected by the plugin.
@@ -223,7 +223,7 @@ class DatabaoContextProjectManager:
         overwrite_existing: bool = False,
         validate_config_content: bool = True,
     ) -> ConfiguredDatasource:
-        """Create a new datasource configuration file in the project interactively.
+        """Create a new datasource configuration file in the domain interactively.
 
         Args:
             datasource_type: The type of the datasource to create.
@@ -268,7 +268,7 @@ class DatabaoContextProjectManager:
         datasource_name: str | None = None,
         datasource_id: DatasourceId | None = None,
     ) -> DatasourceId | None:
-        """Check if a datasource configuration file already exists in the project.
+        """Check if a datasource configuration file already exists in the domain.
 
         Args:
             datasource_name: The name of the datasource.
@@ -310,13 +310,13 @@ class DatabaoContextProjectManager:
         """
         return datasource_id.absolute_path_to_config_file(self._project_layout)
 
-    def get_engine_for_project(self) -> DatabaoContextEngine:
-        """Instantiate a DatabaoContextEngine for the project.
+    def get_engine_for_domain(self) -> DatabaoContextEngine:
+        """Instantiate a DatabaoContextEngine for the domain.
 
         Returns:
-            A DatabaoContextEngine instance for the project.
+            A DatabaoContextEngine instance for the domain.
         """
-        return DatabaoContextEngine(project_dir=self.project_dir)
+        return DatabaoContextEngine(domain_dir=self.domain_dir)
 
     def _validate_and_dump_config_content(
         self,

@@ -78,7 +78,7 @@ def engine_with_pg(project_path, postgres_container: PostgresContainer) -> Datab
     }
 
     given_datasource_config_file(
-        project_layout=DatabaoContextEngine(project_dir=project_path)._project_layout,
+        project_layout=DatabaoContextEngine(domain_dir=project_path)._project_layout,
         datasource_name="databases/pg_demo",
         config_content=config,
         overwrite_existing=True,
@@ -88,7 +88,7 @@ def engine_with_pg(project_path, postgres_container: PostgresContainer) -> Datab
     mapping: dict[DatasourceType, BuildPlugin] = {
         DatasourceType(full_type=t): pg_plugin for t in pg_plugin.supported_types()
     }
-    return DatabaoContextEngine(project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(mapping))
+    return DatabaoContextEngine(domain_dir=project_path, plugin_loader=DatabaoContextPluginLoader(mapping))
 
 
 def test_run_sql_postgresql_read_only_query(engine_with_pg: DatabaoContextEngine, pg_table):

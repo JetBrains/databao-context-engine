@@ -9,7 +9,7 @@ from databao_context_engine import (
 
 
 def run_sql_query_cli(project_dir: Path, *, datasource_id: DatasourceId, sql: str) -> None:
-    databao_engine = DatabaoContextEngine(project_dir=project_dir)
+    databao_engine = DatabaoContextEngine(domain_dir=project_dir)
     result = databao_engine.run_sql(datasource_id=datasource_id, sql=sql, params=None)
 
     # save somewhere or pretty print

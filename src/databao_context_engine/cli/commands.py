@@ -8,8 +8,8 @@ from click import Context
 
 from databao_context_engine import (
     ChunkEmbeddingMode,
+    DatabaoContextDomainManager,
     DatabaoContextEngine,
-    DatabaoContextProjectManager,
     DatasourceId,
     DatasourceStatus,
 )
@@ -107,7 +107,7 @@ def build(
 
     Internally, this indexes the context to be used by the MCP server and the "retrieve" command.
     """
-    results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).build_context(
+    results = DatabaoContextDomainManager(domain_dir=ctx.obj["project_dir"]).build_context(
         datasource_ids=None,
         chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()),
         should_index=should_index,
@@ -138,7 +138,7 @@ def index(ctx: Context, datasources_config_files: tuple[str, ...]) -> None:
         [DatasourceId.from_string_repr(p) for p in datasources_config_files] if datasources_config_files else None
     )
 
-    results = DatabaoContextProjectManager(project_dir=ctx.obj["project_dir"]).index_built_contexts(
+    results = DatabaoContextDomainManager(domain_dir=ctx.obj["project_dir"]).index_built_contexts(
         datasource_ids=datasource_ids
     )
 
@@ -193,7 +193,7 @@ def retrieve(
         else None
     )
 
-    databao_engine = DatabaoContextEngine(project_dir=ctx.obj["project_dir"])
+    databao_engine = DatabaoContextEngine(domain_dir=ctx.obj["project_dir"])
 
     retrieve_results = databao_engine.search_context(retrieve_text=text, limit=limit, datasource_ids=datasource_ids)
 

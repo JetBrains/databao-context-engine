@@ -7,7 +7,7 @@ import pytest
 from pytest_unordered import unordered
 from testcontainers.postgres import PostgresContainer  # type: ignore
 
-from databao_context_engine import init_dce_project
+from databao_context_engine import init_dce_domain
 from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.databases.database_chunker import (
@@ -689,7 +689,7 @@ def _create_config_file_from_container(
 
 
 def test_postgres_run_sql_in_sync_env(postgres_container: PostgresContainer, tmp_path):
-    pm = init_dce_project(tmp_path)
+    pm = init_dce_domain(tmp_path)
     pg_config = _create_config_file_from_container(postgres_container, "test_pg_sync")
     datasource = pm.create_datasource_config(
         datasource_type=DatasourceType(full_type="postgres"),
@@ -697,13 +697,13 @@ def test_postgres_run_sql_in_sync_env(postgres_container: PostgresContainer, tmp
         config_content=pg_config,
         validate_config_content=True,
     )
-    dce = pm.get_engine_for_project()
+    dce = pm.get_engine_for_domain()
     result = dce.run_sql(datasource_id=datasource.datasource.id, sql="SELECT 1")
     assert result.rows == [(1,)]
 
 
 def test_postgres_run_sql_in_async_env(postgres_container: PostgresContainer, tmp_path):
-    pm = init_dce_project(tmp_path)
+    pm = init_dce_domain(tmp_path)
 
     async def async_execute_sql():
         pg_config = _create_config_file_from_container(postgres_container, "test_pg")
@@ -713,7 +713,7 @@ def test_postgres_run_sql_in_async_env(postgres_container: PostgresContainer, tm
             config_content=pg_config,
             validate_config_content=True,
         )
-        dce = pm.get_engine_for_project()
+        dce = pm.get_engine_for_domain()
         return dce.run_sql(datasource_id=datasource.datasource.id, sql="SELECT 1")
 
     result = asyncio.run(async_execute_sql())

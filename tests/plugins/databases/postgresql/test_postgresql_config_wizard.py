@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from databao_context_engine import DatabaoContextPluginLoader, DatabaoContextProjectManager, DatasourceType
+from databao_context_engine import DatabaoContextDomainManager, DatabaoContextPluginLoader, DatasourceType
 from databao_context_engine.plugins.databases.postgresql.postgresql_db_plugin import PostgresqlDbPlugin
 from tests.utils.config_wizard import MockUserInputCallback
 
@@ -11,7 +11,7 @@ def test_add_parquet_datasource_config_with_all_defaults(project_path: Path):
             DatasourceType(full_type="postgres"): PostgresqlDbPlugin(),
         }
     )
-    project_manager = DatabaoContextProjectManager(project_dir=project_path, plugin_loader=plugin_loader)
+    project_manager = DatabaoContextDomainManager(domain_dir=project_path, plugin_loader=plugin_loader)
 
     inputs = [
         "",  # host

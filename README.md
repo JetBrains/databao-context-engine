@@ -84,16 +84,18 @@ pip install databao-context-engine
 
 ## Quickstart
 
-### 1. Create a project
+### 1. Create a domain
 
 ```python
-# Initialise the project in an existing directory
-from databao_context_engine import init_dce_project
-project_manager = init_dce_project(Path(tempfile.mkdtemp()))
+# Initialize the domain in an existing directory
+from databao_context_engine import init_dce_domain
+
+domain_manager = init_dce_domain(Path(tempfile.mkdtemp()))
 
 # Or use an existing project
-from databao_context_engine import DatabaoContextProjectManager
-project_manager = DatabaoContextProjectManager(project_dir=Path("path/to/project"))
+from databao_context_engine import DatabaoContextDomainManager
+
+domain_manager = DatabaoContextDomainManager(domain_dir=Path("path/to/project"))
 ```
 
 ### 2. Configure data sources
@@ -105,7 +107,7 @@ from databao_context_engine import (
 )
 
 # Create a new datasource
-postgres_datasource_id = project_manager.create_datasource_config(
+postgres_datasource_id = domain_manager.create_datasource_config(
     DatasourceType(full_type="postgres"),
     datasource_name="my_postgres_datasource",
     config_content={
@@ -114,7 +116,7 @@ postgres_datasource_id = project_manager.create_datasource_config(
 ).datasource.id
 
 # Check the connection to the datasource is valid
-check_result = project_manager.check_datasource_connection()
+check_result = domain_manager.check_datasource_connection()
 
 assert len(check_result) == 1
 assert check_result[0].datasource_id == postgres_datasource_id
@@ -124,7 +126,7 @@ assert check_result[0].connection_status == DatasourceConnectionStatus.VALID
 ### 3. Build context
 
 ```python
-build_result = project_manager.build_context()
+build_result = domain_manager.build_context()
 
 assert len(build_result) == 1
 assert build_result[0].datasource_id == postgres_datasource_id
@@ -137,12 +139,13 @@ assert build_result[0].context_file_path.is_file()
 #### Create a context engine
 
 ```python
-# Switch to the engine if you're already using a project_manager
-context_engine = project_manager.get_engine_for_project()
+# Switch to the engine if you're already using a domain_manager
+context_engine = domain_manager.get_engine_for_domain()
 
-# Or directly create a context engine from the path to your DCE project
+# Or directly create a context engine from the path to your DCE domaint
 from databao_context_engine import DatabaoContextEngine
-context_engine = DatabaoContextEngine(project_dir=Path("path/to/project"))
+
+context_engine = DatabaoContextEngine(domain_dir=Path("path/to/project"))
 ```
 
 #### Get all built contexts
