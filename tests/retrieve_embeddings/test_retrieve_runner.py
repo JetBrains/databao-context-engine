@@ -4,32 +4,35 @@ from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.retrieve_embeddings.retrieve_runner import retrieve
 from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE
-from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
+from databao_context_engine.storage.repositories.vector_search_repository import RrfScore, SearchResult
 
 
 def test_retrieve_without_export(capsys):
     service = Mock()
     expected = [
-        VectorSearchResult(
+        SearchResult(
+            chunk_id=1,
             display_text="a",
             embeddable_text="a",
-            cosine_distance=0.0,
             datasource_type=DatasourceType(full_type="full/type"),
             datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+            score=RrfScore(rrf_score=0.9),
         ),
-        VectorSearchResult(
+        SearchResult(
+            chunk_id=2,
             display_text="b",
             embeddable_text="b",
-            cosine_distance=0.1,
             datasource_type=DatasourceType(full_type="full/type"),
             datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+            score=RrfScore(rrf_score=0.8),
         ),
-        VectorSearchResult(
+        SearchResult(
+            chunk_id=3,
             display_text="c",
             embeddable_text="c",
-            cosine_distance=0.2,
             datasource_type=DatasourceType(full_type="full/type"),
             datasource_id=DatasourceId.from_string_repr("full/c.yaml"),
+            score=RrfScore(rrf_score=0.7),
         ),
     ]
     service.retrieve.return_value = expected

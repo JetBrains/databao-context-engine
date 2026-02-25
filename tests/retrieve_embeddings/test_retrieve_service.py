@@ -1,8 +1,9 @@
 from unittest.mock import Mock
 
+from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE, RetrieveService
-from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
+from databao_context_engine.storage.repositories.vector_search_repository import RrfScore, SearchResult
 
 
 def test_retrieve_returns_results():
@@ -21,22 +22,24 @@ def test_retrieve_returns_results():
     provider.embed.return_value = [0.1, 0.2]
 
     expected = [
-        VectorSearchResult(
+        SearchResult(
+            chunk_id=1,
             display_text="a",
             embeddable_text="a",
-            cosine_distance=0.5,
             datasource_type=DatasourceType(full_type="full/type"),
-            datasource_id="full/a",
+            datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+            score=RrfScore(rrf_score=0.5),
         ),
-        VectorSearchResult(
+        SearchResult(
+            chunk_id=2,
             display_text="b",
             embeddable_text="b",
-            cosine_distance=0.51,
             datasource_type=DatasourceType(full_type="full/type"),
-            datasource_id="full/b",
+            datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+            score=RrfScore(rrf_score=0.51),
         ),
     ]
-    vector_search_repo.get_display_texts_by_similarity.return_value = expected
+    vector_search_repo.search_chunks_with_hybrid_search.return_value = expected
 
     retrieve_service = RetrieveService(
         vector_search_repo=vector_search_repo,
@@ -54,9 +57,10 @@ def test_retrieve_returns_results():
 
     provider.embed.assert_called_once_with("hello world")
 
-    vector_search_repo.get_display_texts_by_similarity.assert_called_once_with(
+    vector_search_repo.search_chunks_with_hybrid_search.assert_called_once_with(
         table_name="emb_tbl",
         retrieve_vec=[0.1, 0.2],
+        query_text="hello world",
         dimension=768,
         limit=10,
         datasource_ids=None,
@@ -75,20 +79,22 @@ def test_retrieve_uses_run_name_if_provided():
     provider.model_id = "nomic-embed-text"
     provider.embed.return_value = [0.1, 0.2]
 
-    vector_search_repo.get_display_texts_by_similarity.return_value = [
-        VectorSearchResult(
+    vector_search_repo.search_chunks_with_hybrid_search.return_value = [
+        SearchResult(
+            chunk_id=1,
             display_text="a",
             embeddable_text="a",
-            cosine_distance=0.5,
             datasource_type=DatasourceType(full_type="full/type"),
-            datasource_id="full/a",
+            datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+            score=RrfScore(rrf_score=0.5),
         ),
-        VectorSearchResult(
+        SearchResult(
+            chunk_id=2,
             display_text="b",
             embeddable_text="b",
-            cosine_distance=0.51,
             datasource_type=DatasourceType(full_type="full/type"),
-            datasource_id="full/b",
+            datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+            score=RrfScore(rrf_score=0.51),
         ),
     ]
 
@@ -113,15 +119,16 @@ def test_retrieve_honors_limit():
     provider.embed.return_value = [0.5] * 768
 
     expected = [
-        VectorSearchResult(
+        SearchResult(
+            chunk_id=1,
             display_text="x",
             embeddable_text="x",
-            cosine_distance=0.5,
             datasource_type=DatasourceType(full_type="full/type"),
-            datasource_id="full/x",
+            datasource_id=DatasourceId.from_string_repr("full/x.yaml"),
+            score=RrfScore(rrf_score=0.5),
         ),
     ]
-    vector_search_repo.get_display_texts_by_similarity.return_value = expected
+    vector_search_repo.search_chunks_with_hybrid_search.return_value = expected
 
     retrieve_service = RetrieveService(
         vector_search_repo=vector_search_repo,
@@ -132,7 +139,7 @@ def test_retrieve_honors_limit():
 
     result = retrieve_service.retrieve(text="q", limit=3, rag_mode=RAG_MODE.RAW_QUERY)
 
-    vector_search_repo.get_display_texts_by_similarity.assert_called_once()
-    _, kwargs = vector_search_repo.get_display_texts_by_similarity.call_args
+    vector_search_repo.search_chunks_with_hybrid_search.assert_called_once()
+    _, kwargs = vector_search_repo.search_chunks_with_hybrid_search.call_args
     assert kwargs["limit"] == 3
     assert result == expected

@@ -26,7 +26,7 @@ class ContextSearchResult:
     Attributes:
         datasource_id: The ID of the datasource that generated the result.
         datasource_type: The type of the datasource that generated the result.
-        distance: The distance between the search text and the result.
+        score: The retrieval score of the result.
         context_result: The actual content of the result that was found as a YAML string.
             This content will be a subpart of the full context of the datasource.
             In some cases, its content won't contain the exact same attributes as what can be
@@ -35,7 +35,7 @@ class ContextSearchResult:
 
     datasource_id: DatasourceId
     datasource_type: DatasourceType
-    distance: float
+    score: float
     context_result: str
 
 
@@ -119,7 +119,7 @@ class DatabaoContextEngine:
             datasource_ids: If provided, the search results will only come from the datasources with these IDs.
 
         Returns:
-            A list of the results found for the search, sorted by distance.
+            A list of the results found for the search, sorted by score.
         """
         project_config = self._project_layout.read_config_file()
         results = retrieve_embeddings(
@@ -135,7 +135,7 @@ class DatabaoContextEngine:
             ContextSearchResult(
                 datasource_id=result.datasource_id,
                 datasource_type=result.datasource_type,
-                distance=result.cosine_distance,
+                score=result.score.score,
                 context_result=result.display_text,
             )
             for result in results

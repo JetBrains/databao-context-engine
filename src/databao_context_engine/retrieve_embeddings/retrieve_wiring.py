@@ -16,7 +16,7 @@ from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE
 from databao_context_engine.services.factories import create_shard_resolver
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.repositories.factories import create_vector_search_repository
-from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
+from databao_context_engine.storage.repositories.vector_search_repository import SearchResult
 from databao_context_engine.system.properties import get_db_path
 
 
@@ -27,7 +27,7 @@ def retrieve_embeddings(
     datasource_ids: list[DatasourceId] | None,
     ollama_model_id: str | None = None,
     ollama_model_dim: int | None = None,
-) -> list[VectorSearchResult]:
+) -> list[SearchResult]:
     with open_duckdb_connection(get_db_path(project_layout.project_dir)) as conn:
         ollama_service = create_ollama_service()
         embedding_provider = create_ollama_embedding_provider(

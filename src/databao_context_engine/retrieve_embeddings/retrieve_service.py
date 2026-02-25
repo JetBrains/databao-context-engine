@@ -7,8 +7,8 @@ from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.storage.repositories.vector_search_repository import (
+    SearchResult,
     VectorSearchRepository,
-    VectorSearchResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class RetrieveService:
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
         rag_mode: RAG_MODE | None,
-    ) -> list[VectorSearchResult]:
+    ) -> list[SearchResult]:
         if limit is None:
             limit = 10
 
@@ -62,9 +62,10 @@ class RetrieveService:
 
         logger.debug(f"Retrieving display texts in table {table_name}")
 
-        search_results = self._vector_search_repo.get_display_texts_by_similarity(
+        search_results = self._vector_search_repo.search_chunks_with_hybrid_search(
             table_name=table_name,
             retrieve_vec=retrieve_vec,
+            query_text=text,
             dimension=dimension,
             limit=limit,
             datasource_ids=datasource_ids,
@@ -76,10 +77,10 @@ class RetrieveService:
             if search_results:
                 top_index = min(10, limit)
                 top_results = search_results[0:top_index]
-                msg = "\n".join([f"({r.cosine_distance}, {r.embeddable_text})" for r in top_results])
+                msg = "\n".join([f"({r.score.score}, {r.embeddable_text})" for r in top_results])
                 logger.debug(f"Top {top_index} results:\n{msg}")
-                farthest_result = max(search_results, key=lambda result: result.cosine_distance)
-                logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
+                lowest_score = min(search_results, key=lambda result: result.score.score or 0.0)
+                logger.debug(f"Worst result: ({lowest_score.score.score}, {lowest_score.embeddable_text})")
             else:
                 logger.debug("No results found")
 

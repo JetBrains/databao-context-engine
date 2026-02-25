@@ -3,8 +3,8 @@ import pytest
 from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.storage.repositories.vector_search_repository import (
+    SearchResult,
     VectorSearchRepository,
-    VectorSearchResult,
 )
 from tests.utils.factories import make_chunk_and_embedding
 
@@ -31,7 +31,7 @@ def test_similarity_returns_display_and_distance(
     repo = VectorSearchRepository(conn)
 
     retrieve_vec = [1.0] + [0.0] * (DIM - 1)
-    results = repo.get_display_texts_by_similarity(
+    results = repo.search_chunks_by_vector_similarity(
         table_name=table_name,
         retrieve_vec=retrieve_vec,
         dimension=DIM,
@@ -44,7 +44,7 @@ def test_similarity_returns_display_and_distance(
     assert r.embeddable_text == "raw embeddable"
     assert r.datasource_type == DatasourceType(full_type="test_type")
     assert r.datasource_id == DatasourceId.from_string_repr("databases/test_clickhouse_db.yaml")
-    assert r.cosine_distance == pytest.approx(0.0, abs=1e-6)
+    assert r.score.score == pytest.approx(0.0, abs=1e-6)
 
 
 def test_limit_is_applied(
@@ -68,7 +68,7 @@ def test_limit_is_applied(
     repo = VectorSearchRepository(conn)
     retrieve_vec = [1.0] + [0.0] * (DIM - 1)
 
-    results = repo.get_display_texts_by_similarity(
+    results = repo.search_chunks_by_vector_similarity(
         table_name=table_name,
         retrieve_vec=retrieve_vec,
         dimension=DIM,
@@ -124,7 +124,7 @@ def test_search_over_multiple_dataources(
     repo = VectorSearchRepository(conn)
     retrieve_vec = [1.0] + [0.0] * (DIM - 1)
 
-    results = repo.get_display_texts_by_similarity(
+    results = repo.search_chunks_by_vector_similarity(
         table_name=table_name,
         retrieve_vec=retrieve_vec,
         dimension=DIM,
@@ -204,7 +204,7 @@ def test_search_over_multiple_dataources_with_datasource_filter(
     repo = VectorSearchRepository(conn)
     retrieve_vec = [1.0] + [0.0] * (DIM - 1)
 
-    results = repo.get_display_texts_by_similarity(
+    results = repo.search_chunks_by_vector_similarity(
         table_name=table_name,
         retrieve_vec=retrieve_vec,
         dimension=DIM,
@@ -242,7 +242,5 @@ def test_search_over_multiple_dataources_with_datasource_filter(
     )
 
 
-def _get_all_results_for_datasource_id(
-    results: list[VectorSearchResult], datasource_id: DatasourceId
-) -> list[VectorSearchResult]:
+def _get_all_results_for_datasource_id(results: list[SearchResult], datasource_id: DatasourceId) -> list[SearchResult]:
     return [result for result in results if result.datasource_id == datasource_id]

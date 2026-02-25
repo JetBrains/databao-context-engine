@@ -11,9 +11,10 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def open_duckdb_connection(db_path: str | Path) -> Iterator[DuckDBPyConnection]:
-    """Open a DuckDB connection with vector search enabled and close on exist.
+    """Open a DuckDB connection with search extensions enabled and close on exist.
 
-    It also loads the vss extension and enables HNSW experimental persistence on the DuckDB.
+    It installs and loads the `vss` and `fts` extensions, and enables HNSW
+    experimental persistence on DuckDB.
 
     Usage:
         with open_duckdb_connection() as conn:
@@ -27,10 +28,13 @@ def open_duckdb_connection(db_path: str | Path) -> Iterator[DuckDBPyConnection]:
     logger.debug(f"Connected to DuckDB database at {path}")
 
     try:
+        conn.execute("INSTALL fts;")
+        conn.execute("LOAD fts;")
+        conn.execute("INSTALL vss;")
         conn.execute("LOAD vss;")
         conn.execute("SET hnsw_enable_experimental_persistence = true;")
 
-        logger.debug("Loaded Vector Similarity Search extension")
+        logger.debug("Loaded full-text and vector search extensions")
         yield conn
     finally:
         conn.close()
