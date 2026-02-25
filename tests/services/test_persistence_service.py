@@ -15,9 +15,27 @@ from databao_context_engine.services.models import ChunkEmbedding
 def test_write_chunks_and_embeddings(persistence, chunk_repo, embedding_repo, table_name):
     chunks = [EmbeddableChunk("A", "a"), EmbeddableChunk("B", "b"), EmbeddableChunk("C", "c")]
     chunk_embeddings = [
-        ChunkEmbedding(chunk=chunks[0], vec=_vec(0.0), display_text=chunks[0].content, generated_description="g1"),
-        ChunkEmbedding(chunk=chunks[1], vec=_vec(1.0), display_text=chunks[1].content, generated_description="g2"),
-        ChunkEmbedding(chunk=chunks[2], vec=_vec(2.0), display_text=chunks[2].content, generated_description="g3"),
+        ChunkEmbedding(
+            original_chunk=chunks[0],
+            vec=_vec(0.0),
+            embedded_text=chunks[0].embeddable_text,
+            display_text=chunks[0].content,
+            generated_description="g1",
+        ),
+        ChunkEmbedding(
+            original_chunk=chunks[1],
+            vec=_vec(1.0),
+            embedded_text=chunks[1].embeddable_text,
+            display_text=chunks[1].content,
+            generated_description="g2",
+        ),
+        ChunkEmbedding(
+            original_chunk=chunks[2],
+            vec=_vec(2.0),
+            embedded_text=chunks[2].embeddable_text,
+            display_text=chunks[2].content,
+            generated_description="g3",
+        ),
     ]
 
     persistence.write_chunks_and_embeddings(
@@ -42,9 +60,15 @@ def test_empty_pairs_raises_value_error(persistence, table_name):
 
 def test_mid_batch_failure_rolls_back(persistence, chunk_repo, embedding_repo, monkeypatch, table_name):
     pairs = [
-        ChunkEmbedding(EmbeddableChunk("A", "a"), _vec(0.0), display_text="a", generated_description="a"),
-        ChunkEmbedding(EmbeddableChunk("B", "b"), _vec(1.0), display_text="b", generated_description="b"),
-        ChunkEmbedding(EmbeddableChunk("C", "c"), _vec(2.0), display_text="c", generated_description="c"),
+        ChunkEmbedding(
+            EmbeddableChunk("A", "a"), _vec(0.0), embedded_text="A", display_text="a", generated_description="a"
+        ),
+        ChunkEmbedding(
+            EmbeddableChunk("B", "b"), _vec(1.0), embedded_text="B", display_text="b", generated_description="b"
+        ),
+        ChunkEmbedding(
+            EmbeddableChunk("C", "c"), _vec(2.0), embedded_text="C", display_text="c", generated_description="c"
+        ),
     ]
 
     def boom_bulk_insert(*, table_name: str, chunk_ids, vecs, dim):
@@ -120,7 +144,11 @@ def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_rep
 
     pairs = [
         ChunkEmbedding(
-            chunk=EmbeddableChunk(et, obj), vec=_vec(float(i)), display_text=str(obj), generated_description="g1"
+            original_chunk=EmbeddableChunk(et, obj),
+            vec=_vec(float(i)),
+            embedded_text=et,
+            display_text=str(obj),
+            generated_description="g1",
         )
         for i, (et, obj) in enumerate(complex_items)
     ]
@@ -143,11 +171,17 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
     persistence, chunk_repo, embedding_repo, table_name
 ):
     ds1_pairs = [
-        ChunkEmbedding(EmbeddableChunk("A", "a"), _vec(0.0), display_text="a", generated_description="g"),
-        ChunkEmbedding(EmbeddableChunk("B", "b"), _vec(1.0), display_text="b", generated_description="g"),
+        ChunkEmbedding(
+            EmbeddableChunk("A", "a"), _vec(0.0), embedded_text="A", display_text="a", generated_description="g"
+        ),
+        ChunkEmbedding(
+            EmbeddableChunk("B", "b"), _vec(1.0), embedded_text="B", display_text="b", generated_description="g"
+        ),
     ]
     ds2_pairs = [
-        ChunkEmbedding(EmbeddableChunk("X", "x"), _vec(2.0), display_text="x", generated_description="g"),
+        ChunkEmbedding(
+            EmbeddableChunk("X", "x"), _vec(2.0), embedded_text="X", display_text="x", generated_description="g"
+        ),
     ]
 
     persistence.write_chunks_and_embeddings(
@@ -162,7 +196,9 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
     assert len(old_ds1_chunk_ids) == 2
 
     new_ds1_pairs = [
-        ChunkEmbedding(EmbeddableChunk("C", "c"), _vec(3.0), display_text="c", generated_description="g"),
+        ChunkEmbedding(
+            EmbeddableChunk("C", "c"), _vec(3.0), embedded_text="C", display_text="c", generated_description="g"
+        ),
     ]
     persistence.write_chunks_and_embeddings(
         chunk_embeddings=new_ds1_pairs,
