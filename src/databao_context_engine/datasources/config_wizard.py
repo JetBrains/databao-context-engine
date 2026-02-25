@@ -87,7 +87,7 @@ def _build_config_content_from_properties(
                 config_content[config_file_property.property_key] = nested_content
         else:
             property_value = user_input_callback.prompt(
-                text=f"{properties_prefix}{config_file_property.property_key}? {'(Optional)' if not config_file_property.required else ''}",
+                text=f"{properties_prefix}{config_file_property.property_key}?{' (Optional)' if not config_file_property.required else ''}",
                 type=config_file_property.property_type,
                 default_value=config_file_property.default_value,
                 is_secret=config_file_property.secret,
