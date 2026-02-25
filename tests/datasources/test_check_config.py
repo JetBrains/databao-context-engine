@@ -34,7 +34,7 @@ class DummyPluginWithSimpleConfig(BuildDatasourcePlugin[ConfigToValidate]):
     def supported_types(self) -> set[str]:
         return {"simple_config"}
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: ConfigToValidate) -> None:
+    def check_connection(self, full_type: str, file_config: ConfigToValidate) -> None:
         if file_config.host != "localhost":
             raise ValueError("Host must be localhost")
 
@@ -97,7 +97,6 @@ def test_check_datasource_connection_with_valid_connections(project_layout: Proj
 
     assert result == {
         DatasourceId.from_string_repr("dummy/valid.yaml"): CheckDatasourceConnectionResult(
-            datasource_id=DatasourceId.from_string_repr("dummy/valid.yaml"),
             connection_status=DatasourceConnectionStatus.VALID,
             summary=None,
         ),
@@ -165,7 +164,6 @@ def test_check_datasource_connection_with_single_filter(project_layout: ProjectL
 
     assert result == {
         DatasourceId.from_string_repr("dummy/valid.yaml"): CheckDatasourceConnectionResult(
-            datasource_id=DatasourceId.from_string_repr("dummy/valid.yaml"),
             connection_status=DatasourceConnectionStatus.VALID,
             summary=None,
         ),
