@@ -10,4 +10,4 @@ class ChunkEmbedding:
     vec: Sequence[float]
     embedded_text: str
     display_text: str
-    generated_description: str
+    generated_description: str | None

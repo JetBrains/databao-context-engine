@@ -14,7 +14,6 @@ from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
 from databao_context_engine.project.layout import ProjectLayout
-from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 
 logger = logging.getLogger(__name__)
@@ -55,7 +54,7 @@ class BuildService:
 
         self._chunk_embedding_service.embed_chunks(
             chunks=chunks,
-            result=to_yaml_string(result.context),
+            result=result,
             full_type=prepared_source.datasource_type.full_type,
             datasource_id=result.datasource_id,
         )
@@ -81,7 +80,7 @@ class BuildService:
 
         self._chunk_embedding_service.embed_chunks(
             chunks=chunks,
-            result=context.context,
+            result=built,
             full_type=built.datasource_type,
             datasource_id=built.datasource_id,
             override=True,
