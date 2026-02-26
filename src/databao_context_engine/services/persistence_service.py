@@ -107,5 +107,6 @@ class PersistenceService:
             table_name=table_name, chunk_ids=chunk_ids, vecs=[ce.vec for ce in chunk_embeddings], dim=self._dim
         )
 
+    @perf.perf_span("persistence.refresh_keyword_index")
     def _refresh_fts_index(self) -> None:
         self._conn.execute(f"PRAGMA create_fts_index('chunk', 'chunk_id', '{self._BM25_CHUNK_COLUMN}', overwrite=1);")
