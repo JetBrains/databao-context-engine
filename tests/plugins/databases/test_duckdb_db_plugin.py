@@ -14,6 +14,7 @@ from databao_context_engine.plugins.databases.duckdb.duckdb_db_plugin import Duc
 from tests.plugins.databases.database_contracts import (
     CheckConstraintExists,
     ColumnIs,
+    ColumnStatsExists,
     ForeignKeyExists,
     IndexExists,
     PrimaryKeyIs,
@@ -21,6 +22,7 @@ from tests.plugins.databases.database_contracts import (
     SamplesEqual,
     TableExists,
     TableKindIs,
+    TableStatsRowCountIs,
     UniqueConstraintExists,
     assert_contract,
 )
@@ -270,6 +272,67 @@ def test_duckdb_samples_in_big(duckdb_with_demo_schema: Path):
             result,
             [
                 SamplesCountIs("test_db", "custom", "users", count=limit),
+            ],
+        )
+
+
+def test_duckdb_table_and_column_statistics(duckdb_with_demo_schema: Path):
+    rows = [
+        {"user_id": 1, "name": "Alice", "email": "alice@example.com", "is_active": 1},
+        {"user_id": 2, "name": "Bob", "email": "bob@example.com", "is_active": 1},
+        {"user_id": 3, "name": "Charlie", "email": "charlie@example.com", "is_active": 0},
+        {"user_id": 4, "name": "Alice", "email": "alice2@example.com", "is_active": 1},
+        {"user_id": 5, "name": "Dave", "email": "dave@example.com", "is_active": 1},
+    ]
+
+    with seed_rows(duckdb_with_demo_schema, "custom.users", rows):
+        plugin = DuckDbPlugin()
+        config = _create_config_file_from_container(duckdb_with_demo_schema)
+        result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name")
+        assert isinstance(result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            result,
+            [
+                TableStatsRowCountIs("test_db", "custom", "users", row_count=5, approximate=True),
+                ColumnStatsExists(
+                    "test_db",
+                    "custom",
+                    "users",
+                    "user_id",
+                    distinct_count=5,
+                    min_value="1",
+                    max_value="5",
+                    total_row_count=5,
+                ),
+                ColumnStatsExists(
+                    "test_db",
+                    "custom",
+                    "users",
+                    "name",
+                    distinct_count=4,
+                    min_value="Alice",
+                    max_value="Dave",
+                    total_row_count=5,
+                ),
+                ColumnStatsExists(
+                    "test_db",
+                    "custom",
+                    "users",
+                    "email",
+                    distinct_count=5,
+                    total_row_count=5,
+                ),
+                ColumnStatsExists(
+                    "test_db",
+                    "custom",
+                    "users",
+                    "is_active",
+                    distinct_count=2,
+                    min_value="0",
+                    max_value="1",
+                    total_row_count=5,
+                ),
             ],
         )
 
