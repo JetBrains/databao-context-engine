@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, TypeAdapter
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute_plugin
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import PreparedDatasource
@@ -41,12 +42,14 @@ class BuildService:
         Returns:
             The built context.
         """
-        result = execute_plugin(self._project_layout, prepared_source, plugin)
+        result = self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
 
         if not generate_embeddings:
             return result
 
         chunks = plugin.divide_context_into_chunks(result.context)
+
+        perf.set_attribute("chunk_count", len(chunks))
 
         if not chunks:
             logger.info("No chunks for %s — skipping.", prepared_source.datasource_id.relative_path_to_config_file())
@@ -61,6 +64,10 @@ class BuildService:
 
         return result
 
+    @perf.perf_span("plugin.execute")
+    def _execute_plugin(self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
+        return execute_plugin(self._project_layout, prepared_source, plugin)
+
     def index_built_context(self, *, context: DatasourceContext, plugin: BuildPlugin) -> None:
         """Index a context file using the given plugin.
 
@@ -72,6 +79,8 @@ class BuildService:
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
         chunks = plugin.divide_context_into_chunks(built.context)
+        perf.set_attribute("chunk_count", len(chunks))
+
         if not chunks:
             logger.info(
                 "No chunks for %s — skipping indexing.", context.datasource_id.relative_path_to_context_file().name

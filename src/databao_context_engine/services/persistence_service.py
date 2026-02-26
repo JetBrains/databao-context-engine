@@ -1,5 +1,6 @@
 import duckdb
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.services.models import ChunkEmbedding
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
@@ -20,6 +21,14 @@ class PersistenceService:
         self._embedding_repo = embedding_repo
         self._dim = dim or 768
 
+    @perf.perf_span(
+        "persistence.write_chunks_and_embeddings",
+        attrs=lambda self, *, chunk_embeddings, table_name, override, **_: {
+            "chunk_count": len(chunk_embeddings),
+            "table_name": table_name,
+            "override": override,
+        },
+    )
     def write_chunks_and_embeddings(
         self,
         *,
@@ -45,19 +54,51 @@ class PersistenceService:
         # and re-inserting related rows. It also does not support on delete cascade yet.
         # Given that there is a foreign key from embedding to chunk, the embedding must be deleted first.
         if override:
-            self._embedding_repo.delete_by_datasource_id(table_name=table_name, datasource_id=datasource_id)
-            self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
+            self._delete_existing_embeddings(table_name=table_name, datasource_id=datasource_id)
+            self._delete_existing_chunks(datasource_id=datasource_id)
 
         with transaction(self._conn):
-            chunk_ids = self._chunk_repo.bulk_insert(
+            chunk_ids = self._insert_chunks(
                 full_type=full_type,
                 datasource_id=datasource_id,
-                chunk_contents=[(ce.embedded_text, ce.display_text) for ce in chunk_embeddings],
+                chunk_embeddings=chunk_embeddings,
             )
-
-            self._embedding_repo.bulk_insert(
+            self._insert_embeddings(
                 table_name=table_name,
                 chunk_ids=chunk_ids,
-                vecs=[ce.vec for ce in chunk_embeddings],
-                dim=self._dim,
+                chunk_embeddings=chunk_embeddings,
             )
+
+    @perf.perf_span("persistence.override.delete_embeddings")
+    def _delete_existing_embeddings(self, *, table_name: str, datasource_id: str) -> None:
+        self._embedding_repo.delete_by_datasource_id(table_name=table_name, datasource_id=datasource_id)
+
+    @perf.perf_span("persistence.override.delete_chunks")
+    def _delete_existing_chunks(self, *, datasource_id: str) -> None:
+        self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
+
+    @perf.perf_span("persistence.bulk_insert_chunks")
+    def _insert_chunks(
+        self,
+        *,
+        full_type: str,
+        datasource_id: str,
+        chunk_embeddings: list[ChunkEmbedding],
+    ):
+        return self._chunk_repo.bulk_insert(
+            full_type=full_type,
+            datasource_id=datasource_id,
+            chunk_contents=[(ce.embedded_text, ce.display_text) for ce in chunk_embeddings],
+        )
+
+    @perf.perf_span("persistence.bulk_insert_embeddings")
+    def _insert_embeddings(
+        self,
+        *,
+        table_name: str,
+        chunk_ids,
+        chunk_embeddings: list[ChunkEmbedding],
+    ) -> None:
+        self._embedding_repo.bulk_insert(
+            table_name=table_name, chunk_ids=chunk_ids, vecs=[ce.vec for ce in chunk_embeddings], dim=self._dim
+        )

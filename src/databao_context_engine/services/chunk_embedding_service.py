@@ -2,6 +2,7 @@ import logging
 from enum import Enum
 from typing import Any, cast
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
@@ -86,47 +87,30 @@ class ChunkEmbeddingService:
             f"Embedding {len(chunks)} chunks for datasource {datasource_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
         )
 
-        embedding_texts: list[str] = []
-        chunk_display_texts: list[str] = []
-        generated_descriptions: list[str | None] = []
-        for chunk in chunks:
-            chunk_display_text = chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)
+        chunk_display_texts: list[str] = [
+            (chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)) for chunk in chunks
+        ]
 
-            generated_description = ""
-            match self._chunk_embedding_mode:
-                case ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY:
-                    embedding_text = chunk.embeddable_text
-                case ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY:
-                    generated_description = self._generate_description(chunk, result)
+        embedding_texts, generated_descriptions = self._prepare_embedding_texts_with_descriptions(
+            chunks=chunks,
+            chunk_display_texts=chunk_display_texts,
+            context=result,
+        )
 
-                    embedding_text = generated_description if generated_description else chunk.embeddable_text
-                case ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION:
-                    generated_description = self._generate_description(chunk, result)
-                    embedding_text = (
-                        generated_description + "\n" + chunk.embeddable_text
-                        if generated_description
-                        else chunk.embeddable_text
-                    )
+        vecs = self._embed_many(embedding_texts)
 
-            embedding_texts.append(embedding_text)
-            chunk_display_texts.append(chunk_display_text)
-            generated_descriptions.append(generated_description)
-
-        vecs: list[list[float]] = self._embedding_provider.embed_many(embedding_texts)
-
-        enriched_embeddings: list[ChunkEmbedding] = []
-        for chunk, vec, chunk_display_text, generated_description, embedding_text in zip(
-            chunks, vecs, chunk_display_texts, generated_descriptions, embedding_texts
-        ):
-            enriched_embeddings.append(
-                ChunkEmbedding(
-                    original_chunk=chunk,
-                    vec=vec,
-                    embedded_text=embedding_text,
-                    display_text=chunk_display_text,
-                    generated_description=generated_description,
-                )
+        enriched_embeddings: list[ChunkEmbedding] = [
+            ChunkEmbedding(
+                original_chunk=chunk,
+                vec=vec,
+                embedded_text=embedding_text,
+                display_text=display_text,
+                generated_description=gen_desc,
             )
+            for chunk, vec, display_text, gen_desc, embedding_text in zip(
+                chunks, vecs, chunk_display_texts, generated_descriptions, embedding_texts
+            )
+        ]
 
         table_name = self._shard_resolver.resolve_or_create(
             embedder=self._embedding_provider.embedder,
@@ -141,6 +125,43 @@ class ChunkEmbeddingService:
             datasource_id=datasource_id,
             override=override,
         )
+
+    @perf.perf_span("description.generate")
+    def _prepare_embedding_texts_with_descriptions(
+        self,
+        *,
+        chunks: list[EmbeddableChunk],
+        chunk_display_texts: list[str],
+        context: BuiltDatasourceContext,
+    ) -> tuple[list[str], list[str | None]]:
+        embedding_texts: list[str] = []
+        generated_descriptions: list[str | None] = []
+
+        for chunk, display_text in zip(chunks, chunk_display_texts):
+            generated_description = ""
+            match self._chunk_embedding_mode:
+                case ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY:
+                    embedding_texts.append(chunk.embeddable_text)
+                case ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY:
+                    generated_description = self._generate_description(chunk, context)
+                    embedding_text = generated_description if generated_description else chunk.embeddable_text
+                    embedding_texts.append(embedding_text)
+                case ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION:
+                    generated_description = self._generate_description(chunk, context)
+                    embedding_text = (
+                        generated_description + "\n" + chunk.embeddable_text
+                        if generated_description
+                        else chunk.embeddable_text
+                    )
+                    embedding_texts.append(embedding_text)
+
+            generated_descriptions.append(generated_description)
+
+        return embedding_texts, generated_descriptions
+
+    @perf.perf_span("embedding.embed_many")
+    def _embed_many(self, embedding_texts: list[str]) -> list[list[float]]:
+        return self._embedding_provider.embed_many(embedding_texts)
 
     def _generate_description(self, chunk: EmbeddableChunk, result: BuiltDatasourceContext) -> str | None:
         if isinstance(result.context, DatabaseIntrospectionResult):

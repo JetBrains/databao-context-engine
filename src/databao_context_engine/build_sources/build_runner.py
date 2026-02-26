@@ -1,5 +1,6 @@
 import logging
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.export_results import (
     append_result_to_all_results,
@@ -23,6 +24,11 @@ from databao_context_engine.project.layout import ProjectLayout
 logger = logging.getLogger(__name__)
 
 
+@perf.perf_run(
+    operation="build",
+    attrs=lambda *, generate_embeddings=True, **_: {"generate_embeddings": generate_embeddings},
+)
+@perf.perf_span("build.total")
 def build(
     *,
     project_layout: ProjectLayout,
@@ -54,41 +60,16 @@ def build(
     reset_all_results(project_layout.output_dir)
     for datasource_id in datasource_ids:
         try:
-            prepared_source = prepare_source(project_layout, datasource_id)
-
-            logger.info(
-                f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
+            result = _build_one_datasource(
+                project_layout=project_layout,
+                plugin_loader=plugin_loader,
+                build_service=build_service,
+                datasource_id=datasource_id,
+                generate_embeddings=generate_embeddings,
             )
-
-            plugin = plugin_loader.get_plugin_for_datasource_type(prepared_source.datasource_type)
-            if plugin is None:
-                logger.warning(
-                    "No plugin for '%s' (datasource=%s) — skipping.",
-                    prepared_source.datasource_type.full_type,
-                    prepared_source.datasource_id.relative_path_to_config_file(),
-                )
+            results.append(result)
+            if result.status == DatasourceStatus.SKIPPED:
                 skipped += 1
-                results.append(BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED))
-                continue
-
-            result = build_service.process_prepared_source(
-                prepared_source=prepared_source, plugin=plugin, generate_embeddings=generate_embeddings
-            )
-
-            output_dir = project_layout.output_dir
-
-            context_file_path = export_build_result(output_dir, result)
-            append_result_to_all_results(output_dir, result)
-
-            results.append(
-                BuildDatasourceResult(
-                    datasource_id=datasource_id,
-                    status=DatasourceStatus.OK,
-                    datasource_type=DatasourceType(full_type=result.datasource_type),
-                    context_built_at=result.context_built_at,
-                    context_file_path=context_file_path,
-                )
-            )
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
             logger.info(f"Failed to build source at ({datasource_id.relative_path_to_config_file()}): {str(e)}")
@@ -109,6 +90,59 @@ def build(
     return results
 
 
+@perf.perf_span(
+    "datasource.total",
+    datasource_id=lambda *, datasource_id, **_: str(datasource_id),
+)
+def _build_one_datasource(
+    *,
+    project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
+    build_service: BuildService,
+    datasource_id,
+    generate_embeddings: bool,
+) -> BuildDatasourceResult:
+    prepared_source = prepare_source(project_layout, datasource_id)
+
+    perf.set_attribute("datasource_type", prepared_source.datasource_type.full_type)
+
+    logger.info(
+        f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
+    )
+
+    plugin = plugin_loader.get_plugin_for_datasource_type(prepared_source.datasource_type)
+    if plugin is None:
+        logger.warning(
+            "No plugin for '%s' (datasource=%s) — skipping.",
+            prepared_source.datasource_type.full_type,
+            prepared_source.datasource_id.relative_path_to_config_file(),
+        )
+        return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
+
+    result = build_service.process_prepared_source(
+        prepared_source=prepared_source,
+        plugin=plugin,
+        generate_embeddings=generate_embeddings,
+    )
+
+    output_dir = project_layout.output_dir
+    context_file_path = export_build_result(output_dir, result)
+
+    perf.set_attribute("context_size_bytes", context_file_path.stat().st_size)
+
+    append_result_to_all_results(output_dir, result)
+
+    return BuildDatasourceResult(
+        datasource_id=datasource_id,
+        status=DatasourceStatus.OK,
+        datasource_type=DatasourceType(full_type=result.datasource_type),
+        context_built_at=result.context_built_at,
+        context_file_path=context_file_path,
+    )
+
+
+@perf.perf_run(operation="index")
+@perf.perf_span("index.total")
 def run_indexing(
     *,
     project_layout: ProjectLayout,
@@ -134,24 +168,13 @@ def run_indexing(
         try:
             logger.info(f"Indexing datasource {context.datasource_id}")
 
-            datasource_type = read_datasource_type_from_context(context)
+            result = _index_one_context(context=context, plugin_loader=plugin_loader, build_service=build_service)
 
-            plugin = plugin_loader.get_plugin_for_datasource_type(datasource_type)
-            if plugin is None:
-                logger.warning(
-                    "No plugin for datasource type '%s' — skipping indexing for %s.",
-                    getattr(datasource_type, "full_type", datasource_type),
-                    context.datasource_id,
-                )
+            results.append(result)
+            if result.status == DatasourceStatus.OK:
+                ok += 1
+            elif result.status == DatasourceStatus.SKIPPED:
                 skipped += 1
-                results.append(
-                    IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
-                )
-                continue
-
-            build_service.index_built_context(context=context, plugin=plugin)
-            ok += 1
-            results.append(IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK))
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
             logger.info(f"Failed to build source at ({context.datasource_id}): {str(e)}")
@@ -168,3 +191,31 @@ def run_indexing(
     )
 
     return results
+
+
+@perf.perf_span(
+    "datasource.total",
+    datasource_id=lambda *, context, **_: str(context.datasource_id),
+)
+def _index_one_context(
+    *,
+    context: DatasourceContext,
+    plugin_loader: DatabaoContextPluginLoader,
+    build_service: BuildService,
+) -> IndexDatasourceResult:
+    perf.set_attribute("context_size_bytes", len(context.context.encode("utf-8")))
+
+    datasource_type = read_datasource_type_from_context(context)
+    perf.set_attribute("datasource_type", getattr(datasource_type, "full_type", datasource_type))
+
+    plugin = plugin_loader.get_plugin_for_datasource_type(datasource_type)
+    if plugin is None:
+        logger.warning(
+            "No plugin for datasource type '%s' — skipping indexing for %s.",
+            getattr(datasource_type, "full_type", datasource_type),
+            context.datasource_id,
+        )
+        return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
+
+    build_service.index_built_context(context=context, plugin=plugin)
+    return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK)
