@@ -6,9 +6,9 @@ from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
-from databao_context_engine.storage.repositories.vector_search_repository import (
+from databao_context_engine.storage.repositories.chunk_search_repository import (
+    ChunkSearchRepository,
     SearchResult,
-    VectorSearchRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,14 +24,14 @@ class RetrieveService:
     def __init__(
         self,
         *,
-        vector_search_repo: VectorSearchRepository,
+        chunk_search_repo: ChunkSearchRepository,
         shard_resolver: EmbeddingShardResolver,
         embedding_provider: EmbeddingProvider,
         prompt_provider: PromptProvider | None,
     ):
         self._shard_resolver = shard_resolver
         self._provider = embedding_provider
-        self._vector_search_repo = vector_search_repo
+        self._chunk_search_repo = chunk_search_repo
         self._prompt_provider = prompt_provider
 
     def retrieve(
@@ -62,7 +62,7 @@ class RetrieveService:
 
         logger.debug(f"Retrieving display texts in table {table_name}")
 
-        search_results = self._vector_search_repo.search_chunks_with_hybrid_search(
+        search_results = self._chunk_search_repo.search_chunks_with_hybrid_search(
             table_name=table_name,
             retrieve_vec=retrieve_vec,
             query_text=text,

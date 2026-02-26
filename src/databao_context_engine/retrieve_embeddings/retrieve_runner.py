@@ -2,7 +2,7 @@ import logging
 
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE, RetrieveService
-from databao_context_engine.storage.repositories.vector_search_repository import SearchResult
+from databao_context_engine.storage.repositories.chunk_search_repository import SearchResult
 
 logger = logging.getLogger(__name__)
 

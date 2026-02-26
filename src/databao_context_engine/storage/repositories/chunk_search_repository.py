@@ -70,7 +70,7 @@ class SearchResult:
     score: RrfScore | VectorSearchScore | KeywordSearchScore
 
 
-class VectorSearchRepository:
+class ChunkSearchRepository:
     _DEFAULT_DISTANCE_THRESHOLD = 0.75
     _DEFAULT_RRF_K = 60
     _DEFAULT_CANDIDATE_MULTIPLIER = 3

@@ -4,7 +4,7 @@ from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.retrieve_embeddings.retrieve_runner import retrieve
 from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE
-from databao_context_engine.storage.repositories.vector_search_repository import RrfScore, SearchResult
+from databao_context_engine.storage.repositories.chunk_search_repository import RrfScore, SearchResult
 
 
 def test_retrieve_without_export(capsys):

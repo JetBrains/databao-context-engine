@@ -2,9 +2,9 @@ import pytest
 
 from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.storage.repositories.vector_search_repository import (
+from databao_context_engine.storage.repositories.chunk_search_repository import (
+    ChunkSearchRepository,
     SearchResult,
-    VectorSearchRepository,
 )
 from tests.utils.factories import make_chunk_and_embedding
 
@@ -28,7 +28,7 @@ def test_similarity_returns_display_and_distance(
         display_text="nice description",
     )
 
-    repo = VectorSearchRepository(conn)
+    repo = ChunkSearchRepository(conn)
 
     retrieve_vec = [1.0] + [0.0] * (DIM - 1)
     results = repo.search_chunks_by_vector_similarity(
@@ -65,7 +65,7 @@ def test_limit_is_applied(
             display_text=f"c{i}",
         )
 
-    repo = VectorSearchRepository(conn)
+    repo = ChunkSearchRepository(conn)
     retrieve_vec = [1.0] + [0.0] * (DIM - 1)
 
     results = repo.search_chunks_by_vector_similarity(
@@ -121,7 +121,7 @@ def test_search_over_multiple_dataources(
         display_text="Display Snowflake Chunk",
     )
 
-    repo = VectorSearchRepository(conn)
+    repo = ChunkSearchRepository(conn)
     retrieve_vec = [1.0] + [0.0] * (DIM - 1)
 
     results = repo.search_chunks_by_vector_similarity(
@@ -201,7 +201,7 @@ def test_search_over_multiple_dataources_with_datasource_filter(
         display_text="Display Snowflake Chunk",
     )
 
-    repo = VectorSearchRepository(conn)
+    repo = ChunkSearchRepository(conn)
     retrieve_vec = [1.0] + [0.0] * (DIM - 1)
 
     results = repo.search_chunks_by_vector_similarity(

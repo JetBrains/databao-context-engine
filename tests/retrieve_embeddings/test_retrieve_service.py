@@ -3,12 +3,12 @@ from unittest.mock import Mock
 from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE, RetrieveService
-from databao_context_engine.storage.repositories.vector_search_repository import RrfScore, SearchResult
+from databao_context_engine.storage.repositories.chunk_search_repository import RrfScore, SearchResult
 
 
 def test_retrieve_returns_results():
     run_repo = Mock()
-    vector_search_repo = Mock()
+    chunk_search_repo = Mock()
     shard_resolver = Mock()
     provider = Mock()
 
@@ -39,10 +39,10 @@ def test_retrieve_returns_results():
             score=RrfScore(rrf_score=0.51),
         ),
     ]
-    vector_search_repo.search_chunks_with_hybrid_search.return_value = expected
+    chunk_search_repo.search_chunks_with_hybrid_search.return_value = expected
 
     retrieve_service = RetrieveService(
-        vector_search_repo=vector_search_repo,
+        chunk_search_repo=chunk_search_repo,
         shard_resolver=shard_resolver,
         embedding_provider=provider,
         prompt_provider=None,
@@ -57,7 +57,7 @@ def test_retrieve_returns_results():
 
     provider.embed.assert_called_once_with("hello world")
 
-    vector_search_repo.search_chunks_with_hybrid_search.assert_called_once_with(
+    chunk_search_repo.search_chunks_with_hybrid_search.assert_called_once_with(
         table_name="emb_tbl",
         retrieve_vec=[0.1, 0.2],
         query_text="hello world",
@@ -70,7 +70,7 @@ def test_retrieve_returns_results():
 
 
 def test_retrieve_uses_run_name_if_provided():
-    vector_search_repo = Mock()
+    chunk_search_repo = Mock()
     shard_resolver = Mock()
     provider = Mock()
 
@@ -79,7 +79,7 @@ def test_retrieve_uses_run_name_if_provided():
     provider.model_id = "nomic-embed-text"
     provider.embed.return_value = [0.1, 0.2]
 
-    vector_search_repo.search_chunks_with_hybrid_search.return_value = [
+    chunk_search_repo.search_chunks_with_hybrid_search.return_value = [
         SearchResult(
             chunk_id=1,
             display_text="a",
@@ -99,7 +99,7 @@ def test_retrieve_uses_run_name_if_provided():
     ]
 
     retrieve_service = RetrieveService(
-        vector_search_repo=vector_search_repo,
+        chunk_search_repo=chunk_search_repo,
         shard_resolver=shard_resolver,
         embedding_provider=provider,
         prompt_provider=None,
@@ -109,7 +109,7 @@ def test_retrieve_uses_run_name_if_provided():
 
 
 def test_retrieve_honors_limit():
-    vector_search_repo = Mock()
+    chunk_search_repo = Mock()
     shard_resolver = Mock()
     provider = Mock()
 
@@ -128,10 +128,10 @@ def test_retrieve_honors_limit():
             score=RrfScore(rrf_score=0.5),
         ),
     ]
-    vector_search_repo.search_chunks_with_hybrid_search.return_value = expected
+    chunk_search_repo.search_chunks_with_hybrid_search.return_value = expected
 
     retrieve_service = RetrieveService(
-        vector_search_repo=vector_search_repo,
+        chunk_search_repo=chunk_search_repo,
         shard_resolver=shard_resolver,
         embedding_provider=provider,
         prompt_provider=None,
@@ -139,7 +139,7 @@ def test_retrieve_honors_limit():
 
     result = retrieve_service.retrieve(text="q", limit=3, rag_mode=RAG_MODE.RAW_QUERY)
 
-    vector_search_repo.search_chunks_with_hybrid_search.assert_called_once()
-    _, kwargs = vector_search_repo.search_chunks_with_hybrid_search.call_args
+    chunk_search_repo.search_chunks_with_hybrid_search.assert_called_once()
+    _, kwargs = chunk_search_repo.search_chunks_with_hybrid_search.call_args
     assert kwargs["limit"] == 3
     assert result == expected

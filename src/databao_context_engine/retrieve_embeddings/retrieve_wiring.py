@@ -15,8 +15,8 @@ from databao_context_engine.retrieve_embeddings.retrieve_runner import retrieve
 from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE, RetrieveService
 from databao_context_engine.services.factories import create_shard_resolver
 from databao_context_engine.storage.connection import open_duckdb_connection
-from databao_context_engine.storage.repositories.factories import create_vector_search_repository
-from databao_context_engine.storage.repositories.vector_search_repository import SearchResult
+from databao_context_engine.storage.repositories.chunk_search_repository import SearchResult
+from databao_context_engine.storage.repositories.factories import create_chunk_search_repository
 from databao_context_engine.system.properties import get_db_path
 
 
@@ -65,11 +65,11 @@ def _create_retrieve_service(
     embedding_provider: EmbeddingProvider,
     prompt_provider: PromptProvider | None,
 ) -> RetrieveService:
-    vector_search_repo = create_vector_search_repository(conn)
+    chunk_search_repo = create_chunk_search_repository(conn)
     shard_resolver = create_shard_resolver(conn)
 
     return RetrieveService(
-        vector_search_repo=vector_search_repo,
+        chunk_search_repo=chunk_search_repo,
         shard_resolver=shard_resolver,
         embedding_provider=embedding_provider,
         prompt_provider=prompt_provider,
