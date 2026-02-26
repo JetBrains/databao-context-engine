@@ -65,6 +65,7 @@ from databao_context_engine.project.info import (
     get_databao_context_engine_info,
 )
 from databao_context_engine.project.init_project import InitDomainError, InitErrorReason
+from databao_context_engine.retrieve_embeddings.retrieve_service import ContextSearchMode
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 __all__ = [
@@ -78,6 +79,7 @@ __all__ = [
     "UserInputCallback",
     "Choice",
     "ChunkEmbeddingMode",
+    "ContextSearchMode",
     "DatasourceConnectionStatus",
     "DatasourceType",
     "get_databao_context_engine_info",

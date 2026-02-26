@@ -3,7 +3,7 @@ from unittest.mock import Mock
 from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.retrieve_embeddings.retrieve_runner import retrieve
-from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE
+from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE, ContextSearchMode
 from databao_context_engine.storage.repositories.chunk_search_repository import RrfScore, SearchResult
 
 
@@ -42,6 +42,7 @@ def test_retrieve_without_export(capsys):
         text="hello",
         limit=5,
         rag_mode=RAG_MODE.RAW_QUERY,
+        context_search_mode=ContextSearchMode.HYBRID_SEARCH,
     )
 
     service.retrieve.assert_called_once_with(
@@ -49,6 +50,7 @@ def test_retrieve_without_export(capsys):
         limit=5,
         datasource_ids=None,
         rag_mode=RAG_MODE.RAW_QUERY,
+        context_search_mode=ContextSearchMode.HYBRID_SEARCH,
     )
 
     assert result == expected

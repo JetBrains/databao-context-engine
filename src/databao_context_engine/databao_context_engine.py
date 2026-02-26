@@ -17,6 +17,7 @@ from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
 from databao_context_engine.retrieve_embeddings import retrieve_embeddings
+from databao_context_engine.retrieve_embeddings.retrieve_service import ContextSearchMode
 
 
 @dataclass
@@ -110,6 +111,7 @@ class DatabaoContextEngine:
         retrieve_text: str,
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
+        context_search_mode: ContextSearchMode = ContextSearchMode.HYBRID_SEARCH,
     ) -> list[ContextSearchResult]:
         """Search in the available context for the closest matches to the given text.
 
@@ -117,6 +119,7 @@ class DatabaoContextEngine:
             retrieve_text: The text to search for in the contexts.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
             datasource_ids: If provided, the search results will only come from the datasources with these IDs.
+            context_search_mode: Search strategy to use.
 
         Returns:
             A list of the results found for the search, sorted by score.
@@ -127,6 +130,7 @@ class DatabaoContextEngine:
             retrieve_text=retrieve_text,
             limit=limit,
             datasource_ids=datasource_ids,
+            context_search_mode=context_search_mode,
             ollama_model_id=project_config.ollama_model_id,
             ollama_model_dim=project_config.ollama_model_dim,
         )
