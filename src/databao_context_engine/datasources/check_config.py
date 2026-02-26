@@ -37,13 +37,13 @@ class CheckDatasourceConnectionResult:
     """Result of checking the connection status of a datasource.
 
     Attributes:
-        datasource_id: The id of the datasource. Applicable in cases when the project has been already created.
+        datasource_id: The id of the datasource
         connection_status: The connection status of the datasource.
         summary: A summary of the connection status' error, or None if the connection is valid.
         full_message: A detailed message about the connection status' error, or None if the connection is valid.
     """
 
-    datasource_id: DatasourceId | None = None
+    datasource_id: DatasourceId
     connection_status: DatasourceConnectionStatus
     summary: str | None
     full_message: str | None = None
@@ -135,19 +135,22 @@ def check_datasource_config_connection(
 ) -> CheckDatasourceConnectionResult:
 
     plugin = plugin_loader.get_plugin_for_datasource_type(datasource_type)
+    datasource_id = DatasourceId.from_string_repr(f"{datasource_name}{DatasourceId.CONTEXT_FILE_SUFFIX}")
     if plugin is None:
         return CheckDatasourceConnectionResult(
+            datasource_id=datasource_id,
             connection_status=DatasourceConnectionStatus.INVALID,
             summary="No compatible plugin found",
         )
 
     if not isinstance(plugin, BuildDatasourcePlugin):
         return CheckDatasourceConnectionResult(
+            datasource_id=datasource_id,
             connection_status=DatasourceConnectionStatus.UNKNOWN,
             summary="Plugin does not support connection verification",
         )
 
-    return do_check_connection(plugin, datasource_type, datasource_name, config_content)
+    return do_check_connection(plugin, datasource_type, datasource_name, config_content, datasource_id)
 
 
 def do_check_connection(
@@ -155,7 +158,7 @@ def do_check_connection(
     datasource_type: DatasourceType,
     datasource_name: str,
     config: dict[str, Any],
-    datasource_id: DatasourceId | None = None,
+    datasource_id: DatasourceId,
 ) -> CheckDatasourceConnectionResult:
     try:
         check_connection_for_datasource(
@@ -176,9 +179,7 @@ def do_check_connection(
         return _get_validation_result_from_error(e, datasource_id)
 
 
-def _get_validation_result_from_error(
-    e: Exception, datasource_id: DatasourceId | None
-) -> CheckDatasourceConnectionResult:
+def _get_validation_result_from_error(e: Exception, datasource_id: DatasourceId) -> CheckDatasourceConnectionResult:
     if isinstance(e, ValidationError):
         return CheckDatasourceConnectionResult(
             datasource_id=datasource_id,
