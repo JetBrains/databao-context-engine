@@ -13,7 +13,7 @@ def retrieve(
     text: str,
     limit: int | None,
     datasource_ids: list[DatasourceId] | None = None,
-    rag_mode: RAG_MODE | None,
+    rag_mode: RAG_MODE,
     context_search_mode: ContextSearchMode,
 ) -> list[SearchResult]:
     return retrieve_service.retrieve(

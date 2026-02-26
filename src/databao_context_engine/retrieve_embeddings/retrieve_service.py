@@ -46,7 +46,7 @@ class RetrieveService:
         text: str,
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
-        rag_mode: RAG_MODE | None,
+        rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
     ) -> list[SearchResult]:
         if limit is None:
@@ -81,7 +81,7 @@ class RetrieveService:
         text: str,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-        rag_mode: RAG_MODE | None,
+        rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
     ) -> list[SearchResult]:
         if context_search_mode == ContextSearchMode.KEYWORD_SEARCH:
