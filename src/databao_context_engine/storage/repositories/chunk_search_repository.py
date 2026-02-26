@@ -202,6 +202,32 @@ class ChunkSearchRepository:
             limit=limit,
         )
 
+    def search_chunks_by_keyword_relevance(
+        self,
+        *,
+        query_text: str,
+        limit: int,
+        datasource_ids: list[DatasourceId] | None = None,
+    ) -> list[SearchResult]:
+        """Read only BM25 search over chunk text."""
+        bm25_candidates = self._get_bm25_candidates(
+            query_text=query_text,
+            limit=limit,
+            datasource_ids=datasource_ids,
+        )
+
+        return [
+            SearchResult(
+                chunk_id=candidate.chunk_id,
+                display_text=candidate.display_text,
+                embeddable_text=candidate.embeddable_text,
+                datasource_type=candidate.datasource_type,
+                datasource_id=candidate.datasource_id,
+                score=KeywordSearchScore(bm25_score=candidate.bm25_score),
+            )
+            for candidate in bm25_candidates
+        ]
+
     def _get_bm25_candidates(
         self,
         *,
