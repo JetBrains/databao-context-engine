@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+
+logger = logging.getLogger(__name__)
 
 
 class IntrospectionAsserter:
@@ -395,6 +398,108 @@ class SamplesCountIs(Fact):
             )
 
 
+@dataclass(frozen=True)
+class TableStatsRowCountIs(Fact):
+    catalog: str
+    schema: str
+    table: str
+    row_count: int
+    approximate: bool = True
+
+    def check(self, a: IntrospectionAsserter) -> None:
+        t = a.table(self.catalog, self.schema, self.table)
+        stats = getattr(t, "stats", None)
+        path = [self.catalog, self.schema, self.table, "stats"]
+
+        if stats is None:
+            a.fail("Expected table stats, but none found", path)
+
+        actual_row_count = getattr(stats, "row_count", None)
+        if actual_row_count != self.row_count:
+            a.fail(f"Expected row_count={self.row_count}, got {actual_row_count}", path)
+
+        actual_approximate = getattr(stats, "approximate", True)
+        if actual_approximate != self.approximate:
+            a.fail(f"Expected approximate={self.approximate}, got {actual_approximate}", path)
+
+
+@dataclass(frozen=True)
+class ColumnStatsExists(Fact):
+    catalog: str
+    schema: str
+    table: str
+    column: str
+
+    null_count: int | None = None
+    non_null_count: int | None = None
+    distinct_count: int | None = None
+    min_value: Any | None = None
+    max_value: Any | None = None
+    has_top_values: bool | None = None
+    top_values: dict[Any, int] | None = None
+    total_row_count: int | None = None
+
+    def check(self, a: IntrospectionAsserter) -> None:
+        c = a.column(self.catalog, self.schema, self.table, self.column)
+        stats = getattr(c, "stats", None)
+        path = [self.catalog, self.schema, self.table, self.column, "stats"]
+
+        if stats is None:
+            a.fail("Expected column stats, but none found", path)
+
+        if self.null_count is not None:
+            actual = getattr(stats, "null_count", None)
+            if actual != self.null_count:
+                a.fail(f"Expected null_count={self.null_count}, got {actual}", path)
+
+        if self.non_null_count is not None:
+            actual = getattr(stats, "non_null_count", None)
+            if actual != self.non_null_count:
+                a.fail(f"Expected non_null_count={self.non_null_count}, got {actual}", path)
+
+        if self.distinct_count is not None:
+            actual = getattr(stats, "distinct_count", None)
+            if actual != self.distinct_count:
+                a.fail(f"Expected distinct_count={self.distinct_count}, got {actual}", path)
+
+        if self.min_value is not None:
+            actual = getattr(stats, "min_value", None)
+            if actual != self.min_value:
+                a.fail(f"Expected min_value={self.min_value}, got {actual}", path)
+
+        if self.max_value is not None:
+            actual = getattr(stats, "max_value", None)
+            if actual != self.max_value:
+                a.fail(f"Expected max_value={self.max_value}, got {actual}", path)
+
+        if self.has_top_values is not None:
+            actual_top_values = getattr(stats, "top_values", None)
+            has_values = actual_top_values is not None and len(actual_top_values) > 0
+            if has_values != self.has_top_values:
+                a.fail(f"Expected has_top_values={self.has_top_values}, got {has_values}", path)
+
+        if self.top_values is not None:
+            actual_top_values = getattr(stats, "top_values", None)
+            if actual_top_values is None:
+                a.fail(f"Expected top_values={self.top_values}, but top_values is None", path)
+                return
+
+            actual_dict = {value: count for value, count in actual_top_values}
+            for expected_value, expected_count in self.top_values.items():
+                actual_count = actual_dict.get(expected_value)
+                if actual_count != expected_count:
+                    a.fail(
+                        f"Expected top_values[{expected_value!r}]={expected_count}, got {actual_count}. "
+                        f"Full actual: {actual_dict}",
+                        path,
+                    )
+
+        if self.total_row_count is not None:
+            actual = getattr(stats, "total_row_count", None)
+            if actual != self.total_row_count:
+                a.fail(f"Expected total_row_count={self.total_row_count}, got {actual}", path)
+
+
 def assert_contract(result: DatabaseIntrospectionResult, facts: Iterable[Fact]) -> None:
     a = IntrospectionAsserter(result)
     for fact in facts:
@@ -402,3 +507,43 @@ def assert_contract(result: DatabaseIntrospectionResult, facts: Iterable[Fact]) 
             fact.check(a)
         except AssertionError as e:
             raise AssertionError(f"{e}\nFact: {fact!r}") from e
+
+
+def log_introspection_result(result: DatabaseIntrospectionResult) -> None:
+    """Log the full introspection result tree. Use with ``--log-cli-level=INFO``."""
+    for catalog in result.catalogs:
+        logger.info("Catalog: %s", catalog.name)
+        for schema in catalog.schemas:
+            logger.info("  Schema: %s (%d tables)", schema.name, len(schema.tables))
+            for table in schema.tables:
+                pk_cols = table.primary_key.columns if table.primary_key else []
+                logger.info(
+                    "    Table: %s (kind=%s, columns=%d, samples=%d, pk=%s)%s",
+                    table.name,
+                    table.kind.value,
+                    len(table.columns),
+                    len(table.samples),
+                    pk_cols or "none",
+                    f" — {table.description}" if table.description else "",
+                )
+                for col in table.columns:
+                    extras = []
+                    if col.nullable:
+                        extras.append("nullable")
+                    if col.default_expression:
+                        extras.append(f"default={col.default_expression}")
+                    if col.generated:
+                        extras.append(f"generated={col.generated}")
+                    if col.description:
+                        extras.append(f"desc={col.description!r}")
+                    suffix = f"  [{', '.join(extras)}]" if extras else ""
+                    logger.info("      %s %s%s", col.name, col.type, suffix)
+                for fk in table.foreign_keys:
+                    mapping = ", ".join(f"{m.from_column}->{m.to_column}" for m in fk.mapping)
+                    logger.info("      FK %s: (%s) -> %s", fk.name, mapping, fk.referenced_table)
+                for idx in table.indexes:
+                    logger.info(
+                        "      IDX %s: %s (unique=%s, method=%s)", idx.name, idx.columns, idx.unique, idx.method
+                    )
+                if table.samples:
+                    logger.info("      Samples (first row): %s", table.samples[0])

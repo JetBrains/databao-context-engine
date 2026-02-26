@@ -17,6 +17,9 @@ class DbtConfigFile(BaseModel, AbstractConfigFile):
 class DbtMaterialization(str, Enum):
     TABLE = "table"
     VIEW = "view"
+    INCREMENTAL = "incremental"
+    EPHEMERAL = "ephemeral"
+    MATERIALIZED_VIEW = "materialized_view"
 
     def __str__(self):
         return self.value

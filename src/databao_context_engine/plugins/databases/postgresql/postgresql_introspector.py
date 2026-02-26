@@ -1,4 +1,8 @@
 import asyncio
+import concurrent.futures
+import queue
+import threading
+from collections.abc import Coroutine
 from typing import Any, Sequence
 
 import asyncpg
@@ -13,50 +17,146 @@ from databao_context_engine.plugins.databases.postgresql.config_file import (
 
 
 class _SyncAsyncpgConnection:
+    """A synchronous wrapper around asyncpg that works correctly in both sync and async contexts.
+
+    When called from an async context (e.g., MCP server), operations run in a separate thread
+    with its own event loop to avoid blocking the calling event loop.
+
+    Note: Uses class-level thread-local storage for event loops in sync contexts. Multiple
+    connection instances in the same thread will share the same event loop.
+    """
+
+    # Thread-local storage for event loops in sync contexts
+    # Shared across all instances to avoid creating multiple loops per thread
+    _thread_local = threading.local()
+
+    # Worker loop initialization timeout in seconds
+    _WORKER_LOOP_INIT_TIMEOUT = 1.0
+
     def __init__(self, connect_kwargs: dict[str, Any]):
         self._connect_kwargs = connect_kwargs
         self._conn: asyncpg.Connection | None = None
-        self._event_loop: asyncio.AbstractEventLoop | None = None
+        self._in_async_context = False
+        self._executor: concurrent.futures.ThreadPoolExecutor | None = None
+        self._worker_loop: asyncio.AbstractEventLoop | None = None
 
-    def __enter__(self):
-        self._event_loop = asyncio.new_event_loop()
-        try:
-            self._conn = self._event_loop.run_until_complete(asyncpg.connect(**self._connect_kwargs))
-        except Exception:
-            self._event_loop.close()
-            self._event_loop = None
-            raise
-        return self
+    async def _async_connect(self) -> None:
+        """Establish the async database connection."""
+        self._conn = await asyncpg.connect(**self._connect_kwargs)
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        try:
-            if self._conn is not None and self._event_loop is not None and not self._event_loop.is_closed():
-                self._event_loop.run_until_complete(self._conn.close())
-        finally:
+    async def _async_close(self) -> None:
+        """Close the async database connection if it exists."""
+        if self._conn is not None:
+            await self._conn.close()
             self._conn = None
-            if self._event_loop is not None and not self._event_loop.is_closed():
-                self._event_loop.close()
-            self._event_loop = None
 
-    @property
-    def conn(self) -> asyncpg.Connection:
+    async def _async_fetch_rows(self, sql: str, params: Sequence[Any] | None) -> list[dict]:
+        """Fetch rows from the database and return as list of dicts."""
         if self._conn is None:
             raise RuntimeError("Connection is not open")
-        return self._conn
+        query_params = [] if params is None else list(params)
+        records = await self._conn.fetch(sql, *query_params)
+        return [dict(r) for r in records]
 
-    def _run_blocking(self, awaitable) -> Any:
-        if self._event_loop is None:
-            raise RuntimeError("Event loop is not initialized")
-        return self._event_loop.run_until_complete(awaitable)
+    async def _async_fetch_scalar_values(self, sql: str) -> list[Any]:
+        """Fetch scalar values (first column) from the database."""
+        if self._conn is None:
+            raise RuntimeError("Connection is not open")
+        records = await self._conn.fetch(sql)
+        return [r[0] for r in records]
+
+    def _get_or_create_loop(self) -> asyncio.AbstractEventLoop:
+        """Get or create a persistent event loop for this thread."""
+        if not hasattr(self._thread_local, "loop") or self._thread_local.loop is None:
+            self._thread_local.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._thread_local.loop)
+        return self._thread_local.loop
+
+    def _setup_worker_loop(self) -> None:
+        """Initialize a persistent worker loop for async context.
+
+        Creates a dedicated thread with its own event loop that runs for the
+        lifetime of this connection. This ensures all asyncpg operations run
+        in the same loop, which is required by asyncpg.
+        """
+        result_queue: queue.Queue[asyncio.AbstractEventLoop] = queue.Queue()
+
+        def init_loop():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result_queue.put(loop)
+            loop.run_forever()
+            loop.close()
+
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        self._executor.submit(init_loop)
+        self._worker_loop = result_queue.get(timeout=self._WORKER_LOOP_INIT_TIMEOUT)
+
+    def _run_sync(self, coro: Coroutine[Any, Any, Any]) -> Any:
+        """Run a coroutine synchronously, handling both sync and async contexts.
+
+        - In sync context: uses a persistent thread-local event loop
+        - In async context: uses a persistent worker thread with its own event loop
+
+        Args:
+            coro: The coroutine to execute synchronously
+
+        Returns:
+            The result of the coroutine execution
+
+        Raises:
+            RuntimeError: If worker loop is not initialized in async context
+        """
+        if self._in_async_context:
+            # We're in an async context - use the persistent worker loop
+            if self._worker_loop is None:
+                raise RuntimeError("Worker loop not initialized")
+            future = asyncio.run_coroutine_threadsafe(coro, self._worker_loop)
+            return future.result()
+        # No async context - use our thread-local loop
+        loop = self._get_or_create_loop()
+        return loop.run_until_complete(coro)
+
+    def __enter__(self):
+        # Check if we're in an async context and remember it
+        try:
+            # This raises RuntimeError if no event loop is running
+            asyncio.get_running_loop()
+            self._in_async_context = True
+            self._setup_worker_loop()
+        except RuntimeError:
+            # No event loop running - we're in sync context
+            self._in_async_context = False
+
+        self._run_sync(self._async_connect())
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            self._run_sync(self._async_close())
+        finally:
+            # Always cleanup resources, even if close fails
+            if self._in_async_context:
+                # Stop the worker loop and shutdown executor
+                if self._worker_loop is not None:
+                    self._worker_loop.call_soon_threadsafe(self._worker_loop.stop)
+                    self._worker_loop = None
+                if self._executor is not None:
+                    self._executor.shutdown(wait=True)
+                    self._executor = None
+            else:
+                # Only close the loop if we're in sync context
+                loop = getattr(self._thread_local, "loop", None)
+                if loop and not loop.is_closed():
+                    loop.close()
+                self._thread_local.loop = None
+                asyncio.set_event_loop(None)
 
     def fetch_rows(self, sql: str, params: Sequence[Any] | None = None) -> list[dict]:
-        query_params = [] if params is None else list(params)
-        records = self._run_blocking(self.conn.fetch(sql, *query_params))
-        return [dict(record) for record in records]
+        return self._run_sync(self._async_fetch_rows(sql, params))
 
     def fetch_scalar_values(self, sql: str) -> list[Any]:
-        records = self._run_blocking(self.conn.fetch(sql))
-        return [record[0] for record in records]
+        return self._run_sync(self._async_fetch_scalar_values(sql))
 
 
 class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
@@ -100,6 +200,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         for cq, sql in comps.items():
             results[cq] = self._fetchall_dicts(connection, sql, (schemas,)) or []
 
+        # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
+        results["column_stats"] = self._parse_column_stats_arrays(results.get("column_stats", []))
+
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results.get("relations", []),
@@ -110,7 +213,32 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
             partitions=results.get("partitions", []),
+            table_stats=results.get("table_stats", []),
+            column_stats=results.get("column_stats", []),
         )
+
+    def _parse_column_stats_arrays(self, column_stats: list[dict]) -> list[dict]:
+        """Simple parser that doesn't handle quoted strings with commas or escapes."""
+
+        def parse_pg_array(arr_str: str | None) -> list[str] | None:
+            if not arr_str or not isinstance(arr_str, str):
+                return None
+            if not arr_str.startswith("{") or not arr_str.endswith("}"):
+                return None
+            content = arr_str[1:-1]
+            if not content:
+                return []
+            return [v.strip() for v in content.split(",") if v.strip()]
+
+        for row in column_stats:
+            if "most_common_vals" in row:
+                row["most_common_vals"] = parse_pg_array(row["most_common_vals"])
+            if "most_common_freqs" in row:
+                row["most_common_freqs"] = parse_pg_array(row["most_common_freqs"])
+            if "histogram_bounds" in row:
+                row["histogram_bounds"] = parse_pg_array(row["histogram_bounds"])
+
+        return column_stats
 
     def _component_queries(self) -> dict[str, str]:
         return {
@@ -122,6 +250,8 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             "fks": self._sql_foreign_keys(),
             "idx": self._sql_indexes(),
             "partitions": self._sql_partitions(),
+            "table_stats": self._sql_table_stats(),
+            "column_stats": self._sql_column_stats(),
         }
 
     def _sql_relations(self) -> str:
@@ -368,6 +498,57 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 part.partstrat, 
                 partitions.partition_tables
                """
+
+    def _sql_table_stats(self) -> str:
+        return """
+            SELECT
+                n.nspname AS schema_name,
+                c.relname AS table_name,
+                CASE
+                    WHEN c.relkind = 'p' THEN (
+                        SELECT
+                            CASE
+                                -- If any partition is unanalyzed (< 0), we can't trust the sum
+                                WHEN MIN(child.reltuples) < 0 THEN NULL
+                                ELSE COALESCE(SUM(child.reltuples), 0)::bigint
+                            END
+                        FROM pg_inherits i
+                        JOIN pg_class child ON child.oid = i.inhrelid
+                        WHERE i.inhparent = c.oid
+                    )
+                    WHEN c.reltuples < 0 THEN NULL
+                    ELSE c.reltuples::bigint
+                END AS row_count,
+                TRUE AS approximate
+            FROM
+                pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE
+                n.nspname = ANY($1)
+                AND c.relkind IN ('r','p')
+                AND NOT c.relispartition
+        """
+
+    def _sql_column_stats(self) -> str:
+        return """
+            SELECT
+                s.schemaname AS schema_name,
+                s.tablename AS table_name,
+                s.attname AS column_name,
+                s.null_frac,
+                s.n_distinct,
+                s.most_common_vals::text AS most_common_vals,
+                s.most_common_freqs::text AS most_common_freqs,
+                s.histogram_bounds::text AS histogram_bounds
+            FROM
+                pg_stats s
+            WHERE
+                s.schemaname = ANY($1)
+            ORDER BY
+                s.schemaname,
+                s.tablename,
+                s.attname
+        """
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT $1'

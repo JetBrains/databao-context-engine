@@ -541,7 +541,7 @@ def _create_config_file_from_container(
 ) -> Mapping[str, Any]:
     return {
         "name": datasource_name,
-        "type": "databases/mssql",
+        "type": "mssql",
         "connection": {
             "host": MSSQL_HOST,
             "port": int(mssql.get_exposed_port(MSSQL_HTTP_PORT)),

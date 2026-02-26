@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Annotated, Any
+from typing import Annotated, Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,7 +27,10 @@ class BaseDatabaseConfigFile(BaseModel, AbstractConfigFile):
     ] = Field(default=None, alias="introspection-scope")
 
 
-class BaseDatabasePlugin[T: BaseDatabaseConfigFile](BuildDatasourcePlugin[T], ABC):
+T = TypeVar("T", bound="BaseDatabaseConfigFile")
+
+
+class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
     name: str
     supported: set[str]
     context_type = DatabaseIntrospectionResult
@@ -41,7 +44,7 @@ class BaseDatabasePlugin[T: BaseDatabaseConfigFile](BuildDatasourcePlugin[T], AB
     def build_context(self, full_type: str, datasource_name: str, file_config: T) -> Any:
         return self._introspector.introspect_database(file_config)
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> None:
+    def check_connection(self, full_type: str, file_config: T) -> None:
         self._introspector.check_connection(file_config)
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:

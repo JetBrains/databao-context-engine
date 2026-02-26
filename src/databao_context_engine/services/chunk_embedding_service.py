@@ -1,11 +1,17 @@
 import logging
 from enum import Enum
-from typing import cast
+from typing import Any, cast
 
 import databao_context_engine.perf.core as perf
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+from databao_context_engine.plugins.databases.database_chunker import (
+    DatabaseColumnChunkContent,
+    DatabaseTableChunkContent,
+)
+from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.models import ChunkEmbedding
@@ -59,7 +65,13 @@ class ChunkEmbeddingService:
             raise ValueError("A DescriptionProvider must be provided when generating descriptions")
 
     def embed_chunks(
-        self, *, chunks: list[EmbeddableChunk], result: str, full_type: str, datasource_id: str, override: bool = False
+        self,
+        *,
+        chunks: list[EmbeddableChunk],
+        result: BuiltDatasourceContext,
+        full_type: str,
+        datasource_id: str,
+        override: bool = False,
     ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
@@ -79,26 +91,25 @@ class ChunkEmbeddingService:
             (chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)) for chunk in chunks
         ]
 
-        if self._chunk_embedding_mode.should_generate_description():
-            embedding_texts, generated_descriptions = self._prepare_embedding_texts_with_descriptions(
-                chunks=chunks,
-                chunk_display_texts=chunk_display_texts,
-                context=result,
-            )
-        else:
-            embedding_texts = [chunk.embeddable_text for chunk in chunks]
-            generated_descriptions = [""] * len(chunks)
+        embedding_texts, generated_descriptions = self._prepare_embedding_texts_with_descriptions(
+            chunks=chunks,
+            chunk_display_texts=chunk_display_texts,
+            context=result,
+        )
 
         vecs = self._embed_many(embedding_texts)
 
         enriched_embeddings: list[ChunkEmbedding] = [
             ChunkEmbedding(
-                chunk=chunk,
+                original_chunk=chunk,
                 vec=vec,
+                embedded_text=embedding_text,
                 display_text=display_text,
                 generated_description=gen_desc,
             )
-            for chunk, vec, display_text, gen_desc in zip(chunks, vecs, chunk_display_texts, generated_descriptions)
+            for chunk, vec, display_text, gen_desc, embedding_text in zip(
+                chunks, vecs, chunk_display_texts, generated_descriptions, embedding_texts
+            )
         ]
 
         table_name = self._shard_resolver.resolve_or_create(
@@ -121,25 +132,75 @@ class ChunkEmbeddingService:
         *,
         chunks: list[EmbeddableChunk],
         chunk_display_texts: list[str],
-        context: str,
-    ) -> tuple[list[str], list[str]]:
+        context: BuiltDatasourceContext,
+    ) -> tuple[list[str], list[str | None]]:
         embedding_texts: list[str] = []
-        generated_descriptions: list[str] = []
+        generated_descriptions: list[str | None] = []
 
         for chunk, display_text in zip(chunks, chunk_display_texts):
-            generated_description = cast(DescriptionProvider, self._description_provider).describe(
-                text=display_text,
-                context=context,
-            )
-            generated_descriptions.append(generated_description)
+            generated_description = ""
+            match self._chunk_embedding_mode:
+                case ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY:
+                    embedding_texts.append(chunk.embeddable_text)
+                case ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY:
+                    generated_description = self._generate_description(chunk, context)
+                    embedding_text = generated_description if generated_description else chunk.embeddable_text
+                    embedding_texts.append(embedding_text)
+                case ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION:
+                    generated_description = self._generate_description(chunk, context)
+                    embedding_text = (
+                        generated_description + "\n" + chunk.embeddable_text
+                        if generated_description
+                        else chunk.embeddable_text
+                    )
+                    embedding_texts.append(embedding_text)
 
-            if self._chunk_embedding_mode == ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY:
-                embedding_texts.append(generated_description)
-            elif self._chunk_embedding_mode == ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION:
-                embedding_texts.append(generated_description + "\n" + chunk.embeddable_text)
+            generated_descriptions.append(generated_description)
 
         return embedding_texts, generated_descriptions
 
     @perf.perf_span("embedding.embed_many")
     def _embed_many(self, embedding_texts: list[str]) -> list[list[float]]:
         return self._embedding_provider.embed_many(embedding_texts)
+
+    def _generate_description(self, chunk: EmbeddableChunk, result: BuiltDatasourceContext) -> str | None:
+        if isinstance(result.context, DatabaseIntrospectionResult):
+            # FIXME: This version hardcodes what context to use for the description for Database introspection only
+            #   We need to have a more generic way of doing this (this should be solved by https://youtrack.jetbrains.com/issue/NEM-386/LLM-Generated-description-should-be-stored-in-the-context)
+            chunk_context = self._get_context_for_database_chunk(chunk, result.context)
+        else:
+            chunk_context = result.context
+
+        try:
+            return cast(DescriptionProvider, self._description_provider).describe(
+                text=chunk.embeddable_text, context=to_yaml_string(to_yaml_string(chunk_context))
+            )
+        except Exception:
+            logger.info(f"Failed to generate description, reverting to embeddable_text={chunk.embeddable_text}")
+            return None
+
+    @staticmethod
+    def _get_context_for_database_chunk(chunk: EmbeddableChunk, context_result: DatabaseIntrospectionResult) -> Any:
+        chunk_content = chunk.content
+        chunk_catalog = next(
+            (catalog for catalog in context_result.catalogs if catalog.name == chunk_content.catalog_name), None
+        )
+        if chunk_catalog:
+            chunk_schema = next(
+                (schema for schema in chunk_catalog.schemas if schema.name == chunk_content.schema_name), None
+            )
+            if chunk_schema:
+                chunk_table = None
+                if isinstance(chunk_content, DatabaseTableChunkContent):
+                    chunk_table = next(
+                        (table for table in chunk_schema.tables if table.name == chunk_content.table.name), None
+                    )
+                elif isinstance(chunk_content, DatabaseColumnChunkContent):
+                    chunk_table = next(
+                        (table for table in chunk_schema.tables if table.name == chunk_content.table_name), None
+                    )
+
+                if chunk_table:
+                    return chunk_table
+
+        return context_result

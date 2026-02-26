@@ -23,6 +23,7 @@ class ConfigUnionPropertyDefinition:
     property_key: str
     types: tuple[type, ...]
     type_properties: dict[type, list[ConfigPropertyDefinition]]
+    default_type: type | None = None
 
 
 @dataclass(kw_only=True)

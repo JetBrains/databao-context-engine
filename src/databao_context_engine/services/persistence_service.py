@@ -14,12 +14,12 @@ class PersistenceService:
         chunk_repo: ChunkRepository,
         embedding_repo: EmbeddingRepository,
         *,
-        dim: int = 768,
+        dim: int | None = None,
     ):
         self._conn = conn
         self._chunk_repo = chunk_repo
         self._embedding_repo = embedding_repo
-        self._dim = dim
+        self._dim = dim or 768
 
     @perf.perf_span(
         "persistence.write_chunks_and_embeddings",
@@ -88,7 +88,7 @@ class PersistenceService:
         return self._chunk_repo.bulk_insert(
             full_type=full_type,
             datasource_id=datasource_id,
-            chunk_contents=[(ce.chunk.embeddable_text, ce.display_text) for ce in chunk_embeddings],
+            chunk_contents=[(ce.embedded_text, ce.display_text) for ce in chunk_embeddings],
         )
 
     @perf.perf_span("persistence.bulk_insert_embeddings")

@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.retrieve_embeddings.retrieve_service import RetrieveService
+from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE, RetrieveService
 from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
 
 
@@ -41,10 +41,11 @@ def test_retrieve_returns_results():
     retrieve_service = RetrieveService(
         vector_search_repo=vector_search_repo,
         shard_resolver=shard_resolver,
-        provider=provider,
+        embedding_provider=provider,
+        prompt_provider=None,
     )
 
-    result = retrieve_service.retrieve(text="hello world")
+    result = retrieve_service.retrieve(text="hello world", rag_mode=RAG_MODE.RAW_QUERY)
 
     shard_resolver.resolve.assert_called_once_with(
         embedder="ollama",
@@ -94,10 +95,11 @@ def test_retrieve_uses_run_name_if_provided():
     retrieve_service = RetrieveService(
         vector_search_repo=vector_search_repo,
         shard_resolver=shard_resolver,
-        provider=provider,
+        embedding_provider=provider,
+        prompt_provider=None,
     )
 
-    retrieve_service.retrieve(text="hello world")
+    retrieve_service.retrieve(text="hello world", rag_mode=RAG_MODE.RAW_QUERY)
 
 
 def test_retrieve_honors_limit():
@@ -124,10 +126,11 @@ def test_retrieve_honors_limit():
     retrieve_service = RetrieveService(
         vector_search_repo=vector_search_repo,
         shard_resolver=shard_resolver,
-        provider=provider,
+        embedding_provider=provider,
+        prompt_provider=None,
     )
 
-    result = retrieve_service.retrieve(text="q", limit=3)
+    result = retrieve_service.retrieve(text="q", limit=3, rag_mode=RAG_MODE.RAW_QUERY)
 
     vector_search_repo.get_display_texts_by_similarity.assert_called_once()
     _, kwargs = vector_search_repo.get_display_texts_by_similarity.call_args

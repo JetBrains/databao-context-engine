@@ -19,7 +19,7 @@ class DbtPlugin(BuildDatasourcePlugin[DbtConfigFile]):
     def build_context(self, full_type: str, datasource_name: str, file_config: DbtConfigFile) -> Any:
         return extract_context(file_config)
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: DbtConfigFile) -> None:
+    def check_connection(self, full_type: str, file_config: DbtConfigFile) -> None:
         check_connection(file_config)
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:

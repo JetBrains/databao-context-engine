@@ -3,6 +3,7 @@ from unittest.mock import Mock
 from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.retrieve_embeddings.retrieve_runner import retrieve
+from databao_context_engine.retrieve_embeddings.retrieve_service import RAG_MODE
 from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchResult
 
 
@@ -37,8 +38,14 @@ def test_retrieve_without_export(capsys):
         retrieve_service=service,
         text="hello",
         limit=5,
+        rag_mode=RAG_MODE.RAW_QUERY,
     )
 
-    service.retrieve.assert_called_once_with(text="hello", limit=5, datasource_ids=None)
+    service.retrieve.assert_called_once_with(
+        text="hello",
+        limit=5,
+        datasource_ids=None,
+        rag_mode=RAG_MODE.RAW_QUERY,
+    )
 
     assert result == expected

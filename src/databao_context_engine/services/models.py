@@ -6,7 +6,8 @@ from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 
 @dataclass(frozen=True)
 class ChunkEmbedding:
-    chunk: EmbeddableChunk
+    original_chunk: EmbeddableChunk
     vec: Sequence[float]
+    embedded_text: str
     display_text: str
-    generated_description: str
+    generated_description: str | None

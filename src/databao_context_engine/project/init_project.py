@@ -13,15 +13,15 @@ from databao_context_engine.project.project_config import ProjectConfig
 
 
 class InitErrorReason(Enum):
-    """Reasons for which project initialization can fail."""
+    """Reasons for which domain initialization can fail."""
 
     PROJECT_DIR_DOESNT_EXIST = "PROJECT_DIR_DOESNT_EXIST"
     PROJECT_DIR_NOT_DIRECTORY = "PROJECT_DIR_NOT_DIRECTORY"
     PROJECT_DIR_ALREADY_INITIALIZED = "PROJECT_DIR_ALREADY_INITIALIZED"
 
 
-class InitProjectError(Exception):
-    """Raised when a project can't be initialized.
+class InitDomainError(Exception):
+    """Raised when a domain can't be initialized.
 
     Attributes:
         message: The error message.
@@ -31,7 +31,7 @@ class InitProjectError(Exception):
     reason: InitErrorReason
 
     def __init__(self, reason: InitErrorReason, message: str | None):
-        """Initialize the InitProjectError.
+        """Initialize the InitDomainError.
 
         Args:
             reason: The reason why the initialization failed.
@@ -74,30 +74,30 @@ class _ProjectCreator:
 
     def ensure_can_init_project(self) -> bool:
         if not self.project_dir.exists():
-            raise InitProjectError(
+            raise InitDomainError(
                 message=f"{self.project_dir.resolve()} does not exist", reason=InitErrorReason.PROJECT_DIR_DOESNT_EXIST
             )
 
         if not self.project_dir.is_dir():
-            raise InitProjectError(
+            raise InitDomainError(
                 message=f"{self.project_dir.resolve()} is not a directory",
                 reason=InitErrorReason.PROJECT_DIR_NOT_DIRECTORY,
             )
 
         if self.config_file.is_file() or self.deprecated_config_file.is_file():
-            raise InitProjectError(
+            raise InitDomainError(
                 message=f"Can't initialize a Databao Context Engine project in a folder that already contains a config file. [project_dir: {self.project_dir.resolve()}]",
                 reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALIZED,
             )
 
         if self.src_dir.is_dir():
-            raise InitProjectError(
+            raise InitDomainError(
                 message=f"Can't initialize a Databao Context Engine project in a folder that already contains a src directory. [project_dir: {self.project_dir.resolve()}]",
                 reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALIZED,
             )
 
         if self.examples_dir.is_file():
-            raise InitProjectError(
+            raise InitDomainError(
                 message=f"Can't initialize a Databao Context Engine project in a folder that already contains an examples dir. [project_dir: {self.project_dir.resolve()}]",
                 reason=InitErrorReason.PROJECT_DIR_ALREADY_INITIALIZED,
             )

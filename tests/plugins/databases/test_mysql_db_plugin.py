@@ -523,7 +523,7 @@ def _create_config_file_from_container(
     mysql: MySqlContainer, datasource_name: str | None = "file_name"
 ) -> Mapping[str, Any]:
     return {
-        "type": "databases/mysql",
+        "type": "mysql",
         "name": datasource_name,
         "connection": {
             "host": mysql.get_container_host_ip(),

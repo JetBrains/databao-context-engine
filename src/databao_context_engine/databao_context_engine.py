@@ -21,7 +21,7 @@ from databao_context_engine.retrieve_embeddings import retrieve_embeddings
 
 @dataclass
 class ContextSearchResult:
-    """The result of a search in the project's contexts.
+    """The result of a search in the domain's contexts.
 
     Attributes:
         datasource_id: The ID of the datasource that generated the result.
@@ -40,28 +40,28 @@ class ContextSearchResult:
 
 
 class DatabaoContextEngine:
-    """Engine for reading and using the contexts generated in a Databao Context Project.
+    """Engine for reading and using the contexts generated in a Databao Context Domain.
 
-    The Databao Context Project should already have datasources configured and built (see DatabaoContextProjectManager), so that they can be used in the Engine.
+    The Databao Context Domain should already have datasources configured and built (see DatabaoContextDomainManager), so that they can be used in the Engine.
 
     Attributes:
-        project_dir: The root directory of the Databao Context Project.
+        domain_dir: The root directory of the Databao Context Domain.
     """
 
-    project_dir: Path
+    domain_dir: Path
     _project_layout: ProjectLayout
     _plugin_loader: DatabaoContextPluginLoader
 
-    def __init__(self, project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
+    def __init__(self, domain_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
         """Initialize the DatabaoContextEngine.
 
         Args:
-            project_dir: The root directory of the Databao Context Project.
-                There must be a valid DatabaoContextProject in this directory.
+            domain_dir: The root directory of the Databao Context Domain.
+                There must be a valid DatabaoContextDomain in this directory.
             plugin_loader: Optional plugin loader to use for loading plugins.
         """
-        self._project_layout = ensure_project_dir(project_dir=project_dir)
-        self.project_dir = project_dir
+        self._project_layout = ensure_project_dir(project_dir=domain_dir)
+        self.domain_dir = domain_dir
         self._plugin_loader = plugin_loader or DatabaoContextPluginLoader()
 
     def get_introspected_datasource_list(self) -> list[Datasource]:
@@ -84,20 +84,20 @@ class DatabaoContextEngine:
         return get_datasource_context(project_layout=self._project_layout, datasource_id=datasource_id)
 
     def get_all_contexts(self) -> list[DatasourceContext]:
-        """Return all contexts generated in the project.
+        """Return all contexts generated in the domain.
 
         Returns:
-             A list of all contexts generated in the project.
+             A list of all contexts generated in the domain.
         """
         return get_all_contexts(project_layout=self._project_layout)
 
     def get_all_contexts_formatted(self) -> str:
-        """Return a fprmatted string of all datasource contexts in the project.
+        """Return a fprmatted string of all datasource contexts in the domain.
 
         The returned string is a concatenation of all datasource contexts, adding a header to separate each context.
 
         Returns:
-            A fprmatted string of all datasource contexts in the project.
+            A fprmatted string of all datasource contexts in the domain.
         """
         all_contexts = self.get_all_contexts()
 

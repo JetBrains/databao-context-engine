@@ -8,6 +8,8 @@ class DatasetKind(str, Enum):
     VIEW = "view"
     MATERIALIZED_VIEW = "materialized_view"
     EXTERNAL_TABLE = "external_table"
+    SNAPSHOT = "snapshot"
+    CLONE = "clone"
 
     @classmethod
     def from_raw(cls, raw: str | None) -> "DatasetKind":
@@ -64,6 +66,29 @@ class Index:
 
 
 @dataclass
+class ColumnStats:
+    null_count: int | None = None
+    non_null_count: int | None = None
+    distinct_count: int | None = None
+    min_value: Any | None = None
+    max_value: Any | None = None
+    top_values: list[tuple[Any, int]] | None = None  # (value, frequency) pairs
+    total_row_count: int | None = None
+
+    @property
+    def proportion_null(self) -> float | None:
+        if self.null_count is not None and self.total_row_count is not None and self.total_row_count > 0:
+            return (self.null_count / self.total_row_count) * 100
+        return None
+
+    @property
+    def proportion_distinct(self) -> float | None:
+        if self.distinct_count is not None and self.total_row_count is not None and self.total_row_count > 0:
+            return (self.distinct_count / self.total_row_count) * 100
+        return None
+
+
+@dataclass
 class DatabaseColumn:
     name: str
     type: str
@@ -72,12 +97,19 @@ class DatabaseColumn:
     default_expression: str | None = None
     generated: Literal["identity", "computed"] | None = None
     checks: list[CheckConstraint] = field(default_factory=list)
+    stats: ColumnStats | None = None
 
 
 @dataclass
 class DatabasePartitionInfo:
     meta: dict[str, Any]
     partition_tables: list[str]
+
+
+@dataclass
+class TableStats:
+    row_count: int | None = None
+    approximate: bool = True
 
 
 @dataclass
@@ -93,6 +125,7 @@ class DatabaseTable:
     checks: list[CheckConstraint] = field(default_factory=list)
     indexes: list[Index] = field(default_factory=list)
     foreign_keys: list[ForeignKey] = field(default_factory=list)
+    stats: TableStats | None = None
 
 
 @dataclass

@@ -9,7 +9,7 @@ from databao_context_engine.system.properties import get_dce_path
 
 
 @dataclass(kw_only=True, frozen=True)
-class DceProjectInfo:
+class DceDomainInfo:
     """Information about a Databao Context Engine project.
 
     Attributes:
@@ -50,7 +50,7 @@ def get_databao_context_engine_info() -> DceInfo:
     )
 
 
-def get_databao_context_engine_project_info(project_dir: Path) -> DceProjectInfo:
+def get_databao_context_engine_domain_info(project_dir: Path) -> DceDomainInfo:
     """Return information about the current Databao Context Engine project.
 
     Args:
@@ -62,10 +62,10 @@ def get_databao_context_engine_project_info(project_dir: Path) -> DceProjectInfo
     return _get_project_info(project_dir)
 
 
-def _get_project_info(project_dir: Path) -> DceProjectInfo:
+def _get_project_info(project_dir: Path) -> DceDomainInfo:
     project_layout = validate_project_dir(project_dir)
 
-    return DceProjectInfo(
+    return DceDomainInfo(
         project_path=project_dir,
         is_initialized=project_layout is not None,
         project_id=project_layout.read_config_file().project_id if project_layout is not None else None,
