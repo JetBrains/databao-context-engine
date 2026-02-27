@@ -6,7 +6,7 @@ from typing import Any, Mapping, Protocol, TypeVar, runtime_checkable
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 
 
-@dataclass
+@dataclass(kw_only=True)
 class EmbeddableChunk:
     """A chunk that will be embedded as a vector and used when searching context from a given AI prompt.
 
@@ -16,6 +16,7 @@ class EmbeddableChunk:
     """
 
     embeddable_text: str
+    keyword_indexable_text: str | None = None
     content: Any
 
 

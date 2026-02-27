@@ -11,3 +11,7 @@ class ChunkEmbedding:
     embedded_text: str
     display_text: str
     generated_description: str | None
+
+    @property
+    def keyword_indexable_text(self) -> str:
+        return self.original_chunk.keyword_indexable_text or self.original_chunk.embeddable_text

@@ -48,7 +48,10 @@ def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path
         description_provider=description_provider,
     )
 
-    chunks = [EmbeddableChunk("alpha", "Alpha"), EmbeddableChunk("beta", "Beta")]
+    chunks = [
+        EmbeddableChunk(embeddable_text="alpha", content="Alpha"),
+        EmbeddableChunk(embeddable_text="beta", content="Beta"),
+    ]
     chunk_embedding_service.embed_chunks(chunks=chunks, result="", full_type="type/md", datasource_id="some-id")
 
     chunk_rows = chunk_repo.list()
