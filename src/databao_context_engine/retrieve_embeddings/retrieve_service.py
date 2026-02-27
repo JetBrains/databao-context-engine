@@ -6,9 +6,9 @@ from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
-from databao_context_engine.storage.repositories.vector_search_repository import (
-    VectorSearchRepository,
-    VectorSearchResult,
+from databao_context_engine.storage.repositories.chunk_search_repository import (
+    ChunkSearchRepository,
+    SearchResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,18 +20,24 @@ class RAG_MODE(Enum):
     REWRITE_QUERY = "REWRITE_QUERY"
 
 
+class ContextSearchMode(Enum):
+    HYBRID_SEARCH = "HYBRID_SEARCH"
+    KEYWORD_SEARCH = "KEYWORD_SEARCH"
+    VECTOR_SEARCH = "VECTOR_SEARCH"
+
+
 class RetrieveService:
     def __init__(
         self,
         *,
-        vector_search_repo: VectorSearchRepository,
+        chunk_search_repo: ChunkSearchRepository,
         shard_resolver: EmbeddingShardResolver,
         embedding_provider: EmbeddingProvider,
         prompt_provider: PromptProvider | None,
     ):
         self._shard_resolver = shard_resolver
         self._provider = embedding_provider
-        self._vector_search_repo = vector_search_repo
+        self._chunk_search_repo = chunk_search_repo
         self._prompt_provider = prompt_provider
 
     def retrieve(
@@ -40,10 +46,50 @@ class RetrieveService:
         text: str,
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
-        rag_mode: RAG_MODE | None,
-    ) -> list[VectorSearchResult]:
+        rag_mode: RAG_MODE,
+        context_search_mode: ContextSearchMode,
+    ) -> list[SearchResult]:
         if limit is None:
             limit = 10
+
+        search_results = self._do_retrieve(
+            text=text,
+            limit=limit,
+            datasource_ids=datasource_ids,
+            rag_mode=rag_mode,
+            context_search_mode=context_search_mode,
+        )
+
+        logger.debug(f"Retrieved {len(search_results)} display texts")
+
+        if logger.isEnabledFor(logging.DEBUG):
+            if search_results:
+                top_index = min(10, limit)
+                top_results = search_results[0:top_index]
+                msg = "\n".join([f"({r.score.score}, {r.embeddable_text})" for r in top_results])
+                logger.debug(f"Top {top_index} results:\n{msg}")
+                lowest_score = min(search_results, key=lambda result: result.score.score or 0.0)
+                logger.debug(f"Worst result: ({lowest_score.score.score}, {lowest_score.embeddable_text})")
+            else:
+                logger.debug("No results found")
+
+        return search_results
+
+    def _do_retrieve(
+        self,
+        *,
+        text: str,
+        limit: int,
+        datasource_ids: list[DatasourceId] | None = None,
+        rag_mode: RAG_MODE,
+        context_search_mode: ContextSearchMode,
+    ) -> list[SearchResult]:
+        if context_search_mode == ContextSearchMode.KEYWORD_SEARCH:
+            return self._chunk_search_repo.search_chunks_by_keyword_relevance(
+                query_text=text,
+                limit=limit,
+                datasource_ids=datasource_ids,
+            )
 
         table_name, dimension = self._shard_resolver.resolve(
             embedder=self._provider.embedder, model_id=self._provider.model_id
@@ -60,30 +106,24 @@ class RetrieveService:
 
         retrieve_vec: Sequence[float] = self._provider.embed(embeddable_query)
 
-        logger.debug(f"Retrieving display texts in table {table_name}")
-
-        search_results = self._vector_search_repo.get_display_texts_by_similarity(
-            table_name=table_name,
-            retrieve_vec=retrieve_vec,
-            dimension=dimension,
-            limit=limit,
-            datasource_ids=datasource_ids,
-        )
-
-        logger.debug(f"Retrieved {len(search_results)} display texts in table {table_name}")
-
-        if logger.isEnabledFor(logging.DEBUG):
-            if search_results:
-                top_index = min(10, limit)
-                top_results = search_results[0:top_index]
-                msg = "\n".join([f"({r.cosine_distance}, {r.embeddable_text})" for r in top_results])
-                logger.debug(f"Top {top_index} results:\n{msg}")
-                farthest_result = max(search_results, key=lambda result: result.cosine_distance)
-                logger.debug(f"Worst result: ({farthest_result.cosine_distance}, {farthest_result.embeddable_text})")
-            else:
-                logger.debug("No results found")
-
-        return search_results
+        match context_search_mode:
+            case ContextSearchMode.VECTOR_SEARCH:
+                return self._chunk_search_repo.search_chunks_by_vector_similarity(
+                    table_name=table_name,
+                    retrieve_vec=retrieve_vec,
+                    dimension=dimension,
+                    limit=limit,
+                    datasource_ids=datasource_ids,
+                )
+            case ContextSearchMode.HYBRID_SEARCH:
+                return self._chunk_search_repo.search_chunks_with_hybrid_search(
+                    table_name=table_name,
+                    retrieve_vec=retrieve_vec,
+                    query_text=text,
+                    dimension=dimension,
+                    limit=limit,
+                    datasource_ids=datasource_ids,
+                )
 
     def _rewrite_retrieve_query(self, text: str) -> str:
         if not self._prompt_provider:

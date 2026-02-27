@@ -17,6 +17,7 @@ from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
 from databao_context_engine.retrieve_embeddings import retrieve_embeddings
+from databao_context_engine.retrieve_embeddings.retrieve_service import ContextSearchMode
 
 
 @dataclass
@@ -26,7 +27,7 @@ class ContextSearchResult:
     Attributes:
         datasource_id: The ID of the datasource that generated the result.
         datasource_type: The type of the datasource that generated the result.
-        distance: The distance between the search text and the result.
+        score: The retrieval score of the result.
         context_result: The actual content of the result that was found as a YAML string.
             This content will be a subpart of the full context of the datasource.
             In some cases, its content won't contain the exact same attributes as what can be
@@ -35,7 +36,7 @@ class ContextSearchResult:
 
     datasource_id: DatasourceId
     datasource_type: DatasourceType
-    distance: float
+    score: float
     context_result: str
 
 
@@ -110,6 +111,7 @@ class DatabaoContextEngine:
         retrieve_text: str,
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
+        context_search_mode: ContextSearchMode = ContextSearchMode.HYBRID_SEARCH,
     ) -> list[ContextSearchResult]:
         """Search in the available context for the closest matches to the given text.
 
@@ -117,9 +119,10 @@ class DatabaoContextEngine:
             retrieve_text: The text to search for in the contexts.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
             datasource_ids: If provided, the search results will only come from the datasources with these IDs.
+            context_search_mode: Search strategy to use.
 
         Returns:
-            A list of the results found for the search, sorted by distance.
+            A list of the results found for the search, sorted by score.
         """
         project_config = self._project_layout.read_config_file()
         results = retrieve_embeddings(
@@ -127,6 +130,7 @@ class DatabaoContextEngine:
             retrieve_text=retrieve_text,
             limit=limit,
             datasource_ids=datasource_ids,
+            context_search_mode=context_search_mode,
             ollama_model_id=project_config.ollama_model_id,
             ollama_model_dim=project_config.ollama_model_dim,
         )
@@ -135,7 +139,7 @@ class DatabaoContextEngine:
             ContextSearchResult(
                 datasource_id=result.datasource_id,
                 datasource_type=result.datasource_type,
-                distance=result.cosine_distance,
+                score=result.score.score,
                 context_result=result.display_text,
             )
             for result in results
