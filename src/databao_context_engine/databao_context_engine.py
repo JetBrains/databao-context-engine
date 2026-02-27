@@ -108,26 +108,29 @@ class DatabaoContextEngine:
 
     def search_context(
         self,
-        retrieve_text: str,
+        search_text: str,
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
-        context_search_mode: ContextSearchMode = ContextSearchMode.HYBRID_SEARCH,
+        context_search_mode: ContextSearchMode | None = None,
     ) -> list[ContextSearchResult]:
         """Search in the available context for the closest matches to the given text.
 
         Args:
-            retrieve_text: The text to search for in the contexts.
+            search_text: The text to search for in the contexts.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
             datasource_ids: If provided, the search results will only come from the datasources with these IDs.
-            context_search_mode: Search strategy to use.
+            context_search_mode: Search strategy to use. Defaults to HYBRID_SEARCH if None is provided.
 
         Returns:
             A list of the results found for the search, sorted by score.
         """
+        if context_search_mode is None:
+            context_search_mode = ContextSearchMode.HYBRID_SEARCH
+
         project_config = self._project_layout.read_config_file()
         results = retrieve_embeddings(
             project_layout=self._project_layout,
-            retrieve_text=retrieve_text,
+            retrieve_text=search_text,
             limit=limit,
             datasource_ids=datasource_ids,
             context_search_mode=context_search_mode,
