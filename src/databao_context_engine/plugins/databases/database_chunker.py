@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from copy import deepcopy
 
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.plugins.databases.databases_types import (
@@ -32,6 +33,8 @@ def build_database_chunks(result: DatabaseIntrospectionResult) -> list[Embeddabl
                 chunks.append(_create_table_chunk(catalog.name, schema.name, table))
 
                 for column in table.columns:
+                    column = deepcopy(column)
+                    column.samples = [sample[column.name.lower()] for sample in table.samples if column.name.lower() in sample]
                     chunks.append(_create_column_chunk(catalog.name, schema.name, table, column))
 
     return chunks
