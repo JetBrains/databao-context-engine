@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import logging
 import queue
 import threading
 from collections.abc import Coroutine
@@ -14,6 +15,8 @@ from databao_context_engine.plugins.databases.postgresql.config_file import (
     PostgresConfigFile,
     PostgresConnectionProperties,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class _SyncAsyncpgConnection:
@@ -201,7 +204,10 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             results[cq] = self._fetchall_dicts(connection, sql, (schemas,)) or []
 
         # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
-        results["column_stats"] = self._parse_column_stats_arrays(results.get("column_stats", []))
+        results["column_stats"] = self._enrich_column_stats(
+            results.get("column_stats", []),
+            results.get("table_stats", []),
+        )
 
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
@@ -217,10 +223,10 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             column_stats=results.get("column_stats", []),
         )
 
-    def _parse_column_stats_arrays(self, column_stats: list[dict]) -> list[dict]:
-        """Simple parser that doesn't handle quoted strings with commas or escapes."""
+    def _enrich_column_stats(self, column_stats: list[dict], table_stats: list[dict]) -> list[dict]:
 
         def parse_pg_array(arr_str: str | None) -> list[str] | None:
+            """Simple parser that doesn't handle quoted strings with commas or escapes."""
             if not arr_str or not isinstance(arr_str, str):
                 return None
             if not arr_str.startswith("{") or not arr_str.endswith("}"):
@@ -230,13 +236,50 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 return []
             return [v.strip() for v in content.split(",") if v.strip()]
 
+        table_row_counts = {}
+        for ts in table_stats:
+            schema = ts.get("schema_name")
+            table = ts.get("table_name")
+            row_count = ts.get("row_count")
+            if schema and table and row_count is not None:
+                table_row_counts[(schema, table)] = row_count
+
         for row in column_stats:
-            if "most_common_vals" in row:
-                row["most_common_vals"] = parse_pg_array(row["most_common_vals"])
-            if "most_common_freqs" in row:
-                row["most_common_freqs"] = parse_pg_array(row["most_common_freqs"])
+            schema_name = row.get("schema_name")
+            table_name = row.get("table_name")
+            row_count = table_row_counts.get((schema_name, table_name))
+
             if "histogram_bounds" in row:
-                row["histogram_bounds"] = parse_pg_array(row["histogram_bounds"])
+                bounds = parse_pg_array(row["histogram_bounds"])
+                if bounds and len(bounds) > 0:
+                    row["min_value"] = bounds[0]
+                    row["max_value"] = bounds[-1]
+
+            null_frac = row.get("null_frac")
+            if null_frac is not None and row_count is not None:
+                row["null_count"] = round(row_count * null_frac)
+                row["non_null_count"] = row_count - row["null_count"]
+
+            n_distinct = row.get("n_distinct")
+            if n_distinct is not None and row_count is not None:
+                if n_distinct < 0:
+                    row["distinct_count"] = round(abs(n_distinct) * row_count)
+                elif n_distinct > 0:
+                    row["distinct_count"] = round(n_distinct)
+
+            vals_str = row.get("most_common_vals")
+            freqs_str = row.get("most_common_freqs")
+            top_n = 5
+            if vals_str and freqs_str and row_count is not None:
+                vals = parse_pg_array(vals_str)
+                freqs = parse_pg_array(freqs_str)
+                if vals and freqs and len(vals) == len(freqs):
+                    try:
+                        row["top_values"] = [(str(v), round(float(f) * row_count)) for v, f in zip(vals, freqs)][:top_n]
+                    except (ValueError, TypeError):
+                        logger.warning(
+                            f"Failed to parse column stats for {schema_name}.{table_name}.{row['column_name']}"
+                        )
 
         return column_stats
 

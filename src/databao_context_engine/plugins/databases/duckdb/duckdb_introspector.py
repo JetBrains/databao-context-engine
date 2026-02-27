@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import duckdb
@@ -9,6 +10,8 @@ from databao_context_engine.plugins.databases.databases_types import DatabaseSch
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
+
+logger = logging.getLogger(__name__)
 
 
 class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
@@ -46,15 +49,21 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         for cq, sql in comps.items():
             results[cq] = self._fetchall_dicts(connection, sql, (schemas,))
 
+        # Collect table and column statistics using SUMMARIZE
+        relations = results.get("relations", [])
+        table_stats, column_stats = self._collect_stats(connection, relations)
+
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
-            rels=results.get("relations", []),
+            rels=relations,
             cols=results.get("columns", []),
             pk_cols=results.get("pk", []),
             uq_cols=results.get("uq", []),
             checks=results.get("checks", []),
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
+            table_stats=table_stats,
+            column_stats=column_stats,
         )
 
     def _component_queries(self) -> dict[str, str]:
@@ -303,6 +312,70 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 index_name,
                 position;
          """
+
+    def _collect_stats(self, connection, relations: list[dict]) -> tuple[list[dict], list[dict]]:
+        table_stats = []
+        column_stats = []
+
+        for relation in relations:
+            if relation.get("kind") != "table":
+                continue
+
+            schema_name = relation["schema_name"]
+            table_name = relation["table_name"]
+
+            try:
+                summary_query = f'SUMMARIZE "{schema_name}"."{table_name}"'
+                summary_rows = self._fetchall_dicts(connection, summary_query, None)
+
+                if not summary_rows:
+                    continue
+
+                row_count = summary_rows[0].get("count")
+                table_stats.append(
+                    {
+                        "schema_name": schema_name,
+                        "table_name": table_name,
+                        "row_count": row_count,
+                        "approximate": True,
+                    }
+                )
+
+                for row in summary_rows:
+                    column_name = row.get("column_name")
+                    if not column_name:
+                        continue
+
+                    null_percentage = row.get("null_percentage")
+                    null_count = None
+                    non_null_count = None
+                    if null_percentage is not None and row_count is not None:
+                        null_frac = float(null_percentage) / 100.0
+                        null_count = round(row_count * null_frac)
+                        non_null_count = row_count - null_count
+
+                    # currently min/max values are strings, so we might need to convert them to the appropriate type
+                    # also, duckdb doesn't provide most_common_vals/most_common_freqs
+                    # but there are avg, std, q25 etc. available, we can use them as well
+                    column_stats.append(
+                        {
+                            "schema_name": schema_name,
+                            "table_name": table_name,
+                            "column_name": column_name,
+                            "null_count": null_count,
+                            "non_null_count": non_null_count,
+                            "distinct_count": row.get("approx_unique"),
+                            "min_value": row.get("min"),
+                            "max_value": row.get("max"),
+                            "most_common_vals": None,
+                            "most_common_freqs": None,
+                        }
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to collect stats for {schema_name}.{table_name}: {e}")
+                continue
+
+        return table_stats, column_stats
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT ?'

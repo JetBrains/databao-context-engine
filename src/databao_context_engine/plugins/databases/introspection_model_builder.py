@@ -268,49 +268,13 @@ class IntrospectionModelBuilder:
                 if not stat_row:
                     continue
 
-                null_count = None
-                non_null_count = None
-                if table.stats and table.stats.row_count is not None:
-                    null_frac = stat_row.get("null_frac")
-                    if null_frac is not None:
-                        row_count = table.stats.row_count
-                        null_count = round(row_count * null_frac)
-                        non_null_count = row_count - null_count
-
-                distinct_count = None
-                n_distinct = stat_row.get("n_distinct")
-                if n_distinct is not None:
-                    if n_distinct < 0 and table.stats and table.stats.row_count:
-                        distinct_count = round(abs(n_distinct) * table.stats.row_count)
-                    elif n_distinct > 0:
-                        distinct_count = round(n_distinct)
-
-                top_values = None
-                top_n = 5
-                vals = stat_row.get("most_common_vals")
-                freqs = stat_row.get("most_common_freqs")
-                if vals is not None and freqs is not None and isinstance(vals, list) and isinstance(freqs, list):
-                    if len(vals) == len(freqs) and table.stats and table.stats.row_count:
-                        try:
-                            row_count = table.stats.row_count
-                            top_values = [(str(v), round(float(f) * row_count)) for v, f in zip(vals, freqs)][:top_n]
-                        except (ValueError, TypeError):
-                            pass
-
-                min_value = None
-                max_value = None
-                bounds = stat_row.get("histogram_bounds")
-                if bounds and isinstance(bounds, list) and len(bounds) > 0:
-                    min_value = bounds[0]
-                    max_value = bounds[-1]
-
                 col.stats = ColumnStats(
-                    null_count=null_count,
-                    non_null_count=non_null_count,
-                    distinct_count=distinct_count,
-                    min_value=min_value,
-                    max_value=max_value,
-                    top_values=top_values,
+                    null_count=stat_row.get("null_count"),
+                    non_null_count=stat_row.get("non_null_count"),
+                    distinct_count=stat_row.get("distinct_count"),
+                    min_value=stat_row.get("min_value"),
+                    max_value=stat_row.get("max_value"),
+                    top_values=stat_row.get("top_values"),
                     total_row_count=table.stats.row_count if table.stats else None,
                 )
 
