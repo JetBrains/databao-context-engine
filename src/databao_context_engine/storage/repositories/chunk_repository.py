@@ -9,7 +9,7 @@ from databao_context_engine.storage.models import ChunkDTO
 
 
 class ChunkRepository:
-    _BM25_CHUNK_COLUMN = "embeddable_text"
+    _BM25_CHUNK_COLUMN = "keyword_index_text"
 
     def __init__(self, conn: duckdb.DuckDBPyConnection):
         self._conn = conn
@@ -21,18 +21,19 @@ class ChunkRepository:
         datasource_id: str,
         embeddable_text: str,
         display_text: Optional[str],
+        keyword_index_text: str,
     ) -> ChunkDTO:
         try:
             row = self._conn.execute(
                 """
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text)
+                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text)
             VALUES
-                (?, ?, ?, ?)
+                (?, ?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [full_type, datasource_id, embeddable_text, display_text],
+                [full_type, datasource_id, embeddable_text, display_text, keyword_index_text],
             ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
@@ -64,6 +65,7 @@ class ChunkRepository:
         datasource_id: Optional[str] = None,
         embeddable_text: Optional[str] = None,
         display_text: Optional[str] = None,
+        keyword_index_text: Optional[str] = None,
     ) -> Optional[ChunkDTO]:
         sets: list[Any] = []
         params: list[Any] = []
@@ -80,6 +82,9 @@ class ChunkRepository:
         if display_text is not None:
             sets.append("display_text = ?")
             params.append(display_text)
+        if keyword_index_text is not None:
+            sets.append("keyword_index_text = ?")
+            params.append(keyword_index_text)
 
         if not sets:
             return self.get(chunk_id)
@@ -147,12 +152,12 @@ class ChunkRepository:
         *,
         full_type: str,
         datasource_id: str,
-        chunk_contents: Sequence[Tuple[str, Optional[str]]],
+        chunk_contents: Sequence[Tuple[str, Optional[str], str]],
     ) -> Sequence[int]:
-        values_sql = ", ".join(["(?, ?, ?, ?)"] * len(chunk_contents))
+        values_sql = ", ".join(["(?, ?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text)
+                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text)
             VALUES
                 {values_sql}
             RETURNING
@@ -160,8 +165,8 @@ class ChunkRepository:
         """
 
         params: list[Any] = []
-        for embeddable_text, display_text in chunk_contents:
-            params.extend([full_type, datasource_id, embeddable_text, display_text])
+        for embeddable_text, display_text, keyword_index_text in chunk_contents:
+            params.extend([full_type, datasource_id, embeddable_text, display_text, keyword_index_text])
 
         rows = self._conn.execute(sql, params).fetchall()
 
@@ -180,7 +185,7 @@ class ChunkRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> ChunkDTO:
-        chunk_id, full_type, datasource_id, embeddable_text, display_text, created_at = row
+        chunk_id, full_type, datasource_id, embeddable_text, display_text, created_at, keyword_index_text = row
         return ChunkDTO(
             chunk_id=int(chunk_id),
             full_type=full_type,
@@ -188,4 +193,5 @@ class ChunkRepository:
             embeddable_text=embeddable_text,
             display_text=display_text,
             created_at=created_at,
+            keyword_index_text=keyword_index_text,
         )

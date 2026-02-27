@@ -7,6 +7,7 @@ def test_create_and_get(chunk_repo):
         datasource_id="12345",
         embeddable_text="embed me",
         display_text="visible content",
+        keyword_index_text="keyword_index",
     )
     assert isinstance(created, ChunkDTO)
 
@@ -20,6 +21,7 @@ def test_update_fields(chunk_repo):
         datasource_id="12345",
         embeddable_text="a",
         display_text="b",
+        keyword_index_text="keyword_index",
     )
 
     updated = chunk_repo.update(chunk.chunk_id, datasource_id="types/txt", embeddable_text="A+", display_text="B+")
@@ -31,7 +33,13 @@ def test_update_fields(chunk_repo):
 
 
 def test_delete(chunk_repo):
-    chunk = chunk_repo.create(full_type="type/md", datasource_id="12345", embeddable_text="x", display_text="b")
+    chunk = chunk_repo.create(
+        full_type="type/md",
+        datasource_id="12345",
+        embeddable_text="x",
+        display_text="b",
+        keyword_index_text="k",
+    )
 
     deleted = chunk_repo.delete(chunk.chunk_id)
     assert deleted == 1
@@ -39,18 +47,30 @@ def test_delete(chunk_repo):
 
 
 def test_list(chunk_repo):
-    s1 = chunk_repo.create(full_type="type/md", datasource_id="12345", embeddable_text="e1", display_text="d1")
-    s2 = chunk_repo.create(full_type="type/md", datasource_id="12345", embeddable_text="e2", display_text="d2")
-    s3 = chunk_repo.create(full_type="type/md", datasource_id="12345", embeddable_text="e3", display_text="d3")
+    s1 = chunk_repo.create(
+        full_type="type/md", datasource_id="12345", embeddable_text="e1", display_text="d1", keyword_index_text="k1"
+    )
+    s2 = chunk_repo.create(
+        full_type="type/md", datasource_id="12345", embeddable_text="e2", display_text="d2", keyword_index_text="k2"
+    )
+    s3 = chunk_repo.create(
+        full_type="type/md", datasource_id="12345", embeddable_text="e3", display_text="d3", keyword_index_text="k3"
+    )
 
     all_rows = chunk_repo.list()
     assert [s.chunk_id for s in all_rows] == [s3.chunk_id, s2.chunk_id, s1.chunk_id]
 
 
 def test_delete_by_datasource_id(chunk_repo):
-    d1_a = chunk_repo.create(full_type="type/md", datasource_id="ds1", embeddable_text="a", display_text="a")
-    d1_b = chunk_repo.create(full_type="type/md", datasource_id="ds1", embeddable_text="b", display_text="b")
-    d2_c = chunk_repo.create(full_type="type/md", datasource_id="ds2", embeddable_text="c", display_text="c")
+    d1_a = chunk_repo.create(
+        full_type="type/md", datasource_id="ds1", embeddable_text="a", display_text="a", keyword_index_text="a"
+    )
+    d1_b = chunk_repo.create(
+        full_type="type/md", datasource_id="ds1", embeddable_text="b", display_text="b", keyword_index_text="b"
+    )
+    d2_c = chunk_repo.create(
+        full_type="type/md", datasource_id="ds2", embeddable_text="c", display_text="c", keyword_index_text="c"
+    )
 
     chunk_repo.delete_by_datasource_id(datasource_id="ds1")
 

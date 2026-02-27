@@ -62,7 +62,7 @@ def test_process_prepared_source_happy_path_creates_row_and_embeds(svc, chunk_em
     result = mk_result(name="files/two.md", typ="files/md", result={"context": "ok"})
     mocker.patch("databao_context_engine.build_sources.build_service.execute_plugin", return_value=result)
 
-    chunks = [EmbeddableChunk("a", "A"), EmbeddableChunk("b", "B")]
+    chunks = [EmbeddableChunk(embeddable_text="a", content="A"), EmbeddableChunk(embeddable_text="b", content="B")]
     plugin.divide_context_into_chunks.return_value = chunks
 
     out = svc.process_prepared_source(prepared_source=prepared, plugin=plugin)
@@ -97,7 +97,7 @@ def test_process_prepared_source_embed_error_bubbles_after_row_creation(svc, chu
     prepared = mk_prepared(Path("files") / "x.md", full_type="files/md")
 
     mocker.patch("databao_context_engine.build_sources.build_service.execute_plugin", return_value=mk_result())
-    plugin.divide_context_into_chunks.return_value = [EmbeddableChunk("x", "X")]
+    plugin.divide_context_into_chunks.return_value = [EmbeddableChunk(embeddable_text="x", content="X")]
 
     chunk_embed_svc.embed_chunks.side_effect = RuntimeError("embed-fail")
 
@@ -122,7 +122,7 @@ def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
     dsid = DatasourceId.from_string_repr("files/two.md")
     ctx = DatasourceContext(datasource_id=dsid, context=yaml_text)
 
-    chunks = [EmbeddableChunk("a", "A"), EmbeddableChunk("b", "B")]
+    chunks = [EmbeddableChunk(embeddable_text="a", content="A"), EmbeddableChunk(embeddable_text="b", content="B")]
     plugin.divide_context_into_chunks.return_value = chunks
 
     svc.index_built_context(context=ctx, plugin=plugin)

@@ -27,9 +27,9 @@ def test_embed_flow_persists_chunks_and_embeddings(
     )
 
     chunks = [
-        EmbeddableChunk("alpha", "Alpha"),
-        EmbeddableChunk("beta", "Beta"),
-        EmbeddableChunk("gamma", "Gamma"),
+        EmbeddableChunk(embeddable_text="alpha", content="Alpha"),
+        EmbeddableChunk(embeddable_text="beta", content="Beta"),
+        EmbeddableChunk(embeddable_text="gamma", content="Gamma"),
     ]
     chunk_embedding_service.embed_chunks(
         chunks=chunks,
@@ -75,8 +75,18 @@ def test_embed_flow_is_idempotent_on_resolver(conn, chunk_repo, embedding_repo, 
         description_provider=description_provider,
     )
 
-    service.embed_chunks(chunks=[EmbeddableChunk("x", "...")], result="", full_type="folder/type", datasource_id="s")
-    service.embed_chunks(chunks=[EmbeddableChunk("y", "...")], result="", full_type="folder/type", datasource_id="s")
+    service.embed_chunks(
+        chunks=[EmbeddableChunk(embeddable_text="x", content="...")],
+        result="",
+        full_type="folder/type",
+        datasource_id="s",
+    )
+    service.embed_chunks(
+        chunks=[EmbeddableChunk(embeddable_text="y", content="...")],
+        result="",
+        full_type="folder/type",
+        datasource_id="s",
+    )
 
     (count,) = conn.execute(
         "SELECT COUNT(*) FROM embedding_model_registry WHERE embedder=? AND model_id=?",

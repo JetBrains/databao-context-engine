@@ -1,0 +1,1 @@
+ALTER TABLE chunk ADD COLUMN IF NOT EXISTS keyword_index_text TEXT;
