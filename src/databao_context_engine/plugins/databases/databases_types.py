@@ -98,6 +98,7 @@ class DatabaseColumn:
     generated: Literal["identity", "computed"] | None = None
     checks: list[CheckConstraint] = field(default_factory=list)
     stats: ColumnStats | None = None
+    samples: list[Any] | None = None
 
 
 @dataclass
