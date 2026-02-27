@@ -2,6 +2,7 @@ import os
 
 from duckdb import DuckDBPyConnection
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.factory import (
@@ -20,6 +21,16 @@ from databao_context_engine.storage.repositories.factories import create_chunk_s
 from databao_context_engine.system.properties import get_db_path
 
 
+@perf.perf_run(
+    operation="search_context",
+    attrs=lambda *, retrieve_text, limit, datasource_ids, context_search_mode, **_: {
+        "search_text_length": len(retrieve_text),
+        "limit": limit,
+        "datasources_number": len(datasource_ids) if datasource_ids else -1,
+        "context_search_mode": context_search_mode.value,
+    },
+)
+@perf.perf_span("search_context.total")
 def retrieve_embeddings(
     project_layout: ProjectLayout,
     retrieve_text: str,

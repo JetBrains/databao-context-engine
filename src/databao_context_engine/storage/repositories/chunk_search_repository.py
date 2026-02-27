@@ -5,6 +5,7 @@ from typing import Any
 
 import duckdb
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
@@ -79,6 +80,7 @@ class ChunkSearchRepository:
     def __init__(self, conn: duckdb.DuckDBPyConnection):
         self._conn = conn
 
+    @perf.perf_span("chunk_search.search_chunks_by_vector_similarity")
     def search_chunks_by_vector_similarity(
         self,
         *,
@@ -108,6 +110,7 @@ class ChunkSearchRepository:
             for candidate in vector_candidates
         ]
 
+    @perf.perf_span("chunk_search._get_vector_candidates")
     def _get_vector_candidates(
         self,
         *,
@@ -167,6 +170,7 @@ class ChunkSearchRepository:
             for row in rows
         ]
 
+    @perf.perf_span("chunk_search.search_chunks_with_hybrid_search")
     def search_chunks_with_hybrid_search(
         self,
         *,
@@ -202,6 +206,7 @@ class ChunkSearchRepository:
             limit=limit,
         )
 
+    @perf.perf_span("chunk_search.search_chunks_by_keyword_relevance")
     def search_chunks_by_keyword_relevance(
         self,
         *,
@@ -228,6 +233,7 @@ class ChunkSearchRepository:
             for candidate in bm25_candidates
         ]
 
+    @perf.perf_span("chunk_search._get_bm25_candidates")
     def _get_bm25_candidates(
         self,
         *,
@@ -289,6 +295,7 @@ class ChunkSearchRepository:
             for row in rows
         ]
 
+    @perf.perf_span("chunk_search._fuse_by_rrf")
     def _fuse_by_rrf(
         self,
         *,

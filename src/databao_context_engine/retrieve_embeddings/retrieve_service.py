@@ -2,6 +2,7 @@ import logging
 from collections.abc import Sequence
 from enum import Enum
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.prompts.provider import PromptProvider
@@ -40,6 +41,12 @@ class RetrieveService:
         self._chunk_search_repo = chunk_search_repo
         self._prompt_provider = prompt_provider
 
+    @perf.perf_span(
+        "search_context.do_search",
+        attrs=lambda *_, rag_mode, **__: {
+            "rag_mode": rag_mode.value,
+        },
+    )
     def retrieve(
         self,
         *,
@@ -104,7 +111,11 @@ class RetrieveService:
             case _:
                 embeddable_query = text
 
-        retrieve_vec: Sequence[float] = self._provider.embed(embeddable_query)
+        with perf.span(
+            "search_context.embed_search_text",
+            attrs={"model_id": self._provider.model_id, "model_dim": self._provider.dim},
+        ):
+            retrieve_vec: Sequence[float] = self._provider.embed(embeddable_query)
 
         match context_search_mode:
             case ContextSearchMode.VECTOR_SEARCH:
@@ -125,6 +136,7 @@ class RetrieveService:
                     datasource_ids=datasource_ids,
                 )
 
+    @perf.perf_span("search_context.rewrite_query")
     def _rewrite_retrieve_query(self, text: str) -> str:
         if not self._prompt_provider:
             raise ValueError(f"Prompt provider should never be None when rag_mode is {RAG_MODE.REWRITE_QUERY.value}")
