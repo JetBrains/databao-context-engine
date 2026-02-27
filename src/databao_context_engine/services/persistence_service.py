@@ -8,8 +8,6 @@ from databao_context_engine.storage.transaction import transaction
 
 
 class PersistenceService:
-    _BM25_CHUNK_COLUMN = "embeddable_text"
-
     def __init__(
         self,
         conn: duckdb.DuckDBPyConnection,
@@ -71,8 +69,6 @@ class PersistenceService:
                 chunk_embeddings=chunk_embeddings,
             )
 
-        self._refresh_fts_index()
-
     @perf.perf_span("persistence.override.delete_embeddings")
     def _delete_existing_embeddings(self, *, table_name: str, datasource_id: str) -> None:
         self._embedding_repo.delete_by_datasource_id(table_name=table_name, datasource_id=datasource_id)
@@ -106,7 +102,3 @@ class PersistenceService:
         self._embedding_repo.bulk_insert(
             table_name=table_name, chunk_ids=chunk_ids, vecs=[ce.vec for ce in chunk_embeddings], dim=self._dim
         )
-
-    @perf.perf_span("persistence.refresh_keyword_index")
-    def _refresh_fts_index(self) -> None:
-        self._conn.execute(f"PRAGMA create_fts_index('chunk', 'chunk_id', '{self._BM25_CHUNK_COLUMN}', overwrite=1);")
