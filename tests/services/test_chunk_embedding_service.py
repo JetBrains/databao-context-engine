@@ -63,9 +63,9 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
     )
 
     chunks = [
-        EmbeddableChunk("A", "a"),
-        EmbeddableChunk("B", "b"),
-        EmbeddableChunk("C", "c"),
+        EmbeddableChunk(embeddable_text="A", content="a"),
+        EmbeddableChunk(embeddable_text="B", content="b"),
+        EmbeddableChunk(embeddable_text="C", content="c"),
     ]
 
     service.embed_chunks(
@@ -110,7 +110,10 @@ def test_provider_failure_writes_nothing(persistence, resolver, chunk_repo, embe
 
     with pytest.raises(RuntimeError):
         service.embed_chunks(
-            chunks=[EmbeddableChunk("X", "x"), EmbeddableChunk("Y", "y")],
+            chunks=[
+                EmbeddableChunk(embeddable_text="X", content="x"),
+                EmbeddableChunk(embeddable_text="Y", content="y"),
+            ],
             result="",
             full_type="databases/some",
             datasource_id="test.yml",
