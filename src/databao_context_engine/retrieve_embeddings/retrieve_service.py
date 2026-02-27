@@ -92,8 +92,10 @@ class RetrieveService:
         context_search_mode: ContextSearchMode,
     ) -> list[SearchResult]:
         if context_search_mode == ContextSearchMode.KEYWORD_SEARCH:
+            query_text = self._rewrite_retrieve_query(text) if rag_mode == RAG_MODE.REWRITE_QUERY else text
+
             return self._chunk_search_repo.search_chunks_by_keyword_relevance(
-                query_text=text,
+                query_text=query_text,
                 limit=limit,
                 datasource_ids=datasource_ids,
             )
@@ -130,7 +132,7 @@ class RetrieveService:
                 return self._chunk_search_repo.search_chunks_with_hybrid_search(
                     table_name=table_name,
                     retrieve_vec=retrieve_vec,
-                    query_text=text,
+                    query_text=embeddable_query if rag_mode == RAG_MODE.REWRITE_QUERY else text,
                     dimension=dimension,
                     limit=limit,
                     datasource_ids=datasource_ids,
@@ -138,6 +140,11 @@ class RetrieveService:
 
     @perf.perf_span("search_context.rewrite_query")
     def _rewrite_retrieve_query(self, text: str) -> str:
+        extracted_named_entities = self._extract_named_entities_from_text(text)
+
+        return f"{text}\n{extracted_named_entities}" if extracted_named_entities else text
+
+    def _extract_named_entities_from_text(self, text: str) -> str | None:
         if not self._prompt_provider:
             raise ValueError(f"Prompt provider should never be None when rag_mode is {RAG_MODE.REWRITE_QUERY.value}")
 
@@ -145,34 +152,32 @@ class RetrieveService:
         Your task is to use NLP (Natural Language Processing) and NER (Named Entity Recognition) to extract named entities from a given question.
         Those entities will be used as metadata in a semantic search.
         Do not try to answer the question or get more information about the entities you find. 
-        
+
         Output each entity separated by a newline in the following format, without any other explanations: 
         "extracted entity": "entity classification or tag"
-        
+
         Examples:
         1. From the question "Where did Apple CEO Tim Cook announced the latest iPhone models last September?", you should respond with:
         "Apple": "Organization"
         "Tim Cook": "Person"
         "iPhone": "Product"
         "last September": "Date"
-        
+
         2. From the question "How many accounts in North Bohemia has made a transaction with the partner's bank being AB?", you should respond with:
         "North Bohemia": "Location"
         "partner": "Person"
         "AB": "Organization"
-        
+
         3. From the question "List out top 10 Spanish drivers who were born before 1982 and have the latest lap time.", you should respond with:
         "Spanish": "NORP (Nationalities, Religious, or Political groups)"
         "1982": "Date"
-        
+
         Here is the question:
         {text}
         """
 
         try:
-            extracted_named_entities = self._prompt_provider.prompt(prompt=prompt)
+            return self._prompt_provider.prompt(prompt=prompt)
         except Exception:
-            logger.debug(f"Failed to prompt rewritten query for question: {text}")
-            return text
-
-        return f"{text}\n{extracted_named_entities}"
+            logger.debug("Failed to extract named entities from text", exc_info=True, stack_info=True)
+            return None
