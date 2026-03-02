@@ -1,3 +1,8 @@
+import base64
+import json
+import logging
+from collections import defaultdict
+
 import pymysql
 from pymysql.constants import CLIENT
 
@@ -5,6 +10,8 @@ from databao_context_engine.plugins.databases.base_introspector import BaseIntro
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema, DatabaseTable
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.mysql.config_file import MySQLConfigFile
+
+logger = logging.getLogger(__name__)
 
 
 class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
@@ -75,6 +82,13 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                     if not ok:
                         raise RuntimeError(f"MySQL batch ended early after component #{ix} '{name}'")
 
+        table_stats, column_stats = self._collect_stats(
+            connection,
+            schemas=schemas,
+            relations=results.get("relations", []),
+            columns=results.get("columns", []),
+        )
+
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results.get("relations", []),
@@ -84,6 +98,8 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             checks=results.get("checks", []),
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
+            table_stats=table_stats,
+            column_stats=column_stats,
         )
 
     def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
@@ -324,3 +340,173 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
     def _quote_ident(self, ident: str) -> str:
         return "`" + ident.replace("`", "``") + "`"
+
+    def _collect_stats(
+        self,
+        connection,
+        schemas: list[str],
+        relations: list[dict],
+        columns: list[dict],
+    ) -> tuple[list[dict], list[dict]]:
+        self._run_analyze(connection, relations, columns)
+        table_stats = self._get_table_stats(connection, schemas)
+        column_stats = self._get_column_stats(connection, schemas, table_stats)
+        return table_stats, column_stats
+
+    def _run_analyze(self, connection, relations: list[dict], columns: list[dict]) -> None:
+        table_columns: dict[tuple[str, str], list[str]] = defaultdict(list)
+        base_tables = {(r["schema_name"], r["table_name"]) for r in relations if r.get("kind") == "table"}
+
+        for col in columns:
+            key = (col["schema_name"], col["table_name"])
+            if key in base_tables:
+                table_columns[key].append(col["column_name"])
+
+        n_buckets = 100  # postgres uses the same default
+        with connection.cursor() as cur:
+            for (schema, table), cols_list in table_columns.items():
+                try:
+                    cur.execute(f"ANALYZE TABLE {self._quote_ident(schema)}.{self._quote_ident(table)}")
+                    cur.fetchall()
+                    if cols_list:
+                        col_names = ", ".join(self._quote_ident(c) for c in cols_list)
+                        cur.execute(
+                            f"ANALYZE TABLE {self._quote_ident(schema)}.{self._quote_ident(table)} "
+                            f"UPDATE HISTOGRAM ON {col_names} WITH {n_buckets} BUCKETS"
+                        )
+                        cur.fetchall()
+                except Exception as e:
+                    logger.warning(f"Failed to analyze table {schema}.{table}: {e}")
+
+    def _get_table_stats(self, connection, schemas: list[str]) -> list[dict]:
+        return self._fetchall_dicts(
+            connection,
+            """
+            SELECT
+                t.TABLE_SCHEMA AS schema_name,
+                t.TABLE_NAME AS table_name,
+                t.TABLE_ROWS AS row_count,
+                TRUE AS approximate
+            FROM INFORMATION_SCHEMA.TABLES t
+            WHERE t.TABLE_SCHEMA IN ({})
+              AND t.TABLE_TYPE = 'BASE TABLE'
+            ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME
+            """.format(", ".join(self._quote_literal(s) for s in schemas)),
+            None,
+        )
+
+    def _get_column_stats(self, connection, schemas: list[str], table_stats: list[dict]) -> list[dict]:
+        raw_stats = self._fetchall_dicts(
+            connection,
+            """
+            SELECT
+                s.SCHEMA_NAME AS schema_name,
+                s.TABLE_NAME AS table_name,
+                s.COLUMN_NAME AS column_name,
+                s.HISTOGRAM AS histogram_json
+            FROM INFORMATION_SCHEMA.COLUMN_STATISTICS s
+            WHERE s.SCHEMA_NAME IN ({})
+            ORDER BY s.SCHEMA_NAME, s.TABLE_NAME, s.COLUMN_NAME
+            """.format(", ".join(self._quote_literal(s) for s in schemas)),
+            None,
+        )
+
+        table_row_counts = {(ts["schema_name"], ts["table_name"]): ts["row_count"] for ts in table_stats}
+
+        processed_stats = []
+        for stat in raw_stats:
+            if not stat.get("histogram_json"):
+                continue
+            result = self._process_histogram(stat, table_row_counts)
+            if result:
+                processed_stats.append(result)
+
+        return processed_stats
+
+    def _process_histogram(self, stat: dict, table_row_counts: dict[tuple[str, str], int]) -> dict | None:
+        try:
+            histogram_json = stat["histogram_json"]
+            histogram = json.loads(histogram_json) if isinstance(histogram_json, str) else histogram_json
+            histogram_type = histogram.get("histogram-type")
+
+            table_key = (stat["schema_name"], stat["table_name"])
+            table_row_count = table_row_counts.get(table_key, 0)
+
+            stat_dict = {
+                "schema_name": stat["schema_name"],
+                "table_name": stat["table_name"],
+                "column_name": stat["column_name"],
+                "total_row_count": table_row_count,
+            }
+
+            if histogram_type == "singleton":
+                self._process_singleton_histogram(histogram, stat_dict, table_row_count)
+            elif histogram_type == "equi-height":
+                self._process_equiheight_histogram(histogram, stat_dict, table_row_count)
+
+            return stat_dict
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to process histogram for {stat['schema_name']}.{stat['table_name']}.{stat['column_name']}: {e}"
+            )
+            return None
+
+    def _process_singleton_histogram(self, histogram: dict, stat_dict: dict, table_row_count: int) -> None:
+        buckets = histogram.get("buckets", [])
+        distinct_count = len(buckets)
+
+        null_frac = float(histogram.get("null-values") or 0.0)
+        null_count = max(0, min(table_row_count, round(null_frac * table_row_count)))
+
+        stat_dict["distinct_count"] = distinct_count
+        stat_dict["non_null_count"] = table_row_count - null_count
+        stat_dict["null_count"] = null_count
+
+        if buckets:
+            stat_dict["min_value"] = self._decode_histogram_value(buckets[0][0])
+            stat_dict["max_value"] = self._decode_histogram_value(buckets[-1][0])
+
+            top_values = []
+            prev_cumulative = 0.0
+            for raw_val, cumulative_freq in buckets:
+                value = self._decode_histogram_value(raw_val)
+                frequency_fraction = cumulative_freq - prev_cumulative
+                frequency_count = round(frequency_fraction * table_row_count)
+                top_values.append((value, frequency_count))
+                prev_cumulative = cumulative_freq
+
+            top_values.sort(key=lambda x: x[1], reverse=True)
+            stat_dict["top_values"] = top_values[:5]
+
+    def _process_equiheight_histogram(self, histogram: dict, stat_dict: dict, table_row_count: int) -> None:
+        buckets = histogram.get("buckets", [])
+        null_frac = float(histogram.get("null-values") or 0.0)
+        null_count = max(0, min(table_row_count, round(null_frac * table_row_count)))
+        stat_dict["null_count"] = null_count
+        stat_dict["non_null_count"] = table_row_count - null_count
+
+        # distinct estimate: sum the 4th element of each bucket if present
+        distinct_est = 0
+        for b in buckets:
+            if isinstance(b, list) and len(b) >= 4:
+                distinct_est += int(b[3] or 0)
+        stat_dict["distinct_count"] = distinct_est
+
+        if buckets:
+            first_bucket = buckets[0]
+            last_bucket = buckets[-1]
+            stat_dict["min_value"] = self._decode_histogram_value(first_bucket[0])
+            stat_dict["max_value"] = self._decode_histogram_value(last_bucket[1])
+
+    @staticmethod
+    def _decode_histogram_value(value):
+        if not (isinstance(value, str) and value.startswith("base64:")):
+            return value
+        try:
+            _, _, payload = value.split(":", 2)
+            raw = base64.b64decode(payload, validate=True)
+            return raw.decode("utf-8", errors="replace")
+        except Exception as e:
+            logger.debug(f"Failed to decode histogram value: {e}")
+            return None
