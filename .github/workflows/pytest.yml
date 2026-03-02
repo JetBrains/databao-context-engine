@@ -5,6 +5,7 @@ permissions: { }
 env:
   OLLAMA_MODEL: nomic-embed-text
   OLLAMA_MODEL_VERSION: v1.5
+  GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-sa.json
 
 on:
   push:
@@ -69,6 +70,13 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Write GCP credentials file
+        shell: bash
+        run: |
+          cat > "${GOOGLE_APPLICATION_CREDENTIALS}" << 'JSON'
+          ${{ secrets.GCP_SA_KEY_JSON }}
+          JSON
 
       - name: Run tests with all-extras
         run: uv run pytest -v
