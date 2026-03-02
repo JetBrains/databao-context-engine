@@ -107,7 +107,6 @@ class _ProjectCreator:
     def create_default_src_dir(self) -> None:
         self.src_dir.mkdir(parents=False, exist_ok=False)
 
-        self.src_dir.joinpath("databases").mkdir(parents=False, exist_ok=False)
         self.src_dir.joinpath("files").mkdir(parents=False, exist_ok=False)
 
     def create_logs_dir(self) -> None:
