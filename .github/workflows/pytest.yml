@@ -70,7 +70,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Run tests with ADC credentials file
+      - name: Create ADC credentials file
         shell: bash
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-sa.json
@@ -78,7 +78,10 @@ jobs:
           cat > "$GOOGLE_APPLICATION_CREDENTIALS" << 'JSON'
           ${{ secrets.GCP_SA_KEY_JSON }}
           JSON
-          uv run pytest -v
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        run: uv run pytest -v
 
       - name: Cleanup Docker (post)
         if: always()
