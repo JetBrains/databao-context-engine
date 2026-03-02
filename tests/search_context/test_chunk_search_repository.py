@@ -2,7 +2,7 @@ import pytest
 
 from databao_context_engine import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.storage.repositories.chunk_search_repository import (
+from databao_context_engine.search_context.chunk_search_repository import (
     ChunkSearchRepository,
     KeywordSearchScore,
     SearchResult,

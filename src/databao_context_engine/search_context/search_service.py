@@ -6,11 +6,11 @@ import databao_context_engine.perf.core as perf
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.prompts.provider import PromptProvider
-from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
-from databao_context_engine.storage.repositories.chunk_search_repository import (
+from databao_context_engine.search_context.chunk_search_repository import (
     ChunkSearchRepository,
     SearchResult,
 )
+from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 
 logger = logging.getLogger(__name__)
 

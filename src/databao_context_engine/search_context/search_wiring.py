@@ -12,11 +12,10 @@ from databao_context_engine.llm.factory import (
 )
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.project.layout import ProjectLayout
+from databao_context_engine.search_context.chunk_search_repository import ChunkSearchRepository, SearchResult
 from databao_context_engine.search_context.search_service import RAG_MODE, ContextSearchMode, SearchContextService
 from databao_context_engine.services.factories import create_shard_resolver
 from databao_context_engine.storage.connection import open_duckdb_connection
-from databao_context_engine.storage.repositories.chunk_search_repository import SearchResult
-from databao_context_engine.storage.repositories.factories import create_chunk_search_repository
 from databao_context_engine.system.properties import get_db_path
 
 
@@ -76,7 +75,7 @@ def _create_search_context_service(
     embedding_provider: EmbeddingProvider,
     prompt_provider: PromptProvider | None,
 ) -> SearchContextService:
-    chunk_search_repo = create_chunk_search_repository(conn)
+    chunk_search_repo = _create_chunk_search_repository(conn)
     shard_resolver = create_shard_resolver(conn)
 
     return SearchContextService(
@@ -85,3 +84,7 @@ def _create_search_context_service(
         embedding_provider=embedding_provider,
         prompt_provider=prompt_provider,
     )
+
+
+def _create_chunk_search_repository(conn: DuckDBPyConnection) -> ChunkSearchRepository:
+    return ChunkSearchRepository(conn)
