@@ -68,7 +68,7 @@ def _get_project_info(project_dir: Path) -> DceDomainInfo:
     return DceDomainInfo(
         project_path=project_dir,
         is_initialized=project_layout is not None,
-        project_id=project_layout.read_config_file().project_id if project_layout is not None else None,
+        project_id=project_layout.project_config.project_id if project_layout is not None else None,
     )
 
 

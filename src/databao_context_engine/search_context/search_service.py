@@ -99,7 +99,7 @@ class SearchContextService:
             )
 
         table_name, dimension = self._shard_resolver.resolve(
-            embedder=self._provider.embedder, model_id=self._provider.model_id
+            embedder=self._provider.embedder, embedding_model_details=self._provider.embedding_model_details
         )
 
         match rag_mode:
@@ -113,7 +113,10 @@ class SearchContextService:
 
         with perf.span(
             "search_context.embed_search_text",
-            attrs={"model_id": self._provider.model_id, "model_dim": self._provider.dim},
+            attrs={
+                "model_id": self._provider.embedding_model_details.model_id,
+                "model_dim": self._provider.embedding_model_details.model_dim,
+            },
         ):
             search_vec: Sequence[float] = self._provider.embed(embeddable_query)
 

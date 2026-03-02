@@ -127,15 +127,12 @@ class DatabaoContextEngine:
         if context_search_mode is None:
             context_search_mode = ContextSearchMode.HYBRID_SEARCH
 
-        project_config = self._project_layout.read_config_file()
         results = search_context_internal(
             project_layout=self._project_layout,
             search_text=search_text,
             limit=limit,
             datasource_ids=datasource_ids,
             context_search_mode=context_search_mode,
-            ollama_model_id=project_config.ollama_model_id,
-            ollama_model_dim=project_config.ollama_model_dim,
         )
 
         return [

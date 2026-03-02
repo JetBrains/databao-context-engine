@@ -147,8 +147,6 @@ def test_databao_context_domain_manager__index_built_contexts_indexes_all_when_n
         plugin_loader=domain_manager._plugin_loader,
         contexts=[c1, c2],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
-        ollama_model_id=None,
-        ollama_model_dim=None,
     )
 
 
@@ -180,8 +178,6 @@ def test_databao_context_domain_manager__index_built_contexts_filters_by_datasou
         plugin_loader=domain_manager._plugin_loader,
         contexts=[c1, c3],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
-        ollama_model_id=None,
-        ollama_model_dim=None,
     )
 
 

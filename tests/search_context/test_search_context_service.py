@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 from databao_context_engine import DatasourceId
+from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.search_context.chunk_search_repository import (
     KeywordSearchScore,
@@ -18,7 +19,7 @@ def test_retrieve_returns_results():
 
     shard_resolver.resolve.return_value = ("emb_tbl", 768)
     provider.embedder = "ollama"
-    provider.model_id = "nomic-embed-text"
+    provider.embedding_model_details = EmbeddingModelDetails.default()
     provider.embed.return_value = [0.1, 0.2]
 
     expected = [
@@ -56,7 +57,7 @@ def test_retrieve_returns_results():
 
     shard_resolver.resolve.assert_called_once_with(
         embedder="ollama",
-        model_id="nomic-embed-text",
+        embedding_model_details=EmbeddingModelDetails.default(),
     )
 
     provider.embed.assert_called_once_with("hello world")

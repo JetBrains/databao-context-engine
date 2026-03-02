@@ -1,41 +1,25 @@
 from __future__ import annotations
 
-import importlib
 from dataclasses import dataclass
-from pathlib import Path
-from uuid import uuid4
 
-import duckdb
 import pytest
 
 from databao_context_engine import ChunkEmbeddingMode, DatabaoContextDomainManager
-from databao_context_engine.storage.migrate import migrate
+from databao_context_engine.llm.config import EmbeddingModelDetails
+from tests.utils.project_creation import given_raw_source_file
 
 
 @dataclass(frozen=True)
 class _FakeProvider:
     embedder: str = "fake"
-    model_id: str = "dummy"
-    dim: int = 768
+    embedding_model_details: EmbeddingModelDetails = EmbeddingModelDetails(model_id="dummy", model_dim=768)
 
     def embed(self, text: str) -> list[float]:
         seed = float(len(text) % 10)
-        return [seed] * self.dim
+        return [seed] * self.embedding_model_details.model_dim
 
     def embed_many(self, texts: list[str]) -> list[list[float]]:
         return [self.embed(t) for t in texts]
-
-
-def _write_project(project_dir: Path) -> None:
-    src = project_dir / "src"
-    (src / "files").mkdir(parents=True, exist_ok=True)
-
-    (src / "files" / "note.md").write_text("# Hello\nworld\n", encoding="utf-8")
-
-    (project_dir / "nemory.ini").write_text(
-        "[DEFAULT]\nproject-id=" + str(uuid4()) + "\n",
-        encoding="utf-8",
-    )
 
 
 def _shard_rows(conn, table_name: str) -> int:
@@ -45,45 +29,6 @@ def _shard_rows(conn, table_name: str) -> int:
 def _duckdb_has_table(conn, name: str) -> bool:
     rows = conn.execute("SELECT 1 FROM duckdb_tables() WHERE table_name = ?", [name]).fetchall()
     return bool(rows)
-
-
-@pytest.fixture
-def project_dir(tmp_path: Path) -> Path:
-    _write_project(tmp_path)
-    return tmp_path
-
-
-@pytest.fixture
-def db_path(tmp_path: Path) -> Path:
-    return tmp_path / "dce_test.duckdb"
-
-
-@pytest.fixture(autouse=True)
-def _force_test_db(monkeypatch, db_path: Path):
-    import databao_context_engine.build_sources.build_wiring as wiring_mod
-
-    monkeypatch.setattr(
-        "databao_context_engine.system.properties.get_db_path",
-        lambda *a, **k: db_path,
-        raising=False,
-    )
-    importlib.reload(wiring_mod)
-
-
-@pytest.fixture
-def conn(db_path: Path):
-    """Open a connection to the SAME db file the app will use (db_path).
-
-    Run migrations and load extensions so repo assertions work.
-    """
-    migrate(db_path)
-    con = duckdb.connect(str(db_path))
-    try:
-        con.execute("LOAD vss;")
-        con.execute("SET hnsw_enable_experimental_persistence = true;")
-        yield con
-    finally:
-        con.close()
 
 
 @pytest.fixture
@@ -100,9 +45,11 @@ def use_fake_provider(mocker, fake_provider):
 
 
 def test_e2e_build_with_fake_provider(
-    project_dir, db_path, conn, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
+    project_path, db_path, conn, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
 ):
-    result = DatabaoContextDomainManager(domain_dir=project_dir).build_context(
+    given_raw_source_file(project_path, "note.md", "# Hello\nworld\n")
+
+    result = DatabaoContextDomainManager(domain_dir=project_path).build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
@@ -111,9 +58,9 @@ def test_e2e_build_with_fake_provider(
     chunks = chunk_repo.list()
     assert len(chunks) >= 1
 
-    reg = registry_repo.get(embedder=fake_provider.embedder, model_id=fake_provider.model_id)
+    reg = registry_repo.get(embedder=fake_provider.embedder, model_id=fake_provider.embedding_model_details.model_id)
     assert reg is not None
-    assert reg.dim == fake_provider.dim
+    assert reg.dim == fake_provider.embedding_model_details.model_dim
     assert _duckdb_has_table(conn, reg.table_name)
 
     count = _shard_rows(conn, reg.table_name)
@@ -121,7 +68,7 @@ def test_e2e_build_with_fake_provider(
 
 
 def test_one_source_fails_but_others_succeed(
-    mocker, project_dir, conn, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
+    mocker, project_path, conn, chunk_repo, embedding_repo, registry_repo, use_fake_provider, fake_provider
 ):
     import databao_context_engine.build_sources.plugin_execution as execmod
 
@@ -134,7 +81,9 @@ def test_one_source_fails_but_others_succeed(
 
     mocker.patch.object(execmod, "execute_plugin", side_effect=flaky_execute)
 
-    result = DatabaoContextDomainManager(domain_dir=project_dir).build_context(
+    given_raw_source_file(project_path, "note.md", "# Hello\nworld\n")
+
+    result = DatabaoContextDomainManager(domain_dir=project_path).build_context(
         datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
     )
 
@@ -143,6 +92,6 @@ def test_one_source_fails_but_others_succeed(
     chunks = chunk_repo.list()
     assert len(chunks) >= 1
 
-    reg = registry_repo.get(embedder=fake_provider.embedder, model_id=fake_provider.model_id)
+    reg = registry_repo.get(embedder=fake_provider.embedder, model_id=fake_provider.embedding_model_details.model_id)
     assert reg is not None
     assert _shard_rows(conn, reg.table_name) == len(chunks)

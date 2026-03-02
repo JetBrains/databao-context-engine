@@ -114,8 +114,7 @@ class ChunkEmbeddingService:
 
         table_name = self._shard_resolver.resolve_or_create(
             embedder=self._embedding_provider.embedder,
-            model_id=self._embedding_provider.model_id,
-            dim=self._embedding_provider.dim,
+            embedding_model_details=self._embedding_provider.embedding_model_details,
         )
 
         self._persistence_service.write_chunks_and_embeddings(

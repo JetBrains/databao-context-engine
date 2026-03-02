@@ -22,7 +22,6 @@ from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddi
 from databao_context_engine.services.factories import create_chunk_embedding_service
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.migrate import migrate
-from databao_context_engine.system.properties import get_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +31,6 @@ def build_all_datasources(
     plugin_loader: DatabaoContextPluginLoader,
     chunk_embedding_mode: ChunkEmbeddingMode,
     generate_embeddings: bool = True,
-    ollama_model_id: str | None = None,
-    ollama_model_dim: int | None = None,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -48,7 +45,7 @@ def build_all_datasources(
     # Think about alternative solutions. This solution will mirror the current behaviour
     # The current behaviour only builds what is currently in the /src folder
     # This will need to change in the future when we can pick which datasources to build
-    db_path = get_db_path(project_layout.project_dir)
+    db_path = project_layout.db_path
     db_path.parent.mkdir(parents=True, exist_ok=True)
     if db_path.exists():
         db_path.unlink()
@@ -57,7 +54,7 @@ def build_all_datasources(
     with open_duckdb_connection(db_path) as conn:
         ollama_service = create_ollama_service()
         embedding_provider = create_ollama_embedding_provider(
-            ollama_service, model_id=ollama_model_id, dim=ollama_model_dim
+            ollama_service, model_details=project_layout.project_config.ollama_embedding_model_details
         )
         description_provider = (
             create_ollama_description_provider(ollama_service)
@@ -84,8 +81,6 @@ def index_built_contexts(
     plugin_loader: DatabaoContextPluginLoader,
     contexts: list[DatasourceContext],
     chunk_embedding_mode: ChunkEmbeddingMode,
-    ollama_model_id: str | None = None,
-    ollama_model_dim: int | None = None,
 ) -> list[IndexDatasourceResult]:
     """Index the contexts into the database.
 
@@ -97,7 +92,7 @@ def index_built_contexts(
     """
     logger.debug("Starting to index %d context(s) for project %s", len(contexts), project_layout.project_dir.resolve())
 
-    db_path = get_db_path(project_layout.project_dir)
+    db_path = project_layout.db_path
     if not db_path.exists():
         db_path.parent.mkdir(parents=True, exist_ok=True)
         migrate(db_path)
@@ -105,7 +100,7 @@ def index_built_contexts(
     with open_duckdb_connection(db_path) as conn:
         ollama_service = create_ollama_service()
         embedding_provider = create_ollama_embedding_provider(
-            ollama_service, model_id=ollama_model_id, dim=ollama_model_dim
+            ollama_service, model_details=project_layout.project_config.ollama_embedding_model_details
         )
         description_provider = (
             create_ollama_description_provider(ollama_service)

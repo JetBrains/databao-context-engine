@@ -19,7 +19,7 @@ def create_shard_resolver(conn: DuckDBPyConnection, policy: TableNamePolicy | No
     )
 
 
-def create_persistence_service(conn: DuckDBPyConnection, *, model_dim: int | None) -> PersistenceService:
+def create_persistence_service(conn: DuckDBPyConnection, *, model_dim: int) -> PersistenceService:
     return PersistenceService(
         conn=conn,
         chunk_repo=create_chunk_repository(conn),
@@ -36,7 +36,7 @@ def create_chunk_embedding_service(
     chunk_embedding_mode: ChunkEmbeddingMode,
 ) -> ChunkEmbeddingService:
     resolver = create_shard_resolver(conn)
-    persistence = create_persistence_service(conn, model_dim=embedding_provider.dim)
+    persistence = create_persistence_service(conn, model_dim=embedding_provider.embedding_model_details.model_dim)
     return ChunkEmbeddingService(
         persistence_service=persistence,
         embedding_provider=embedding_provider,

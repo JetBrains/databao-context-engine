@@ -14,12 +14,12 @@ class PersistenceService:
         chunk_repo: ChunkRepository,
         embedding_repo: EmbeddingRepository,
         *,
-        dim: int | None = None,
+        dim: int,
     ):
         self._conn = conn
         self._chunk_repo = chunk_repo
         self._embedding_repo = embedding_repo
-        self._dim = dim or 768
+        self._dim = dim
 
     @perf.perf_span(
         "persistence.write_chunks_and_embeddings",

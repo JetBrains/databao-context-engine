@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
@@ -10,7 +11,11 @@ from databao_context_engine.services.table_name_policy import TableNamePolicy
 
 
 def _expected_table(provider) -> str:
-    return TableNamePolicy().build(embedder=provider.embedder, model_id=provider.model_id, dim=provider.dim)
+    return TableNamePolicy().build(
+        embedder=provider.embedder,
+        model_id=provider.embedding_model_details.model_id,
+        dim=provider.embedding_model_details.model_dim,
+    )
 
 
 def _vec(fill: float, dim: int) -> list[float]:
@@ -44,13 +49,12 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
     description_provider = Mock(spec=DescriptionProvider)
 
     embedding_provider.embedder = "ollama"
-    embedding_provider.model_id = "nomic-embed-text:v1.5"
-    embedding_provider.dim = 768
+    embedding_provider.embedding_model_details = EmbeddingModelDetails(model_id="nomic-embed-text:v1.5", model_dim=768)
 
     embedding_provider.embed_many.return_value = [
-        _vec(0.0, embedding_provider.dim),
-        _vec(1.0, embedding_provider.dim),
-        _vec(2.0, embedding_provider.dim),
+        _vec(0.0, embedding_provider.embedding_model_details.model_dim),
+        _vec(1.0, embedding_provider.embedding_model_details.model_dim),
+        _vec(2.0, embedding_provider.embedding_model_details.model_dim),
     ]
 
     description_provider.describe.side_effect = lambda *, text, context: f"desc-{text}"
@@ -76,10 +80,12 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
     )
 
     expected_table = _expected_table(embedding_provider)
-    reg = registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id)
+    reg = registry_repo.get(
+        embedder=embedding_provider.embedder, model_id=embedding_provider.embedding_model_details.model_id
+    )
     assert reg is not None
     assert reg.table_name == expected_table
-    assert reg.dim == embedding_provider.dim
+    assert reg.dim == embedding_provider.embedding_model_details.model_dim
 
     saved = chunk_repo.list()
     assert [c.embeddable_text for c in saved] == ["C", "B", "A"]

@@ -23,7 +23,7 @@ class Project:
 @pytest.fixture
 def project(create_db, project_layout: ProjectLayout, db_path: Path) -> Project:
     output_dir = get_output_dir(project_layout.project_dir)
-    output_dir.mkdir()
+    output_dir.mkdir(exist_ok=True)
 
     datasource_contexts = [
         DatasourceContext(

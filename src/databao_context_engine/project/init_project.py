@@ -120,6 +120,6 @@ class _ProjectCreator:
 
     def create_dce_config_file(self) -> None:
         self.config_file.touch()
-        ProjectConfig(ollama_model_id=self.ollama_model_id, ollama_model_dim=self.ollama_model_dim).save(
-            self.config_file
+        ProjectConfig.save_config_file(
+            self.config_file, ollama_model_id=self.ollama_model_id, ollama_model_dim=self.ollama_model_dim
         )

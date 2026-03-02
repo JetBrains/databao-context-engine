@@ -1,5 +1,6 @@
 import pytest
 
+from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 
@@ -9,7 +10,9 @@ def test_resolve_existing_returns_table_name_and_dimension(conn, registry_repo):
     registry_repo.create(embedder="tests", model_id="model:v1", dim=768, table_name=table_name)
 
     resolver = EmbeddingShardResolver(conn=conn, registry_repo=registry_repo)
-    resolved_table_name, dimension = resolver.resolve(embedder="tests", model_id="model:v1")
+    resolved_table_name, dimension = resolver.resolve(
+        embedder="tests", embedding_model_details=EmbeddingModelDetails(model_id="model:v1", model_dim=768)
+    )
     assert table_name == resolved_table_name
     assert dimension == 768
 
@@ -17,7 +20,10 @@ def test_resolve_existing_returns_table_name_and_dimension(conn, registry_repo):
 def test_resolve_or_create_creates_table_index_and_registry(conn, registry_repo, resolver):
     table_name = TableNamePolicy().build(embedder="ollama", model_id="nomic-embed-text:v1.5", dim=768)
 
-    resolved_table_name = resolver.resolve_or_create(embedder="ollama", model_id="nomic-embed-text:v1.5", dim=768)
+    resolved_table_name = resolver.resolve_or_create(
+        embedder="ollama",
+        embedding_model_details=EmbeddingModelDetails(model_id="nomic-embed-text:v1.5", model_dim=768),
+    )
 
     assert table_name == resolved_table_name
 
@@ -31,8 +37,12 @@ def test_resolve_or_create_creates_table_index_and_registry(conn, registry_repo,
 
 
 def test_resolve_or_create_is_idempotent(conn, registry_repo, resolver):
-    table_name1 = resolver.resolve_or_create(embedder="tests", model_id="idempotent:v1", dim=768)
-    table_name2 = resolver.resolve_or_create(embedder="tests", model_id="idempotent:v1", dim=768)
+    table_name1 = resolver.resolve_or_create(
+        embedder="tests", embedding_model_details=EmbeddingModelDetails(model_id="idempotent:v1", model_dim=768)
+    )
+    table_name2 = resolver.resolve_or_create(
+        embedder="tests", embedding_model_details=EmbeddingModelDetails(model_id="idempotent:v1", model_dim=768)
+    )
 
     assert table_name1 == table_name2
 
@@ -44,14 +54,20 @@ def test_resolve_or_create_is_idempotent(conn, registry_repo, resolver):
 
 
 def test_resolve_or_create_conflicting_dim_raises(conn, registry_repo, resolver):
-    resolver.resolve_or_create(embedder="tests", model_id="conflict:v1", dim=768)
+    resolver.resolve_or_create(
+        embedder="tests", embedding_model_details=EmbeddingModelDetails(model_id="conflict:v1", model_dim=768)
+    )
 
     with pytest.raises(ValueError):
-        resolver.resolve_or_create(embedder="tests", model_id="conflict:v1", dim=1024)
+        resolver.resolve_or_create(
+            embedder="tests", embedding_model_details=EmbeddingModelDetails(model_id="conflict:v1", model_dim=1024)
+        )
 
 
 def test_table_name_policy_replaces_unsafe_chars(conn, resolver):
-    table_name = resolver.resolve_or_create(embedder="e", model_id="m-1:beta", dim=256)
+    table_name = resolver.resolve_or_create(
+        embedder="e", embedding_model_details=EmbeddingModelDetails(model_id="m-1:beta", model_dim=256)
+    )
     assert "m_1_beta" in table_name
     assert table_name.startswith("embedding_e__")
     assert table_name.endswith("__256")
