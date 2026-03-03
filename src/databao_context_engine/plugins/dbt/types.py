@@ -1,17 +1,25 @@
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
 from databao_context_engine.pluginlib.build_plugin import AbstractConfigFile
+from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
+from databao_context_engine.plugins.dbt.context_filtering import DbtContextFilter
 
 
 class DbtConfigFile(BaseModel, AbstractConfigFile):
     name: str
     type: str = Field(default="dbt")
     dbt_target_folder_path: Path
+    context_filter: Annotated[DbtContextFilter | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)] = (
+        Field(
+            default=None,
+            description="Optional include/exclude selector for dbt resources using glob unique_id patterns.",
+        )
+    )
 
 
 class DbtMaterialization(str, Enum):
