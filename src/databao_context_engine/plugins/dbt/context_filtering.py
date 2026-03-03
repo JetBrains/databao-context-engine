@@ -39,6 +39,18 @@ DbtContextFilterRule = str | DbtContextFilterStructuredRule
 
 
 class DbtContextFilter(BaseModel):
+    """Filter dbt resources via include/exclude rules.
+
+    Rules can be:
+    - A string glob pattern matched against resource `unique_id`.
+    - A structured rule object with any combination of:
+      `unique_id`, `resource_type`, `database`, `schema`, `name`.
+    - A mix of both in the same include/exclude list.
+
+    Matching uses Unix shell-style wildcard syntax (`*`, `?`, `[seq]`, `[!seq]`).
+    Evaluation order: first apply include rules (if any), then apply exclude rules (if any) on the included set.
+    """
+
     include: list[DbtContextFilterRule] = []
     exclude: list[DbtContextFilterRule] = []
 
