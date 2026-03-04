@@ -52,7 +52,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
         comps = self._component_queries(catalog, schemas)
 
-        statements = [c["query"].sql.rstrip().rstrip(";") for c in comps]
+        statements = [c["sql"].sql.rstrip().rstrip(";") for c in comps]
         batch_sql = ";\n".join(statements)
 
         results: dict[str, list[dict]] = {
@@ -94,14 +94,14 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
     def _component_queries(self, catalog: str, schemas: list[str]) -> list[dict]:
         return [
-            {"name": "relations", "query": self.get_relations_sql_query(catalog, schemas)},
-            {"name": "columns", "query": self.get_columns_sql_query(catalog, schemas)},
-            {"name": None, "query": SQLQuery(self._sql_pk_show(catalog), None)},
-            {"name": "pk", "query": self.get_primary_keys_sql_query(catalog, schemas)},
-            {"name": None, "query": SQLQuery(self._sql_fk_show(catalog), None)},
-            {"name": "fks", "query": self.get_foreign_keys_sql_query(catalog, schemas)},
-            {"name": None, "query": SQLQuery(self._sql_uq_show(catalog), None)},
-            {"name": "uq", "query": self.get_unique_constraints_sql_query(catalog, schemas)},
+            {"name": "relations", "sql": self.get_relations_sql_query(catalog, schemas)},
+            {"name": "columns", "sql": self.get_columns_sql_query(catalog, schemas)},
+            {"name": None, "sql": SQLQuery(self._sql_pk_show(catalog), None)},
+            {"name": "pk", "sql": self.get_primary_keys_sql_query(catalog, schemas)},
+            {"name": None, "sql": SQLQuery(self._sql_fk_show(catalog), None)},
+            {"name": "fks", "sql": self.get_foreign_keys_sql_query(catalog, schemas)},
+            {"name": None, "sql": SQLQuery(self._sql_uq_show(catalog), None)},
+            {"name": "uq", "sql": self.get_unique_constraints_sql_query(catalog, schemas)},
         ]
 
     @override
