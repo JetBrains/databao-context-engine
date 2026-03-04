@@ -4,6 +4,7 @@ from typing import Any
 
 from pyathena import connect
 from pyathena.cursor import DictCursor
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.athena.config_file import AthenaConfigFile
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
@@ -44,7 +45,7 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
         results: dict[str, list[dict]] = {}
 
         for name, q in comps.items():
-            results[name] = self._fetchall_dicts(connection, q, None)
+            results[name] = self._fetchall_dicts(connection, q.sql, q.params)
 
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
@@ -57,15 +58,18 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
             idx_cols=[],
         )
 
-    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, str]:
-        schemas_in = ", ".join(self._quote_literal(s) for s in schemas)
+    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery]:
         return {
-            "relations": self._sql_relations(catalog, schemas_in),
-            "columns": self._sql_columns(catalog, schemas_in),
+            "relations": self.get_relations_sql_query(catalog, schemas),
+            "columns": self.get_columns_sql_query(catalog, schemas),
         }
 
-    def _sql_relations(self, catalog: str, schemas_in: str) -> str:
-        return f"""
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_in = ", ".join(self._quote_literal(s) for s in schemas)
+
+        return SQLQuery(
+            sql=f"""
             SELECT
                 table_schema AS schema_name,
                 table_name,
@@ -80,9 +84,14 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
             WHERE 
                 table_schema IN ({schemas_in})
         """
+        )
 
-    def _sql_columns(self, catalog: str, schemas_in: str) -> str:
-        return f"""
+    @override
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_in = ", ".join(self._quote_literal(s) for s in schemas)
+
+        return SQLQuery(
+            sql=f"""
         SELECT 
             table_schema AS schema_name,
             table_name, 
@@ -99,6 +108,7 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
             table_name,
             ordinal_position
         """
+        )
 
     def _resolve_pseudo_catalog_name(self, file_config: AthenaConfigFile) -> str:
         return "awsdatacatalog"

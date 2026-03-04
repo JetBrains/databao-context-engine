@@ -7,6 +7,7 @@ from collections.abc import Coroutine
 from typing import Any, Sequence
 
 import asyncpg
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
@@ -197,11 +198,13 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         if not schemas:
             return []
 
-        comps = self._component_queries()
+        comps = self._component_queries(catalog, schemas)
         results: dict[str, list[dict]] = {name: [] for name in comps}
 
-        for cq, sql in comps.items():
-            results[cq] = self._fetchall_dicts(connection, sql, (schemas,)) or []
+        for name, sql_query in comps.items():
+            if sql_query is None:
+                continue
+            results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params) or []
 
         # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
         table_stats, column_stats = self._collect_stats(connection, schemas)
@@ -294,20 +297,22 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
 
         return column_stats
 
-    def _component_queries(self) -> dict[str, str]:
+    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery | None]:
         return {
-            "relations": self._sql_relations(),
-            "columns": self._sql_columns(),
-            "pk": self._sql_primary_keys(),
-            "uq": self._sql_uniques(),
-            "checks": self._sql_checks(),
-            "fks": self._sql_foreign_keys(),
-            "idx": self._sql_indexes(),
-            "partitions": self._sql_partitions(),
+            "relations": self.get_relations_sql_query(catalog, schemas),
+            "columns": self.get_columns_sql_query(catalog, schemas),
+            "pk": self.get_primary_keys_sql_query(catalog, schemas),
+            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
+            "checks": self.get_checks_sql_query(catalog, schemas),
+            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
+            "idx": self.get_indexes_sql_query(catalog, schemas),
+            "partitions": self.get_partitions_sql_query(catalog, schemas),
         }
 
-    def _sql_relations(self) -> str:
-        return """
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT 
                 n.nspname AS schema_name,
                 c.relname AS table_name,
@@ -328,10 +333,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             ORDER BY 
                 schema_name,
                 c.relname
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_columns(self) -> str:
-        return """
+    @override
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname AS table_name,
@@ -360,10 +369,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 schema_name,
                 c.relname, 
                 a.attnum
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_primary_keys(self) -> str:
-        return """
+    @override
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname        AS table_name,
@@ -385,10 +398,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname, 
                 con.conname, 
                 k.pos
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_uniques(self) -> str:
-        return """
+    @override
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname        AS table_name,
@@ -410,10 +427,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname, 
                 con.conname, 
                 k.pos
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_checks(self) -> str:
-        return """
+    @override
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname AS table_name,
@@ -432,10 +453,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 schema_name, 
                 c.relname, 
                 con.conname
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_foreign_keys(self) -> str:
-        return """
+    @override
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname           AS table_name,
@@ -473,10 +498,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname, 
                 con.conname, 
                 src.ord
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_indexes(self) -> str:
-        return """
+    @override
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname                                   AS table_name,
@@ -511,10 +540,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname, 
                 idx.relname, 
                 k.pos
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_partitions(self) -> str:
-        return """
+    @override
+    def get_partitions_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             WITH partitions AS (
                 SELECT
                     parentrel.oid,
@@ -549,7 +582,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 rel.relname, 
                 part.partstrat, 
                 partitions.partition_tables
-               """
+               """,
+            (schemas,),
+        )
 
     def _sql_table_stats(self) -> str:
         return """

@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from google.cloud import bigquery
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.bigquery.config_file import (
@@ -104,8 +105,10 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
         comps = self._component_queries(catalog, schemas)
         results: dict[str, list[dict]] = {}
 
-        for name, sql in comps.items():
-            results[name] = self._fetchall_dicts(connection, sql, None)
+        for name, sql_query in comps.items():
+            if sql_query is None:
+                continue
+            results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
 
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
@@ -118,16 +121,17 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
             idx_cols=[],
         )
 
-    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, str]:
+    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery | None]:
         return {
-            "relations": self._sql_relations(catalog, schemas),
-            "columns": self._sql_columns(catalog, schemas),
-            "pk": self._sql_primary_keys(catalog, schemas),
-            "uq": self._sql_unique_constraints(catalog, schemas),
-            "fks": self._sql_foreign_keys(catalog, schemas),
+            "relations": self.get_relations_sql_query(catalog, schemas),
+            "columns": self.get_columns_sql_query(catalog, schemas),
+            "pk": self.get_primary_keys_sql_query(catalog, schemas),
+            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
+            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
         }
 
-    def _sql_relations(self, catalog: str, schemas: list[str]) -> str:
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         cat = self._quote_ident(catalog)
         parts = []
         for schema in schemas:
@@ -151,9 +155,10 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
                     ON t.table_name = opt.table_name
                     AND opt.option_name = 'description'
             """)
-        return " UNION ALL ".join(parts)
+        return SQLQuery(" UNION ALL ".join(parts), None)
 
-    def _sql_columns(self, catalog: str, schemas: list[str]) -> str:
+    @override
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         cat = self._quote_ident(catalog)
         parts = []
         for schema in schemas:
@@ -180,9 +185,10 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
                     AND c.column_name = cfp.column_name
                     AND cfp.column_name = cfp.field_path
             """)
-        return " UNION ALL ".join(parts)
+        return SQLQuery(" UNION ALL ".join(parts), None)
 
-    def _sql_primary_keys(self, catalog: str, schemas: list[str]) -> str:
+    @override
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         cat = self._quote_ident(catalog)
         parts = []
         for schema in schemas:
@@ -201,9 +207,10 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
                     AND tc.constraint_name = kcu.constraint_name
                 WHERE tc.constraint_type = 'PRIMARY KEY'
             """)
-        return " UNION ALL ".join(parts)
+        return SQLQuery(" UNION ALL ".join(parts), None)
 
-    def _sql_unique_constraints(self, catalog: str, schemas: list[str]) -> str:
+    @override
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         cat = self._quote_ident(catalog)
         parts = []
         for schema in schemas:
@@ -222,9 +229,10 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
                     AND tc.constraint_name = kcu.constraint_name
                 WHERE tc.constraint_type = 'UNIQUE'
             """)
-        return " UNION ALL ".join(parts)
+        return SQLQuery(" UNION ALL ".join(parts), None)
 
-    def _sql_foreign_keys(self, catalog: str, schemas: list[str]) -> str:
+    @override
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         cat = self._quote_ident(catalog)
         parts = []
         for schema in schemas:
@@ -266,7 +274,7 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
                     AND fk_kcu.position_in_unique_constraint = ref_pk_kcu.ordinal_position
                 WHERE fk_tc.constraint_type = 'FOREIGN KEY'
             """)
-        return " UNION ALL ".join(parts)
+        return SQLQuery(" UNION ALL ".join(parts), None)
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sch = self._quote_ident(schema)

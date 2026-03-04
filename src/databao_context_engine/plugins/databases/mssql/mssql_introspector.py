@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from mssql_python import connect  # type: ignore[import-untyped]
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema, DatabaseTable
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.mssql.config_file import MSSQLConfigFile
 
@@ -66,7 +67,8 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
         if not schemas:
             return []
 
-        comps = self._component_queries()
+        comps = self._component_queries(catalog, schemas)
+        sql_queries = {name: query for name, query in comps.items() if query is not None}
 
         values = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         batch_prefix = "SET NOCOUNT ON; SET XACT_ABORT ON;"
@@ -77,21 +79,21 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             + "\n"
             + schema_table
             + "\n"
-            + ";\n".join(sql.strip().rstrip(";") for sql in comps.values())
+            + ";\n".join(query.sql.strip().rstrip(";") for query in sql_queries.values())
             + ";"
         )
 
         results: dict[str, list[dict]] = {name: [] for name in comps}
         with connection.cursor() as cur:
             cur.execute(batch)
-            for ix, name in enumerate(comps.keys(), start=1):
+            for ix, name in enumerate(sql_queries.keys(), start=1):
                 rows: list[dict] = []
                 if cur.description:
                     cols = [c[0].lower() for c in cur.description]
                     rows = [dict(zip(cols, r)) for r in cur.fetchall()]
                 results[name] = rows
 
-                if ix < len(comps):
+                if ix < len(sql_queries):
                     ok = cur.nextset()
                     if not ok:
                         raise RuntimeError(f"Batch ended early after component #{ix} '{name}'")
@@ -107,54 +109,21 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             idx_cols=results.get("idx", []),
         )
 
-    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
-        comps = self._component_queries()
-
-        schema_lit = self._quote_literal(schema)
-        stmts = [sql.replace("{SCHEMA}", schema_lit) for sql in comps.values()]
-        batch_prefix = "SET NOCOUNT ON; SET XACT_ABORT ON;"
-        batch = batch_prefix + "\n" + ";\n".join(s.rstrip().rstrip(";") for s in stmts) + ";"
-
-        results: dict[str, list[dict]] = {name: [] for name in comps}
-        with connection.cursor() as cur:
-            cur.execute(batch)
-            for ix, name in enumerate(comps.keys(), start=1):
-                try:
-                    rows: list[dict] = []
-                    if cur.description:
-                        cols = [c[0].lower() for c in cur.description]
-                        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-                    results[name] = rows
-                except Exception as e:
-                    raise RuntimeError(f"Failed reading component #{ix} '{name}'") from e
-                if ix < len(comps):
-                    ok = cur.nextset()
-                    if not ok:
-                        raise RuntimeError(f"Batch ended early after component #{ix} '{name}'")
-
-        return IntrospectionModelBuilder.build_tables_from_components(
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-        )
-
-    def _component_queries(self) -> dict[str, str]:
+    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery | None]:
         return {
-            "relations": self._sql_relations(),
-            "columns": self._sql_columns(),
-            "pk": self._sql_primary_keys(),
-            "uq": self._sql_uniques(),
-            "checks": self._sql_checks(),
-            "fks": self._sql_foreign_keys(),
-            "idx": self._sql_indexes(),
+            "relations": self.get_relations_sql_query(catalog, schemas),
+            "columns": self.get_columns_sql_query(catalog, schemas),
+            "pk": self.get_primary_keys_sql_query(catalog, schemas),
+            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
+            "checks": self.get_checks_sql_query(catalog, schemas),
+            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
+            "idx": self.get_indexes_sql_query(catalog, schemas),
         }
 
-    def _sql_relations(self) -> str:
-        return r"""
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -195,11 +164,15 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 s.name IN (SELECT name FROM @schemas)
             ORDER BY 
                 table_name;
-        """
+        """,
+            None,
+        )
 
-    # TODO: simplify case when for datatype
-    def _sql_columns(self) -> str:
-        return r"""
+    @override
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        # TODO: simplify case when for datatype
+        return SQLQuery(
+            r"""
             SELECT
                 s.name AS schema_name,
                 o.name AS table_name,
@@ -234,10 +207,14 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             ORDER BY 
                 o.name, 
                 c.column_id;
-        """
+        """,
+            None,
+        )
 
-    def _sql_primary_keys(self) -> str:
-        return r"""
+    @override
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -257,10 +234,14 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 t.name, 
                 kc.name, 
                 ic.key_ordinal;
-        """
+        """,
+            None,
+        )
 
-    def _sql_uniques(self) -> str:
-        return r"""
+    @override
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -280,10 +261,14 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 t.name, 
                 kc.name, 
                 ic.key_ordinal;
-        """
+        """,
+            None,
+        )
 
-    def _sql_checks(self) -> str:
-        return r"""
+    @override
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -302,10 +287,14 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             ORDER BY 
                 t.name, 
                 cc.name;
-        """
+        """,
+            None,
+        )
 
-    def _sql_foreign_keys(self) -> str:
-        return r"""
+    @override
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -334,11 +323,14 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 t.name, 
                 fk.name, 
                 fkc.constraint_column_id;
-        """
+        """,
+            None,
+        )
 
-    # TODO: case when is confusing
-    def _sql_indexes(self) -> str:
-        return r"""
+    @override
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -369,7 +361,9 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 t.name, 
                 i.name, 
                 ic.key_ordinal;
-        """
+        """,
+            None,
+        )
 
     def _create_connection_string_for_config(self, file_config: Mapping[str, Any]) -> str:
         def _escape_odbc_value(value: str) -> str:

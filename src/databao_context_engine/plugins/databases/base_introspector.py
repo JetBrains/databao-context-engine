@@ -120,6 +120,32 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
         raise NotImplementedError
 
+    @abstractmethod
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        raise NotImplementedError
+
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_partitions_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
     def _collect_samples_for_table(self, connection, catalog: str, schema: str, table: str) -> list[dict[str, Any]]:
         samples: list[dict[str, Any]] = []
         if self._SAMPLE_LIMIT > 0:
