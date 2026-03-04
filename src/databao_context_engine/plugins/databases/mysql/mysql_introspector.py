@@ -117,7 +117,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 t.TABLE_SCHEMA AS schema_name,
                 t.TABLE_NAME        AS table_name,
@@ -133,11 +133,11 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             FROM 
                 INFORMATION_SCHEMA.TABLES t
             WHERE 
-                t.TABLE_SCHEMA IN ({SCHEMAS})
+                t.TABLE_SCHEMA IN ({schemas_sql})
             ORDER BY 
                 t.TABLE_SCHEMA,
                 t.TABLE_NAME
-        """.replace("{SCHEMAS}", schemas_sql),
+            """,
             None,
         )
 
@@ -145,7 +145,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 c.TABLE_SCHEMA AS schema_name,
                 c.TABLE_NAME                         AS table_name,
@@ -169,12 +169,12 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             FROM 
                 INFORMATION_SCHEMA.COLUMNS c
             WHERE 
-                c.TABLE_SCHEMA IN ({SCHEMAS})
+                c.TABLE_SCHEMA IN ({schemas_sql})
             ORDER BY 
                 c.TABLE_SCHEMA,
                 c.TABLE_NAME, 
                 c.ORDINAL_POSITION
-        """.replace("{SCHEMAS}", schemas_sql),
+            """,
             None,
         )
 
@@ -182,7 +182,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 tc.TABLE_SCHEMA AS schema_name,
                 tc.TABLE_NAME         AS table_name,
@@ -194,14 +194,14 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
                      ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_SCHEMA = tc.TABLE_SCHEMA AND kcu.TABLE_NAME = tc.TABLE_NAME
             WHERE 
-                tc.TABLE_SCHEMA IN ({SCHEMAS})
+                tc.TABLE_SCHEMA IN ({schemas_sql})
                 AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
             ORDER BY 
                 tc.TABLE_SCHEMA,
                 tc.TABLE_NAME, 
                 tc.CONSTRAINT_NAME, 
                 kcu.ORDINAL_POSITION
-        """.replace("{SCHEMAS}", schemas_sql),
+            """,
             None,
         )
 
@@ -209,7 +209,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 tc.TABLE_SCHEMA AS schema_name,
                 tc.TABLE_NAME         AS table_name,
@@ -220,14 +220,14 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
                 JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_SCHEMA = tc.TABLE_SCHEMA AND kcu.TABLE_NAME = tc.TABLE_NAME
             WHERE 
-                tc.TABLE_SCHEMA IN ({SCHEMAS})
+                tc.TABLE_SCHEMA IN ({schemas_sql})
                 AND tc.CONSTRAINT_TYPE = 'UNIQUE'
             ORDER BY 
                 tc.TABLE_SCHEMA,
                 tc.TABLE_NAME, 
                 tc.CONSTRAINT_NAME, 
                 kcu.ORDINAL_POSITION
-        """.replace("{SCHEMAS}", schemas_sql),
+            """,
             None,
         )
 
@@ -235,7 +235,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 tc.TABLE_SCHEMA AS schema_name,
                 tc.TABLE_NAME        AS table_name,
@@ -246,13 +246,13 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
                 JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA = tc.TABLE_SCHEMA AND cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
             WHERE 
-                tc.TABLE_SCHEMA IN ({SCHEMAS})
+                tc.TABLE_SCHEMA IN ({schemas_sql})
                 AND tc.CONSTRAINT_TYPE = 'CHECK'
             ORDER BY 
                 tc.TABLE_SCHEMA,
                 tc.TABLE_NAME, 
                 tc.CONSTRAINT_NAME
-        """.replace("{SCHEMAS}", schemas_sql),
+            """,
             None,
         )
 
@@ -260,7 +260,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 kcu.TABLE_SCHEMA AS schema_name,
                 kcu.TABLE_NAME                 AS table_name,
@@ -279,14 +279,14 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA AND tc.TABLE_NAME = kcu.TABLE_NAME
                 JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc ON rc.CONSTRAINT_SCHEMA = kcu.TABLE_SCHEMA AND rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
             WHERE 
-                kcu.TABLE_SCHEMA IN ({SCHEMAS})
+                kcu.TABLE_SCHEMA IN ({schemas_sql})
                 AND tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
             ORDER BY 
                 kcu.TABLE_SCHEMA,
                 kcu.TABLE_NAME, 
                 kcu.CONSTRAINT_NAME, 
                 kcu.ORDINAL_POSITION
-        """.replace("{SCHEMAS}", schemas_sql),
+            """,
             None,
         )
 
@@ -294,7 +294,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 s.TABLE_SCHEMA AS schema_name,
                 s.TABLE_NAME                                    AS table_name,
@@ -307,14 +307,14 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             FROM 
                 INFORMATION_SCHEMA.STATISTICS s
             WHERE 
-                s.TABLE_SCHEMA IN ({SCHEMAS})
+                s.TABLE_SCHEMA IN ({schemas_sql})
                 AND s.INDEX_NAME <> 'PRIMARY'
             ORDER BY 
                 s.TABLE_SCHEMA,
                 s.TABLE_NAME, 
                 s.INDEX_NAME, 
                 s.SEQ_IN_INDEX
-        """.replace("{SCHEMAS}", schemas_sql),
+            """,
             None,
         )
 
