@@ -204,10 +204,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             results[cq] = self._fetchall_dicts(connection, sql, (schemas,)) or []
 
         # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
-        results["column_stats"] = self._enrich_column_stats(
-            results.get("column_stats", []),
-            results.get("table_stats", []),
-        )
+        table_stats, column_stats = self._collect_stats(connection, schemas)
 
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
@@ -219,9 +216,23 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
             partitions=results.get("partitions", []),
-            table_stats=results.get("table_stats", []),
-            column_stats=results.get("column_stats", []),
+            table_stats=table_stats,
+            column_stats=column_stats,
         )
+
+    def _collect_stats(self, connection, schemas: list[str]) -> tuple[list[dict], list[dict]]:
+        table_stats_query = SQLQuery(self._sql_table_stats(), (schemas,))
+        table_stats = self._fetchall_dicts(connection, table_stats_query.sql, table_stats_query.params)
+
+        column_stats_query = SQLQuery(self._sql_column_stats(), (schemas,))
+        column_stats = self._fetchall_dicts(connection, column_stats_query.sql, column_stats_query.params)
+
+        enriched_column_stats = self._enrich_column_stats(
+            column_stats or [],
+            table_stats or [],
+        )
+
+        return table_stats, enriched_column_stats
 
     def _enrich_column_stats(self, column_stats: list[dict], table_stats: list[dict]) -> list[dict]:
 
@@ -293,8 +304,6 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             "fks": self._sql_foreign_keys(),
             "idx": self._sql_indexes(),
             "partitions": self._sql_partitions(),
-            "table_stats": self._sql_table_stats(),
-            "column_stats": self._sql_column_stats(),
         }
 
     def _sql_relations(self) -> str:
