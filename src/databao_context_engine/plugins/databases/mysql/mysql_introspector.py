@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 from collections import defaultdict
+from typing import ClassVar
 
 import pymysql
 from pymysql.constants import CLIENT
@@ -19,6 +20,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "mysql", "performance_schema", "sys"}
 
     supports_catalogs = True
+    _USE_BATCH: ClassVar[bool] = False
 
     def _connect(self, file_config: MySQLConfigFile, *, catalog: str | None = None):
         connection_kwargs = file_config.connection.to_pymysql_kwargs()
@@ -50,7 +52,16 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             None,
         )
 
+    @override
     def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if self._USE_BATCH:
+            return self.collect_catalog_model_batched(connection, catalog, schemas)
+
+        return super().collect_catalog_model(connection, catalog, schemas)
+
+    def collect_catalog_model_batched(
+        self, connection, catalog: str, schemas: list[str]
+    ) -> list[DatabaseSchema] | None:
         if not schemas:
             return []
 
@@ -81,7 +92,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                     if not ok:
                         raise RuntimeError(f"MySQL batch ended early after component #{ix} '{name}'")
 
-        table_stats, column_stats = self._collect_stats(
+        table_stats, column_stats = self.collect_stats(
             connection,
             schemas=schemas,
             relations=results.get("relations", []),
@@ -323,7 +334,8 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def _quote_ident(self, ident: str) -> str:
         return "`" + ident.replace("`", "``") + "`"
 
-    def _collect_stats(
+    @override
+    def collect_stats(
         self,
         connection,
         schemas: list[str],

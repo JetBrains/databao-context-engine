@@ -4,8 +4,6 @@ from pathlib import Path
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.sqlite.config_file import SQLiteConfigFile
 
 
@@ -51,30 +49,6 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
 
     def _list_schemas_for_catalog(self, connection, catalog: str) -> list[str]:
         return [self._PSEUDO_SCHEMA]
-
-    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
-
-        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
-        results: dict[str, list[dict]] = {name: [] for name in introspection_queries}
-
-        for name, sql_query in introspection_queries.items():
-            if sql_query is None:
-                continue
-            results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params) or []
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=[self._PSEUDO_SCHEMA],
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-            partitions=results.get("partitions", []),
-        )
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:

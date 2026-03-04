@@ -7,9 +7,7 @@ import duckdb
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
 
 logger = logging.getLogger(__name__)
@@ -39,35 +37,6 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             return SQLQuery("SELECT schema_name, catalog_name FROM information_schema.schemata", None)
         sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(?)"
         return SQLQuery(sql, (catalogs,))
-
-    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
-
-        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
-        results: dict[str, list[dict]] = {cq: [] for cq in introspection_queries}
-
-        for name, sql_query in introspection_queries.items():
-            if sql_query is None:
-                continue
-            results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
-
-        # Collect table and column statistics using SUMMARIZE
-        table_stats, column_stats = self._collect_stats(connection, results.get("relations", []))
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=schemas,
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-            partitions=results.get("partitions", []),
-            table_stats=table_stats,
-            column_stats=column_stats,
-        )
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
@@ -333,7 +302,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             (schemas,),
         )
 
-    def _collect_stats(self, connection, relations: list[dict]) -> tuple[list[dict], list[dict]]:
+    @override
+    def collect_stats(
+        self,
+        connection,
+        schemas: list[str],
+        relations: list[dict],
+        columns: list[dict],
+    ) -> tuple[list[dict], list[dict]]:
         table_stats = []
         column_stats = []
 

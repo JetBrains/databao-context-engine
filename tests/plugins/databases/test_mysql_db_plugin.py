@@ -9,6 +9,7 @@ from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.mysql.mysql_db_plugin import MySQLDbPlugin
+from databao_context_engine.plugins.databases.mysql.mysql_introspector import MySQLIntrospector
 from tests.plugins.databases.database_contracts import (
     CheckConstraintExists,
     ColumnIs,
@@ -257,8 +258,11 @@ def mysql_container_with_demo_schema(mysql_container: MySqlContainer):
     return mysql_container
 
 
-def test_mysql_introspection(mysql_container_with_demo_schema):
+@pytest.mark.parametrize("batched", [True, False])
+def test_mysql_introspection(mysql_container_with_demo_schema, batched: bool):
     plugin = MySQLDbPlugin()
+    MySQLIntrospector._USE_BATCH = batched
+
     config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
     result = execute_datasource_plugin(plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name")
 

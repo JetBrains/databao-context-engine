@@ -13,8 +13,6 @@ from databao_context_engine.plugins.databases.bigquery.config_file import (
     BigQueryServiceAccountJsonAuth,
     BigQueryServiceAccountKeyFileAuth,
 )
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
 class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
@@ -95,32 +93,6 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
         if default_job_config and default_job_config.default_dataset:
             return [default_job_config.default_dataset.dataset_id]
         return [ds.dataset_id for ds in connection.list_datasets()]
-
-    def collect_catalog_model(
-        self, connection: bigquery.Client, catalog: str, schemas: list[str]
-    ) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
-
-        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
-        results: dict[str, list[dict]] = {}
-
-        for name, sql_query in introspection_queries.items():
-            if sql_query is None:
-                continue
-            results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=schemas,
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-            partitions=results.get("partitions", []),
-        )
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:

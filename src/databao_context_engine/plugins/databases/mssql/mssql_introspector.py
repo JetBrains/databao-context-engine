@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, ClassVar, Mapping
 
 from mssql_python import connect  # type: ignore[import-untyped]
 from typing_extensions import override
@@ -32,6 +32,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
         "tempdb",
     )
     supports_catalogs = True
+    _USE_BATCH: ClassVar[bool] = False
 
     def _connect(self, file_config: MSSQLConfigFile, *, catalog: str | None = None):
         connection = file_config.connection
@@ -61,27 +62,23 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             parts.append(f"SELECT schema_name, catalog_name FROM {catalog}.information_schema.schemata")
         return SQLQuery(" UNION ALL ".join(parts), None)
 
-    _USE_BATCH = True
-
+    @override
     def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if self._USE_BATCH:
+            return self.collect_catalog_model_batched(connection, catalog, schemas)
+        return super().collect_catalog_model(connection, catalog, schemas)
+
+    def collect_catalog_model_batched(
+        self, connection, catalog: str, schemas: list[str]
+    ) -> list[DatabaseSchema] | None:
         if not schemas:
             return []
 
         introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
         sql_queries = {name: query for name, query in introspection_queries.items() if query is not None}
 
-        values = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         batch_prefix = "SET NOCOUNT ON; SET XACT_ABORT ON;"
-        schema_table = f"DECLARE @schemas TABLE (name sysname);\nINSERT INTO @schemas (name) VALUES {values};"
-
-        batch = (
-            batch_prefix
-            + "\n"
-            + schema_table
-            + "\n"
-            + ";\n".join(query.sql.strip().rstrip(";") for query in sql_queries.values())
-            + ";"
-        )
+        batch = batch_prefix + "\n" + ";\n".join(query.sql.strip().rstrip(";") for query in sql_queries.values()) + ";"
 
         results: dict[str, list[dict]] = {name: [] for name in introspection_queries}
         with connection.cursor() as cur:
@@ -112,8 +109,9 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_in = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -125,7 +123,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 LEFT JOIN sys.extended_properties ep 
                           ON ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
             UNION ALL
             SELECT
                 s.name AS schema_name,
@@ -138,7 +136,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 LEFT JOIN sys.extended_properties ep 
                           ON ep.major_id = v.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
             UNION ALL
             SELECT
                 s.name AS schema_name,
@@ -151,7 +149,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 LEFT JOIN sys.extended_properties ep 
                           ON ep.major_id = et.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
             ORDER BY 
                 table_name;
         """,
@@ -161,8 +159,9 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     @override
     def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         # TODO: simplify case when for datatype
+        schemas_in = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 s.name AS schema_name,
                 o.name AS table_name,
@@ -193,18 +192,19 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
                 LEFT JOIN sys.extended_properties ep ON ep.class = 1 AND ep.major_id = c.object_id AND ep.minor_id = c.column_id AND ep.name = 'MS_Description'
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
             ORDER BY 
                 o.name, 
                 c.column_id;
-        """,
+            """,
             None,
         )
 
     @override
     def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_in = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -218,7 +218,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id AND ic.is_included_column = 0
                 JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
                 AND kc.type = 'PK'
             ORDER BY 
                 t.name, 
@@ -230,8 +230,9 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     @override
     def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_in = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -245,7 +246,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id AND ic.is_included_column = 0
                 JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
                 AND kc.type = 'UQ'
             ORDER BY 
                 t.name, 
@@ -257,8 +258,9 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     @override
     def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_in = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -273,7 +275,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.tables t ON t.object_id = cc.parent_object_id
                 JOIN sys.schemas s ON s.schema_id = t.schema_id
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
             ORDER BY 
                 t.name, 
                 cc.name;
@@ -283,8 +285,9 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     @override
     def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_in = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -308,7 +311,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.columns pc ON pc.object_id = fkc.parent_object_id    AND pc.column_id = fkc.parent_column_id
                 JOIN sys.columns rc ON rc.object_id = fkc.referenced_object_id AND rc.column_id = fkc.referenced_column_id
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
             ORDER BY 
                 t.name, 
                 fk.name, 
@@ -319,8 +322,9 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     @override
     def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_in = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         return SQLQuery(
-            r"""
+            rf"""
             SELECT
                 s.name AS schema_name,
                 t.name AS table_name,
@@ -342,7 +346,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
                 JOIN sys.columns c   ON c.object_id = ic.object_id AND c.column_id = ic.column_id
             WHERE 
-                s.name IN (SELECT name FROM @schemas)
+                s.name IN ({schemas_in})
                 AND i.is_primary_key = 0
                 AND i.is_unique_constraint = 0
                 AND ic.is_included_column = 0

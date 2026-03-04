@@ -10,8 +10,6 @@ import asyncpg
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.postgresql.config_file import (
     PostgresConfigFile,
     PostgresConnectionProperties,
@@ -192,38 +190,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
 
         return connection.fetch_scalar_values("SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false")
 
-    def collect_catalog_model(
-        self, connection: _SyncAsyncpgConnection, catalog: str, schemas: list[str]
-    ) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
-
-        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
-        results: dict[str, list[dict]] = {name: [] for name in introspection_queries}
-
-        for name, sql_query in introspection_queries.items():
-            if sql_query is None:
-                continue
-            results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params) or []
-
-        # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
-        table_stats, column_stats = self._collect_stats(connection, schemas)
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=schemas,
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-            partitions=results.get("partitions", []),
-            table_stats=table_stats,
-            column_stats=column_stats,
-        )
-
-    def _collect_stats(self, connection, schemas: list[str]) -> tuple[list[dict], list[dict]]:
+    @override
+    def collect_stats(
+        self,
+        connection,
+        schemas: list[str],
+        relations: list[dict],
+        columns: list[dict],
+    ) -> tuple[list[dict], list[dict]]:
         table_stats_query = SQLQuery(self._sql_table_stats(), (schemas,))
         table_stats = self._fetchall_dicts(connection, table_stats_query.sql, table_stats_query.params)
 
