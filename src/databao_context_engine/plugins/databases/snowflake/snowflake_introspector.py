@@ -81,15 +81,6 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                             f"Snowflake multi-statement batch ended early after component #{ix} '{name}'"
                         )
 
-        # Collect table and column statistics
-        table_stats, column_stats = self._collect_stats(
-            connection,
-            catalog=catalog,
-            schemas=schemas,
-            relations=results.get("relations", []),
-            columns=results.get("columns", []),
-        )
-
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results["relations"],
@@ -99,8 +90,6 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             checks=[],
             fk_cols=results["fks"],
             idx_cols=[],
-            table_stats=table_stats,
-            column_stats=column_stats,
         )
 
     def _component_queries(self, catalog: str, schemas: list[str]) -> list[dict]:
