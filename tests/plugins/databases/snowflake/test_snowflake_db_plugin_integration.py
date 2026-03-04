@@ -31,6 +31,7 @@ from tests.plugins.databases.database_contracts import (
     ForeignKeyExists,
     PrimaryKeyIs,
     SamplesCountIs,
+    SamplesEqual,
     TableDescriptionContains,
     TableExists,
     TableKindIs,
@@ -446,14 +447,14 @@ def test_snowflake_exact_samples(sf_demo_schema: snowflake.connector.SnowflakeCo
             "user_id": 1,
             "name": "Alice",
             "email": "alice@test.com",
-            "created_at": "2025-01-01 00:00:00",
+            "created_at": "2025-01-01T00:00:00",
             "active": True,
         },
         {
             "user_id": 2,
             "name": "Bob",
             "email": "bob@test.com",
-            "created_at": "2025-01-02 00:00:00",
+            "created_at": "2025-01-02T00:00:00",
             "active": False,
         },
     ]
@@ -464,8 +465,8 @@ def test_snowflake_exact_samples(sf_demo_schema: snowflake.connector.SnowflakeCo
         {"product_id": 3, "sku": "SKU-3", "price": 15.75, "description": "Product C"},
     ]
 
-    with _seed_rows(sf_demo_schema, "users", users_rows, cleanup_tables=["order_items", "orders", "users"]):
-        with _seed_rows(sf_demo_schema, "products", products_rows, cleanup_tables=["order_items", "products"]):
+    with _seed_rows(sf_demo_schema, "users", users_rows, cleanup_tables=["orders", "users"]):
+        with _seed_rows(sf_demo_schema, "products", products_rows):
             plugin = SnowflakeDbPlugin()
             config_file = _create_config()
             result = execute_datasource_plugin(plugin, DatasourceType(full_type="snowflake"), config_file, "file_name")
@@ -479,9 +480,9 @@ def test_snowflake_exact_samples(sf_demo_schema: snowflake.connector.SnowflakeCo
                 result,
                 [
                     TableExists(catalog, schema, f"{t_prefix}users"),
-                    SamplesCountIs(catalog, schema, f"{t_prefix}users", 2),
+                    SamplesEqual(catalog, schema, f"{t_prefix}users", users_rows),
                     TableExists(catalog, schema, f"{t_prefix}products"),
-                    SamplesCountIs(catalog, schema, f"{t_prefix}products", 3),
+                    SamplesEqual(catalog, schema, f"{t_prefix}products", products_rows),
                     TableExists(catalog, schema, f"{t_prefix}orders"),
                     SamplesCountIs(catalog, schema, f"{t_prefix}orders", 0),
                     TableExists(catalog, schema, f"{t_prefix}order_items"),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Dict, List
 
 import snowflake.connector
@@ -80,6 +81,15 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                             f"Snowflake multi-statement batch ended early after component #{ix} '{name}'"
                         )
 
+        # Collect table and column statistics
+        table_stats, column_stats = self._collect_stats(
+            connection,
+            catalog=catalog,
+            schemas=schemas,
+            relations=results.get("relations", []),
+            columns=results.get("columns", []),
+        )
+
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results["relations"],
@@ -89,6 +99,8 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             checks=[],
             fk_cols=results["fks"],
             idx_cols=[],
+            table_stats=table_stats,
+            column_stats=column_stats,
         )
 
     def _component_queries(self, catalog: str, schemas: list[str]) -> list[dict]:
@@ -257,10 +269,15 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         return SQLQuery(sql, (limit,))
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
+        def normalize_value(v):
+            if isinstance(v, datetime):
+                return v.isoformat()
+            return v
+
         with connection.cursor(snowflake.connector.DictCursor) as cur:
             cur.execute(sql, params)
             rows = cur.fetchall()
-            return [{k.lower(): v for k, v in row.items()} for row in rows]
+            return [{k.lower(): normalize_value(v) for k, v in row.items()} for row in rows]
 
     def _quote_literal(self, value: str) -> str:
         return "'" + str(value).replace("'", "''") + "'"
