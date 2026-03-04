@@ -67,8 +67,8 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
         if not schemas:
             return []
 
-        comps = self._component_queries(catalog, schemas)
-        sql_queries = {name: query for name, query in comps.items() if query is not None}
+        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
+        sql_queries = {name: query for name, query in introspection_queries.items() if query is not None}
 
         values = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         batch_prefix = "SET NOCOUNT ON; SET XACT_ABORT ON;"
@@ -83,7 +83,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             + ";"
         )
 
-        results: dict[str, list[dict]] = {name: [] for name in comps}
+        results: dict[str, list[dict]] = {name: [] for name in introspection_queries}
         with connection.cursor() as cur:
             cur.execute(batch)
             for ix, name in enumerate(sql_queries.keys(), start=1):
@@ -107,18 +107,8 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             checks=results.get("checks", []),
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
+            partitions=results.get("partitions", []),
         )
-
-    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery | None]:
-        return {
-            "relations": self.get_relations_sql_query(catalog, schemas),
-            "columns": self.get_columns_sql_query(catalog, schemas),
-            "pk": self.get_primary_keys_sql_query(catalog, schemas),
-            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
-            "checks": self.get_checks_sql_query(catalog, schemas),
-            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
-            "idx": self.get_indexes_sql_query(catalog, schemas),
-        }
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:

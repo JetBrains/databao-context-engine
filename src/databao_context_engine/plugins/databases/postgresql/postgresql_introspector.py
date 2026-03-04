@@ -198,10 +198,10 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         if not schemas:
             return []
 
-        comps = self._component_queries(catalog, schemas)
-        results: dict[str, list[dict]] = {name: [] for name in comps}
+        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
+        results: dict[str, list[dict]] = {name: [] for name in introspection_queries}
 
-        for name, sql_query in comps.items():
+        for name, sql_query in introspection_queries.items():
             if sql_query is None:
                 continue
             results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params) or []
@@ -296,18 +296,6 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                         )
 
         return column_stats
-
-    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery | None]:
-        return {
-            "relations": self.get_relations_sql_query(catalog, schemas),
-            "columns": self.get_columns_sql_query(catalog, schemas),
-            "pk": self.get_primary_keys_sql_query(catalog, schemas),
-            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
-            "checks": self.get_checks_sql_query(catalog, schemas),
-            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
-            "idx": self.get_indexes_sql_query(catalog, schemas),
-            "partitions": self.get_partitions_sql_query(catalog, schemas),
-        }
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:

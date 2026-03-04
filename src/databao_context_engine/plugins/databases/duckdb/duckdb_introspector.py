@@ -44,41 +44,30 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         if not schemas:
             return []
 
-        comps = self._component_queries(catalog, schemas)
-        results: dict[str, list[dict]] = {cq: [] for cq in comps}
+        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
+        results: dict[str, list[dict]] = {cq: [] for cq in introspection_queries}
 
-        for name, sql_query in comps.items():
+        for name, sql_query in introspection_queries.items():
             if sql_query is None:
                 continue
             results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
 
         # Collect table and column statistics using SUMMARIZE
-        relations = results.get("relations", [])
-        table_stats, column_stats = self._collect_stats(connection, relations)
+        table_stats, column_stats = self._collect_stats(connection, results.get("relations", []))
 
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
-            rels=relations,
+            rels=results.get("relations", []),
             cols=results.get("columns", []),
             pk_cols=results.get("pk", []),
             uq_cols=results.get("uq", []),
             checks=results.get("checks", []),
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
+            partitions=results.get("partitions", []),
             table_stats=table_stats,
             column_stats=column_stats,
         )
-
-    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery | None]:
-        return {
-            "relations": self.get_relations_sql_query(catalog, schemas),
-            "columns": self.get_columns_sql_query(catalog, schemas),
-            "pk": self.get_primary_keys_sql_query(catalog, schemas),
-            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
-            "checks": self.get_checks_sql_query(catalog, schemas),
-            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
-            "idx": self.get_indexes_sql_query(catalog, schemas),
-        }
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:

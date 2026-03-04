@@ -102,10 +102,10 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
         if not schemas:
             return []
 
-        comps = self._component_queries(catalog, schemas)
+        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
         results: dict[str, list[dict]] = {}
 
-        for name, sql_query in comps.items():
+        for name, sql_query in introspection_queries.items():
             if sql_query is None:
                 continue
             results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
@@ -116,19 +116,11 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
             cols=results.get("columns", []),
             pk_cols=results.get("pk", []),
             uq_cols=results.get("uq", []),
-            checks=[],
+            checks=results.get("checks", []),
             fk_cols=results.get("fks", []),
-            idx_cols=[],
+            idx_cols=results.get("idx", []),
+            partitions=results.get("partitions", []),
         )
-
-    def _component_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery | None]:
-        return {
-            "relations": self.get_relations_sql_query(catalog, schemas),
-            "columns": self.get_columns_sql_query(catalog, schemas),
-            "pk": self.get_primary_keys_sql_query(catalog, schemas),
-            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
-            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
-        }
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
