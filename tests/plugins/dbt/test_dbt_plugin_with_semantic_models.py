@@ -138,6 +138,9 @@ def test_dbt_plugin_with_semantic_models__build_context_with_context_filter_filt
         "metric.web_shop_orders.seller_count",
         "metric.web_shop_orders.order_delivered_on_time_pct",
         "metric.web_shop_orders.orders_w_reviews_pct",
+        "metric.web_shop_orders.payment_count",
+        "metric.web_shop_orders.sum_payment",
+        "metric.web_shop_orders.avg_payment",
     }
 
 

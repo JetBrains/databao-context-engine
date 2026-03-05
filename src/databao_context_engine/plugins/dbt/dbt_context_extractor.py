@@ -5,8 +5,6 @@ from typing import Any
 
 from databao_context_engine.plugins.dbt.context_filtering import (
     DbtContextFilter,
-    filter_manifest_metrics,
-    filter_manifest_models,
     is_resource_in_scope,
 )
 from databao_context_engine.plugins.dbt.types import (
@@ -72,21 +70,9 @@ def _extract_context_from_artifacts(
 ) -> DbtContext:
     extracted_models = _extract_models(artifacts, resource_filter)
 
-    semantic_models = _extract_semantic_models(
-        artifacts,
-        resource_filter=resource_filter,
-        model_names_filter={manifest_model.name for manifest_model in extracted_models}
-        if resource_filter is not None
-        else None,
-    )
+    semantic_models = _extract_semantic_models(artifacts, resource_filter=resource_filter)
 
-    metrics = _extract_metrics(
-        artifacts.manifest,
-        resource_filter=resource_filter,
-        semantic_model_ids_filter={semantic_model.id for semantic_model in semantic_models}
-        if resource_filter is not None
-        else None,
-    )
+    metrics = _extract_metrics(artifacts.manifest, resource_filter=resource_filter)
 
     # TODO: Extract the stages? Or at least the "highest-level" models (= marts?)
     # TODO: Organize the models by schemas? Or by stages?
@@ -105,7 +91,6 @@ def _extract_models(artifacts: DbtArtifacts, resource_filter: DbtContextFilter |
         for manifest_node in artifacts.manifest.nodes.values()
         if isinstance(manifest_node, DbtManifestModel)
     ]
-    filtered_manifest_models = filter_manifest_models(manifest_models, resource_filter)
 
     manifest_tests_by_model_and_column = _get_manifest_tests(artifacts.manifest, resource_filter)
     catalog_nodes = artifacts.catalog.nodes if artifacts.catalog else {}
@@ -116,37 +101,27 @@ def _extract_models(artifacts: DbtArtifacts, resource_filter: DbtContextFilter |
             catalog_nodes.get(manifest_model.unique_id, None),
             manifest_tests_by_model_and_column.get(manifest_model.unique_id, {}),
         )
-        for manifest_model in filtered_manifest_models
+        for manifest_model in manifest_models
+        if is_resource_in_scope(manifest_model, resource_filter)
     ]
 
 
 def _extract_semantic_models(
-    artifacts: DbtArtifacts, resource_filter: DbtContextFilter | None, model_names_filter: set[str] | None
+    artifacts: DbtArtifacts, resource_filter: DbtContextFilter | None
 ) -> list[DbtSemanticModel]:
     return [
-        semantic_model
+        _manifest_semantic_model_to_dbt_semantic_model(manifest_semantic_model)
         for manifest_semantic_model in artifacts.manifest.semantic_models.values()
         if is_resource_in_scope(manifest_semantic_model, resource_filter)
-        if (
-            semantic_model := _manifest_semantic_model_to_dbt_semantic_model(
-                manifest_semantic_model, model_names_filter
-            )
-        )
-        is not None
     ]
 
 
-def _extract_metrics(
-    manifest: DbtManifest, resource_filter: DbtContextFilter | None, semantic_model_ids_filter: set[str] | None
-) -> list[DbtMetric]:
-    filtered_metrics = filter_manifest_metrics(
-        manifest.metrics.values(),
-        resource_filter,
-        semantic_model_ids_filter,
-        manifest.child_map,
-    )
-
-    return [_manifest_metric_to_dbt_metric(manifest_metric) for manifest_metric in filtered_metrics]
+def _extract_metrics(manifest: DbtManifest, resource_filter: DbtContextFilter | None) -> list[DbtMetric]:
+    return [
+        _manifest_metric_to_dbt_metric(manifest_metric)
+        for manifest_metric in manifest.metrics.values()
+        if is_resource_in_scope(manifest_metric, resource_filter)
+    ]
 
 
 def _get_manifest_tests(manifest: DbtManifest, resource_filter: DbtContextFilter | None) -> dict[Any, dict[Any, list]]:
@@ -269,16 +244,11 @@ def _manifest_test_to_dbt_constraint(test_nodes: list[DbtManifestTest]) -> list[
 
 def _manifest_semantic_model_to_dbt_semantic_model(
     manifest_semantic_model: DbtManifestSemanticModel,
-    model_names_filter: set[str] | None,
-) -> DbtSemanticModel | None:
-    model_name = _extract_ref_model(manifest_semantic_model.model)
-    if model_names_filter is not None and model_name not in model_names_filter:
-        return None
-
+) -> DbtSemanticModel:
     return DbtSemanticModel(
         id=manifest_semantic_model.unique_id,
         name=manifest_semantic_model.name,
-        model=model_name,
+        model=_extract_ref_model(manifest_semantic_model.model),
         description=manifest_semantic_model.description,
         entities=[
             DbtSemanticEntity(
