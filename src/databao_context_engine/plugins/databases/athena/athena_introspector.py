@@ -58,26 +58,37 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(catalog, schemas, "t.table_type = 'BASE TABLE'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(catalog, schemas, "t.table_type <> 'BASE TABLE'")
+
+    def _columns_sql_query(self, catalog: str, schemas: list[str], table_type_filter: str) -> SQLQuery:
         schemas_in = ", ".join(self._quote_literal(s) for s in schemas)
 
         return SQLQuery(
             sql=f"""
         SELECT 
-            table_schema AS schema_name,
-            table_name, 
-            column_name, 
-            ordinal_position, 
-            data_type,
-            is_nullable
+            c.table_schema AS schema_name,
+            c.table_name, 
+            c.column_name, 
+            c.ordinal_position, 
+            c.data_type,
+            c.is_nullable
         FROM 
-            {catalog}.information_schema.columns
+            {catalog}.information_schema.columns c
+            JOIN {catalog}.information_schema.tables t
+              ON t.table_schema = c.table_schema
+              AND t.table_name = c.table_name
         WHERE 
-            table_schema IN ({schemas_in})
+            c.table_schema IN ({schemas_in})
+            AND {table_type_filter}
         ORDER BY
-            table_schema,
-            table_name,
-            ordinal_position
+            c.table_schema,
+            c.table_name,
+            c.ordinal_position
         """
         )
 
