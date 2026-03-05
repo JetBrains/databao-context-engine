@@ -45,6 +45,6 @@ class PDFPlugin(BuildFilePlugin):
         return converter.convert(stream).document
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
-        from databao_context_engine.services.docling_chunker import DoclingChunker
+        from databao_context_engine.plugins.files.docling_chunker import DoclingChunker
 
         return DoclingChunker().index(context)

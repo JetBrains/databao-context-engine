@@ -3,6 +3,8 @@ inputs:
   python-version:
     description: "python version to install"
     required: true
+  uv-sync-args:
+    description: "extras arguments to use in uv sync"
 
 runs:
   using: "composite"
@@ -24,4 +26,4 @@ runs:
 
     - name: Install the project
       shell: bash
-      run: uv sync --locked --all-extras --dev
+      run: uv sync --locked --dev ${{ inputs.uv-sync-args }}
