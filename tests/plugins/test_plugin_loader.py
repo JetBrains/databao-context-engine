@@ -63,7 +63,7 @@ def test_loaded_plugins_no_extra():
 
 
 def test_loaded_plugins_all_extras():
-    plugin_ids = load_plugin_ids("--all-extras")
+    plugin_ids = load_plugin_ids("--all-extras", "--no-extra", "pdf")
     assert plugin_ids == {
         "jetbrains/athena",
         "jetbrains/bigquery",
@@ -71,7 +71,6 @@ def test_loaded_plugins_all_extras():
         "jetbrains/duckdb",
         "jetbrains/mssql",
         "jetbrains/mysql",
-        "jetbrains/pdf",
         "jetbrains/postgres",
         "jetbrains/snowflake",
         "jetbrains/parquet",

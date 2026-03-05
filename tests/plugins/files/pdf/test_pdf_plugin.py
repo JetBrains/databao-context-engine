@@ -6,8 +6,21 @@ from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTok
 
 from databao_context_engine.plugins.files.docling_chunker import EmbeddingPolicy
 from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
+from tests.plugins.test_plugin_loader import load_plugin_ids
 
 FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures"
+
+
+def test_plugin_is_loaded_with_extra():
+    plugin_ids = load_plugin_ids("--extra", "pdf")
+    assert plugin_ids == {
+        "jetbrains/duckdb",
+        "jetbrains/parquet",
+        "jetbrains/sqlite",
+        "jetbrains/unstructured_files",
+        "jetbrains/dbt",
+        "jetbrains/pdf",
+    }
 
 
 def _embed_tokenizer(policy: EmbeddingPolicy) -> HuggingFaceTokenizer:
