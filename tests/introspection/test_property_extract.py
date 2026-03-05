@@ -55,7 +55,7 @@ class TestDataclass:
     optional_subclass: Optional[SecondSubclass]
     ignored_property: Annotated[TestSubclass, ConfigPropertyAnnotation(ignored_for_config_wizard=True)]
     ignored_tuple: tuple[int, ...]
-    with_default_value: date = date(2025, 12, 4).isoformat()
+    with_default_value: date = date(2025, 12, 4)
     a: int = field(default=1)
     b: float = 3.14
     """
