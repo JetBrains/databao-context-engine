@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from docling_core.types.doc.labels import DocItemLabel
 
-from databao_context_engine.services.docling_chunker import DoclingChunker, EmbeddingPolicy, TokenSplitter
+from databao_context_engine.plugins.files.docling_chunker import DoclingChunker, EmbeddingPolicy, TokenSplitter
 
 
 class FakeHfTokenizer:

@@ -4,8 +4,8 @@ from pathlib import Path
 
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 
+from databao_context_engine.plugins.files.docling_chunker import EmbeddingPolicy
 from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
-from databao_context_engine.services.docling_chunker import EmbeddingPolicy
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
