@@ -7,7 +7,7 @@ from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTok
 from databao_context_engine.plugins.files.docling_chunker import EmbeddingPolicy
 from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
 
-FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
+FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures"
 
 
 def _embed_tokenizer(policy: EmbeddingPolicy) -> HuggingFaceTokenizer:
