@@ -44,13 +44,13 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
 class DummyConfigNested:
     nested_field: str
     other_nested_property: int
-    optional_with_default: Annotated[int, ConfigPropertyAnnotation(default_value="1111", required=False)] = 1111
+    optional_with_default: Annotated[int, ConfigPropertyAnnotation(required=False)] = 1111
 
 
-@dataclass
+@dataclass(kw_only=True)
 class DummyConfigFileType(AbstractConfigFile):
     other_property: float
-    property_with_default: Annotated[str, ConfigPropertyAnnotation(default_value="default_value", required=True)]
+    property_with_default: Annotated[str, ConfigPropertyAnnotation(required=True)] = "default_value"
     ignored_dict: dict[str, str]
     nested_dict: DummyConfigNested | None = None
 

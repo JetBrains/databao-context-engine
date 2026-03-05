@@ -175,7 +175,6 @@ def _create_property(
 
     resolved_type = actual_property_type if not nested_properties else None
     default_value = compute_default_value(
-        annotation=annotation,
         property_default=property_default,
         has_nested_properties=nested_properties is not None and len(nested_properties) > 0,
     )
@@ -223,14 +222,9 @@ def _read_actual_property_type(property_type: type) -> tuple[type, ...]:
     return (property_type,)
 
 
-def compute_default_value(
-    *, annotation: ConfigPropertyAnnotation | None, property_default: Any | None = None, has_nested_properties: bool
-) -> str | None:
+def compute_default_value(*, property_default: Any | None = None, has_nested_properties: bool) -> str | None:
     if has_nested_properties:
         return None
-
-    if annotation is not None and annotation.default_value is not None:
-        return str(annotation.default_value)
 
     if property_default is not None:
         return str(property_default)

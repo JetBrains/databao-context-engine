@@ -52,10 +52,10 @@ class SecondSubclass(TypedDict):
 class TestDataclass:
     complex: TestSubclass
     required: Annotated[datetime, ConfigPropertyAnnotation(required=True)]
-    with_default_value: Annotated[date, ConfigPropertyAnnotation(default_value=date(2025, 12, 4).isoformat())]
     optional_subclass: Optional[SecondSubclass]
     ignored_property: Annotated[TestSubclass, ConfigPropertyAnnotation(ignored_for_config_wizard=True)]
     ignored_tuple: tuple[int, ...]
+    with_default_value: date = date(2025, 12, 4).isoformat()
     a: int = field(default=1)
     b: float = 3.14
     """
@@ -145,11 +145,7 @@ class DataclassWithAllCases:
     regular_property: int
     regular_property_with_default: bool = True
     property_with_field_default: bool = field(default=False)
-    property_with_annotated_default: Annotated[bool, ConfigPropertyAnnotation(default_value="True", required=True)]
-    property_with_annotated_default_and_default: Annotated[bool, ConfigPropertyAnnotation(default_value="True")] = False
-    property_with_annotated_default_and_field_default: Annotated[
-        bool, ConfigPropertyAnnotation(default_value="True")
-    ] = field(default=False)
+    property_with_annotated_default: Annotated[bool, ConfigPropertyAnnotation(required=True)] = True
     property_with_string_type: "str"
     property_with_union_type_as_string: "int | None"
     property_with_future_type: NestedDataclassModel
@@ -172,18 +168,6 @@ def test_get_property_list__from_dataclass():
             ),
             ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default", required=True, property_type=bool, default_value="True"
-            ),
-            ConfigSinglePropertyDefinition(
-                property_key="property_with_annotated_default_and_default",
-                required=False,
-                property_type=bool,
-                default_value="True",
-            ),
-            ConfigSinglePropertyDefinition(
-                property_key="property_with_annotated_default_and_field_default",
-                required=False,
-                property_type=bool,
-                default_value="True",
             ),
             ConfigSinglePropertyDefinition(
                 property_key="property_with_string_type",
@@ -220,11 +204,7 @@ class BaseModelWithAllCases(BaseModel):
     regular_property_with_default: bool = False
     property_with_field_info: int = Field(description="This is a description")
     property_with_field_default: int = Field(default=1)
-    property_with_annotated_default: Annotated[int, ConfigPropertyAnnotation(default_value="1", required=True)]
-    property_with_annotated_default_and_default: Annotated[int, ConfigPropertyAnnotation(default_value="1")] = 2
-    property_with_annotated_default_and_field_default: Annotated[int, ConfigPropertyAnnotation(default_value="1")] = (
-        Field(default=2)
-    )
+    property_with_annotated_default: Annotated[int, ConfigPropertyAnnotation(required=True)] = 1
     property_with_string_type: "str"
     property_with_union_type_as_string: "float | None"
     property_with_future_type: NestedPydanticModel
@@ -252,18 +232,6 @@ def test_get_property_list__from_pydantic_base_model():
             ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default",
                 required=True,
-                property_type=int,
-                default_value="1",
-            ),
-            ConfigSinglePropertyDefinition(
-                property_key="property_with_annotated_default_and_default",
-                required=False,
-                property_type=int,
-                default_value="1",
-            ),
-            ConfigSinglePropertyDefinition(
-                property_key="property_with_annotated_default_and_field_default",
-                required=False,
                 property_type=int,
                 default_value="1",
             ),

@@ -9,7 +9,7 @@ from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabase
 
 
 class ClickhouseConnectionProperties(BaseModel):
-    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
+    host: Annotated[str, ConfigPropertyAnnotation(required=True)] = "localhost"
     port: int | None = None
     database: str | None = None
     username: str | None = None
