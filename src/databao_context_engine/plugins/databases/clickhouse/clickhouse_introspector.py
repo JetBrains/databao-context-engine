@@ -69,7 +69,20 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(
+            schemas,
+            "t.engine = 'table'",
+        )
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(
+            schemas,
+            "t.engine <> 'table'",
+        )
+
+    def _columns_sql_query(self, schemas: list[str], engine_filter: str) -> SQLQuery:
         return SQLQuery(
             r"""
             SELECT
@@ -86,8 +99,12 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
                 c.comment AS description
             FROM 
                 system.columns c
+                JOIN system.tables t ON t.database = c.database AND t.name = c.table
             WHERE 
                 has({schemas:Array(String)}, c.database)
+                AND """
+            + engine_filter
+            + r"""
             ORDER BY 
                 c.table, 
                 c.position
