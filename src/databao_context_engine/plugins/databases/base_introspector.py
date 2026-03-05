@@ -171,7 +171,12 @@ class BaseIntrospector(Generic[T], ABC):
         sql_query = self.get_view_columns_sql_query(catalog, schemas)
 
         if sql_query is not None:
-            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            try:
+                return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            except Exception:
+                # FIXME: We need a way for plugins to report non-critical errors happening during the build
+                logger.debug("Error while fetching view columns", exc_info=True, stack_info=True)
+                return None
 
         return None
 
