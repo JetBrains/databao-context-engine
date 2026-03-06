@@ -63,7 +63,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "t.table_type = 'BASE TABLE'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "t.table_type <> 'BASE TABLE'")
+
+    def _columns_sql_query(self, schemas: list[str], table_type_filter: str) -> SQLQuery:
         return SQLQuery(
             r"""
             SELECT
@@ -81,8 +88,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 NULL::VARCHAR AS description
             FROM 
                 information_schema.columns c
+                JOIN information_schema.tables t
+                    ON t.table_schema = c.table_schema
+                    AND t.table_name = c.table_name
             WHERE 
                 c.table_schema = ANY(?)
+                AND """
+            + table_type_filter
+            + r"""
             ORDER BY 
                 c.table_schema,
                 c.table_name, 
