@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Dict, List
 
 import snowflake.connector
@@ -257,10 +258,15 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         return SQLQuery(sql, (limit,))
 
     def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
+        def normalize_value(v):
+            if isinstance(v, datetime):
+                return v.isoformat()
+            return v
+
         with connection.cursor(snowflake.connector.DictCursor) as cur:
             cur.execute(sql, params)
             rows = cur.fetchall()
-            return [{k.lower(): v for k, v in row.items()} for row in rows]
+            return [{k.lower(): normalize_value(v) for k, v in row.items()} for row in rows]
 
     def _quote_literal(self, value: str) -> str:
         return "'" + str(value).replace("'", "''") + "'"

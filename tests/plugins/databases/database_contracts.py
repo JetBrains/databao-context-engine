@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -375,7 +376,14 @@ class SamplesEqual(Fact):
 
     def check(self, a: IntrospectionAsserter) -> None:
         actual = a.samples(self.catalog, self.schema, self.table)
-        if list(actual) != list(self.rows):
+
+        # Convert rows to hashable tuples
+        def row_to_tuple(row: Mapping[str, Any]) -> tuple:
+            return tuple(sorted(row.items()))
+
+        actual_tuples = [row_to_tuple(row) for row in actual]
+        expected_tuples = [row_to_tuple(row) for row in self.rows]
+        if Counter(actual_tuples) != Counter(expected_tuples):
             a.fail(
                 f"Expected samples == {list(self.rows)!r}, got {list(actual)!r}",
                 [self.catalog, self.schema, self.table, "samples"],
