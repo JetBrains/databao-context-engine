@@ -29,6 +29,7 @@ def build_all_datasources(
     plugin_loader: DatabaoContextPluginLoader,
     chunk_embedding_mode: ChunkEmbeddingMode,
     should_index: bool,
+    should_enrich_context: bool,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -54,12 +55,14 @@ def build_all_datasources(
             conn,
             project_layout=project_layout,
             chunk_embedding_mode=chunk_embedding_mode,
+            should_enrich_context=should_enrich_context,
         )
         return build(
             project_layout=project_layout,
             plugin_loader=plugin_loader,
             build_service=build_service,
             should_index=should_index,
+            should_enrich_context=should_enrich_context,
         )
 
 
@@ -89,6 +92,7 @@ def index_built_contexts(
             conn,
             project_layout=project_layout,
             chunk_embedding_mode=chunk_embedding_mode,
+            should_enrich_context=False,
         )
         return run_indexing(
             project_layout=project_layout, plugin_loader=plugin_loader, build_service=build_service, contexts=contexts
@@ -100,6 +104,7 @@ def _create_build_service(
     *,
     project_layout: ProjectLayout,
     chunk_embedding_mode: ChunkEmbeddingMode,
+    should_enrich_context: bool,
 ) -> BuildService:
     ollama_service = create_ollama_service()
     embedding_provider = create_ollama_embedding_provider(
@@ -107,7 +112,7 @@ def _create_build_service(
     )
     description_provider = (
         create_ollama_description_provider(ollama_service)
-        if chunk_embedding_mode.should_generate_description()
+        if chunk_embedding_mode.should_generate_description() or should_enrich_context
         else None
     )
 
@@ -121,4 +126,5 @@ def _create_build_service(
     return BuildService(
         project_layout=project_layout,
         chunk_embedding_service=chunk_embedding_service,
+        description_provider=description_provider,
     )

@@ -34,6 +34,7 @@ def build(
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     should_index: bool,
+    should_enrich_context: bool,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -65,6 +66,7 @@ def build(
                 build_service=build_service,
                 datasource_id=datasource_id,
                 should_index=should_index,
+                should_enrich_context=should_enrich_context,
             )
             results.append(result)
             if result.status == DatasourceStatus.SKIPPED:
@@ -100,6 +102,7 @@ def _build_one_datasource(
     build_service: BuildService,
     datasource_id,
     should_index: bool,
+    should_enrich_context: bool,
 ) -> BuildDatasourceResult:
     prepared_source = prepare_source(project_layout, datasource_id)
 
@@ -122,6 +125,7 @@ def _build_one_datasource(
         prepared_source=prepared_source,
         plugin=plugin,
         should_index=should_index,
+        should_enrich_context=should_enrich_context,
     )
 
     output_dir = project_layout.output_dir

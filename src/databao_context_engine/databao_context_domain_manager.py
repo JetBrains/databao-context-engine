@@ -79,6 +79,7 @@ class DatabaoContextDomainManager:
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         *,
         should_index: bool = True,
+        should_enrich_context: bool = False,
     ) -> list[BuildDatasourceResult]:
         """Build the context for datasources in the domain.
 
@@ -88,6 +89,7 @@ class DatabaoContextDomainManager:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
             chunk_embedding_mode: The mode to use for chunk embedding.
             should_index: Whether to build a semantic index for the context.
+            should_enrich_context: Whether to enrich the context with LLM-generated content.
 
         Returns:
             The list of all built results.
@@ -98,6 +100,7 @@ class DatabaoContextDomainManager:
             plugin_loader=self._plugin_loader,
             chunk_embedding_mode=chunk_embedding_mode,
             should_index=should_index,
+            should_enrich_context=should_enrich_context,
         )
 
     def index_built_contexts(

@@ -45,6 +45,7 @@ def test_build_returns_early_when_no_sources(stub_sources, mock_build_service, p
         plugin_loader=DatabaoContextPluginLoader(),
         build_service=mock_build_service,
         should_index=True,
+        should_enrich_context=False,
     )
     mock_build_service.start_run.assert_not_called()
 
@@ -68,6 +69,7 @@ def test_build_skips_source_without_plugin(
         plugin_loader=DatabaoContextPluginLoader(plugins_by_type={}),
         build_service=mock_build_service,
         should_index=True,
+        should_enrich_context=False,
     )
     mock_build_service.start_run.assert_not_called()
     mock_build_service.build_context.assert_not_called()
@@ -97,7 +99,11 @@ def test_build_processes_file_source_and_exports(
     mock_build_service.build_context.return_value = _result(name="files/one.md", typ="files/md")
 
     build_runner.build(
-        project_layout=project_layout, plugin_loader=plugin_loader, build_service=mock_build_service, should_index=True
+        project_layout=project_layout,
+        plugin_loader=plugin_loader,
+        build_service=mock_build_service,
+        should_index=True,
+        should_enrich_context=False,
     )
 
     mock_build_service.build_context.assert_called_once()
@@ -128,7 +134,11 @@ def test_build_continues_on_service_exception(stub_sources, stub_prepare, mock_b
     mock_build_service.build_context.side_effect = [RuntimeError("boom"), _result(name="files/b.md")]
 
     build_runner.build(
-        project_layout=project_layout, plugin_loader=plugin_loader, build_service=mock_build_service, should_index=True
+        project_layout=project_layout,
+        plugin_loader=plugin_loader,
+        build_service=mock_build_service,
+        should_index=True,
+        should_enrich_context=False,
     )
 
     assert mock_build_service.build_context.call_count == 2
