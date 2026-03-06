@@ -34,7 +34,7 @@ def build(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
-    should_index: bool = True,
+    should_index: bool,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 

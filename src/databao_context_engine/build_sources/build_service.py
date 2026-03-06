@@ -31,7 +31,7 @@ class BuildService:
         self._chunk_embedding_service = chunk_embedding_service
 
     def build_context(
-        self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin, should_index: bool = True
+        self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin, should_index: bool
     ) -> BuiltDatasourceContext:
         """Process a single source to build its context.
 
