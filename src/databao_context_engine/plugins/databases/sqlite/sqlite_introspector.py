@@ -1,9 +1,9 @@
 import sqlite3
 from pathlib import Path
 
+from typing_extensions import override
+
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.sqlite.config_file import SQLiteConfigFile
 
 
@@ -50,40 +50,10 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
     def _list_schemas_for_catalog(self, connection, catalog: str) -> list[str]:
         return [self._PSEUDO_SCHEMA]
 
-    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
-
-        comps = self._component_queries()
-        results: dict[str, list[dict]] = {name: [] for name in comps}
-
-        for name, sql in comps.items():
-            results[name] = self._fetchall_dicts(connection, sql, None) or []
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=[self._PSEUDO_SCHEMA],
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=[],
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-            partitions=[],
-        )
-
-    def _component_queries(self) -> dict[str, str]:
-        return {
-            "relations": self._sql_relations(),
-            "columns": self._sql_columns(),
-            "pk": self._sql_primary_keys(),
-            "uq": self._sql_unique(),
-            "fks": self._sql_foreign_keys(),
-            "idx": self._sql_indexes(),
-        }
-
-    def _sql_relations(self) -> str:
-        return f"""
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            sql=f"""
             SELECT
                 '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
@@ -100,9 +70,12 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
             ORDER BY
                 m.name;
         """
+        )
 
-    def _sql_columns(self) -> str:
-        return f"""
+    @override
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            sql=f"""
             SELECT
                 '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
@@ -129,9 +102,12 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
                 m.name, 
                 c.cid;
         """
+        )
 
-    def _sql_primary_keys(self) -> str:
-        return f"""
+    @override
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            sql=f"""
             SELECT
                 '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
@@ -149,9 +125,12 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
                 m.name,
                 c.pk;
         """
+        )
 
-    def _sql_unique(self) -> str:
-        return f"""
+    @override
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            sql=f"""
             SELECT
                 '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
@@ -172,9 +151,12 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
                 il.name,
                 ii.seqno;
         """
+        )
 
-    def _sql_foreign_keys(self) -> str:
-        return f"""
+    @override
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            sql=f"""
             SELECT
                 '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
@@ -198,9 +180,12 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
                 fk.id,
                 fk.seq;
         """
+        )
 
-    def _sql_indexes(self) -> str:
-        return f"""
+    @override
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            sql=f"""
             SELECT
                 '{self._PSEUDO_SCHEMA}' AS schema_name,
                 m.name AS table_name,
@@ -228,6 +213,7 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
                 il.name, 
                 ix.seqno;
         """
+        )
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f"SELECT * FROM {self._quote_ident(table)} LIMIT ?"

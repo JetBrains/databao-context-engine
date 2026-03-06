@@ -101,22 +101,24 @@ def test_bigquery_quote_ident_with_backtick():
     assert BigQueryIntrospector._quote_ident("my`table") == "`my``table`"
 
 
-def test_bigquery_component_queries_include_uq_and_fks():
+def test_bigquery_get_catalog_introspection_queries_include_uq_and_fks():
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
     introspector = BigQueryIntrospector()
-    queries = introspector._component_queries("my-project", ["ds1"])
+    queries = introspector.get_catalog_introspection_queries("my-project", ["ds1"])
     assert "uq" in queries
     assert "fks" in queries
-    assert "UNIQUE" in queries["uq"]
-    assert "FOREIGN KEY" in queries["fks"]
+    assert queries["uq"] is not None
+    assert queries["fks"] is not None
+    assert "UNIQUE" in queries["uq"].sql
+    assert "FOREIGN KEY" in queries["fks"].sql
 
 
 def test_bigquery_sql_unique_constraints_structure():
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
     introspector = BigQueryIntrospector()
-    sql = introspector._sql_unique_constraints("proj", ["ds1", "ds2"])
+    sql = introspector.get_unique_constraints_sql_query("proj", ["ds1", "ds2"]).sql
 
     assert "UNION ALL" in sql
     assert sql.count("constraint_type = 'UNIQUE'") == 2
@@ -128,7 +130,7 @@ def test_bigquery_sql_foreign_keys_structure():
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
     introspector = BigQueryIntrospector()
-    sql = introspector._sql_foreign_keys("proj", ["ds1"])
+    sql = introspector.get_foreign_keys_sql_query("proj", ["ds1"]).sql
 
     assert "FOREIGN KEY" in sql
     assert "CONSTRAINT_COLUMN_USAGE" in sql
@@ -151,7 +153,7 @@ def test_bigquery_sql_foreign_keys_multi_schema():
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
     introspector = BigQueryIntrospector()
-    sql = introspector._sql_foreign_keys("proj", ["ds1", "ds2", "ds3"])
+    sql = introspector.get_foreign_keys_sql_query("proj", ["ds1", "ds2", "ds3"]).sql
 
     assert sql.count("UNION ALL") == 2
     assert sql.count("FOREIGN KEY") == 3

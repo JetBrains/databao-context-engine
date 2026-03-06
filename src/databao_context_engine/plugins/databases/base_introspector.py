@@ -12,6 +12,7 @@ from databao_context_engine.plugins.databases.databases_types import (
     DatabaseIntrospectionResult,
     DatabaseSchema,
 )
+from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
 from databao_context_engine.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
 
@@ -116,9 +117,83 @@ class BaseIntrospector(Generic[T], ABC):
 
         return schemas
 
+    def collect_catalog_model(self, connection: Any, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if not schemas:
+            return []
+
+        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
+        results: dict[str, list[dict]] = {name: [] for name in introspection_queries}
+
+        for name, sql_query in introspection_queries.items():
+            if sql_query is None:
+                continue
+            results[name] = self._fetchall_dicts(connection, sql_query.sql, sql_query.params) or []
+
+        # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
+        relations = results.get("relations", [])
+        columns = results.get("columns", [])
+        table_stats, column_stats = self.collect_stats(connection, schemas, relations, columns)
+
+        return IntrospectionModelBuilder.build_schemas_from_components(
+            schemas=schemas,
+            rels=relations,
+            cols=columns,
+            pk_cols=results.get("pk", []),
+            uq_cols=results.get("uq", []),
+            checks=results.get("checks", []),
+            fk_cols=results.get("fks", []),
+            idx_cols=results.get("idx", []),
+            partitions=results.get("partitions", []),
+            table_stats=table_stats,
+            column_stats=column_stats,
+        )
+
+    def get_catalog_introspection_queries(self, catalog: str, schemas: list[str]) -> dict[str, SQLQuery | None]:
+        return {
+            "relations": self.get_relations_sql_query(catalog, schemas),
+            "columns": self.get_columns_sql_query(catalog, schemas),
+            "pk": self.get_primary_keys_sql_query(catalog, schemas),
+            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
+            "checks": self.get_checks_sql_query(catalog, schemas),
+            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
+            "idx": self.get_indexes_sql_query(catalog, schemas),
+            "partitions": self.get_partitions_sql_query(catalog, schemas),
+        }
+
     @abstractmethod
-    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         raise NotImplementedError
+
+    @abstractmethod
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        raise NotImplementedError
+
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def get_partitions_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def collect_stats(
+        self,
+        connection,
+        schemas: list[str],
+        relations: list[dict],
+        columns: list[dict],
+    ) -> tuple[list[dict] | None, list[dict] | None]:
+        return None, None
 
     def _collect_samples_for_table(self, connection, catalog: str, schema: str, table: str) -> list[dict[str, Any]]:
         samples: list[dict[str, Any]] = []

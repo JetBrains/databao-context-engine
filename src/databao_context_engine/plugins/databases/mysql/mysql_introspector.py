@@ -2,12 +2,14 @@ import base64
 import json
 import logging
 from collections import defaultdict
+from typing import ClassVar
 
 import pymysql
 from pymysql.constants import CLIENT
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema, DatabaseTable
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.mysql.config_file import MySQLConfigFile
 
@@ -18,6 +20,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "mysql", "performance_schema", "sys"}
 
     supports_catalogs = True
+    _USE_BATCH: ClassVar[bool] = False
 
     def _connect(self, file_config: MySQLConfigFile, *, catalog: str | None = None):
         connection_kwargs = file_config.connection.to_pymysql_kwargs()
@@ -49,21 +52,28 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             None,
         )
 
+    @override
     def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if self._USE_BATCH:
+            return self.collect_catalog_model_batched(connection, catalog, schemas)
+
+        return super().collect_catalog_model(connection, catalog, schemas)
+
+    def collect_catalog_model_batched(
+        self, connection, catalog: str, schemas: list[str]
+    ) -> list[DatabaseSchema] | None:
         if not schemas:
             return []
 
-        comps = self._component_queries()
-        results: dict[str, list[dict]] = {name: [] for name in comps}
-
-        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
-
-        batch = ";\n".join(sql.replace("{SCHEMAS}", schemas_sql).rstrip().rstrip(";") for sql in comps.values())
+        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
+        results: dict[str, list[dict]] = {name: [] for name in introspection_queries}
+        sql_queries = {name: query for name, query in introspection_queries.items() if query is not None}
+        batch = ";\n".join(query.sql.rstrip().rstrip(";") for query in sql_queries.values())
 
         with connection.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(batch)
 
-            for ix, name in enumerate(comps.keys(), start=1):
+            for ix, name in enumerate(sql_queries.keys(), start=1):
                 raw_rows = cur.fetchall() if cur.description else ()
 
                 if raw_rows and isinstance(raw_rows[0], dict):
@@ -77,12 +87,12 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
                 results[name] = rows_list
 
-                if ix < len(comps):
+                if ix < len(sql_queries):
                     ok = cur.nextset()
                     if not ok:
                         raise RuntimeError(f"MySQL batch ended early after component #{ix} '{name}'")
 
-        table_stats, column_stats = self._collect_stats(
+        table_stats, column_stats = self.collect_stats(
             connection,
             schemas=schemas,
             relations=results.get("relations", []),
@@ -98,65 +108,16 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             checks=results.get("checks", []),
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
+            partitions=results.get("partitions", []),
             table_stats=table_stats,
             column_stats=column_stats,
         )
 
-    def collect_schema_model(self, connection, catalog: str, schema: str) -> list[DatabaseTable] | None:
-        comps = self._component_queries()
-        results: dict[str, list[dict]] = {name: [] for name in comps}
-
-        batch = ";\n".join(
-            sql.replace("{SCHEMA}", self._quote_literal(schema)).rstrip().rstrip(";") for sql in comps.values()
-        )
-
-        with connection.cursor(pymysql.cursors.DictCursor) as cur:
-            cur.execute(batch)
-
-            for ix, name in enumerate(comps.keys(), start=1):
-                raw_rows = cur.fetchall() if cur.description else ()
-
-                rows_list: list[dict]
-                # TODO: simplify this
-                if raw_rows and isinstance(raw_rows[0], dict):
-                    rows_list = [{k.lower(): v for k, v in row.items()} for row in raw_rows]
-                else:
-                    if cur.description:
-                        cols = [d[0].lower() for d in cur.description]
-                        rows_list = [dict(zip(cols, r)) for r in raw_rows]
-                    else:
-                        rows_list = []
-
-                results[name] = rows_list
-
-                if ix < len(comps):
-                    ok = cur.nextset()
-                    if not ok:
-                        raise RuntimeError(f"MySQL batch ended early after component #{ix} '{name}'")
-
-        return IntrospectionModelBuilder.build_tables_from_components(
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-        )
-
-    def _component_queries(self) -> dict[str, str]:
-        return {
-            "relations": self._sql_relations(),
-            "columns": self._sql_columns(),
-            "pk": self._sql_primary_keys(),
-            "uq": self._sql_uniques(),
-            "checks": self._sql_checks(),
-            "fks": self._sql_foreign_keys(),
-            "idx": self._sql_indexes(),
-        }
-
-    def _sql_relations(self) -> str:
-        return r"""
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
+        return SQLQuery(
+            rf"""
             SELECT
                 t.TABLE_SCHEMA AS schema_name,
                 t.TABLE_NAME        AS table_name,
@@ -172,14 +133,19 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             FROM 
                 INFORMATION_SCHEMA.TABLES t
             WHERE 
-                t.TABLE_SCHEMA IN ({SCHEMAS})
+                t.TABLE_SCHEMA IN ({schemas_sql})
             ORDER BY 
                 t.TABLE_SCHEMA,
                 t.TABLE_NAME
-        """
+            """,
+            None,
+        )
 
-    def _sql_columns(self) -> str:
-        return r"""
+    @override
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
+        return SQLQuery(
+            rf"""
             SELECT
                 c.TABLE_SCHEMA AS schema_name,
                 c.TABLE_NAME                         AS table_name,
@@ -203,15 +169,20 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             FROM 
                 INFORMATION_SCHEMA.COLUMNS c
             WHERE 
-                c.TABLE_SCHEMA IN ({SCHEMAS})
+                c.TABLE_SCHEMA IN ({schemas_sql})
             ORDER BY 
                 c.TABLE_SCHEMA,
                 c.TABLE_NAME, 
                 c.ORDINAL_POSITION
-        """
+            """,
+            None,
+        )
 
-    def _sql_primary_keys(self) -> str:
-        return r"""
+    @override
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
+        return SQLQuery(
+            rf"""
             SELECT
                 tc.TABLE_SCHEMA AS schema_name,
                 tc.TABLE_NAME         AS table_name,
@@ -223,17 +194,22 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
                      ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_SCHEMA = tc.TABLE_SCHEMA AND kcu.TABLE_NAME = tc.TABLE_NAME
             WHERE 
-                tc.TABLE_SCHEMA IN ({SCHEMAS})
+                tc.TABLE_SCHEMA IN ({schemas_sql})
                 AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
             ORDER BY 
                 tc.TABLE_SCHEMA,
                 tc.TABLE_NAME, 
                 tc.CONSTRAINT_NAME, 
                 kcu.ORDINAL_POSITION
-        """
+            """,
+            None,
+        )
 
-    def _sql_uniques(self) -> str:
-        return r"""
+    @override
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
+        return SQLQuery(
+            rf"""
             SELECT
                 tc.TABLE_SCHEMA AS schema_name,
                 tc.TABLE_NAME         AS table_name,
@@ -244,17 +220,22 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
                 JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_SCHEMA = tc.TABLE_SCHEMA AND kcu.TABLE_NAME = tc.TABLE_NAME
             WHERE 
-                tc.TABLE_SCHEMA IN ({SCHEMAS})
+                tc.TABLE_SCHEMA IN ({schemas_sql})
                 AND tc.CONSTRAINT_TYPE = 'UNIQUE'
             ORDER BY 
                 tc.TABLE_SCHEMA,
                 tc.TABLE_NAME, 
                 tc.CONSTRAINT_NAME, 
                 kcu.ORDINAL_POSITION
-        """
+            """,
+            None,
+        )
 
-    def _sql_checks(self) -> str:
-        return r"""
+    @override
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
+        return SQLQuery(
+            rf"""
             SELECT
                 tc.TABLE_SCHEMA AS schema_name,
                 tc.TABLE_NAME        AS table_name,
@@ -265,16 +246,21 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
                 JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA = tc.TABLE_SCHEMA AND cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
             WHERE 
-                tc.TABLE_SCHEMA IN ({SCHEMAS})
+                tc.TABLE_SCHEMA IN ({schemas_sql})
                 AND tc.CONSTRAINT_TYPE = 'CHECK'
             ORDER BY 
                 tc.TABLE_SCHEMA,
                 tc.TABLE_NAME, 
                 tc.CONSTRAINT_NAME
-        """
+            """,
+            None,
+        )
 
-    def _sql_foreign_keys(self) -> str:
-        return r"""
+    @override
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
+        return SQLQuery(
+            rf"""
             SELECT
                 kcu.TABLE_SCHEMA AS schema_name,
                 kcu.TABLE_NAME                 AS table_name,
@@ -293,17 +279,22 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA AND tc.TABLE_NAME = kcu.TABLE_NAME
                 JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc ON rc.CONSTRAINT_SCHEMA = kcu.TABLE_SCHEMA AND rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
             WHERE 
-                kcu.TABLE_SCHEMA IN ({SCHEMAS})
+                kcu.TABLE_SCHEMA IN ({schemas_sql})
                 AND tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
             ORDER BY 
                 kcu.TABLE_SCHEMA,
                 kcu.TABLE_NAME, 
                 kcu.CONSTRAINT_NAME, 
                 kcu.ORDINAL_POSITION
-        """
+            """,
+            None,
+        )
 
-    def _sql_indexes(self) -> str:
-        return r"""
+    @override
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
+        return SQLQuery(
+            rf"""
             SELECT
                 s.TABLE_SCHEMA AS schema_name,
                 s.TABLE_NAME                                    AS table_name,
@@ -316,14 +307,16 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             FROM 
                 INFORMATION_SCHEMA.STATISTICS s
             WHERE 
-                s.TABLE_SCHEMA IN ({SCHEMAS})
+                s.TABLE_SCHEMA IN ({schemas_sql})
                 AND s.INDEX_NAME <> 'PRIMARY'
             ORDER BY 
                 s.TABLE_SCHEMA,
                 s.TABLE_NAME, 
                 s.INDEX_NAME, 
                 s.SEQ_IN_INDEX
-        """
+            """,
+            None,
+        )
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f"SELECT * FROM `{schema}`.`{table}` LIMIT %s"
@@ -341,7 +334,8 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def _quote_ident(self, ident: str) -> str:
         return "`" + ident.replace("`", "``") + "`"
 
-    def _collect_stats(
+    @override
+    def collect_stats(
         self,
         connection,
         schemas: list[str],
