@@ -101,19 +101,6 @@ def test_bigquery_quote_ident_with_backtick():
     assert BigQueryIntrospector._quote_ident("my`table") == "`my``table`"
 
 
-def test_bigquery_get_catalog_introspection_queries_include_uq_and_fks():
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
-
-    introspector = BigQueryIntrospector()
-    queries = introspector.get_catalog_introspection_queries("my-project", ["ds1"])
-    assert "uq" in queries
-    assert "fks" in queries
-    assert queries["uq"] is not None
-    assert queries["fks"] is not None
-    assert "UNIQUE" in queries["uq"].sql
-    assert "FOREIGN KEY" in queries["fks"].sql
-
-
 def test_bigquery_sql_unique_constraints_structure():
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 

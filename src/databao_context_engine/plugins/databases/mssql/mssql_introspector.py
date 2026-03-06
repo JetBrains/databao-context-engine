@@ -74,7 +74,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
         if not schemas:
             return []
 
-        introspection_queries = self.get_catalog_introspection_queries(catalog, schemas)
+        introspection_queries = self._get_catalog_introspection_queries_for_batched_mode(catalog, schemas)
         sql_queries = {name: query for name, query in introspection_queries.items() if query is not None}
 
         batch_prefix = "SET NOCOUNT ON; SET XACT_ABORT ON;"
@@ -106,6 +106,20 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
             idx_cols=results.get("idx", []),
             partitions=results.get("partitions", []),
         )
+
+    def _get_catalog_introspection_queries_for_batched_mode(
+        self, catalog: str, schemas: list[str]
+    ) -> dict[str, SQLQuery | None]:
+        return {
+            "relations": self.get_relations_sql_query(catalog, schemas),
+            "columns": self.get_columns_sql_query(catalog, schemas),
+            "pk": self.get_primary_keys_sql_query(catalog, schemas),
+            "uq": self.get_unique_constraints_sql_query(catalog, schemas),
+            "checks": self.get_checks_sql_query(catalog, schemas),
+            "fks": self.get_foreign_keys_sql_query(catalog, schemas),
+            "idx": self.get_indexes_sql_query(catalog, schemas),
+            "partitions": self.get_partitions_sql_query(catalog, schemas),
+        }
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
