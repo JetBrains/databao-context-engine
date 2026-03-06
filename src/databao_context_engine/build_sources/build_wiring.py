@@ -4,10 +4,11 @@ from duckdb import DuckDBPyConnection
 
 from databao_context_engine.build_sources.build_runner import (
     build,
+    run_enrich_context,
     run_indexing,
 )
 from databao_context_engine.build_sources.build_service import BuildService
-from databao_context_engine.build_sources.types import BuildDatasourceResult, IndexDatasourceResult
+from databao_context_engine.build_sources.types import BuildDatasourceResult, EnrichContextResult, IndexDatasourceResult
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.llm.factory import (
     create_ollama_description_provider,
@@ -63,6 +64,36 @@ def build_all_datasources(
             build_service=build_service,
             should_index=should_index,
             should_enrich_context=should_enrich_context,
+        )
+
+
+def enrich_built_contexts(
+    project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
+    contexts: list[DatasourceContext],
+    chunk_embedding_mode: ChunkEmbeddingMode,
+    should_index: bool,
+) -> list[EnrichContextResult]:
+    logger.debug("Starting to enrich %d context(s) for project %s", len(contexts), project_layout.project_dir.resolve())
+
+    db_path = project_layout.db_path
+    if not db_path.exists():
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        migrate(db_path)
+
+    with open_duckdb_connection(db_path) as conn:
+        build_service = _create_build_service(
+            conn,
+            project_layout=project_layout,
+            chunk_embedding_mode=chunk_embedding_mode,
+            should_enrich_context=True,
+        )
+        return run_enrich_context(
+            project_layout=project_layout,
+            plugin_loader=plugin_loader,
+            build_service=build_service,
+            contexts=contexts,
+            should_index=should_index,
         )
 
 

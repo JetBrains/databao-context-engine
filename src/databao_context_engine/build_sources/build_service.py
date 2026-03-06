@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
 
 import yaml
@@ -53,7 +54,7 @@ class BuildService:
         result = self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
 
         if should_enrich_context:
-            result = self.enrich_context(built_context=result, plugin=plugin)
+            result = self._enrich_context(built_context=result, plugin=plugin)
 
         if should_index:
             self._index_context(built_context=result, plugin=plugin)
@@ -112,10 +113,23 @@ class BuildService:
 
         return replace(built, context=typed_context)
 
-    def enrich_context(self, built_context: BuiltDatasourceContext, plugin: BuildPlugin) -> BuiltDatasourceContext:
+    def enrich_built_context(
+        self, context: DatasourceContext, plugin: BuildPlugin, should_index: bool
+    ) -> BuiltDatasourceContext:
+        built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
+
+        enriched_context = self._enrich_context(built_context=built, plugin=plugin)
+
+        if should_index:
+            self._index_context(built_context=enriched_context, plugin=plugin, override=True)
+
+        return enriched_context
+
+    @perf.perf_span("plugin.enrich_context")
+    def _enrich_context(self, built_context: BuiltDatasourceContext, plugin: BuildPlugin) -> BuiltDatasourceContext:
         if not self._description_provider:
             raise ValueError("Prompt provider should never be None when enrich_context is enabled")
 
         new_context = plugin.enrich_context(built_context.context, self._description_provider)
 
-        return replace(built_context, context=new_context)
+        return replace(built_context, context=new_context, context_built_at=datetime.now())

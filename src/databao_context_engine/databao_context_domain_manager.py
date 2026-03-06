@@ -5,8 +5,10 @@ from pydantic import TypeAdapter
 
 from databao_context_engine.build_sources import (
     BuildDatasourceResult,
+    EnrichContextResult,
     IndexDatasourceResult,
     build_all_datasources,
+    enrich_built_contexts,
     index_built_contexts,
 )
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
@@ -101,6 +103,36 @@ class DatabaoContextDomainManager:
             chunk_embedding_mode=chunk_embedding_mode,
             should_index=should_index,
             should_enrich_context=should_enrich_context,
+        )
+
+    def enrich_built_contexts(
+        self,
+        *,
+        datasource_ids: list[DatasourceId] | None = None,
+        should_index: bool = True,
+        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+    ) -> list[EnrichContextResult]:
+        """Enrich the context with LLM-generated content for the given datasources.
+
+        Args:
+            datasource_ids: The list of datasource ids to enrich contexts for. If None, all datasources contexts will be enriched.
+            chunk_embedding_mode: The mode to use for chunk embedding.
+            should_index: Whether to re-build the semantic index for the enriched context.
+
+        Returns:
+            The list of all context enrichment results.
+        """
+        contexts: list[DatasourceContext] = self.get_engine_for_domain().get_all_contexts()
+
+        if datasource_ids is not None:
+            contexts = [c for c in contexts if c.datasource_id in datasource_ids]
+
+        return enrich_built_contexts(
+            project_layout=self._project_layout,
+            plugin_loader=self._plugin_loader,
+            contexts=contexts,
+            chunk_embedding_mode=chunk_embedding_mode,
+            should_index=should_index,
         )
 
     def index_built_contexts(
