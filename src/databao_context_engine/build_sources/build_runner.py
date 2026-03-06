@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 
 @perf.perf_run(
     operation="build",
-    attrs=lambda *, generate_embeddings=True, **_: {"generate_embeddings": generate_embeddings},
+    attrs=lambda *, should_index, should_enrich_context, **_: {
+        "should_index": should_index,
+        "should_enrich_context": should_enrich_context,
+    },
 )
 @perf.perf_span("build.total")
 def build(
