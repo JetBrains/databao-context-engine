@@ -441,6 +441,7 @@ class ColumnStatsExists(Fact):
     null_count: int | None = None
     non_null_count: int | None = None
     distinct_count: int | None = None
+    distinct_count_tolerance: float | None = None
     min_value: Any | None = None
     max_value: Any | None = None
     has_top_values: bool | None = None
@@ -467,8 +468,26 @@ class ColumnStatsExists(Fact):
 
         if self.distinct_count is not None:
             actual = getattr(stats, "distinct_count", None)
-            if actual != self.distinct_count:
-                a.fail(f"Expected distinct_count={self.distinct_count}, got {actual}", path)
+            expected = self.distinct_count
+            tol = self.distinct_count_tolerance
+
+            if actual is None:
+                a.fail("Expected distinct_count to have a value, but got None", path)
+
+            elif tol is not None:
+                if expected == 0:
+                    if actual != 0:
+                        a.fail(f"Expected distinct_count=0, got {actual}", path)
+                else:
+                    if abs(actual - expected) > expected * tol:
+                        a.fail(
+                            f"Expected distinct_count={expected} ±{tol * 100:.0f}% "
+                            f"(allowed deviation {expected * tol:.2f}), got {actual}",
+                            path,
+                        )
+
+            elif actual != expected:
+                a.fail(f"Expected distinct_count={expected}, got {actual}", path)
 
         if self.min_value is not None:
             actual = getattr(stats, "min_value", None)

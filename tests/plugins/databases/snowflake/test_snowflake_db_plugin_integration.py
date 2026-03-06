@@ -28,6 +28,7 @@ from databao_context_engine.plugins.databases.databases_types import DatabaseInt
 from databao_context_engine.plugins.databases.snowflake.snowflake_db_plugin import SnowflakeDbPlugin
 from tests.plugins.databases.database_contracts import (
     ColumnIs,
+    ColumnStatsExists,
     ForeignKeyExists,
     PrimaryKeyIs,
     SamplesCountIs,
@@ -489,3 +490,95 @@ def test_snowflake_exact_samples(sf_demo_schema: snowflake.connector.SnowflakeCo
                     SamplesCountIs(catalog, schema, f"{t_prefix}order_items", 0),
                 ],
             )
+
+
+def test_snowflake_table_and_column_statistics(sf_demo_schema: snowflake.connector.SnowflakeConnection):
+    rows = [
+        {"product_id": 1, "sku": "SKU-A", "price": 10.50, "description": "Product A"},
+        {"product_id": 2, "sku": "SKU-B", "price": 10.50, "description": "Product B"},
+        {"product_id": 3, "sku": "SKU-C", "price": 10.50, "description": "Product C"},
+        {"product_id": 4, "sku": "SKU-D", "price": 30.00, "description": "Product D"},
+        {"product_id": 5, "sku": "SKU-E", "price": 30.00, "description": "Product E"},
+        {"product_id": 6, "sku": "SKU-F", "price": 20.00, "description": None},
+        {"product_id": 7, "sku": "SKU-G", "price": 40.00, "description": None},
+        {"product_id": 8, "sku": "SKU-H", "price": 50.00, "description": None},
+    ]
+
+    with _seed_rows(sf_demo_schema, "products", rows, cleanup_tables=["order_items", "products"]):
+        plugin = SnowflakeDbPlugin()
+        config_file = _create_config()
+        result = execute_datasource_plugin(plugin, DatasourceType(full_type="snowflake"), config_file, "file_name")
+        assert isinstance(result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            result,
+            [
+                TableExists(SNOWFLAKE_DATABASE, f"{_TABLE_PREFIX}schema", f"{_TABLE_PREFIX}products"),
+                ColumnStatsExists(
+                    SNOWFLAKE_DATABASE,
+                    f"{_TABLE_PREFIX}schema",
+                    f"{_TABLE_PREFIX}products",
+                    "PRICE",
+                    null_count=0,
+                    non_null_count=8,
+                    distinct_count=5,
+                    min_value="10.50",
+                    max_value="50.00",
+                    total_row_count=8,
+                ),
+                ColumnStatsExists(
+                    SNOWFLAKE_DATABASE,
+                    f"{_TABLE_PREFIX}schema",
+                    f"{_TABLE_PREFIX}products",
+                    "DESCRIPTION",
+                    null_count=3,
+                    non_null_count=5,
+                    distinct_count=5,
+                    min_value="Product A",
+                    max_value="Product E",
+                    total_row_count=8,
+                ),
+            ],
+        )
+
+
+def test_snowflake_high_cardinality_statistics(sf_demo_schema: snowflake.connector.SnowflakeConnection):
+    rows = [
+        {"product_id": i, "sku": f"SKU-{i:04d}", "price": float(i * 10), "description": f"Product {i}"}
+        for i in range(1, 151)
+    ]
+
+    relative_error = 0.03  # average HLL error should be 1.63%
+    with _seed_rows(sf_demo_schema, "products", rows, cleanup_tables=["order_items", "products"]):
+        plugin = SnowflakeDbPlugin()
+        config_file = _create_config()
+        result = execute_datasource_plugin(plugin, DatasourceType(full_type="snowflake"), config_file, "file_name")
+        assert isinstance(result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            result,
+            [
+                TableExists(SNOWFLAKE_DATABASE, f"{_TABLE_PREFIX}schema", f"{_TABLE_PREFIX}products"),
+                ColumnStatsExists(
+                    SNOWFLAKE_DATABASE,
+                    f"{_TABLE_PREFIX}schema",
+                    f"{_TABLE_PREFIX}products",
+                    "PRICE",
+                    null_count=0,
+                    non_null_count=150,
+                    distinct_count=150,
+                    distinct_count_tolerance=relative_error,
+                    min_value="10.00",
+                    max_value="1500.00",
+                    total_row_count=150,
+                ),
+                ColumnStatsExists(
+                    SNOWFLAKE_DATABASE,
+                    f"{_TABLE_PREFIX}schema",
+                    f"{_TABLE_PREFIX}products",
+                    "DESCRIPTION",
+                    distinct_count=150,
+                    distinct_count_tolerance=relative_error,
+                ),
+            ],
+        )
