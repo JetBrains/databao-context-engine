@@ -5,6 +5,7 @@ from typing import Annotated, Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     AbstractConfigFile,
     BuildDatasourcePlugin,
@@ -13,6 +14,7 @@ from databao_context_engine.pluginlib.build_plugin import (
 from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector
+from databao_context_engine.plugins.databases.context_enricher import enrich_database_context
 from databao_context_engine.plugins.databases.database_chunker import build_database_chunks
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
@@ -43,6 +45,9 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
 
     def build_context(self, full_type: str, datasource_name: str, file_config: T) -> Any:
         return self._introspector.introspect_database(file_config)
+
+    def enrich_context(self, context: Any, description_provider: DescriptionProvider) -> Any:
+        return enrich_database_context(context, description_provider)
 
     def check_connection(self, full_type: str, file_config: T) -> None:
         self._introspector.check_connection(file_config)
