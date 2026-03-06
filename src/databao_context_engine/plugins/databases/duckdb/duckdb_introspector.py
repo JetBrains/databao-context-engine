@@ -4,11 +4,10 @@ import logging
 from pathlib import Path
 
 import duckdb
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
 
 logger = logging.getLogger(__name__)
@@ -39,46 +38,10 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(?)"
         return SQLQuery(sql, (catalogs,))
 
-    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
-
-        comps = self._component_queries()
-        results: dict[str, list[dict]] = {cq: [] for cq in comps}
-
-        for cq, sql in comps.items():
-            results[cq] = self._fetchall_dicts(connection, sql, (schemas,))
-
-        # Collect table and column statistics using SUMMARIZE
-        relations = results.get("relations", [])
-        table_stats, column_stats = self._collect_stats(connection, relations)
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=schemas,
-            rels=relations,
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-            table_stats=table_stats,
-            column_stats=column_stats,
-        )
-
-    def _component_queries(self) -> dict[str, str]:
-        return {
-            "relations": self._sql_relations(),
-            "columns": self._sql_columns(),
-            "pk": self._sql_primary_keys(),
-            "uq": self._sql_unique(),
-            "checks": self._sql_checks(),
-            "fks": self._sql_foreign_keys(),
-            "idx": self._sql_indexes(),
-        }
-
-    def _sql_relations(self) -> str:
-        return r"""
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 table_schema AS schema_name,
                 table_name,
@@ -95,10 +58,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 table_schema = ANY(?)
             ORDER BY 
                 table_name; 
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_columns(self) -> str:
-        return r"""
+    @override
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 c.table_schema AS schema_name,
                 c.table_name,
@@ -120,10 +87,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 c.table_schema,
                 c.table_name, 
                 c.ordinal_position; 
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_primary_keys(self) -> str:
-        return r"""
+    @override
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             WITH d AS (
                 SELECT 
                     *
@@ -157,10 +128,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 table_name, 
                 constraint_name, 
                 position;
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_unique(self) -> str:
-        return r"""
+    @override
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             WITH d AS (
                 SELECT 
                     *
@@ -194,10 +169,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 table_name, 
                 constraint_name, 
                 position;
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_checks(self) -> str:
-        return r"""
+    @override
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 d.schema_name,
                 d.table_name,
@@ -213,10 +192,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 d.schema_name, 
                 d.table_name, 
                 d.constraint_name; 
-           """
+           """,
+            (schemas,),
+        )
 
-    def _sql_foreign_keys(self) -> str:
-        return r"""
+    @override
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             WITH d AS (
                 SELECT 
                     *
@@ -280,10 +263,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 c.table_name, 
                 c.constraint_name, 
                 c.position;
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_indexes(self) -> str:
-        return r"""
+    @override
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             WITH idx AS (
                 SELECT
                     schema_name,
@@ -311,9 +298,18 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 table_name,
                 index_name,
                 position;
-         """
+         """,
+            (schemas,),
+        )
 
-    def _collect_stats(self, connection, relations: list[dict]) -> tuple[list[dict], list[dict]]:
+    @override
+    def collect_stats(
+        self,
+        connection,
+        schemas: list[str],
+        relations: list[dict],
+        columns: list[dict],
+    ) -> tuple[list[dict], list[dict]]:
         table_stats = []
         column_stats = []
 

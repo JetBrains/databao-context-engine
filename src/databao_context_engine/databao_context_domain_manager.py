@@ -97,7 +97,7 @@ class DatabaoContextDomainManager:
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
             chunk_embedding_mode=chunk_embedding_mode,
-            generate_embeddings=should_index,
+            should_index=should_index,
         )
 
     def index_built_contexts(

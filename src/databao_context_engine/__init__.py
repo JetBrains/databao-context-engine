@@ -55,6 +55,11 @@ from databao_context_engine.plugins.databases.snowflake.config_file import (
     SnowflakeSSOAuth,
 )
 from databao_context_engine.plugins.databases.sqlite.config_file import SQLiteConfigFile, SQLiteConnectionConfig
+from databao_context_engine.plugins.dbt.context_filtering import (
+    DbtContextFilter,
+    DbtContextFilterRule,
+    DbtContextFilterStructuredRule,
+)
 from databao_context_engine.plugins.dbt.types import DbtConfigFile
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.plugins.resources.types import ParquetConfigFile
@@ -129,5 +134,8 @@ __all__ = [
     "SQLiteConfigFile",
     "SQLiteConnectionConfig",
     "DbtConfigFile",
+    "DbtContextFilter",
+    "DbtContextFilterStructuredRule",
+    "DbtContextFilterRule",
     "ParquetConfigFile",
 ]

@@ -34,7 +34,7 @@ def build(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
-    generate_embeddings: bool = True,
+    should_index: bool,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -65,7 +65,7 @@ def build(
                 plugin_loader=plugin_loader,
                 build_service=build_service,
                 datasource_id=datasource_id,
-                generate_embeddings=generate_embeddings,
+                should_index=should_index,
             )
             results.append(result)
             if result.status == DatasourceStatus.SKIPPED:
@@ -100,7 +100,7 @@ def _build_one_datasource(
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     datasource_id,
-    generate_embeddings: bool,
+    should_index: bool,
 ) -> BuildDatasourceResult:
     prepared_source = prepare_source(project_layout, datasource_id)
 
@@ -119,10 +119,10 @@ def _build_one_datasource(
         )
         return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
 
-    result = build_service.process_prepared_source(
+    result = build_service.build_context(
         prepared_source=prepared_source,
         plugin=plugin,
-        generate_embeddings=generate_embeddings,
+        should_index=should_index,
     )
 
     output_dir = project_layout.output_dir

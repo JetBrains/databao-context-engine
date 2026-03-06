@@ -9,8 +9,6 @@ from databao_context_engine.build_sources.build_runner import (
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.types import BuildDatasourceResult, IndexDatasourceResult
 from databao_context_engine.datasources.datasource_context import DatasourceContext
-from databao_context_engine.llm.descriptions.provider import DescriptionProvider
-from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.factory import (
     create_ollama_description_provider,
     create_ollama_embedding_provider,
@@ -30,7 +28,7 @@ def build_all_datasources(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
     chunk_embedding_mode: ChunkEmbeddingMode,
-    generate_embeddings: bool = True,
+    should_index: bool,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -52,27 +50,16 @@ def build_all_datasources(
 
     migrate(db_path)
     with open_duckdb_connection(db_path) as conn:
-        ollama_service = create_ollama_service()
-        embedding_provider = create_ollama_embedding_provider(
-            ollama_service, model_details=project_layout.project_config.ollama_embedding_model_details
-        )
-        description_provider = (
-            create_ollama_description_provider(ollama_service)
-            if chunk_embedding_mode.should_generate_description()
-            else None
-        )
         build_service = _create_build_service(
             conn,
             project_layout=project_layout,
-            embedding_provider=embedding_provider,
-            description_provider=description_provider,
             chunk_embedding_mode=chunk_embedding_mode,
         )
         return build(
             project_layout=project_layout,
             plugin_loader=plugin_loader,
             build_service=build_service,
-            generate_embeddings=generate_embeddings,
+            should_index=should_index,
         )
 
 
@@ -98,21 +85,9 @@ def index_built_contexts(
         migrate(db_path)
 
     with open_duckdb_connection(db_path) as conn:
-        ollama_service = create_ollama_service()
-        embedding_provider = create_ollama_embedding_provider(
-            ollama_service, model_details=project_layout.project_config.ollama_embedding_model_details
-        )
-        description_provider = (
-            create_ollama_description_provider(ollama_service)
-            if chunk_embedding_mode.should_generate_description()
-            else None
-        )
-
         build_service = _create_build_service(
             conn,
             project_layout=project_layout,
-            embedding_provider=embedding_provider,
-            description_provider=description_provider,
             chunk_embedding_mode=chunk_embedding_mode,
         )
         return run_indexing(
@@ -124,10 +99,18 @@ def _create_build_service(
     conn: DuckDBPyConnection,
     *,
     project_layout: ProjectLayout,
-    embedding_provider: EmbeddingProvider,
-    description_provider: DescriptionProvider | None,
     chunk_embedding_mode: ChunkEmbeddingMode,
 ) -> BuildService:
+    ollama_service = create_ollama_service()
+    embedding_provider = create_ollama_embedding_provider(
+        ollama_service, model_details=project_layout.project_config.ollama_embedding_model_details
+    )
+    description_provider = (
+        create_ollama_description_provider(ollama_service)
+        if chunk_embedding_mode.should_generate_description()
+        else None
+    )
+
     chunk_embedding_service = create_chunk_embedding_service(
         conn,
         embedding_provider=embedding_provider,

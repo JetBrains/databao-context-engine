@@ -12,6 +12,7 @@ from databao_context_engine.plugins.databases.databases_types import (
     DatabaseIntrospectionResult,
     DatabaseSchema,
 )
+from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
 from databao_context_engine.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
 
@@ -116,9 +117,122 @@ class BaseIntrospector(Generic[T], ABC):
 
         return schemas
 
+    def collect_catalog_model(self, connection: Any, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+        if not schemas:
+            return []
+
+        relations = self.collect_relations(connection, catalog, schemas)
+        columns = self.collect_columns(connection, catalog, schemas)
+        pk = self.collect_primary_keys(connection, catalog, schemas) or []
+        uq = self.collect_unique_constraints(connection, catalog, schemas) or []
+        checks = self.collect_checks(connection, catalog, schemas) or []
+        fks = self.collect_foreign_keys(connection, catalog, schemas) or []
+        idx = self.collect_indexes(connection, catalog, schemas) or []
+        partitions = self.collect_partitions(connection, catalog, schemas) or []
+
+        # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
+        table_stats, column_stats = self.collect_stats(connection, schemas, relations, columns)
+
+        return IntrospectionModelBuilder.build_schemas_from_components(
+            schemas=schemas,
+            rels=relations,
+            cols=columns,
+            pk_cols=pk,
+            uq_cols=uq,
+            checks=checks,
+            fk_cols=fks,
+            idx_cols=idx,
+            partitions=partitions,
+            table_stats=table_stats,
+            column_stats=column_stats,
+        )
+
+    def collect_relations(self, connection, catalog: str, schemas: list[str]) -> list[dict]:
+        sql_query = self.get_relations_sql_query(catalog, schemas)
+
+        return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
     @abstractmethod
-    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         raise NotImplementedError
+
+    def collect_columns(self, connection, catalog: str, schemas: list[str]) -> list[dict]:
+        sql_query = self.get_columns_sql_query(catalog, schemas)
+
+        return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
+    @abstractmethod
+    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        raise NotImplementedError
+
+    def collect_primary_keys(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
+        sql_query = self.get_primary_keys_sql_query(catalog, schemas)
+        if sql_query is not None:
+            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
+        return None
+
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def collect_unique_constraints(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
+        sql_query = self.get_unique_constraints_sql_query(catalog, schemas)
+        if sql_query is not None:
+            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
+        return None
+
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def collect_checks(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
+        sql_query = self.get_checks_sql_query(catalog, schemas)
+        if sql_query is not None:
+            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
+        return None
+
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def collect_foreign_keys(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
+        sql_query = self.get_foreign_keys_sql_query(catalog, schemas)
+        if sql_query is not None:
+            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
+        return None
+
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def collect_indexes(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
+        sql_query = self.get_indexes_sql_query(catalog, schemas)
+        if sql_query is not None:
+            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
+        return None
+
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def collect_partitions(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
+        sql_query = self.get_partitions_sql_query(catalog, schemas)
+        if sql_query is not None:
+            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+
+        return None
+
+    def get_partitions_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
+
+    def collect_stats(
+        self,
+        connection,
+        schemas: list[str],
+        relations: list[dict],
+        columns: list[dict],
+    ) -> tuple[list[dict] | None, list[dict] | None]:
+        return None, None
 
     def _collect_samples_for_table(self, connection, catalog: str, schema: str, table: str) -> list[dict[str, Any]]:
         samples: list[dict[str, Any]] = []
