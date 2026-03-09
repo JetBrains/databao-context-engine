@@ -8,7 +8,13 @@ import pytest
 from databao_context_engine import SQLiteConfigFile, SQLiteConnectionConfig
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.databases.databases_types import (
+    DatabaseCatalog,
+    DatabaseColumn,
+    DatabaseIntrospectionResult,
+    DatabaseSchema,
+    DatabaseTable,
+)
 from databao_context_engine.plugins.databases.sqlite.sqlite_db_plugin import SQLiteDbPlugin
 from tests.plugins.databases.database_contracts import (
     ColumnIs,
@@ -22,6 +28,7 @@ from tests.plugins.databases.database_contracts import (
     UniqueConstraintExists,
     assert_contract,
 )
+from tests.utils.fakes import FakeDescriptionProvider
 
 
 @pytest.fixture
@@ -291,3 +298,53 @@ def test_sqlite_samples_in_big(sqlite_with_demo_schema: Path):
         assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(result, [SamplesCountIs("default", "main", "users", count=limit)])
+
+
+def test_sqlite_plugin_enrich_context():
+    plugin = SQLiteDbPlugin()
+
+    context = DatabaseIntrospectionResult(
+        catalogs=[
+            DatabaseCatalog(
+                name="default",
+                schemas=[
+                    DatabaseSchema(
+                        name="main",
+                        tables=[
+                            DatabaseTable(
+                                name="users",
+                                description=None,
+                                columns=[
+                                    DatabaseColumn(name="id", type="INTEGER", nullable=False, description=None),
+                                    DatabaseColumn(
+                                        name="email",
+                                        type="VARCHAR",
+                                        nullable=False,
+                                        description="existing-email-description",
+                                    ),
+                                ],
+                                samples=[],
+                            )
+                        ],
+                        description=None,
+                    )
+                ],
+                description=None,
+            )
+        ]
+    )
+
+    enriched = plugin.enrich_context(context, FakeDescriptionProvider())
+
+    catalog = enriched.catalogs[0]
+    schema = catalog.schemas[0]
+    table = schema.tables[0]
+    id_column = table.columns[0]
+    email_column = table.columns[1]
+
+    assert catalog.description == "fake-desc::default"
+    assert schema.description == "fake-desc::main"
+    assert table.description == "fake-desc::users"
+    assert id_column.description is not None
+    assert id_column.description.startswith("fake-desc::")
+    assert email_column.description == "existing-email-description"
