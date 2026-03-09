@@ -8,6 +8,7 @@ from typing import Any, Generic, Mapping, Protocol, Sequence, TypeVar, Union
 import databao_context_engine.perf.core as perf
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.databases_types import (
+    CardinalityBucket,
     DatabaseCatalog,
     DatabaseIntrospectionResult,
     DatabaseSchema,
@@ -247,6 +248,16 @@ class BaseIntrospector(Generic[T], ABC):
                 logger.warning("Failed to fetch samples for %s.%s (catalog=%s): %s", schema, table, catalog, e)
                 samples = []
         return samples
+
+    @staticmethod
+    def _compute_cardinality_stats(
+        distinct_count: int | None, *, low_cardinality_threshold: int = 20
+    ) -> tuple[CardinalityBucket, int | None]:
+        cardinality_kind = CardinalityBucket.from_distinct_count(distinct_count)
+        exact_distinct_count = (
+            distinct_count if distinct_count is not None and distinct_count < low_cardinality_threshold else None
+        )
+        return cardinality_kind, exact_distinct_count
 
     @abstractmethod
     def _connect(self, file_config: T, *, catalog: str | None = None) -> Any:

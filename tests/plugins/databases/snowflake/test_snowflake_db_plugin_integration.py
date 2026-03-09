@@ -24,7 +24,7 @@ from databao_context_engine.pluginlib.plugin_utils import (
     check_connection_for_datasource,
     execute_datasource_plugin,
 )
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.databases.databases_types import CardinalityBucket, DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.snowflake.snowflake_db_plugin import SnowflakeDbPlugin
 from tests.plugins.databases.database_contracts import (
     ColumnIs,
@@ -522,8 +522,11 @@ def test_snowflake_table_and_column_statistics(sf_demo_schema: snowflake.connect
                     null_count=0,
                     non_null_count=8,
                     distinct_count=5,
+                    cardinality_kind=CardinalityBucket.LOW,
                     min_value="10.50",
                     max_value="50.00",
+                    has_top_values=True,
+                    top_values={10.5: 3, 30: 2},
                     total_row_count=8,
                 ),
                 ColumnStatsExists(
@@ -534,6 +537,7 @@ def test_snowflake_table_and_column_statistics(sf_demo_schema: snowflake.connect
                     null_count=3,
                     non_null_count=5,
                     distinct_count=5,
+                    cardinality_kind=CardinalityBucket.LOW,
                     min_value="Product A",
                     max_value="Product E",
                     total_row_count=8,
@@ -548,7 +552,6 @@ def test_snowflake_high_cardinality_statistics(sf_demo_schema: snowflake.connect
         for i in range(1, 151)
     ]
 
-    relative_error = 0.03  # average HLL error should be 1.63%
     with _seed_rows(sf_demo_schema, "products", rows, cleanup_tables=["order_items", "products"]):
         plugin = SnowflakeDbPlugin()
         config_file = _create_config()
@@ -566,8 +569,7 @@ def test_snowflake_high_cardinality_statistics(sf_demo_schema: snowflake.connect
                     "PRICE",
                     null_count=0,
                     non_null_count=150,
-                    distinct_count=150,
-                    distinct_count_tolerance=relative_error,
+                    cardinality_kind=CardinalityBucket.HIGH,
                     min_value="10.00",
                     max_value="1500.00",
                     total_row_count=150,
@@ -577,8 +579,7 @@ def test_snowflake_high_cardinality_statistics(sf_demo_schema: snowflake.connect
                     f"{_TABLE_PREFIX}schema",
                     f"{_TABLE_PREFIX}products",
                     "DESCRIPTION",
-                    distinct_count=150,
-                    distinct_count_tolerance=relative_error,
+                    cardinality_kind=CardinalityBucket.HIGH,
                 ),
             ],
         )

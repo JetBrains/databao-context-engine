@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from collections import defaultdict
 from datetime import datetime
@@ -361,7 +362,9 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         1. Get approximate row counts from INFORMATION_SCHEMA.TABLES (fast, metadata-only)
         2. For each table, collect all column stats in a single query with adaptive sampling
         3. Use APPROX_COUNT_DISTINCT for cardinality (HyperLogLog algorithm, ~2% error, 100x faster)
-        4. Apply Bernoulli sampling with multiplier extrapolation for large tables
+        4. Use APPROX_TOP_K for top values (returns up to 5 most frequent values with counts)
+        5. Apply Bernoulli sampling with multiplier extrapolation for large tables
+        6. Compute cardinality buckets to categorize columns by distinct value count
 
         Returns:
             Tuple of (table_stats, column_stats) - both as lists of dicts
@@ -429,17 +432,20 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         sample_clause = f"TABLESAMPLE BERNOULLI ({sample_rate * 100})" if sample_rate < 1.0 else ""
         is_sampled = sample_rate < 1.0
 
+        table_ref = f"{self._quote_ident(schema)}.{self._quote_ident(table)}"
+
         column_expressions = []
         for column in columns:
             column_quoted = self._quote_ident(column)
             safe_column = self._sanitize_column_name(column)
-            # TODO potentially it's better to use MIN/MAX only for specific colummn types
+            # TODO potentially it's better to use MIN/MAX only for specific column types
             column_expressions.append(
                 f"""
                 COUNT({column_quoted}) AS {self._quote_ident(f"nonnull_{safe_column}")},
                 APPROX_COUNT_DISTINCT({column_quoted}) AS {self._quote_ident(f"distinct_{safe_column}")},
                 MIN({column_quoted})::VARCHAR AS {self._quote_ident(f"min_{safe_column}")},
-                MAX({column_quoted})::VARCHAR AS {self._quote_ident(f"max_{safe_column}")}
+                MAX({column_quoted})::VARCHAR AS {self._quote_ident(f"max_{safe_column}")},
+                APPROX_TOP_K({column_quoted}, 5) AS {self._quote_ident(f"topk_{safe_column}")}
             """.strip()
             )
 
@@ -447,19 +453,16 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             SELECT
                 COUNT(*) AS total_count,
                 {", ".join(column_expressions)}
-            FROM {self._quote_ident(schema)}.{self._quote_ident(table)} {sample_clause}
+            FROM {table_ref} {sample_clause}
         """
 
         try:
             stats_rows = self._fetchall_dicts(connection, stats_sql, None)
-            if not stats_rows:
+            if not stats_rows or stats_rows[0]["total_count"] == 0:
                 return []
 
             stats_row = stats_rows[0]
             sampled_count = stats_row["total_count"]
-
-            if sampled_count == 0:
-                return []
 
             column_stats = []
             for column in columns:
@@ -467,6 +470,10 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                 safe_col_lower = safe_column.lower()
 
                 sampled_nonnull = stats_row.get(f"nonnull_{safe_col_lower}", 0)
+                min_value = stats_row.get(f"min_{safe_col_lower}")
+                max_value = stats_row.get(f"max_{safe_col_lower}")
+                sampled_distinct = stats_row.get(f"distinct_{safe_col_lower}")
+                top_values = self._parse_top_k_result(stats_row.get(f"topk_{safe_col_lower}"))
 
                 # Extrapolate counts if sampled
                 if is_sampled:
@@ -477,8 +484,9 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                     total_count = sampled_count
 
                 null_count = max(0, total_count - non_null_count)
-                # distinct_count is approximate from APPROX_COUNT_DISTINCT (not extrapolated)
-                distinct_count = stats_row.get(f"distinct_{safe_col_lower}")
+
+                # Determine cardinality bucket and whether to include the exact count
+                cardinality_kind, distinct_count = self._compute_cardinality_stats(sampled_distinct)
 
                 column_stats.append(
                     {
@@ -487,9 +495,11 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                         "column_name": column,
                         "null_count": null_count,
                         "non_null_count": non_null_count,
+                        "cardinality_kind": cardinality_kind,
                         "distinct_count": distinct_count,
-                        "min_value": stats_row.get(f"min_{safe_col_lower}"),
-                        "max_value": stats_row.get(f"max_{safe_col_lower}"),
+                        "min_value": min_value,
+                        "max_value": max_value,
+                        "top_values": top_values,
                         "total_row_count": total_count,
                     }
                 )
@@ -528,3 +538,29 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         if estimated_row_count < 100_000_000:
             return 0.01
         return 0.001
+
+    def _parse_top_k_result(self, top_k_json: str | None) -> list[tuple[Any, int]] | None:
+        if top_k_json is None:
+            return None
+
+        try:
+            data_top_k = json.loads(top_k_json) if isinstance(top_k_json, str) else top_k_json
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.debug("Failed to parse APPROX_TOP_K result: %s", e)
+            return None
+
+        if not isinstance(data_top_k, list):
+            return None
+
+        result: list[tuple[Any, int]] = []
+        for item in data_top_k:
+            if not isinstance(item, (list, tuple)) or len(item) != 2:
+                continue
+
+            value, count = item
+            try:
+                result.append((value, int(count)))
+            except (TypeError, ValueError):
+                continue
+
+        return result or None

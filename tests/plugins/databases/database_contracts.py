@@ -5,7 +5,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.databases.databases_types import CardinalityBucket, DatabaseIntrospectionResult
 
 logger = logging.getLogger(__name__)
 
@@ -442,6 +442,7 @@ class ColumnStatsExists(Fact):
     non_null_count: int | None = None
     distinct_count: int | None = None
     distinct_count_tolerance: float | None = None
+    cardinality_kind: CardinalityBucket | None = None
     min_value: Any | None = None
     max_value: Any | None = None
     has_top_values: bool | None = None
@@ -488,6 +489,11 @@ class ColumnStatsExists(Fact):
 
             elif actual != expected:
                 a.fail(f"Expected distinct_count={expected}, got {actual}", path)
+
+        if self.cardinality_kind is not None:
+            actual = getattr(stats, "cardinality_kind", None)
+            if actual != self.cardinality_kind:
+                a.fail(f"Expected cardinality_kind={self.cardinality_kind}, got {actual}", path)
 
         if self.min_value is not None:
             actual = getattr(stats, "min_value", None)
