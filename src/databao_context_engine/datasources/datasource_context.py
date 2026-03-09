@@ -2,7 +2,7 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Collection, Iterable
 
 import yaml
 
@@ -83,6 +83,12 @@ def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Data
             )
 
     return result
+
+
+def get_datasource_contexts(
+    project_layout: ProjectLayout, datasource_ids: Collection[DatasourceId]
+) -> list[DatasourceContext]:
+    return [get_datasource_context(project_layout, datasource_id) for datasource_id in datasource_ids]
 
 
 def get_datasource_context(project_layout: ProjectLayout, datasource_id: DatasourceId) -> DatasourceContext:

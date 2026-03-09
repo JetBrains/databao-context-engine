@@ -118,11 +118,9 @@ class DatabaoContextDomainManager:
             The summary of the index operation.
         """
         engine: DatabaoContextEngine = self.get_engine_for_domain()
-        contexts: list[DatasourceContext] = engine.get_all_contexts()
-
-        if datasource_ids is not None:
-            wanted_paths = {d.datasource_path for d in datasource_ids}
-            contexts = [c for c in contexts if c.datasource_id.datasource_path in wanted_paths]
+        contexts: list[DatasourceContext] = (
+            engine.get_all_contexts() if datasource_ids is None else engine.get_datasource_contexts(datasource_ids)
+        )
 
         return index_built_contexts(
             project_layout=self._project_layout,

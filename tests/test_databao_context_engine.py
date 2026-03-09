@@ -92,6 +92,28 @@ def test_databao_engine__get_datasource_context(project_path):
     )
 
 
+def test_databao_engine__get_datasource_contexts(project_path):
+    databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
+
+    given_output_dir_with_built_contexts(
+        databao_context_engine._project_layout,
+        [
+            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
+            DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
+            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
+        ],
+    )
+
+    result = databao_context_engine.get_datasource_contexts(
+        [DatasourceId.from_string_repr("full/b.yaml"), DatasourceId.from_string_repr("full/a.yaml")]
+    )
+
+    assert result == [
+        DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
+        DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
+    ]
+
+
 def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_path):
     databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
 

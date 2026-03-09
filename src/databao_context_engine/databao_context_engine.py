@@ -1,13 +1,14 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Collection
 
 from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
     get_all_contexts,
     get_context_header_for_datasource,
     get_datasource_context,
+    get_datasource_contexts,
     get_introspected_datasource_list,
 )
 from databao_context_engine.datasources.execute_sql_query import run_sql
@@ -81,8 +82,19 @@ class DatabaoContextEngine:
 
         Returns:
             The context for this datasource.
-        """
+        """  # noqa: DOC501
         return get_datasource_context(project_layout=self._project_layout, datasource_id=datasource_id)
+
+    def get_datasource_contexts(self, datasource_ids: Collection[DatasourceId]) -> list[DatasourceContext]:
+        """Return the context available for a given list of datasources.
+
+        Args:
+            datasource_ids: The list of datasources IDs to get the context for.
+
+        Returns:
+            The context for those datasources.
+        """
+        return get_datasource_contexts(project_layout=self._project_layout, datasource_ids=datasource_ids)
 
     def get_all_contexts(self) -> list[DatasourceContext]:
         """Return all contexts generated in the domain.

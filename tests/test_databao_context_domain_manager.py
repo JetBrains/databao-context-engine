@@ -20,6 +20,7 @@ from databao_context_engine.project.layout import get_output_dir
 from tests.utils.dummy_build_plugin import SimplePydanticConfig, load_dummy_plugins
 from tests.utils.project_creation import (
     given_datasource_config_file,
+    given_output_dir_with_built_contexts,
     given_raw_source_file,
 )
 
@@ -129,9 +130,7 @@ def test_databao_context_domain_manager__index_built_contexts_indexes_all_when_n
     c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
     c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
 
-    engine = mocker.Mock()
-    engine.get_all_contexts.return_value = [c1, c2]
-    mocker.patch.object(domain_manager, "get_engine_for_domain", return_value=engine)
+    given_output_dir_with_built_contexts(domain_manager._project_layout, [c1, c2])
 
     index_fn = mocker.patch(
         "databao_context_engine.databao_context_domain_manager.index_built_contexts",
@@ -155,9 +154,7 @@ def test_databao_context_domain_manager__index_built_contexts_filters_by_datasou
     c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
     c3 = DatasourceContext(DatasourceId.from_string_repr("full/c.yaml"), context="C")
 
-    engine = mocker.Mock()
-    engine.get_all_contexts.return_value = [c1, c2, c3]
-    mocker.patch.object(domain_manager, "get_engine_for_domain", return_value=engine)
+    given_output_dir_with_built_contexts(domain_manager._project_layout, [c1, c2, c3])
 
     index_fn = mocker.patch(
         "databao_context_engine.databao_context_domain_manager.index_built_contexts",
