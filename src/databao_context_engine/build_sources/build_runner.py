@@ -232,8 +232,6 @@ def _enrich_one_context(
     output_dir = project_layout.output_dir
     context_file_path = export_build_result(output_dir, enriched_context)
 
-    # FIXME: All Results should be updated
-
     return EnrichContextResult(
         datasource_id=context.datasource_id,
         status=DatasourceStatus.OK,
