@@ -194,6 +194,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     def collect_stats(
         self,
         connection,
+        catalog: str,
         schemas: list[str],
         relations: list[dict],
         columns: list[dict],

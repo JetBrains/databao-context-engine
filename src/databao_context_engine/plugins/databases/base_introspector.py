@@ -131,7 +131,7 @@ class BaseIntrospector(Generic[T], ABC):
         partitions = self.collect_partitions(connection, catalog, schemas) or []
 
         # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
-        table_stats, column_stats = self.collect_stats(connection, schemas, relations, columns)
+        table_stats, column_stats = self.collect_stats(connection, catalog, schemas, relations, columns)
 
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
@@ -228,6 +228,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_stats(
         self,
         connection,
+        catalog: str,
         schemas: list[str],
         relations: list[dict],
         columns: list[dict],

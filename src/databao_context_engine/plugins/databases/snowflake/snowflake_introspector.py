@@ -94,7 +94,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                             f"Snowflake multi-statement batch ended early after component #{ix} '{name}'"
                         )
 
-        table_stats, column_stats = self._collect_stats(
+        table_stats, column_stats = self.collect_stats(
             connection,
             catalog=catalog,
             schemas=schemas,
@@ -346,7 +346,8 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
     def _lower_keys(rows: List[Dict]) -> List[Dict]:
         return [{k.lower(): v for k, v in row.items()} for row in rows]
 
-    def _collect_stats(
+    @override
+    def collect_stats(
         self,
         connection,
         catalog: str,

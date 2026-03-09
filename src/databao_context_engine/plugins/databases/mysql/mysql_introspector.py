@@ -94,6 +94,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
         table_stats, column_stats = self.collect_stats(
             connection,
+            catalog=catalog,
             schemas=schemas,
             relations=results.get("relations", []),
             columns=results.get("columns", []),
@@ -352,6 +353,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def collect_stats(
         self,
         connection,
+        catalog: str,
         schemas: list[str],
         relations: list[dict],
         columns: list[dict],
