@@ -122,10 +122,11 @@ class DatabaoContextDomainManager:
         Returns:
             The list of all context enrichment results.
         """
-        contexts: list[DatasourceContext] = self.get_engine_for_domain().get_all_contexts()
+        engine = self.get_engine_for_domain()
 
-        if datasource_ids is not None:
-            contexts = [c for c in contexts if c.datasource_id in datasource_ids]
+        contexts: list[DatasourceContext] = (
+            engine.get_all_contexts() if datasource_ids is None else engine.get_datasource_contexts(datasource_ids)
+        )
 
         return enrich_built_contexts(
             project_layout=self._project_layout,
