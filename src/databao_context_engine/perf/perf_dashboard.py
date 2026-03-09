@@ -5,8 +5,17 @@ import json
 import altair as alt
 import numpy as np
 import pandas as pd
-import perf_analysis as pa
 import streamlit as st
+
+from databao_context_engine.perf.perf_analysis import (
+    add_depth_labels,
+    filter_perf,
+    format_span_tree,
+    load_perf_text,
+    step_totals,
+    summarize_step_stats,
+    to_perfetto_trace,
+)
 
 st.set_page_config(page_title="Perf Dashboard", layout="wide")
 
@@ -44,7 +53,7 @@ def render_sidebar_filters(runs_df: pd.DataFrame, spans_df: pd.DataFrame) -> tup
     if not selected_statuses:
         selected_statuses = statuses_all
 
-    _, spans_in_runs, _ = pa.filter_perf(
+    _, spans_in_runs, _ = filter_perf(
         runs_df,
         spans_df,
         selected_ops=selected_ops,
@@ -65,7 +74,7 @@ def render_sidebar_filters(runs_df: pd.DataFrame, spans_df: pd.DataFrame) -> tup
 
 @st.cache_data(show_spinner=False)
 def _load_from_text(text: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    return pa.load_perf_text(text)
+    return load_perf_text(text)
 
 
 def _run_label(row: pd.Series) -> str:
@@ -127,7 +136,12 @@ def render_overview(runs_f: pd.DataFrame) -> None:
     col1.metric("Runs", len(runs_f))
     col2.metric("Errors", int((runs_f["run_status"] == "error").sum()))
 
-    dur = pd.to_numeric(runs_f.get("duration_ms"), errors="coerce")
+    if "duration_ms" in runs_f.columns:
+        duration_series = runs_f["duration_ms"]
+    else:
+        duration_series = pd.Series([None] * len(runs_f), index=runs_f.index)
+
+    dur = pd.to_numeric(duration_series, errors="coerce")
     dur_non_na = dur.dropna()
 
     avg_ms = float(dur_non_na.mean()) if len(dur_non_na) else np.nan
@@ -169,7 +183,7 @@ def render_step_stats(step_totals_df: pd.DataFrame) -> None:
         st.info("No step data for selected filters.")
         return
 
-    stats_df = pa.summarize_step_stats(step_totals_df)
+    stats_df = summarize_step_stats(step_totals_df)
     st.dataframe(stats_df, width="stretch", hide_index=True)
 
 
@@ -245,7 +259,7 @@ def render_run_detail(
         return
 
     st.markdown("### Span tree")
-    st.code("\n".join(pa.format_span_tree(spans_run)), language="text")
+    st.code("\n".join(format_span_tree(spans_run)), language="text")
 
     st.markdown("### Spans table")
     cols = [
@@ -256,7 +270,7 @@ def render_run_detail(
     st.dataframe(spans_run.sort_values("t_start_ms")[cols], width="stretch", hide_index=True)
 
     st.markdown("### Timeline")
-    tl = pa.add_depth_labels(spans_run).copy()
+    tl = add_depth_labels(spans_run).copy()
     tl["t_end_ms"] = tl["t_start_ms"] + tl["duration_ms"]
 
     if tl["t_start_ms"].notna().any():
@@ -320,7 +334,7 @@ def render_run_detail(
     st.markdown("### Export to Perfetto")
 
     if selected_ds:
-        trace_filtered = pa.to_perfetto_trace(
+        trace_filtered = to_perfetto_trace(
             spans_df_run=spans_run,
             operation=f"{operation} (filtered)",
             run_id=selected_run_id,
@@ -333,7 +347,7 @@ def render_run_detail(
             mime="application/json",
         )
 
-    trace_full = pa.to_perfetto_trace(
+    trace_full = to_perfetto_trace(
         spans_df_run=spans_run_all,
         operation=str(operation),
         run_id=selected_run_id,
@@ -364,7 +378,7 @@ def main() -> None:
 
     selected_ops, selected_statuses, selected_ds = render_sidebar_filters(runs_df, spans_df)
 
-    runs_f, spans_in_runs, spans_f = pa.filter_perf(
+    runs_f, spans_in_runs, spans_f = filter_perf(
         runs_df,
         spans_df,
         selected_ops=selected_ops,
@@ -372,8 +386,8 @@ def main() -> None:
         selected_ds=selected_ds,
     )
 
-    step_totals_df = pa.step_totals(spans_f)
-    step_totals_all_ds = pa.step_totals(spans_in_runs)
+    step_totals_df = step_totals(spans_f)
+    step_totals_all_ds = step_totals(spans_in_runs)
 
     tab_overview, tab_analysis, tab_detail = st.tabs(["Overview", "Analysis", "Detail"])
 

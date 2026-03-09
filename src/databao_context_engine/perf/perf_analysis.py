@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Hashable
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -35,7 +36,7 @@ def read_perf_records(lines: Iterable[str]) -> list[dict[str, Any]]:
             continue
         try:
             rec = json.loads(line)
-        except Exception:
+        except Exception:  # noqa: S112
             continue
         if isinstance(rec, dict):
             records.append(rec)
@@ -97,18 +98,28 @@ def _build_runs_df(run_starts: list[dict[str, Any]], run_ends: list[dict[str, An
         runs["run_status"] = "unknown"
     runs["run_status"] = runs["run_status"].fillna("unknown")
 
-    ts_start_raw = runs.get("ts_start")
-    ts_end_raw = runs.get("ts_end")
+    if "ts_start" in runs.columns:
+        ts_start_series = runs["ts_start"]
+    else:
+        ts_start_series = pd.Series([None] * len(runs), index=runs.index)
 
-    runs["start_dt"] = pd.to_datetime(ts_start_raw, errors="coerce", utc=True)
-    runs["end_dt"] = pd.to_datetime(ts_end_raw, errors="coerce", utc=True)
+    if "ts_end" in runs.columns:
+        ts_end_series = runs["ts_end"]
+    else:
+        ts_end_series = pd.Series([None] * len(runs), index=runs.index)
 
-    runs["ts_start"] = runs.get("ts_start").apply(_short_ts) if "ts_start" in runs.columns else ""
-    runs["ts_end"] = runs.get("ts_end").apply(_short_ts) if "ts_end" in runs.columns else ""
+    runs["start_dt"] = pd.to_datetime(ts_start_series, errors="coerce", utc=True)
+    runs["end_dt"] = pd.to_datetime(ts_end_series, errors="coerce", utc=True)
 
-    if "run_attrs" not in runs.columns:
-        runs["run_attrs"] = None
-    run_attrs_norm = pd.json_normalize(runs["run_attrs"].apply(_as_dict)).add_prefix("run_attr.")
+    runs["ts_start"] = ts_start_series.apply(_short_ts)
+    runs["ts_end"] = ts_end_series.apply(_short_ts)
+
+    if "run_attrs" in runs.columns:
+        run_attrs_series = runs["run_attrs"]
+    else:
+        run_attrs_series = pd.Series([None] * len(runs), index=runs.index)
+
+    run_attrs_norm = pd.json_normalize(run_attrs_series.apply(_as_dict).tolist()).add_prefix("run_attr.")
     runs = pd.concat([runs.drop(columns=["run_attrs"]), run_attrs_norm], axis=1)
 
     runs["duration_ms"] = _to_int(runs.get("duration_ms"))
@@ -155,14 +166,21 @@ def _build_spans_df(spans: list[dict[str, Any]], runs_df: pd.DataFrame) -> pd.Da
                 df[col] = None
         return df
 
-    df["status"] = df.get("status", "ok").fillna("ok")
+    if "status" in df.columns:
+        df["status"] = df["status"].fillna("ok")
+    else:
+        df["status"] = "ok"
+
     df["t_start_ms"] = _to_int(df.get("t_start_ms"))
     df["duration_ms"] = _to_int(df.get("duration_ms"))
     df["t_end_ms"] = df["t_start_ms"] + df["duration_ms"]
 
-    if "attrs" not in df.columns:
-        df["attrs"] = None
-    attrs_norm = pd.json_normalize(df["attrs"].apply(_as_dict)).add_prefix("attr.")
+    if "attrs" in df.columns:
+        attrs_series = df["attrs"]
+    else:
+        attrs_series = pd.Series([None] * len(df), index=df.index)
+
+    attrs_norm = pd.json_normalize(attrs_series.apply(_as_dict).tolist()).add_prefix("attr.")
     df = pd.concat([df.drop(columns=["attrs"]), attrs_norm], axis=1)
 
     if not runs_df.empty:
@@ -220,7 +238,10 @@ def step_totals(spans_df: pd.DataFrame) -> pd.DataFrame:
         )
 
     df = spans_df.copy()
-    df["status"] = df.get("status", "ok").fillna("ok")
+    if "status" in df.columns:
+        df["status"] = df["status"].fillna("ok")
+    else:
+        df["status"] = "ok"
 
     extra_cols = [c for c in ["operation", "run_index", "start_dt"] if c in df.columns]
     group_cols = extra_cols + ["run_id", "datasource_id", "name"]
@@ -312,13 +333,13 @@ def format_span_tree(spans_df_run: pd.DataFrame) -> list[str]:
         return ["(no spans)"]
 
     rows = spans_df_run.to_dict(orient="records")
-    by_id: dict[str, dict[str, Any]] = {}
+    by_id: dict[str, dict[Hashable, Any]] = {}
     children: dict[str, list[str]] = {}
 
     for r in rows:
         sid = r.get("span_id")
         if isinstance(sid, str) and sid:
-            by_id[sid] = r
+            by_id = {}
             children.setdefault(sid, [])
 
     roots: list[str] = []
@@ -331,10 +352,12 @@ def format_span_tree(spans_df_run: pd.DataFrame) -> list[str]:
 
     def start_key(sid: str) -> int:
         v = by_id[sid].get("t_start_ms")
-        try:
-            return int(v)
-        except Exception:
+        if v is None:
             return 0
+        n = pd.to_numeric(v, errors="coerce")
+        if pd.isna(n):
+            return 0
+        return int(n)
 
     roots.sort(key=start_key)
     for pid in list(children.keys()):

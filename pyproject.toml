@@ -68,7 +68,8 @@ dev = [
     "types-pymysql>=1.1.0.20250916",
     "pytest-mock>=3.15.1",
     "asyncpg-stubs>=0.31.1",
-    "streamlit>=1.54.0"
+    "streamlit>=1.54.0",
+    "pandas-stubs>=3.0.0.260204"
 ]
 
 [project.scripts]
