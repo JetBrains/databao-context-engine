@@ -162,7 +162,7 @@ def render_overview(runs_f: pd.DataFrame) -> None:
     with left:
         st.markdown("### Run durations over time")
         chart_df_ms = runs_f.pivot_table(index="start_dt", columns="operation", values="duration_ms", aggfunc="mean")
-        chart_df_s = (chart_df_ms / 1000.0).round(2)  # seconds
+        chart_df_s = (chart_df_ms / 1000.0).round(2)
         st.line_chart(chart_df_s)
 
     with right:
