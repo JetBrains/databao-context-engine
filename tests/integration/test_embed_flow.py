@@ -1,30 +1,21 @@
 from datetime import datetime
 
-import pytest
-
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.llm.config import EmbeddingModelDetails
-from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
-from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode, ChunkEmbeddingService
+from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 from databao_context_engine.services.persistence_service import PersistenceService
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 
 
-@pytest.mark.parametrize("chunk_embedding_mode", [mode for mode in ChunkEmbeddingMode])
-def test_embed_flow_persists_chunks_and_embeddings(
-    conn, chunk_repo, embedding_repo, registry_repo, resolver, chunk_embedding_mode
-):
+def test_embed_flow_persists_chunks_and_embeddings(conn, chunk_repo, embedding_repo, registry_repo, resolver):
     persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo, dim=768)
     embedding_provider = _StubProvider(dim=768, model_id="dummy:v1", embedder="tests")
-    description_provider = _StubDescriptionProvider()
 
     chunk_embedding_service = ChunkEmbeddingService(
         persistence_service=persistence,
         embedding_provider=embedding_provider,
         shard_resolver=resolver,
-        description_provider=description_provider,
-        chunk_embedding_mode=chunk_embedding_mode,
     )
 
     chunks = [
@@ -49,17 +40,7 @@ def test_embed_flow_persists_chunks_and_embeddings(
     assert len(chunks) == 3
     assert [s.display_text for s in chunks] == ["Gamma", "Beta", "Alpha"]
 
-    match chunk_embedding_mode:
-        case ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY:
-            assert [s.embeddable_text for s in chunks] == ["gamma", "beta", "alpha"]
-        case ChunkEmbeddingMode.GENERATED_DESCRIPTION_ONLY:
-            assert [s.embeddable_text for s in chunks] == ["desc-2-gamma", "desc-1-beta", "desc-0-alpha"]
-        case ChunkEmbeddingMode.EMBEDDABLE_TEXT_AND_GENERATED_DESCRIPTION:
-            assert [s.embeddable_text for s in chunks] == [
-                "desc-2-gamma\ngamma",
-                "desc-1-beta\nbeta",
-                "desc-0-alpha\nalpha",
-            ]
+    assert [s.embeddable_text for s in chunks] == ["gamma", "beta", "alpha"]
 
     rows = embedding_repo.list(table_name=table_name)
     assert len(rows) == 3
@@ -67,13 +48,11 @@ def test_embed_flow_persists_chunks_and_embeddings(
 
 def test_embed_flow_is_idempotent_on_resolver(conn, chunk_repo, embedding_repo, registry_repo, resolver):
     embedding_provider = _StubProvider(embedder="tests", model_id="idempotent:v1", dim=768)
-    description_provider = _StubDescriptionProvider()
     persistence = PersistenceService(conn, chunk_repo, embedding_repo, dim=768)
     service = ChunkEmbeddingService(
         persistence_service=persistence,
         embedding_provider=embedding_provider,
         shard_resolver=resolver,
-        description_provider=description_provider,
     )
 
     service.embed_chunks(
@@ -111,18 +90,3 @@ class _StubProvider:
         for t in texts:
             out.append(self.embed(t))
         return out
-
-
-class _StubDescriptionProvider(DescriptionProvider):
-    def __init__(self, *, fail_at: set[int] | None = None):
-        self._fail_at = set(fail_at or [])
-        self.calls: list[tuple[str, str]] = []  # (text, context)
-
-    def describe(self, text: str, context: str) -> str:
-        i = len(self.calls)
-        self.calls.append((text, context))
-
-        if i in self._fail_at:
-            raise RuntimeError("fake describe failure")
-
-        return f"desc-{i}-{text}"

@@ -7,7 +7,6 @@ from pydantic import ValidationError
 
 from databao_context_engine import (
     BuildDatasourceResult,
-    ChunkEmbeddingMode,
     ConfiguredDatasource,
     DatabaoContextDomainManager,
     DatabaoContextPluginLoader,
@@ -106,9 +105,7 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(domain_ma
 
 
 def test_databao_context_domain_manager__build_with_no_datasource(domain_manager):
-    result = domain_manager.build_context(
-        datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
-    )
+    result = domain_manager.build_context(datasource_ids=None)
 
     assert result == []
 
@@ -125,9 +122,7 @@ def test_databao_context_domain_manager__build_with_multiple_datasource(domain_m
         file_content="Content of my dummy file",
     )
 
-    result = domain_manager.build_context(
-        datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
-    )
+    result = domain_manager.build_context(datasource_ids=None)
 
     assert len(result) == 2, str(result)
     assert_build_context_result(
@@ -168,7 +163,6 @@ def test_databao_context_domain_manager__index_built_contexts_indexes_all_when_n
         project_layout=domain_manager._project_layout,
         plugin_loader=domain_manager._plugin_loader,
         contexts=[c1, c2],
-        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     )
 
 
@@ -200,7 +194,6 @@ def test_databao_context_domain_manager__index_built_contexts_filters_by_datasou
         project_layout=domain_manager._project_layout,
         plugin_loader=domain_manager._plugin_loader,
         contexts=[c1, c3],
-        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     )
 
 
@@ -219,7 +212,6 @@ def test_databao_context_domain_manager__build_context_with_enriching(domain_man
 
     build_result = domain_manager.build_context(
         datasource_ids=None,
-        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         should_index=False,
         should_enrich_context=True,
     )
@@ -265,7 +257,6 @@ def test_databao_context_domain_manager__enrich_built_contexts_with_dummy_plugin
 
     enriched_result = domain_manager.enrich_built_contexts(
         datasource_ids=None,
-        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         should_index=False,
     )
 

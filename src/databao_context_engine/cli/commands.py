@@ -1,13 +1,12 @@
 import os
 import sys
 from pathlib import Path
-from typing import Literal, Sequence
+from typing import Sequence
 
 import click
 from click import Context
 
 from databao_context_engine import (
-    ChunkEmbeddingMode,
     DatabaoContextDomainManager,
     DatabaoContextEngine,
     DatasourceId,
@@ -79,15 +78,6 @@ def run_sql_query(ctx: Context, datasource_config_file: str, sql: str) -> None:
 
 @dce.command()
 @click.option(
-    "-m",
-    "--chunk-embedding-mode",
-    type=click.Choice(
-        ["embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"]
-    ),
-    default="embeddable_text_only",
-    help="Choose how chunks will be embedded. If a mode with the generated_description is selected, a local LLM model will be downloaded and used.",
-)
-@click.option(
     "--should-index/--should-not-index",
     default=True,
     show_default=True,
@@ -96,9 +86,6 @@ def run_sql_query(ctx: Context, datasource_config_file: str, sql: str) -> None:
 @click.pass_context
 def build(
     ctx: Context,
-    chunk_embedding_mode: Literal[
-        "embeddable_text_only", "generated_description_only", "embeddable_text_and_generated_description"
-    ],
     should_index: bool,
 ) -> None:
     """Build context for all datasources.
@@ -109,7 +96,6 @@ def build(
     """
     results = DatabaoContextDomainManager(domain_dir=ctx.obj["project_dir"]).build_context(
         datasource_ids=None,
-        chunk_embedding_mode=ChunkEmbeddingMode(chunk_embedding_mode.upper()),
         should_index=should_index,
     )
 

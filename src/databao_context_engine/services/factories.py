@@ -1,8 +1,7 @@
 from duckdb import DuckDBPyConnection
 
-from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
-from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode, ChunkEmbeddingService
+from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.persistence_service import PersistenceService
 from databao_context_engine.services.table_name_policy import TableNamePolicy
@@ -32,8 +31,6 @@ def create_chunk_embedding_service(
     conn: DuckDBPyConnection,
     *,
     embedding_provider: EmbeddingProvider,
-    description_provider: DescriptionProvider | None,
-    chunk_embedding_mode: ChunkEmbeddingMode,
 ) -> ChunkEmbeddingService:
     resolver = create_shard_resolver(conn)
     persistence = create_persistence_service(conn, model_dim=embedding_provider.embedding_model_details.model_dim)
@@ -41,6 +38,4 @@ def create_chunk_embedding_service(
         persistence_service=persistence,
         embedding_provider=embedding_provider,
         shard_resolver=resolver,
-        description_provider=description_provider,
-        chunk_embedding_mode=chunk_embedding_mode,
     )
