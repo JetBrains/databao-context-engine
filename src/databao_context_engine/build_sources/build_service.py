@@ -40,37 +40,21 @@ class BuildService:
         *,
         prepared_source: PreparedDatasource,
         plugin: BuildPlugin,
-        should_enrich_context: bool,
-        should_index: bool,
         progress: ProgressCallback | None = None,
     ) -> BuiltDatasourceContext:
         """Process a single source to build its context.
 
-        1) Execute the plugin
-        2) Divide the results into chunks
-        3) Embed and persist the chunks
-
         Returns:
             The built context.
         """
-        result = self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
-
         emitter = ProgressEmitter(progress)
+
+        result = self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
 
         emitter.datasource_step_completed(
             datasource_id=result.datasource_id,
             step=ProgressStep.PLUGIN_EXECUTION,
         )
-
-        if should_enrich_context:
-            result = self._enrich_context(built_context=result, plugin=plugin)
-            emitter.datasource_step_completed(
-                datasource_id=result.datasource_id,
-                step=ProgressStep.CONTEXT_ENRICHMENT,
-            )
-
-        if should_index:
-            self._index_context(built_context=result, plugin=plugin, progress=progress)
 
         return result
 
@@ -78,7 +62,7 @@ class BuildService:
     def _execute_plugin(self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
         return execute_plugin(self._project_layout, prepared_source, plugin)
 
-    def index_built_context(
+    def index_datasource_context(
         self,
         *,
         context: DatasourceContext,
@@ -87,16 +71,14 @@ class BuildService:
     ) -> None:
         """Index a context file using the given plugin.
 
-        1) Parses the yaml context file contents
-        2) Reconstructs the `BuiltDatasourceContext` object
-        3) Structures the inner `context` payload into the plugin's expected `context_type`
-        4) Calls the plugin's chunker and persists the resulting chunks and embeddings.
+        1) Reconstructs the `BuiltDatasourceContext` object from the yaml context string
+        2) Calls the plugin's chunker and persists the resulting chunks and embeddings.
         """
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        self._index_context(built_context=built, plugin=plugin, override=True, progress=progress)
+        self.index_built_context(built_context=built, plugin=plugin, override=True, progress=progress)
 
-    def _index_context(
+    def index_built_context(
         self,
         *,
         built_context: BuiltDatasourceContext,
@@ -138,23 +120,29 @@ class BuildService:
 
         return replace(built, context=typed_context)
 
-    def enrich_built_context(
-        self, context: DatasourceContext, plugin: BuildPlugin, should_index: bool
+    def enrich_datasource_context(
+        self, context: DatasourceContext, plugin: BuildPlugin, progress: ProgressCallback | None = None
     ) -> BuiltDatasourceContext:
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        enriched_context = self._enrich_context(built_context=built, plugin=plugin)
-
-        if should_index:
-            self._index_context(built_context=enriched_context, plugin=plugin, override=True)
-
-        return enriched_context
+        return self.enrich_built_context(built_context=built, plugin=plugin, progress=progress)
 
     @perf.perf_span("plugin.enrich_context")
-    def _enrich_context(self, built_context: BuiltDatasourceContext, plugin: BuildPlugin) -> BuiltDatasourceContext:
+    def enrich_built_context(
+        self, built_context: BuiltDatasourceContext, plugin: BuildPlugin, progress: ProgressCallback | None = None
+    ) -> BuiltDatasourceContext:
         if not self._description_provider:
             raise ValueError("Prompt provider should never be None when enrich_context is enabled")
 
+        emitter = ProgressEmitter(progress)
+
         new_context = plugin.enrich_context(built_context.context, self._description_provider)
 
-        return replace(built_context, context=new_context, context_built_at=datetime.now())
+        result = replace(built_context, context=new_context, context_built_at=datetime.now())
+
+        emitter.datasource_step_completed(
+            datasource_id=result.datasource_id,
+            step=ProgressStep.CONTEXT_ENRICHMENT,
+        )
+
+        return result

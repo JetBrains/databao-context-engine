@@ -192,15 +192,19 @@ def _build_one_datasource(
     result = build_service.build_context(
         prepared_source=prepared_source,
         plugin=plugin,
-        should_index=should_index,
         progress=progress,
-        should_enrich_context=should_enrich_context,
     )
+
+    if should_enrich_context:
+        result = build_service.enrich_built_context(result, plugin, progress)
 
     output_dir = project_layout.output_dir
     context_file_path = export_build_result(output_dir, result)
 
     perf.set_attribute("context_size_bytes", context_file_path.stat().st_size)
+
+    if should_index:
+        build_service.index_built_context(built_context=result, plugin=plugin, override=False, progress=progress)
 
     return BuildDatasourceResult(
         datasource_id=datasource_id,
@@ -300,10 +304,13 @@ def _enrich_one_context(
         )
         return EnrichContextResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
 
-    enriched_context = build_service.enrich_built_context(context=context, plugin=plugin, should_index=should_index)
+    enriched_context = build_service.enrich_datasource_context(context=context, plugin=plugin)
 
     output_dir = project_layout.output_dir
     context_file_path = export_build_result(output_dir, enriched_context)
+
+    if should_index:
+        build_service.index_built_context(built_context=enriched_context, plugin=plugin, override=True)
 
     return EnrichContextResult(
         datasource_id=context.datasource_id,
@@ -422,5 +429,5 @@ def _index_one_context(
         step_plan=_index_step_plan(),
     )
 
-    build_service.index_built_context(context=context, plugin=plugin, progress=progress)
+    build_service.index_datasource_context(context=context, plugin=plugin, progress=progress)
     return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK)

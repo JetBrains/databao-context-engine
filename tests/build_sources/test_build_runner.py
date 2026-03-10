@@ -92,11 +92,11 @@ def test_build_processes_file_source_and_exports(
             )
         ]
     )
-    plugin_loader = DatabaoContextPluginLoader(
-        plugins_by_type={DatasourceType(full_type="files/md"): mocker.Mock(name="BuildFilePlugin")}
-    )
+    plugin = mocker.Mock(name="BuildFilePlugin")
+    plugin_loader = DatabaoContextPluginLoader(plugins_by_type={DatasourceType(full_type="files/md"): plugin})
 
-    mock_build_service.build_context.return_value = _result(name="files/one.md", typ="files/md")
+    result = _result(name="files/one.md", typ="files/md")
+    mock_build_service.build_context.return_value = result
 
     build_runner.build(
         project_layout=project_layout,
@@ -107,6 +107,12 @@ def test_build_processes_file_source_and_exports(
     )
 
     mock_build_service.build_context.assert_called_once()
+    mock_build_service.index_built_context.assert_called_once_with(
+        built_context=result,
+        plugin=plugin,
+        override=False,
+        progress=None,
+    )
 
 
 def test_build_continues_on_service_exception(stub_sources, stub_prepare, mock_build_service, mocker, project_layout):
@@ -162,7 +168,7 @@ def test_run_indexing_indexes_when_plugin_exists(mocker, mock_build_service, pro
         contexts=[ctx],
     )
 
-    mock_build_service.index_built_context.assert_called_once_with(context=ctx, plugin=plugin, progress=None)
+    mock_build_service.index_datasource_context.assert_called_once_with(context=ctx, plugin=plugin, progress=None)
 
 
 def test_run_indexing_skips_when_plugin_missing(mocker, mock_build_service, project_layout, caplog):
@@ -182,7 +188,7 @@ def test_run_indexing_skips_when_plugin_missing(mocker, mock_build_service, proj
         contexts=[ctx],
     )
 
-    mock_build_service.index_built_context.assert_not_called()
+    mock_build_service.index_datasource_context.assert_not_called()
 
 
 def test_run_indexing_continues_on_exception(mocker, mock_build_service, project_layout):
@@ -194,7 +200,7 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
     c1 = DatasourceContext(DatasourceId.from_string_repr("files/a.md"), context="a")
     c2 = DatasourceContext(DatasourceId.from_string_repr("files/b.md"), context="b")
 
-    mock_build_service.index_built_context.side_effect = [RuntimeError("boom"), None]
+    mock_build_service.index_datasource_context.side_effect = [RuntimeError("boom"), None]
 
     build_runner.run_indexing(
         project_layout=project_layout,
@@ -203,9 +209,9 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
         contexts=[c1, c2],
     )
 
-    assert mock_build_service.index_built_context.call_count == 2
-    mock_build_service.index_built_context.assert_any_call(context=c1, plugin=plugin, progress=None)
-    mock_build_service.index_built_context.assert_any_call(context=c2, plugin=plugin, progress=None)
+    assert mock_build_service.index_datasource_context.call_count == 2
+    mock_build_service.index_datasource_context.assert_any_call(context=c1, plugin=plugin, progress=None)
+    mock_build_service.index_datasource_context.assert_any_call(context=c2, plugin=plugin, progress=None)
 
 
 def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_build_service, project_layout, mocker):
