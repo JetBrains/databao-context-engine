@@ -16,6 +16,7 @@ from databao_context_engine.datasources.datasource_context import (
     read_datasource_type_from_context,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
+from databao_context_engine.datasources.types import PreparedConfig
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
@@ -102,6 +103,9 @@ def _build_one_datasource(
     should_index: bool,
 ) -> BuildDatasourceResult:
     prepared_source = prepare_source(project_layout, datasource_id)
+    if isinstance(prepared_source, PreparedConfig) and prepared_source.config.get("enabled") is False:
+        logger.info(f"Skipping disabled datasource {prepared_source.datasource_id.datasource_path}")
+        return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
 
     perf.set_attribute("datasource_type", prepared_source.datasource_type.full_type)
 

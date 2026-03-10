@@ -7,7 +7,7 @@ import pytest
 from databao_context_engine import DatabaoContextPluginLoader, DatasourceContext, DatasourceId
 from databao_context_engine.build_sources import build_runner
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
-from databao_context_engine.datasources.types import PreparedFile
+from databao_context_engine.datasources.types import PreparedConfig, PreparedFile
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
 
@@ -196,3 +196,32 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
     assert mock_build_service.index_built_context.call_count == 2
     mock_build_service.index_built_context.assert_any_call(context=c1, plugin=plugin)
     mock_build_service.index_built_context.assert_any_call(context=c2, plugin=plugin)
+
+
+def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_build_service, project_layout, mocker):
+    datasource_id = DatasourceId.from_string_repr("configs/my_source.yaml")
+    stub_sources([datasource_id])
+
+    stub_prepare(
+        [
+            PreparedConfig(
+                datasource_id=datasource_id,
+                datasource_type=DatasourceType(full_type="my/type"),
+                config={"type": "my/type", "enabled": False},
+                datasource_name="my_source",
+            )
+        ]
+    )
+
+    plugin_loader = DatabaoContextPluginLoader(
+        plugins_by_type={DatasourceType(full_type="my/type"): mocker.Mock(name="BuildDatasourcePlugin")}
+    )
+
+    build_runner.build(
+        project_layout=project_layout,
+        plugin_loader=plugin_loader,
+        build_service=mock_build_service,
+        should_index=True,
+    )
+
+    mock_build_service.build_context.assert_not_called()
