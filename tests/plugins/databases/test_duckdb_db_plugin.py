@@ -8,6 +8,7 @@ import pytest
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.databases.databases_types import (
+    CardinalityBucket,
     DatabaseIntrospectionResult,
 )
 from databao_context_engine.plugins.databases.duckdb.duckdb_db_plugin import DuckDbPlugin
@@ -300,6 +301,7 @@ def test_duckdb_table_and_column_statistics(duckdb_with_demo_schema: Path):
                     "users",
                     "user_id",
                     distinct_count=5,
+                    cardinality_kind=CardinalityBucket.LOW,
                     min_value="1",
                     max_value="5",
                     total_row_count=5,
@@ -310,6 +312,7 @@ def test_duckdb_table_and_column_statistics(duckdb_with_demo_schema: Path):
                     "users",
                     "name",
                     distinct_count=4,
+                    cardinality_kind=CardinalityBucket.VERY_LOW,
                     min_value="Alice",
                     max_value="Dave",
                     total_row_count=5,
@@ -320,6 +323,7 @@ def test_duckdb_table_and_column_statistics(duckdb_with_demo_schema: Path):
                     "users",
                     "email",
                     distinct_count=5,
+                    cardinality_kind=CardinalityBucket.LOW,
                     total_row_count=5,
                 ),
                 ColumnStatsExists(
@@ -328,6 +332,7 @@ def test_duckdb_table_and_column_statistics(duckdb_with_demo_schema: Path):
                     "users",
                     "is_active",
                     distinct_count=2,
+                    cardinality_kind=CardinalityBucket.VERY_LOW,
                     min_value="0",
                     max_value="1",
                     total_row_count=5,
