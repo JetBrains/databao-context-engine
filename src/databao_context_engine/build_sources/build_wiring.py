@@ -46,6 +46,7 @@ def build_all_datasources(
     db_path = project_layout.db_path
     db_path.parent.mkdir(parents=True, exist_ok=True)
     if db_path.exists():
+        logger.debug("Deleting existing database %s", db_path)
         db_path.unlink()
 
     migrate(db_path)
