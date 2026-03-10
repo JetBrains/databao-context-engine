@@ -39,45 +39,29 @@ class BuildService:
         *,
         prepared_source: PreparedDatasource,
         plugin: BuildPlugin,
-        should_enrich_context: bool,
-        should_index: bool,
     ) -> BuiltDatasourceContext:
         """Process a single source to build its context.
-
-        1) Execute the plugin
-        2) Divide the results into chunks
-        3) Embed and persist the chunks
 
         Returns:
             The built context.
         """
-        result = self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
-
-        if should_enrich_context:
-            result = self._enrich_context(built_context=result, plugin=plugin)
-
-        if should_index:
-            self._index_context(built_context=result, plugin=plugin)
-
-        return result
+        return self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
 
     @perf.perf_span("plugin.execute")
     def _execute_plugin(self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
         return execute_plugin(self._project_layout, prepared_source, plugin)
 
-    def index_built_context(self, *, context: DatasourceContext, plugin: BuildPlugin) -> None:
+    def index_datasource_context(self, *, context: DatasourceContext, plugin: BuildPlugin) -> None:
         """Index a context file using the given plugin.
 
-        1) Parses the yaml context file contents
-        2) Reconstructs the `BuiltDatasourceContext` object
-        3) Structures the inner `context` payload into the plugin's expected `context_type`
-        4) Calls the plugin's chunker and persists the resulting chunks and embeddings.
+        1) Reconstructs the `BuiltDatasourceContext` object from the yaml context string
+        2) Calls the plugin's chunker and persists the resulting chunks and embeddings.
         """
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        self._index_context(built_context=built, plugin=plugin, override=True)
+        self.index_built_context(built_context=built, plugin=plugin, override=True)
 
-    def _index_context(
+    def index_built_context(
         self, *, built_context: BuiltDatasourceContext, plugin: BuildPlugin, override: bool = False
     ) -> None:
         chunks = plugin.divide_context_into_chunks(built_context.context)
@@ -113,20 +97,15 @@ class BuildService:
 
         return replace(built, context=typed_context)
 
-    def enrich_built_context(
-        self, context: DatasourceContext, plugin: BuildPlugin, should_index: bool
-    ) -> BuiltDatasourceContext:
+    def enrich_datasource_context(self, context: DatasourceContext, plugin: BuildPlugin) -> BuiltDatasourceContext:
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        enriched_context = self._enrich_context(built_context=built, plugin=plugin)
-
-        if should_index:
-            self._index_context(built_context=enriched_context, plugin=plugin, override=True)
-
-        return enriched_context
+        return self.enrich_built_context(built_context=built, plugin=plugin)
 
     @perf.perf_span("plugin.enrich_context")
-    def _enrich_context(self, built_context: BuiltDatasourceContext, plugin: BuildPlugin) -> BuiltDatasourceContext:
+    def enrich_built_context(
+        self, built_context: BuiltDatasourceContext, plugin: BuildPlugin
+    ) -> BuiltDatasourceContext:
         if not self._description_provider:
             raise ValueError("Prompt provider should never be None when enrich_context is enabled")
 
