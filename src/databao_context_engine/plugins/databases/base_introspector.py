@@ -254,10 +254,10 @@ class BaseIntrospector(Generic[T], ABC):
         distinct_count: int | None, *, low_cardinality_threshold: int = 20
     ) -> tuple[CardinalityBucket, int | None]:
         cardinality_kind = CardinalityBucket.from_distinct_count(distinct_count)
-        exact_distinct_count = (
+        low_cardinality_distinct_count = (
             distinct_count if distinct_count is not None and distinct_count < low_cardinality_threshold else None
         )
-        return cardinality_kind, exact_distinct_count
+        return cardinality_kind, low_cardinality_distinct_count
 
     @abstractmethod
     def _connect(self, file_config: T, *, catalog: str | None = None) -> Any:

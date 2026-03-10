@@ -354,6 +354,9 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                     # currently min/max values are strings, so we might need to convert them to the appropriate type
                     # also, duckdb doesn't provide most_common_vals/most_common_freqs
                     # but there are avg, std, q25 etc. available, we can use them as well
+                    approx_distinct_count = row.get("approx_unique")
+                    cardinality_kind, distinct_count = self._compute_cardinality_stats(approx_distinct_count)
+
                     column_stats.append(
                         {
                             "schema_name": schema_name,
@@ -361,7 +364,8 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                             "column_name": column_name,
                             "null_count": null_count,
                             "non_null_count": non_null_count,
-                            "distinct_count": row.get("approx_unique"),
+                            "distinct_count": distinct_count,
+                            "cardinality_kind": cardinality_kind,
                             "min_value": row.get("min"),
                             "max_value": row.get("max"),
                             "most_common_vals": None,

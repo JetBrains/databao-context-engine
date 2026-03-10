@@ -486,7 +486,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                 null_count = max(0, total_count - non_null_count)
 
                 # Determine cardinality bucket and whether to include the exact count
-                cardinality_kind, distinct_count = self._compute_cardinality_stats(sampled_distinct)
+                cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(sampled_distinct)
 
                 column_stats.append(
                     {
@@ -496,7 +496,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                         "null_count": null_count,
                         "non_null_count": non_null_count,
                         "cardinality_kind": cardinality_kind,
-                        "distinct_count": distinct_count,
+                        "distinct_count": low_cardinality_distinct_count,
                         "min_value": min_value,
                         "max_value": max_value,
                         "top_values": top_values,
