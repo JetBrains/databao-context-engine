@@ -12,6 +12,7 @@ from databao_context_engine.plugins.databases.database_chunker import (
     DatabaseTableChunkContent,
 )
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.models import ChunkEmbedding
@@ -72,6 +73,7 @@ class ChunkEmbeddingService:
         full_type: str,
         datasource_id: str,
         override: bool = False,
+        progress: ProgressCallback | None = None,
     ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
@@ -83,6 +85,8 @@ class ChunkEmbeddingService:
         if not chunks:
             return
 
+        emitter = ProgressEmitter(progress)
+
         logger.debug(
             f"Embedding {len(chunks)} chunks for datasource {datasource_id}, with chunk_embedding_mode={self._chunk_embedding_mode}"
         )
@@ -91,13 +95,21 @@ class ChunkEmbeddingService:
             (chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)) for chunk in chunks
         ]
 
-        embedding_texts, generated_descriptions = self._prepare_embedding_texts_with_descriptions(
-            chunks=chunks,
-            chunk_display_texts=chunk_display_texts,
-            context=result,
-        )
+        if self._chunk_embedding_mode.should_generate_description():
+            embedding_texts, generated_descriptions = self._prepare_embedding_texts_with_descriptions(
+                chunks=chunks,
+                chunk_display_texts=chunk_display_texts,
+                context=result,
+                datasource_id=datasource_id,
+                progress=progress,
+            )
+            emitter.datasource_step_completed(datasource_id=datasource_id)
+        else:
+            embedding_texts = [chunk.embeddable_text for chunk in chunks]
+            generated_descriptions = [None for _ in chunks]
 
         vecs = self._embed_many(embedding_texts)
+        emitter.datasource_step_completed(datasource_id=datasource_id)
 
         enriched_embeddings: list[ChunkEmbedding] = [
             ChunkEmbedding(
@@ -125,6 +137,8 @@ class ChunkEmbeddingService:
             override=override,
         )
 
+        emitter.datasource_step_completed(datasource_id=datasource_id)
+
     @perf.perf_span("description.generate")
     def _prepare_embedding_texts_with_descriptions(
         self,
@@ -132,11 +146,15 @@ class ChunkEmbeddingService:
         chunks: list[EmbeddableChunk],
         chunk_display_texts: list[str],
         context: BuiltDatasourceContext,
+        datasource_id: str,
+        progress: ProgressCallback | None = None,
     ) -> tuple[list[str], list[str | None]]:
+        emitter = ProgressEmitter(progress)
+
         embedding_texts: list[str] = []
         generated_descriptions: list[str | None] = []
 
-        for chunk, display_text in zip(chunks, chunk_display_texts):
+        for i, (chunk, display_text) in enumerate(zip(chunks, chunk_display_texts), start=1):
             generated_description = ""
             match self._chunk_embedding_mode:
                 case ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY:
@@ -155,6 +173,12 @@ class ChunkEmbeddingService:
                     embedding_texts.append(embedding_text)
 
             generated_descriptions.append(generated_description)
+
+            emitter.datasource_current_step_progress(
+                datasource_id=datasource_id,
+                completed_units=i,
+                total_units=len(chunks),
+            )
 
         return embedding_texts, generated_descriptions
 
@@ -203,3 +227,6 @@ class ChunkEmbeddingService:
                     return chunk_table
 
         return context_result
+
+    def indexing_step_count(self) -> int:
+        return 2 + int(self._chunk_embedding_mode.should_generate_description())

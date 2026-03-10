@@ -15,6 +15,7 @@ from databao_context_engine.llm.factory import (
     create_ollama_service,
 )
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
+from databao_context_engine.progress.progress import ProgressCallback
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 from databao_context_engine.services.factories import create_chunk_embedding_service
@@ -29,6 +30,7 @@ def build_all_datasources(
     plugin_loader: DatabaoContextPluginLoader,
     chunk_embedding_mode: ChunkEmbeddingMode,
     should_index: bool,
+    progress: ProgressCallback | None = None,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -60,6 +62,7 @@ def build_all_datasources(
             plugin_loader=plugin_loader,
             build_service=build_service,
             should_index=should_index,
+            progress=progress,
         )
 
 
@@ -68,6 +71,7 @@ def index_built_contexts(
     plugin_loader: DatabaoContextPluginLoader,
     contexts: list[DatasourceContext],
     chunk_embedding_mode: ChunkEmbeddingMode,
+    progress: ProgressCallback | None = None,
 ) -> list[IndexDatasourceResult]:
     """Index the contexts into the database.
 
@@ -91,7 +95,11 @@ def index_built_contexts(
             chunk_embedding_mode=chunk_embedding_mode,
         )
         return run_indexing(
-            project_layout=project_layout, plugin_loader=plugin_loader, build_service=build_service, contexts=contexts
+            project_layout=project_layout,
+            plugin_loader=plugin_loader,
+            build_service=build_service,
+            contexts=contexts,
+            progress=progress,
         )
 
 
