@@ -250,6 +250,7 @@ def test_databao_context_domain_manager__create_datasource_config__valid_config_
     assert configured_datasource.config == {
         "name": "my_datasource",
         "type": "dummy_simple_pydantic",
+        "enabled": True,
         "a": 12,
         "b": "some string",
     }
