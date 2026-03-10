@@ -181,6 +181,7 @@ class DatasourceType:
 class AbstractConfigFile(ABC):
     type: str
     name: str
+    enabled: bool = True
 
 
 # Config files can either be defined:
