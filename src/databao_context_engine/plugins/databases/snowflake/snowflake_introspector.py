@@ -430,7 +430,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
         sample_rate = self._determine_sample_rate(estimated_row_count)
         sample_clause = f"TABLESAMPLE BERNOULLI ({sample_rate * 100})" if sample_rate < 1.0 else ""
-        is_sampled = sample_rate < 1.0
+        is_sampled = bool(sample_clause)
 
         table_ref = f"{self._quote_ident(schema)}.{self._quote_ident(table)}"
 
@@ -451,18 +451,18 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
         stats_sql = f"""
             SELECT
-                COUNT(*) AS total_count,
+                COUNT(*) AS sampled_count,
                 {", ".join(column_expressions)}
             FROM {table_ref} {sample_clause}
         """
 
         try:
             stats_rows = self._fetchall_dicts(connection, stats_sql, None)
-            if not stats_rows or stats_rows[0]["total_count"] == 0:
+            if not stats_rows or stats_rows[0]["sampled_count"] == 0:
                 return []
 
             stats_row = stats_rows[0]
-            sampled_count = stats_row["total_count"]
+            sampled_count = stats_row["sampled_count"]
 
             column_stats = []
             for column in columns:
@@ -478,7 +478,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                 # Extrapolate counts if sampled
                 if is_sampled:
                     non_null_count = round(sampled_nonnull / sample_rate)
-                    total_count = round(sampled_count / sample_rate)
+                    total_count = estimated_row_count
                 else:
                     non_null_count = sampled_nonnull
                     total_count = sampled_count
