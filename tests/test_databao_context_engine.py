@@ -1,6 +1,10 @@
+from datetime import datetime
+
 import pytest
+import time_machine
 
 from databao_context_engine import DatabaoContextEngine, Datasource, DatasourceContext, DatasourceId
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import DEPRECATED_ALL_RESULTS_FILE_NAME
 from databao_context_engine.serialization.yaml import to_yaml_string
@@ -84,11 +88,19 @@ def test_databao_engine__get_datasource_context(project_path):
         ],
     )
 
-    result = databao_context_engine.get_datasource_context(DatasourceId.from_string_repr("full/b.yaml"))
+    with time_machine.travel("2025-03-11 10:30:00", tick=False):
+        result = databao_context_engine.get_datasource_context(DatasourceId.from_string_repr("full/b.yaml"))
 
-    assert result == DatasourceContext(
-        datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"
-    )
+        assert result == DatasourceContext(
+            datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+            context="Context for b",
+            context_hash=DatasourceContextHash(
+                datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+                hash="d0558e050f773aafd7fb03d7b1480240",
+                hash_algorithm="XXH3_128",
+                hashed_at=datetime.now(),
+            ),
+        )
 
 
 def test_databao_engine__get_datasource_contexts(project_path):
@@ -103,14 +115,33 @@ def test_databao_engine__get_datasource_contexts(project_path):
         ],
     )
 
-    result = databao_context_engine.get_datasource_contexts(
-        [DatasourceId.from_string_repr("full/b.yaml"), DatasourceId.from_string_repr("full/a.yaml")]
-    )
+    with time_machine.travel("2025-03-11 10:30:00", tick=False):
+        result = databao_context_engine.get_datasource_contexts(
+            [DatasourceId.from_string_repr("full/b.yaml"), DatasourceId.from_string_repr("full/a.yaml")]
+        )
 
-    assert result == [
-        DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
-        DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
-    ]
+        assert result == [
+            DatasourceContext(
+                datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+                context="Context for b",
+                context_hash=DatasourceContextHash(
+                    datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+                    hash="d0558e050f773aafd7fb03d7b1480240",
+                    hash_algorithm="XXH3_128",
+                    hashed_at=datetime.now(),
+                ),
+            ),
+            DatasourceContext(
+                datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+                context="Context for a",
+                context_hash=DatasourceContextHash(
+                    datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+                    hash="20bac267fb5190fd67d64f55aa04bb88",
+                    hash_algorithm="XXH3_128",
+                    hashed_at=datetime.now(),
+                ),
+            ),
+        ]
 
 
 def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_path):
@@ -148,14 +179,51 @@ def test_databao_engine__get_all_contexts(project_path):
         databao_context_engine._project_layout
     ).with_suffix(".yaml~").touch()
 
-    result = databao_context_engine.get_all_contexts()
+    with time_machine.travel("2025-03-11 10:30:00", tick=False):
+        result = databao_context_engine.get_all_contexts()
 
-    assert result == [
-        DatasourceContext(datasource_id=DatasourceId.from_string_repr("files/d.txt"), context="Context for d"),
-        DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
-        DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
-        DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
-    ]
+        assert result == [
+            DatasourceContext(
+                datasource_id=DatasourceId.from_string_repr("files/d.txt"),
+                context="Context for d",
+                context_hash=DatasourceContextHash(
+                    datasource_id=DatasourceId.from_string_repr("files/d.txt"),
+                    hash="fdf1498af4c87c0476ad53e7f35ac13b",
+                    hash_algorithm="XXH3_128",
+                    hashed_at=datetime.now(),
+                ),
+            ),
+            DatasourceContext(
+                datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+                context="Context for a",
+                context_hash=DatasourceContextHash(
+                    datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+                    hash="20bac267fb5190fd67d64f55aa04bb88",
+                    hash_algorithm="XXH3_128",
+                    hashed_at=datetime.now(),
+                ),
+            ),
+            DatasourceContext(
+                datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+                context="Context for b",
+                context_hash=DatasourceContextHash(
+                    datasource_id=DatasourceId.from_string_repr("full/b.yaml"),
+                    hash="d0558e050f773aafd7fb03d7b1480240",
+                    hash_algorithm="XXH3_128",
+                    hashed_at=datetime.now(),
+                ),
+            ),
+            DatasourceContext(
+                datasource_id=DatasourceId.from_string_repr("other/c.yaml"),
+                context="Context for c",
+                context_hash=DatasourceContextHash(
+                    datasource_id=DatasourceId.from_string_repr("other/c.yaml"),
+                    hash="8625bd07459e6cf9543fda1ba57e60e8",
+                    hash_algorithm="XXH3_128",
+                    hashed_at=datetime.now(),
+                ),
+            ),
+        ]
 
 
 def test_databao_engine__get_all_contexts_formatted(project_path):

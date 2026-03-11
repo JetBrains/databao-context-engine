@@ -15,7 +15,8 @@ dependencies = [
     "pydantic>=2.12.4",
     "jinja2>=3.1.6",
     "sqlparse>=0.5.5",
-    "pyarrow>=19.0.1"
+    "pyarrow>=19.0.1",
+    "xxhash>=3.6.0",
 ]
 default-optional-dependency-keys = [
     "mysql",
@@ -71,6 +72,7 @@ dev = [
     "streamlit>=1.54.0",
     "pandas>=2.3.3",
     "pandas-stubs>=3.0.0.260204",
+    "time-machine>=3.2.0",
 ]
 
 [project.scripts]

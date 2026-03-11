@@ -1,5 +1,8 @@
 import os
+from datetime import datetime
 
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.config import EmbeddingModelDetails, OllamaConfig
 from databao_context_engine.llm.embeddings.ollama import OllamaEmbeddingProvider
 from databao_context_engine.llm.runtime import OllamaRuntime
@@ -27,7 +30,9 @@ def test_service_embed_returns_vector():
     assert all(isinstance(x, float) for x in vec)
 
 
-def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path, registry_repo, resolver):
+def test_ollama_embed_and_persist_e2e(
+    conn, datasource_context_hash_repo, chunk_repo, embedding_repo, tmp_path, registry_repo, resolver
+):
     config = OllamaConfig(host=HOST, port=PORT)
     service = OllamaService(config)
     rt = OllamaRuntime(service=service, config=config)
@@ -40,7 +45,13 @@ def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path
         service=service, model_details=EmbeddingModelDetails(model_id=MODEL, model_dim=768)
     )
 
-    persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo, dim=768)
+    persistence = PersistenceService(
+        conn=conn,
+        datasource_context_hash_repo=datasource_context_hash_repo,
+        chunk_repo=chunk_repo,
+        embedding_repo=embedding_repo,
+        dim=768,
+    )
     chunk_embedding_service = ChunkEmbeddingService(
         persistence_service=persistence,
         shard_resolver=resolver,
@@ -51,7 +62,17 @@ def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path
         EmbeddableChunk(embeddable_text="alpha", content="Alpha"),
         EmbeddableChunk(embeddable_text="beta", content="Beta"),
     ]
-    chunk_embedding_service.embed_chunks(chunks=chunks, result="", full_type="type/md", datasource_id="some-id")
+    chunk_embedding_service.embed_chunks(
+        chunks=chunks,
+        context_hash=DatasourceContextHash(
+            datasource_id=DatasourceId.from_string_repr("test-2.yaml"),
+            hash="my-hash-2",
+            hash_algorithm="test-algorithm",
+            hashed_at=datetime.now(),
+        ),
+        full_type="type/md",
+        datasource_id="some-id",
+    )
 
     chunk_rows = chunk_repo.list()
     assert len(chunk_rows) == 2

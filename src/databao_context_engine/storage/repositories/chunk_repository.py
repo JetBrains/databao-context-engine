@@ -22,18 +22,26 @@ class ChunkRepository:
         embeddable_text: str,
         display_text: Optional[str],
         keyword_index_text: str,
+        datasource_context_hash_id: int,
     ) -> ChunkDTO:
         try:
             row = self._conn.execute(
                 """
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text)
+                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
             VALUES
-                (?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [full_type, datasource_id, embeddable_text, display_text, keyword_index_text],
+                [
+                    full_type,
+                    datasource_id,
+                    embeddable_text,
+                    display_text,
+                    keyword_index_text,
+                    datasource_context_hash_id,
+                ],
             ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
@@ -66,6 +74,7 @@ class ChunkRepository:
         embeddable_text: Optional[str] = None,
         display_text: Optional[str] = None,
         keyword_index_text: Optional[str] = None,
+        datasource_context_hash_id: Optional[int] = None,
     ) -> Optional[ChunkDTO]:
         sets: list[Any] = []
         params: list[Any] = []
@@ -85,6 +94,9 @@ class ChunkRepository:
         if keyword_index_text is not None:
             sets.append("keyword_index_text = ?")
             params.append(keyword_index_text)
+        if datasource_context_hash_id is not None:
+            sets.append("datasource_context_hash_id = ?")
+            params.append(datasource_context_hash_id)
 
         if not sets:
             return self.get(chunk_id)
@@ -134,6 +146,19 @@ class ChunkRepository:
         self._refresh_fts_index()
         return int(deleted or 0)
 
+    def delete_by_datasource_context_hash_id(self, *, datasource_context_hash_id: int) -> int:
+        deleted = self._conn.execute(
+            """
+            DELETE FROM
+                chunk
+            WHERE
+                datasource_context_hash_id = ?
+            """,
+            [datasource_context_hash_id],
+        ).rowcount
+        self._refresh_fts_index()
+        return int(deleted or 0)
+
     def list(self) -> list[ChunkDTO]:
         rows = self._conn.execute(
             """
@@ -152,12 +177,13 @@ class ChunkRepository:
         *,
         full_type: str,
         datasource_id: str,
+        datasource_context_hash_id: int,
         chunk_contents: Sequence[Tuple[str, Optional[str], str]],
     ) -> Sequence[int]:
-        values_sql = ", ".join(["(?, ?, ?, ?, ?)"] * len(chunk_contents))
+        values_sql = ", ".join(["(?, ?, ?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text)
+                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
             VALUES
                 {values_sql}
             RETURNING
@@ -166,7 +192,16 @@ class ChunkRepository:
 
         params: list[Any] = []
         for embeddable_text, display_text, keyword_index_text in chunk_contents:
-            params.extend([full_type, datasource_id, embeddable_text, display_text, keyword_index_text])
+            params.extend(
+                [
+                    full_type,
+                    datasource_id,
+                    embeddable_text,
+                    display_text,
+                    keyword_index_text,
+                    datasource_context_hash_id,
+                ]
+            )
 
         rows = self._conn.execute(sql, params).fetchall()
 
@@ -185,7 +220,16 @@ class ChunkRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> ChunkDTO:
-        chunk_id, full_type, datasource_id, embeddable_text, display_text, created_at, keyword_index_text = row
+        (
+            chunk_id,
+            full_type,
+            datasource_id,
+            embeddable_text,
+            display_text,
+            created_at,
+            keyword_index_text,
+            datasource_context_hash_id,
+        ) = row
         return ChunkDTO(
             chunk_id=int(chunk_id),
             full_type=full_type,
@@ -194,4 +238,5 @@ class ChunkRepository:
             display_text=display_text,
             created_at=created_at,
             keyword_index_text=keyword_index_text,
+            datasource_context_hash_id=datasource_context_hash_id,
         )

@@ -16,6 +16,7 @@ from databao_context_engine.services.persistence_service import PersistenceServi
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 from databao_context_engine.storage.migrate import migrate
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
+from databao_context_engine.storage.repositories.datasource_context_repository import DatasourceContextHashRepository
 from databao_context_engine.storage.repositories.embedding_model_registry_repository import (
     EmbeddingModelRegistryRepository,
 )
@@ -57,6 +58,11 @@ def conn(db_path, create_db):
 
 
 @pytest.fixture
+def datasource_context_hash_repo(conn) -> DatasourceContextHashRepository:
+    return DatasourceContextHashRepository(conn)
+
+
+@pytest.fixture
 def chunk_repo(conn) -> ChunkRepository:
     return ChunkRepository(conn)
 
@@ -78,8 +84,14 @@ def resolver(conn, registry_repo):
 
 
 @pytest.fixture
-def persistence(conn, chunk_repo, embedding_repo):
-    return PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo, dim=768)
+def persistence(conn, datasource_context_hash_repo, chunk_repo, embedding_repo):
+    return PersistenceService(
+        conn=conn,
+        datasource_context_hash_repo=datasource_context_hash_repo,
+        chunk_repo=chunk_repo,
+        embedding_repo=embedding_repo,
+        dim=768,
+    )
 
 
 @pytest.fixture

@@ -7,6 +7,7 @@ import yaml
 from databao_context_engine import DatasourceContext, DatasourceId
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.datasources.types import PreparedDatasource, PreparedFile
 from databao_context_engine.pluginlib.build_plugin import DatasourceType, EmbeddableChunk
 
@@ -96,7 +97,16 @@ def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
     yaml_text = yaml.safe_dump(raw)
 
     dsid = DatasourceId.from_string_repr("files/two.md")
-    ctx = DatasourceContext(datasource_id=dsid, context=yaml_text)
+    ctx = DatasourceContext(
+        datasource_id=dsid,
+        context=yaml_text,
+        context_hash=DatasourceContextHash(
+            datasource_id=dsid,
+            hash="irrelevant for this test",
+            hash_algorithm="irrelevant for this test",
+            hashed_at=datetime.now(),
+        ),
+    )
 
     chunks = [EmbeddableChunk(embeddable_text="a", content="A"), EmbeddableChunk(embeddable_text="b", content="B")]
     plugin.divide_context_into_chunks.return_value = chunks
@@ -106,12 +116,7 @@ def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
     plugin.divide_context_into_chunks.assert_called_once_with({"hello": "world"})
     chunk_embed_svc.embed_chunks.assert_called_once_with(
         chunks=chunks,
-        result=BuiltDatasourceContext(
-            datasource_id="files/two.md",
-            datasource_type="files/md",
-            context_built_at=built_at,
-            context={"hello": "world"},
-        ),
+        context_hash=ctx.context_hash,
         full_type="files/md",
         datasource_id="files/two.md",
         override=True,
@@ -132,7 +137,16 @@ def test_index_built_context_no_chunks_skips_embed(svc, chunk_embed_svc, mocker)
     yaml_text = yaml.safe_dump(raw)
 
     dsid = DatasourceId.from_string_repr("files/empty.md")
-    ctx = DatasourceContext(datasource_id=dsid, context=yaml_text)
+    ctx = DatasourceContext(
+        datasource_id=dsid,
+        context=yaml_text,
+        context_hash=DatasourceContextHash(
+            datasource_id=dsid,
+            hash="irrelevant for this test",
+            hash_algorithm="irrelevant for this test",
+            hashed_at=datetime.now(),
+        ),
+    )
 
     plugin.divide_context_into_chunks.return_value = []
 

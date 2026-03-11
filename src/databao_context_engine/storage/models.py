@@ -5,6 +5,15 @@ from typing import Optional
 
 
 @dataclass(frozen=True)
+class DatasourceContextHashDTO:
+    datasource_context_hash_id: int
+    datasource_id: str
+    hash_algorithm: str
+    hash: str
+    hashed_at: datetime
+
+
+@dataclass(frozen=True)
 class ChunkDTO:
     chunk_id: int
     full_type: str
@@ -13,6 +22,7 @@ class ChunkDTO:
     keyword_index_text: str
     display_text: Optional[str]
     created_at: datetime
+    datasource_context_hash_id: int
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
@@ -8,8 +9,16 @@ from databao_context_engine.services.persistence_service import PersistenceServi
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 
 
-def test_embed_flow_persists_chunks_and_embeddings(conn, chunk_repo, embedding_repo, registry_repo, resolver):
-    persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo, dim=768)
+def test_embed_flow_persists_chunks_and_embeddings(
+    conn, datasource_context_hash_repo, chunk_repo, embedding_repo, registry_repo, resolver
+):
+    persistence = PersistenceService(
+        conn=conn,
+        datasource_context_hash_repo=datasource_context_hash_repo,
+        chunk_repo=chunk_repo,
+        embedding_repo=embedding_repo,
+        dim=768,
+    )
     embedding_provider = _StubProvider(dim=768, model_id="dummy:v1", embedder="tests")
 
     chunk_embedding_service = ChunkEmbeddingService(
@@ -23,10 +32,14 @@ def test_embed_flow_persists_chunks_and_embeddings(conn, chunk_repo, embedding_r
         EmbeddableChunk(embeddable_text="beta", content="Beta"),
         EmbeddableChunk(embeddable_text="gamma", content="Gamma"),
     ]
+    hashed_at = datetime.now()
     chunk_embedding_service.embed_chunks(
         chunks=chunks,
-        result=BuiltDatasourceContext(
-            datasource_id="", datasource_type="", context="", context_built_at=datetime.now()
+        context_hash=DatasourceContextHash(
+            datasource_id=DatasourceId.from_string_repr("test.yaml"),
+            hash="my-hash",
+            hash_algorithm="test-algorithm",
+            hashed_at=hashed_at,
         ),
         full_type="folder/type",
         datasource_id="src-1",
@@ -35,6 +48,13 @@ def test_embed_flow_persists_chunks_and_embeddings(conn, chunk_repo, embedding_r
     table_name = TableNamePolicy().build(embedder="tests", model_id="dummy:v1", dim=768)
     reg = registry_repo.get(embedder="tests", model_id="dummy:v1")
     assert reg.table_name == table_name
+
+    datasource_contexts = datasource_context_hash_repo.list()
+    assert len(datasource_contexts) == 1
+    assert datasource_contexts[0].datasource_id == "test.yaml"
+    assert datasource_contexts[0].hash == "my-hash"
+    assert datasource_contexts[0].hash_algorithm == "test-algorithm"
+    assert datasource_contexts[0].hashed_at == hashed_at
 
     chunks = chunk_repo.list()
     assert len(chunks) == 3
@@ -46,9 +66,11 @@ def test_embed_flow_persists_chunks_and_embeddings(conn, chunk_repo, embedding_r
     assert len(rows) == 3
 
 
-def test_embed_flow_is_idempotent_on_resolver(conn, chunk_repo, embedding_repo, registry_repo, resolver):
+def test_embed_flow_is_idempotent_on_resolver(
+    conn, datasource_context_hash_repo, chunk_repo, embedding_repo, registry_repo, resolver
+):
     embedding_provider = _StubProvider(embedder="tests", model_id="idempotent:v1", dim=768)
-    persistence = PersistenceService(conn, chunk_repo, embedding_repo, dim=768)
+    persistence = PersistenceService(conn, datasource_context_hash_repo, chunk_repo, embedding_repo, dim=768)
     service = ChunkEmbeddingService(
         persistence_service=persistence,
         embedding_provider=embedding_provider,
@@ -57,13 +79,23 @@ def test_embed_flow_is_idempotent_on_resolver(conn, chunk_repo, embedding_repo, 
 
     service.embed_chunks(
         chunks=[EmbeddableChunk(embeddable_text="x", content="...")],
-        result="",
+        context_hash=DatasourceContextHash(
+            datasource_id=DatasourceId.from_string_repr("test.yaml"),
+            hash="my-hash",
+            hash_algorithm="test-algorithm",
+            hashed_at=datetime.now(),
+        ),
         full_type="folder/type",
         datasource_id="s",
     )
     service.embed_chunks(
         chunks=[EmbeddableChunk(embeddable_text="y", content="...")],
-        result="",
+        context_hash=DatasourceContextHash(
+            datasource_id=DatasourceId.from_string_repr("test-2.yaml"),
+            hash="my-hash-2",
+            hash_algorithm="test-algorithm",
+            hashed_at=datetime.now(),
+        ),
         full_type="folder/type",
         datasource_id="s",
     )

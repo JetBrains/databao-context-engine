@@ -1,7 +1,7 @@
 import logging
 
 import databao_context_engine.perf.core as perf
-from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.serialization.yaml import to_yaml_string
@@ -28,7 +28,7 @@ class ChunkEmbeddingService:
         self,
         *,
         chunks: list[EmbeddableChunk],
-        result: BuiltDatasourceContext,
+        context_hash: DatasourceContextHash,
         full_type: str,
         datasource_id: str,
         override: bool = False,
@@ -72,6 +72,7 @@ class ChunkEmbeddingService:
             table_name=table_name,
             full_type=full_type,
             datasource_id=datasource_id,
+            context_hash=context_hash,
             override=override,
         )
 

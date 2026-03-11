@@ -1,8 +1,10 @@
 import duckdb
 
 import databao_context_engine.perf.core as perf
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.services.models import ChunkEmbedding
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
+from databao_context_engine.storage.repositories.datasource_context_repository import DatasourceContextHashRepository
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
 from databao_context_engine.storage.transaction import transaction
 
@@ -11,12 +13,14 @@ class PersistenceService:
     def __init__(
         self,
         conn: duckdb.DuckDBPyConnection,
+        datasource_context_hash_repo: DatasourceContextHashRepository,
         chunk_repo: ChunkRepository,
         embedding_repo: EmbeddingRepository,
         *,
         dim: int,
     ):
         self._conn = conn
+        self._datasource_context_hash_repo = datasource_context_hash_repo
         self._chunk_repo = chunk_repo
         self._embedding_repo = embedding_repo
         self._dim = dim
@@ -36,6 +40,7 @@ class PersistenceService:
         table_name: str,
         full_type: str,
         datasource_id: str,
+        context_hash: DatasourceContextHash,
         override: bool = False,
     ):
         """Atomically persist chunks and their vectors.
@@ -56,11 +61,15 @@ class PersistenceService:
         if override:
             self._delete_existing_embeddings(table_name=table_name, datasource_id=datasource_id)
             self._delete_existing_chunks(datasource_id=datasource_id)
+            self._delete_datasource_context_hash(context_hash=context_hash)
 
         with transaction(self._conn):
+            datasource_context_hash_id = self._insert_datasource_context_hash(context_hash)
+
             chunk_ids = self._insert_chunks(
                 full_type=full_type,
                 datasource_id=datasource_id,
+                datasource_context_hash_id=datasource_context_hash_id,
                 chunk_embeddings=chunk_embeddings,
             )
             self._insert_embeddings(
@@ -77,17 +86,36 @@ class PersistenceService:
     def _delete_existing_chunks(self, *, datasource_id: str) -> None:
         self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
 
+    @perf.perf_span("persistence.override.delete_chunks")
+    def _delete_datasource_context_hash(self, *, context_hash: DatasourceContextHash) -> None:
+        self._datasource_context_hash_repo.delete_by_datasource_id_and_hash(
+            datasource_id=str(context_hash.datasource_id),
+            hash_algorithm=context_hash.hash_algorithm,
+            hash_=context_hash.hash,
+        )
+
+    @perf.perf_span("persistence.insert_datasource_context")
+    def _insert_datasource_context_hash(self, context_hash: DatasourceContextHash) -> int:
+        return self._datasource_context_hash_repo.insert(
+            datasource_id=str(context_hash.datasource_id),
+            hash_algorithm=context_hash.hash_algorithm,
+            hash_=context_hash.hash,
+            hashed_at=context_hash.hashed_at,
+        ).datasource_context_hash_id
+
     @perf.perf_span("persistence.bulk_insert_chunks")
     def _insert_chunks(
         self,
         *,
         full_type: str,
         datasource_id: str,
+        datasource_context_hash_id: int,
         chunk_embeddings: list[ChunkEmbedding],
     ):
         return self._chunk_repo.bulk_insert(
             full_type=full_type,
             datasource_id=datasource_id,
+            datasource_context_hash_id=datasource_context_hash_id,
             chunk_contents=[(ce.embedded_text, ce.display_text, ce.keyword_indexable_text) for ce in chunk_embeddings],
         )
 
