@@ -12,6 +12,7 @@ DEPRECATED_CONFIG_FILE_NAME = "nemory.ini"
 CONFIG_FILE_NAME = "dce.ini"
 DEPRECATED_ALL_RESULTS_FILE_NAME = "all_results.yaml"
 PERF_LOGS_FILE_NAME = "perf.jsonl"
+GITIGNORE_FILE_NAME = ".gitignore"
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,10 @@ def get_deprecated_config_file(project_dir: Path) -> Path:
 
 def get_config_file(project_dir: Path) -> Path:
     return project_dir.joinpath(CONFIG_FILE_NAME)
+
+
+def get_gitignore_file(project_dir: Path) -> Path:
+    return project_dir.joinpath(GITIGNORE_FILE_NAME)
 
 
 def get_logs_dir(project_dir: Path) -> Path:

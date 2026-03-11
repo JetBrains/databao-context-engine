@@ -8,6 +8,8 @@ from databao_context_engine.project.layout import (
     CONFIG_FILE_NAME,
     DEPRECATED_CONFIG_FILE_NAME,
     EXAMPLES_FOLDER_NAME,
+    GITIGNORE_FILE_NAME,
+    LOGS_FOLDER_NAME,
     SOURCE_FOLDER_NAME,
     is_project_dir_valid,
 )
@@ -38,6 +40,10 @@ def test_init_project_dir(tmp_path: Path):
     config_file = project_dir.joinpath(CONFIG_FILE_NAME)
     assert config_file.is_file()
     assert isinstance(ProjectConfig.from_file(config_file).project_id, uuid.UUID)
+
+    gitignore_file = project_dir.joinpath(GITIGNORE_FILE_NAME)
+    assert gitignore_file.is_file()
+    assert gitignore_file.read_text().splitlines() == ["output/dce.duckdb", f"{LOGS_FOLDER_NAME}/"]
 
 
 def test_init_project_dir_fails_when_dir_doesnt_exist(tmp_path: Path):

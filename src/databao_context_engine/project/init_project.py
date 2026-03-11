@@ -6,7 +6,9 @@ from databao_context_engine.project.layout import (
     get_config_file,
     get_deprecated_config_file,
     get_examples_dir,
+    get_gitignore_file,
     get_logs_dir,
+    get_output_dir,
     get_source_dir,
 )
 from databao_context_engine.project.project_config import ProjectConfig
@@ -61,6 +63,7 @@ class _ProjectCreator:
         self.src_dir = get_source_dir(project_dir)
         self.examples_dir = get_examples_dir(project_dir)
         self.logs_dir = get_logs_dir(project_dir)
+        self.gitignore_file = get_gitignore_file(project_dir)
         self.ollama_model_id = ollama_model_id
         self.ollama_model_dim = ollama_model_dim
 
@@ -71,6 +74,7 @@ class _ProjectCreator:
         self.create_logs_dir()
         self.create_examples_dir()
         self.create_dce_config_file()
+        self.create_gitignore_file()
 
     def ensure_can_init_project(self) -> bool:
         if not self.project_dir.exists():
@@ -122,3 +126,13 @@ class _ProjectCreator:
         ProjectConfig.save_config_file(
             self.config_file, ollama_model_id=self.ollama_model_id, ollama_model_dim=self.ollama_model_dim
         )
+
+    def create_gitignore_file(self) -> None:
+        db_path = get_output_dir(self.project_dir).joinpath("dce.duckdb")
+        logs_path = get_logs_dir(self.project_dir)
+
+        entries = [
+            db_path.relative_to(self.project_dir).as_posix(),
+            f"{logs_path.relative_to(self.project_dir).as_posix()}/",
+        ]
+        self.gitignore_file.write_text("\n".join(entries))
