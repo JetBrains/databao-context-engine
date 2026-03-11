@@ -57,21 +57,20 @@ class BuildService:
 
         emitter = ProgressEmitter(progress)
 
+        if should_enrich_context:
+            result = self._enrich_context(built_context=result, plugin=plugin)
+
         if not should_index:
             emitter.datasource_total_steps_set(datasource_id=result.datasource_id, total_steps=1)
             emitter.datasource_step_completed(datasource_id=result.datasource_id)
             return result
 
-        if should_index:
-            self._index_context(
-                built_context=result,
-                plugin=plugin,
-                progress=progress,
-                include_plugin_execution_step=True,
-            )
-
-        if should_enrich_context:
-            result = self._enrich_context(built_context=result, plugin=plugin)
+        self._index_context(
+            built_context=result,
+            plugin=plugin,
+            progress=progress,
+            include_plugin_execution_step=True,
+        )
 
         return result
 
