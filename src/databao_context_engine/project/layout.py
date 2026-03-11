@@ -10,7 +10,7 @@ EXAMPLES_FOLDER_NAME = "examples"
 LOGS_FOLDER_NAME = "logs"
 DEPRECATED_CONFIG_FILE_NAME = "nemory.ini"
 CONFIG_FILE_NAME = "dce.ini"
-ALL_RESULTS_FILE_NAME = "all_results.yaml"
+DEPRECATED_ALL_RESULTS_FILE_NAME = "all_results.yaml"
 PERF_LOGS_FILE_NAME = "perf.jsonl"
 
 logger = logging.getLogger(__name__)

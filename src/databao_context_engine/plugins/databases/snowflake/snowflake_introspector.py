@@ -71,7 +71,8 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
         results: dict[str, list[dict]] = {
             "relations": [],
-            "columns": [],
+            "table_columns": [],
+            "view_columns": [],
             "pk": [],
             "fks": [],
             "uq": [],
@@ -106,7 +107,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results["relations"],
-            cols=results["columns"],
+            cols=results["table_columns"] + results["view_columns"],
             pk_cols=results["pk"],
             uq_cols=results["uq"],
             checks=[],
@@ -119,13 +120,15 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
     def _get_catalog_introspection_queries_for_batched_mode(self, catalog: str, schemas: list[str]) -> list[dict]:
         return [
             {"name": "relations", "sql": self.get_relations_sql_query(catalog, schemas)},
-            {"name": "columns", "sql": self.get_columns_sql_query(catalog, schemas)},
+            {"name": "table_columns", "sql": self.get_table_columns_sql_query(catalog, schemas)},
             {"name": None, "sql": SQLQuery(self._sql_pk_show(catalog), None)},
             {"name": "pk", "sql": self.get_primary_keys_sql_query(catalog, schemas)},
             {"name": None, "sql": SQLQuery(self._sql_fk_show(catalog), None)},
             {"name": "fks", "sql": self.get_foreign_keys_sql_query(catalog, schemas)},
             {"name": None, "sql": SQLQuery(self._sql_uq_show(catalog), None)},
             {"name": "uq", "sql": self.get_unique_constraints_sql_query(catalog, schemas)},
+            # view_columns should stay at the end, in case it breaks, so that everything before is still executed
+            {"name": "view_columns", "sql": self.get_view_columns_sql_query(catalog, schemas)},
         ]
 
     @override
@@ -157,7 +160,14 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(catalog, schemas, "t.TABLE_TYPE = 'BASE TABLE'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(catalog, schemas, "t.TABLE_TYPE <> 'BASE TABLE'")
+
+    def _columns_sql_query(self, catalog: str, schemas: list[str], table_type_filter: str) -> SQLQuery:
         schemas_in = ", ".join(self._quote_literal(s) for s in schemas)
         isq = self._qual_is(catalog)
         return SQLQuery(
@@ -174,8 +184,12 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                 c.COMMENT          AS "description"
             FROM 
                 {isq}.COLUMNS AS c
+                JOIN {isq}.TABLES AS t
+                    ON t.TABLE_SCHEMA = c.TABLE_SCHEMA
+                    AND t.TABLE_NAME = c.TABLE_NAME
             WHERE 
                 c.TABLE_SCHEMA IN ({schemas_in})
+                AND {table_type_filter}
             ORDER BY 
                 c.TABLE_SCHEMA,
                 c.TABLE_NAME, 

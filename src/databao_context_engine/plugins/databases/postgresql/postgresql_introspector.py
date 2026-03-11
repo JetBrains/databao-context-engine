@@ -306,7 +306,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "c.relkind IN ('r','p')")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "c.relkind NOT IN ('r','p')")
+
+    def _columns_sql_query(self, schemas: list[str], relation_kind_filter: str) -> SQLQuery:
         return SQLQuery(
             """
             SELECT
@@ -330,7 +337,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             WHERE 
                 n.nspname = ANY($1)
                 AND a.attnum > 0
-                AND c.relkind IN ('r','p','v','m','f') 
+                AND """
+            + relation_kind_filter
+            + """
                 AND NOT a.attisdropped
                 AND NOT c.relispartition
             ORDER BY 

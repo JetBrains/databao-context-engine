@@ -2,6 +2,7 @@ import pytest
 
 from databao_context_engine import DatabaoContextEngine, Datasource, DatasourceContext, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.project.layout import DEPRECATED_ALL_RESULTS_FILE_NAME
 from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.project_creation import (
     given_datasource_config_file,
@@ -142,6 +143,12 @@ def test_databao_engine__get_all_contexts(project_path):
             DatasourceContext(datasource_id=DatasourceId.from_string_repr("files/d.txt.yaml"), context="Context for d"),
         ],
     )
+    # Make sure backup files, duckdb and all_results.yaml files are ignored
+    (databao_context_engine._project_layout.output_dir / DEPRECATED_ALL_RESULTS_FILE_NAME).touch()
+    databao_context_engine._project_layout.db_path.touch()
+    DatasourceId.from_string_repr("full/a.yaml").absolute_path_to_context_file(
+        databao_context_engine._project_layout
+    ).with_suffix(".yaml~").touch()
 
     result = databao_context_engine.get_all_contexts()
 

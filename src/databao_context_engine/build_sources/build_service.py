@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
 
 import yaml
@@ -11,6 +12,7 @@ import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute_plugin
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import PreparedDatasource
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
@@ -26,12 +28,19 @@ class BuildService:
         *,
         project_layout: ProjectLayout,
         chunk_embedding_service: ChunkEmbeddingService,
+        description_provider: DescriptionProvider | None = None,
     ) -> None:
         self._project_layout = project_layout
         self._chunk_embedding_service = chunk_embedding_service
+        self._description_provider = description_provider
 
     def build_context(
-        self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin, should_index: bool
+        self,
+        *,
+        prepared_source: PreparedDatasource,
+        plugin: BuildPlugin,
+        should_enrich_context: bool,
+        should_index: bool,
     ) -> BuiltDatasourceContext:
         """Process a single source to build its context.
 
@@ -44,10 +53,11 @@ class BuildService:
         """
         result = self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
 
-        if not should_index:
-            return result
+        if should_enrich_context:
+            result = self._enrich_context(built_context=result, plugin=plugin)
 
-        self._index_context(built_context=result, plugin=plugin)
+        if should_index:
+            self._index_context(built_context=result, plugin=plugin)
 
         return result
 
@@ -102,3 +112,24 @@ class BuildService:
             typed_context = TypeAdapter(context_type).validate_python(built.context)
 
         return replace(built, context=typed_context)
+
+    def enrich_built_context(
+        self, context: DatasourceContext, plugin: BuildPlugin, should_index: bool
+    ) -> BuiltDatasourceContext:
+        built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
+
+        enriched_context = self._enrich_context(built_context=built, plugin=plugin)
+
+        if should_index:
+            self._index_context(built_context=enriched_context, plugin=plugin, override=True)
+
+        return enriched_context
+
+    @perf.perf_span("plugin.enrich_context")
+    def _enrich_context(self, built_context: BuiltDatasourceContext, plugin: BuildPlugin) -> BuiltDatasourceContext:
+        if not self._description_provider:
+            raise ValueError("Prompt provider should never be None when enrich_context is enabled")
+
+        new_context = plugin.enrich_context(built_context.context, self._description_provider)
+
+        return replace(built_context, context=new_context, context_built_at=datetime.now())

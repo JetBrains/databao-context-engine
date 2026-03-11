@@ -124,7 +124,8 @@ class BaseIntrospector(Generic[T], ABC):
             return []
 
         relations = self.collect_relations(connection, catalog, schemas)
-        columns = self.collect_columns(connection, catalog, schemas)
+        table_columns = self.collect_table_columns(connection, catalog, schemas)
+        view_columns = self.collect_view_columns(connection, catalog, schemas) or []
         pk = self.collect_primary_keys(connection, catalog, schemas) or []
         uq = self.collect_unique_constraints(connection, catalog, schemas) or []
         checks = self.collect_checks(connection, catalog, schemas) or []
@@ -132,6 +133,7 @@ class BaseIntrospector(Generic[T], ABC):
         idx = self.collect_indexes(connection, catalog, schemas) or []
         partitions = self.collect_partitions(connection, catalog, schemas) or []
 
+        columns = table_columns + view_columns
         # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
         table_stats, column_stats = self.collect_stats(connection, catalog, schemas, relations, columns)
 
@@ -158,14 +160,30 @@ class BaseIntrospector(Generic[T], ABC):
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         raise NotImplementedError
 
-    def collect_columns(self, connection, catalog: str, schemas: list[str]) -> list[dict]:
-        sql_query = self.get_columns_sql_query(catalog, schemas)
+    def collect_table_columns(self, connection, catalog: str, schemas: list[str]) -> list[dict]:
+        sql_query = self.get_table_columns_sql_query(catalog, schemas)
 
         return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
 
     @abstractmethod
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
         raise NotImplementedError
+
+    def collect_view_columns(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
+        sql_query = self.get_view_columns_sql_query(catalog, schemas)
+
+        if sql_query is not None:
+            try:
+                return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            except Exception:
+                # FIXME: We need a way for plugins to report non-critical errors happening during the build
+                logger.debug("Error while fetching view columns", exc_info=True, stack_info=True)
+                return None
+
+        return None
+
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery | None:
+        return None
 
     def collect_primary_keys(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
         sql_query = self.get_primary_keys_sql_query(catalog, schemas)

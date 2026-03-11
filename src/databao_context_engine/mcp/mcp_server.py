@@ -37,7 +37,7 @@ class McpServer:
         mcp = FastMCP(host=host or "127.0.0.1", port=port or 8000, lifespan=mcp_server_lifespan)
 
         @mcp.tool(
-            description="Retrieve the contents of the all_results file",
+            description="Read all available contexts",
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
         def all_results_tool():

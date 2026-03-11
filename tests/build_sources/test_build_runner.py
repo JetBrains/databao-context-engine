@@ -3,12 +3,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-import yaml
 
 from databao_context_engine import DatabaoContextPluginLoader, DatasourceContext, DatasourceId
 from databao_context_engine.build_sources import build_runner
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
-from databao_context_engine.datasources.types import PreparedFile
+from databao_context_engine.datasources.types import PreparedConfig, PreparedFile
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
 
@@ -39,17 +38,6 @@ def stub_prepare(mocker):
     return _stub
 
 
-def _read_all_results(path: Path):
-    p = path / "all_results.yaml"
-    if not p.exists():
-        return []
-    with p.open("r", encoding="utf-8") as fh:
-        try:
-            return list(yaml.safe_load_all(fh))
-        except Exception:
-            return [yaml.safe_load(fh)]
-
-
 def test_build_returns_early_when_no_sources(stub_sources, mock_build_service, project_layout):
     stub_sources([])
     build_runner.build(
@@ -57,6 +45,7 @@ def test_build_returns_early_when_no_sources(stub_sources, mock_build_service, p
         plugin_loader=DatabaoContextPluginLoader(),
         build_service=mock_build_service,
         should_index=True,
+        should_enrich_context=False,
     )
     mock_build_service.start_run.assert_not_called()
 
@@ -80,6 +69,7 @@ def test_build_skips_source_without_plugin(
         plugin_loader=DatabaoContextPluginLoader(plugins_by_type={}),
         build_service=mock_build_service,
         should_index=True,
+        should_enrich_context=False,
     )
     mock_build_service.start_run.assert_not_called()
     mock_build_service.build_context.assert_not_called()
@@ -109,7 +99,11 @@ def test_build_processes_file_source_and_exports(
     mock_build_service.build_context.return_value = _result(name="files/one.md", typ="files/md")
 
     build_runner.build(
-        project_layout=project_layout, plugin_loader=plugin_loader, build_service=mock_build_service, should_index=True
+        project_layout=project_layout,
+        plugin_loader=plugin_loader,
+        build_service=mock_build_service,
+        should_index=True,
+        should_enrich_context=False,
     )
 
     mock_build_service.build_context.assert_called_once()
@@ -140,7 +134,11 @@ def test_build_continues_on_service_exception(stub_sources, stub_prepare, mock_b
     mock_build_service.build_context.side_effect = [RuntimeError("boom"), _result(name="files/b.md")]
 
     build_runner.build(
-        project_layout=project_layout, plugin_loader=plugin_loader, build_service=mock_build_service, should_index=True
+        project_layout=project_layout,
+        plugin_loader=plugin_loader,
+        build_service=mock_build_service,
+        should_index=True,
+        should_enrich_context=False,
     )
 
     assert mock_build_service.build_context.call_count == 2
@@ -208,3 +206,33 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
     assert mock_build_service.index_built_context.call_count == 2
     mock_build_service.index_built_context.assert_any_call(context=c1, plugin=plugin)
     mock_build_service.index_built_context.assert_any_call(context=c2, plugin=plugin)
+
+
+def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_build_service, project_layout, mocker):
+    datasource_id = DatasourceId.from_string_repr("configs/my_source.yaml")
+    stub_sources([datasource_id])
+
+    stub_prepare(
+        [
+            PreparedConfig(
+                datasource_id=datasource_id,
+                datasource_type=DatasourceType(full_type="my/type"),
+                config={"type": "my/type", "enabled": False},
+                datasource_name="my_source",
+            )
+        ]
+    )
+
+    plugin_loader = DatabaoContextPluginLoader(
+        plugins_by_type={DatasourceType(full_type="my/type"): mocker.Mock(name="BuildDatasourcePlugin")}
+    )
+
+    build_runner.build(
+        project_layout=project_layout,
+        plugin_loader=plugin_loader,
+        build_service=mock_build_service,
+        should_index=True,
+        should_enrich_context=False,
+    )
+
+    mock_build_service.build_context.assert_not_called()
