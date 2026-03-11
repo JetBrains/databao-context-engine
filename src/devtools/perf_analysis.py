@@ -339,7 +339,7 @@ def format_span_tree(spans_df_run: pd.DataFrame) -> list[str]:
     for r in rows:
         sid = r.get("span_id")
         if isinstance(sid, str) and sid:
-            by_id = {}
+            by_id[sid] = r
             children.setdefault(sid, [])
 
     roots: list[str] = []

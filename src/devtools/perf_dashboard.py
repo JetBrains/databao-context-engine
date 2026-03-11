@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from databao_context_engine.perf.perf_analysis import (
+from devtools.perf_analysis import (
     add_depth_labels,
     filter_perf,
     format_span_tree,
