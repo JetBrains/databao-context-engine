@@ -2,11 +2,12 @@ import pytest
 
 from databao_context_engine.storage.exceptions.exceptions import IntegrityError
 from databao_context_engine.storage.models import EmbeddingDTO
-from tests.utils.factories import make_chunk
+from tests.utils.factories import make_chunk, make_datasource_context_hash
 
 
-def test_create_and_get(embedding_repo, chunk_repo, table_name):
-    chunk = make_chunk(chunk_repo)
+def test_create_and_get(embedding_repo, datasource_context_hash_repo, chunk_repo, table_name):
+    datasource_context_hash = make_datasource_context_hash(datasource_context_hash_repo)
+    chunk = make_chunk(chunk_repo, datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id)
     created = embedding_repo.create(chunk_id=chunk.chunk_id, table_name=table_name, vec=_vec(0.0))
 
     assert isinstance(created, EmbeddingDTO)
@@ -21,8 +22,9 @@ def test_get_missing_returns_none(embedding_repo, table_name):
     assert embedding_repo.get(table_name=table_name, chunk_id=999_999) is None
 
 
-def test_update_vec(embedding_repo, chunk_repo, table_name):
-    chunk = make_chunk(chunk_repo)
+def test_update_vec(embedding_repo, datasource_context_hash_repo, chunk_repo, table_name):
+    datasource_context_hash = make_datasource_context_hash(datasource_context_hash_repo)
+    chunk = make_chunk(chunk_repo, datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id)
     emb = embedding_repo.create(chunk_id=chunk.chunk_id, table_name=table_name, vec=_vec(0.0))
 
     updated_vec = _vec(9.9)
@@ -37,8 +39,9 @@ def test_update_missing_returns_none(embedding_repo, table_name):
     assert embedding_repo.update(table_name=table_name, chunk_id=424242, vec=_vec(0.0)) is None
 
 
-def test_delete(embedding_repo, chunk_repo, table_name):
-    chunk = make_chunk(chunk_repo)
+def test_delete(embedding_repo, datasource_context_hash_repo, chunk_repo, table_name):
+    datasource_context_hash = make_datasource_context_hash(datasource_context_hash_repo)
+    chunk = make_chunk(chunk_repo, datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id)
     embedding_repo.create(chunk_id=chunk.chunk_id, table_name=table_name, vec=_vec(0.0))
 
     deleted = embedding_repo.delete(chunk_id=chunk.chunk_id, table_name=table_name)
@@ -50,11 +53,26 @@ def test_delete_missing_returns_zero(embedding_repo, table_name):
     assert embedding_repo.delete(table_name=table_name, chunk_id=424242) == 0
 
 
-def test_list(embedding_repo, chunk_repo, table_name):
-    s1 = make_chunk(chunk_repo, full_type="type/f", datasource_id="some-id", embeddable_text="e1", display_text="d1")
+def test_list(embedding_repo, datasource_context_hash_repo, chunk_repo, table_name):
+    datasource_context_hash = make_datasource_context_hash(datasource_context_hash_repo)
+    s1 = make_chunk(
+        chunk_repo,
+        datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id,
+        full_type="type/f",
+        datasource_id="some-id",
+        embeddable_text="e1",
+        display_text="d1",
+    )
     e1 = embedding_repo.create(table_name=table_name, chunk_id=s1.chunk_id, vec=_vec(1.0))
 
-    s2 = make_chunk(chunk_repo, full_type="type/f", datasource_id="some-id", embeddable_text="e2", display_text="d2")
+    s2 = make_chunk(
+        chunk_repo,
+        datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id,
+        full_type="type/f",
+        datasource_id="some-id",
+        embeddable_text="e2",
+        display_text="d2",
+    )
     e2 = embedding_repo.create(table_name=table_name, chunk_id=s2.chunk_id, vec=_vec(2.0))
 
     rows = embedding_repo.list(table_name=table_name)
@@ -71,10 +89,32 @@ def test_update_with_missing_table_raises(embedding_repo):
         embedding_repo.update(table_name="123", chunk_id=1, vec=_vec(0.0))
 
 
-def test_delete_by_datasource_id(embedding_repo, chunk_repo, table_name):
-    ds1_a = make_chunk(chunk_repo, full_type="type/f", datasource_id="ds1", embeddable_text="a", display_text="a")
-    ds1_b = make_chunk(chunk_repo, full_type="type/f", datasource_id="ds1", embeddable_text="b", display_text="b")
-    ds2_c = make_chunk(chunk_repo, full_type="type/f", datasource_id="ds2", embeddable_text="c", display_text="c")
+def test_delete_by_datasource_id(embedding_repo, datasource_context_hash_repo, chunk_repo, table_name):
+    datasource_context_hash = make_datasource_context_hash(datasource_context_hash_repo)
+    ds1_a = make_chunk(
+        chunk_repo,
+        datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id,
+        full_type="type/f",
+        datasource_id="ds1",
+        embeddable_text="a",
+        display_text="a",
+    )
+    ds1_b = make_chunk(
+        chunk_repo,
+        datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id,
+        full_type="type/f",
+        datasource_id="ds1",
+        embeddable_text="b",
+        display_text="b",
+    )
+    ds2_c = make_chunk(
+        chunk_repo,
+        datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id,
+        full_type="type/f",
+        datasource_id="ds2",
+        embeddable_text="c",
+        display_text="c",
+    )
 
     embedding_repo.create(table_name=table_name, chunk_id=ds1_a.chunk_id, vec=_vec(1.0))
     embedding_repo.create(table_name=table_name, chunk_id=ds1_b.chunk_id, vec=_vec(2.0))

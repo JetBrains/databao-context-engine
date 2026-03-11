@@ -9,7 +9,7 @@ from pydantic import BaseModel, TypeAdapter
 
 import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute_plugin
-from databao_context_engine.datasources.datasource_context import DatasourceContext
+from databao_context_engine.datasources.datasource_context import DatasourceContext, DatasourceContextHash
 from databao_context_engine.datasources.types import PreparedDatasource
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
@@ -75,13 +75,16 @@ class BuildService:
         """
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        self.index_built_context(built_context=built, plugin=plugin, override=True, progress=progress)
+        self.index_built_context(
+            built_context=built, plugin=plugin, context_hash=context.context_hash, override=True, progress=progress
+        )
 
     def index_built_context(
         self,
         *,
         built_context: BuiltDatasourceContext,
         plugin: BuildPlugin,
+        context_hash: DatasourceContextHash,
         override: bool = False,
         progress: ProgressCallback | None = None,
     ) -> None:
@@ -94,7 +97,7 @@ class BuildService:
 
         self._chunk_embedding_service.embed_chunks(
             chunks=chunks,
-            result=built_context,
+            context_hash=context_hash,
             full_type=built_context.datasource_type,
             datasource_id=built_context.datasource_id,
             override=override,

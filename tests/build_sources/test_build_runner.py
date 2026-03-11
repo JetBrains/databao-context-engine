@@ -3,10 +3,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import time_machine
 
 from databao_context_engine import DatabaoContextPluginLoader, DatasourceContext, DatasourceId, DatasourceStatus
 from databao_context_engine.build_sources import build_runner
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.datasources.types import PreparedConfig, PreparedFile
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
@@ -94,24 +96,31 @@ def test_build_processes_file_source_and_exports(
     plugin = mocker.Mock(name="BuildFilePlugin")
     plugin_loader = DatabaoContextPluginLoader(plugins_by_type={DatasourceType(full_type="files/md"): plugin})
 
-    result = _result(name="files/one.md", typ="files/md")
-    mock_build_service.build_context.return_value = result
+    with time_machine.travel("2025-03-11 10:30:00", tick=False):
+        result = _result(name="files/one.md", typ="files/md")
+        mock_build_service.build_context.return_value = result
 
-    build_runner.build(
-        project_layout=project_layout,
-        plugin_loader=plugin_loader,
-        build_service=mock_build_service,
-        should_index=True,
-        should_enrich_context=False,
-    )
+        build_runner.build(
+            project_layout=project_layout,
+            plugin_loader=plugin_loader,
+            build_service=mock_build_service,
+            should_index=True,
+            should_enrich_context=False,
+        )
 
-    mock_build_service.build_context.assert_called_once()
-    mock_build_service.index_built_context.assert_called_once_with(
-        built_context=result,
-        plugin=plugin,
-        override=False,
-        progress=None,
-    )
+        mock_build_service.build_context.assert_called_once()
+        mock_build_service.index_built_context.assert_called_once_with(
+            built_context=result,
+            plugin=plugin,
+            context_hash=DatasourceContextHash(
+                datasource_id=DatasourceId.from_string_repr(result.datasource_id),
+                hash="a59b9fa8606781aaf033490eb635ed7e",
+                hash_algorithm="XXH3_128",
+                hashed_at=datetime.now(),
+            ),
+            override=False,
+            progress=None,
+        )
 
 
 def test_build_continues_on_service_exception(stub_sources, stub_prepare, mock_build_service, mocker, project_layout):
@@ -158,6 +167,12 @@ def test_run_indexing_indexes_when_plugin_exists(mocker, mock_build_service, pro
     ctx = DatasourceContext(
         datasource_id=DatasourceId.from_string_repr("files/one.md"),
         context="irrelevant for this test",
+        context_hash=DatasourceContextHash(
+            datasource_id=DatasourceId.from_string_repr("files/one.md"),
+            hash="irrelevant for this test",
+            hash_algorithm="XXH3_128",
+            hashed_at=datetime.now(),
+        ),
     )
 
     build_runner.run_indexing(
@@ -178,6 +193,12 @@ def test_run_indexing_skips_when_plugin_missing(mocker, mock_build_service, proj
     ctx = DatasourceContext(
         datasource_id=DatasourceId.from_string_repr("files/one.md"),
         context="irrelevant for this test",
+        context_hash=DatasourceContextHash(
+            datasource_id=DatasourceId.from_string_repr("files/one.md"),
+            hash="irrelevant for this test",
+            hash_algorithm="irrelevant for this test",
+            hashed_at=datetime.now(),
+        ),
     )
 
     build_runner.run_indexing(
@@ -196,8 +217,26 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
 
     mocker.patch.object(build_runner, "read_datasource_type_from_context", return_value=ds_type)
 
-    c1 = DatasourceContext(DatasourceId.from_string_repr("files/a.md"), context="a")
-    c2 = DatasourceContext(DatasourceId.from_string_repr("files/b.md"), context="b")
+    c1 = DatasourceContext(
+        DatasourceId.from_string_repr("files/a.md"),
+        context="a",
+        context_hash=DatasourceContextHash(
+            DatasourceId.from_string_repr("files/a.md"),
+            hash="irrelevant for this test",
+            hash_algorithm="irrelevant for this test",
+            hashed_at=datetime.now(),
+        ),
+    )
+    c2 = DatasourceContext(
+        DatasourceId.from_string_repr("files/b.md"),
+        context="b",
+        context_hash=DatasourceContextHash(
+            DatasourceId.from_string_repr("files/b.md"),
+            hash="irrelevant for this test",
+            hash_algorithm="irrelevant for this test",
+            hashed_at=datetime.now(),
+        ),
+    )
 
     mock_build_service.index_datasource_context.side_effect = [RuntimeError("boom"), None]
 

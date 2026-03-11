@@ -14,11 +14,13 @@ DIM = 768
 
 def test_similarity_returns_display_and_distance(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -50,12 +52,14 @@ def test_similarity_returns_display_and_distance(
 
 def test_limit_is_applied(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
     for i in range(3):
         make_chunk_and_embedding(
+            datasource_context_hash_repo=datasource_context_hash_repo,
             chunk_repo=chunk_repo,
             embedding_repo=embedding_repo,
             table_name=table_name,
@@ -81,6 +85,7 @@ def test_limit_is_applied(
 
 def test_search_over_multiple_dataources(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
@@ -88,6 +93,7 @@ def test_search_over_multiple_dataources(
     # Create 2 clickhouse chunks
     for i in range(2):
         make_chunk_and_embedding(
+            datasource_context_hash_repo=datasource_context_hash_repo,
             chunk_repo=chunk_repo,
             embedding_repo=embedding_repo,
             table_name=table_name,
@@ -100,6 +106,7 @@ def test_search_over_multiple_dataources(
 
     # Create postgres chunk
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -112,6 +119,7 @@ def test_search_over_multiple_dataources(
 
     # Create snowflake chunk
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -161,6 +169,7 @@ def test_search_over_multiple_dataources(
 
 def test_search_over_multiple_dataources_with_datasource_filter(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
@@ -168,6 +177,7 @@ def test_search_over_multiple_dataources_with_datasource_filter(
     # Create 2 clickhouse chunks
     for i in range(2):
         make_chunk_and_embedding(
+            datasource_context_hash_repo=datasource_context_hash_repo,
             chunk_repo=chunk_repo,
             embedding_repo=embedding_repo,
             table_name=table_name,
@@ -180,6 +190,7 @@ def test_search_over_multiple_dataources_with_datasource_filter(
 
     # Create postgres chunk
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -192,6 +203,7 @@ def test_search_over_multiple_dataources_with_datasource_filter(
 
     # Create snowflake chunk
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -249,11 +261,13 @@ def _get_all_results_for_datasource_id(results: list[SearchResult], datasource_i
 
 def test_keyword_search_returns_results_ordered_by_bm25(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -264,6 +278,7 @@ def test_keyword_search_returns_results_ordered_by_bm25(
         display_text="high-relevance",
     )
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -274,6 +289,7 @@ def test_keyword_search_returns_results_ordered_by_bm25(
         display_text="medium-relevance",
     )
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -296,11 +312,13 @@ def test_keyword_search_returns_results_ordered_by_bm25(
 
 def test_keyword_search_honors_datasource_filter(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -311,6 +329,7 @@ def test_keyword_search_honors_datasource_filter(
         display_text="clickhouse-match",
     )
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,

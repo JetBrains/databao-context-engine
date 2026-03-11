@@ -17,6 +17,7 @@ from databao_context_engine.build_sources.types import (
 )
 from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
+    hash_context_file,
     read_datasource_type_from_context,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
@@ -205,7 +206,10 @@ def _build_one_datasource(
     perf.set_attribute("context_size_bytes", context_file_path.stat().st_size)
 
     if should_index:
-        build_service.index_built_context(built_context=result, plugin=plugin, override=False, progress=progress)
+        context_hash = hash_context_file(datasource_id=prepared_source.datasource_id, context_path=context_file_path)
+        build_service.index_built_context(
+            built_context=result, plugin=plugin, context_hash=context_hash, override=False, progress=progress
+        )
 
     return BuildDatasourceResult(
         datasource_id=datasource_id,
@@ -311,7 +315,10 @@ def _enrich_one_context(
     context_file_path = export_build_result(output_dir, enriched_context)
 
     if should_index:
-        build_service.index_built_context(built_context=enriched_context, plugin=plugin, override=True)
+        context_hash = hash_context_file(datasource_id=context.datasource_id, context_path=context_file_path)
+        build_service.index_built_context(
+            built_context=enriched_context, plugin=plugin, context_hash=context_hash, override=True
+        )
 
     return EnrichContextResult(
         datasource_id=context.datasource_id,
