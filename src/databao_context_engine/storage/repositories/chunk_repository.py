@@ -3,11 +3,14 @@ from typing import Any, Optional, Sequence, Tuple
 import duckdb
 from _duckdb import ConstraintException
 
+import databao_context_engine.perf.core as perf
 from databao_context_engine.storage.exceptions.exceptions import IntegrityError
 from databao_context_engine.storage.models import ChunkDTO
 
 
 class ChunkRepository:
+    _BM25_CHUNK_COLUMN = "keyword_index_text"
+
     def __init__(self, conn: duckdb.DuckDBPyConnection):
         self._conn = conn
 
@@ -18,21 +21,24 @@ class ChunkRepository:
         datasource_id: str,
         embeddable_text: str,
         display_text: Optional[str],
+        keyword_index_text: str,
     ) -> ChunkDTO:
         try:
             row = self._conn.execute(
                 """
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text)
+                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text)
             VALUES
-                (?, ?, ?, ?)
+                (?, ?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [full_type, datasource_id, embeddable_text, display_text],
+                [full_type, datasource_id, embeddable_text, display_text, keyword_index_text],
             ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
+
+            self._refresh_fts_index()
             return self._row_to_dto(row)
         except ConstraintException as e:
             raise IntegrityError from e
@@ -59,6 +65,7 @@ class ChunkRepository:
         datasource_id: Optional[str] = None,
         embeddable_text: Optional[str] = None,
         display_text: Optional[str] = None,
+        keyword_index_text: Optional[str] = None,
     ) -> Optional[ChunkDTO]:
         sets: list[Any] = []
         params: list[Any] = []
@@ -75,6 +82,9 @@ class ChunkRepository:
         if display_text is not None:
             sets.append("display_text = ?")
             params.append(display_text)
+        if keyword_index_text is not None:
+            sets.append("keyword_index_text = ?")
+            params.append(keyword_index_text)
 
         if not sets:
             return self.get(chunk_id)
@@ -92,6 +102,7 @@ class ChunkRepository:
             params,
         )
 
+        self._refresh_fts_index()
         return self.get(chunk_id)
 
     def delete(self, chunk_id: int) -> int:
@@ -106,6 +117,8 @@ class ChunkRepository:
             """,
             [chunk_id],
         )
+
+        self._refresh_fts_index()
         return 1 if row else 0
 
     def delete_by_datasource_id(self, *, datasource_id: str) -> int:
@@ -118,6 +131,7 @@ class ChunkRepository:
             """,
             [datasource_id],
         ).rowcount
+        self._refresh_fts_index()
         return int(deleted or 0)
 
     def list(self) -> list[ChunkDTO]:
@@ -138,12 +152,12 @@ class ChunkRepository:
         *,
         full_type: str,
         datasource_id: str,
-        chunk_contents: Sequence[Tuple[str, Optional[str]]],
+        chunk_contents: Sequence[Tuple[str, Optional[str], str]],
     ) -> Sequence[int]:
-        values_sql = ", ".join(["(?, ?, ?, ?)"] * len(chunk_contents))
+        values_sql = ", ".join(["(?, ?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text)
+                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text)
             VALUES
                 {values_sql}
             RETURNING
@@ -151,15 +165,27 @@ class ChunkRepository:
         """
 
         params: list[Any] = []
-        for embeddable_text, display_text in chunk_contents:
-            params.extend([full_type, datasource_id, embeddable_text, display_text])
+        for embeddable_text, display_text, keyword_index_text in chunk_contents:
+            params.extend([full_type, datasource_id, embeddable_text, display_text, keyword_index_text])
 
         rows = self._conn.execute(sql, params).fetchall()
+
+        self._refresh_fts_index()
+
         return [int(r[0]) for r in rows]
+
+    @perf.perf_span("chunk_repo.refresh_keyword_index")
+    def _refresh_fts_index(self) -> None:
+        """Refreshs the Full Text Search index on the chunks in DuckDB.
+
+        This function needs to be called each time there are any changes in the chunk table.
+        The FTS index is unfortunately not a standard index and needs to be rebuilt manually with each change.
+        """
+        self._conn.execute(f"PRAGMA create_fts_index('chunk', 'chunk_id', '{self._BM25_CHUNK_COLUMN}', overwrite=1);")
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> ChunkDTO:
-        chunk_id, full_type, datasource_id, embeddable_text, display_text, created_at = row
+        chunk_id, full_type, datasource_id, embeddable_text, display_text, created_at, keyword_index_text = row
         return ChunkDTO(
             chunk_id=int(chunk_id),
             full_type=full_type,
@@ -167,4 +193,5 @@ class ChunkRepository:
             embeddable_text=embeddable_text,
             display_text=display_text,
             created_at=created_at,
+            keyword_index_text=keyword_index_text,
         )

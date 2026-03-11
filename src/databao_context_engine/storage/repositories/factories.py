@@ -5,7 +5,6 @@ from databao_context_engine.storage.repositories.embedding_model_registry_reposi
     EmbeddingModelRegistryRepository,
 )
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
-from databao_context_engine.storage.repositories.vector_search_repository import VectorSearchRepository
 
 
 def create_chunk_repository(conn: DuckDBPyConnection) -> ChunkRepository:
@@ -18,7 +17,3 @@ def create_embedding_repository(conn: DuckDBPyConnection) -> EmbeddingRepository
 
 def create_registry_repository(conn: DuckDBPyConnection) -> EmbeddingModelRegistryRepository:
     return EmbeddingModelRegistryRepository(conn)
-
-
-def create_vector_search_repository(conn: DuckDBPyConnection) -> VectorSearchRepository:
-    return VectorSearchRepository(conn)

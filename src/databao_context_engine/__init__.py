@@ -2,6 +2,7 @@ from databao_context_engine.build_sources.types import (
     BuildDatasourceResult,
     DatasourceResult,
     DatasourceStatus,
+    EnrichContextResult,
     IndexDatasourceResult,
 )
 from databao_context_engine.databao_context_domain_manager import DatabaoContextDomainManager
@@ -55,6 +56,11 @@ from databao_context_engine.plugins.databases.snowflake.config_file import (
     SnowflakeSSOAuth,
 )
 from databao_context_engine.plugins.databases.sqlite.config_file import SQLiteConfigFile, SQLiteConnectionConfig
+from databao_context_engine.plugins.dbt.context_filtering import (
+    DbtContextFilter,
+    DbtContextFilterRule,
+    DbtContextFilterStructuredRule,
+)
 from databao_context_engine.plugins.dbt.types import DbtConfigFile
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.plugins.resources.types import ParquetConfigFile
@@ -65,6 +71,7 @@ from databao_context_engine.project.info import (
     get_databao_context_engine_info,
 )
 from databao_context_engine.project.init_project import InitDomainError, InitErrorReason
+from databao_context_engine.search_context.search_service import ContextSearchMode
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 __all__ = [
@@ -78,6 +85,7 @@ __all__ = [
     "UserInputCallback",
     "Choice",
     "ChunkEmbeddingMode",
+    "ContextSearchMode",
     "DatasourceConnectionStatus",
     "DatasourceType",
     "get_databao_context_engine_info",
@@ -101,6 +109,7 @@ __all__ = [
     "BuildDatasourceResult",
     "DatasourceResult",
     "DatasourceStatus",
+    "EnrichContextResult",
     "IndexDatasourceResult",
     "CheckDatasourceConnectionResult",
     "AthenaConfigFile",
@@ -127,5 +136,8 @@ __all__ = [
     "SQLiteConfigFile",
     "SQLiteConnectionConfig",
     "DbtConfigFile",
+    "DbtContextFilter",
+    "DbtContextFilterStructuredRule",
+    "DbtContextFilterRule",
     "ParquetConfigFile",
 ]

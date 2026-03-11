@@ -10,6 +10,7 @@ class ChunkDTO:
     full_type: str
     datasource_id: str
     embeddable_text: str
+    keyword_index_text: str
     display_text: Optional[str]
     created_at: datetime
 

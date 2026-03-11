@@ -5,6 +5,7 @@ from typing import Annotated, Any, TypedDict
 
 from pydantic import BaseModel
 
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     AbstractConfigFile,
     BuildDatasourcePlugin,
@@ -44,13 +45,13 @@ def _convert_table_to_embedding_chunk(table: DbTable) -> EmbeddableChunk:
 class DummyConfigNested:
     nested_field: str
     other_nested_property: int
-    optional_with_default: Annotated[int, ConfigPropertyAnnotation(default_value="1111", required=False)] = 1111
+    optional_with_default: Annotated[int, ConfigPropertyAnnotation(required=False)] = 1111
 
 
-@dataclass
+@dataclass(kw_only=True)
 class DummyConfigFileType(AbstractConfigFile):
     other_property: float
-    property_with_default: Annotated[str, ConfigPropertyAnnotation(default_value="default_value", required=True)]
+    property_with_default: Annotated[str, ConfigPropertyAnnotation(required=True)] = "default_value"
     ignored_dict: dict[str, str]
     nested_dict: DummyConfigNested | None = None
 
@@ -114,6 +115,25 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return [EmbeddableChunk(embeddable_text="Dummy chunk", content="Dummy content")]
+
+
+class DummyEnrichableDatasourcePlugin(DefaultBuildDatasourcePlugin):
+    id = "jetbrains/dummy_enrichable"
+    name = "Dummy Plugin with custom enrich context"
+    context_type = dict
+
+    def supported_types(self) -> set[str]:
+        return {"dummy_enrichable"}
+
+    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
+        return {"value": datasource_name, "description": None}
+
+    def enrich_context(self, context: Any, description_provider: DescriptionProvider) -> Any:
+        description = description_provider.describe(text=context["value"], context="dummy_enrichable")
+        return {**context, "description": f"ENRICHED::{description}"}
+
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+        return []
 
 
 class DummyFilePlugin(BuildFilePlugin):

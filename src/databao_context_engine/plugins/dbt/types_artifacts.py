@@ -39,6 +39,7 @@ class DbtManifestTestMetadata(BaseModel):
 class DbtManifestTest(BaseModel):
     resource_type: Literal["test"]
     unique_id: str
+    name: str
     attached_node: str | None = None
     column_name: str | None = None
     description: str | None = None
@@ -48,6 +49,8 @@ class DbtManifestTest(BaseModel):
 
 class DbtManifestOtherNode(BaseModel):
     resource_type: Literal["seed", "analysis", "operation", "sql_operation", "snapshot"]
+    unique_id: str
+    name: str | None
 
 
 DbtManifestNode = Annotated[DbtManifestModel | DbtManifestTest | DbtManifestOtherNode, Discriminator("resource_type")]
@@ -96,6 +99,7 @@ class DbtManifest(BaseModel):
     nodes: dict[str, DbtManifestNode]
     semantic_models: dict[str, DbtManifestSemanticModel]
     metrics: dict[str, DbtManifestMetric]
+    child_map: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class DbtCatalogColumn(BaseModel):

@@ -10,6 +10,7 @@ from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.mssql.mssql_db_plugin import MSSQLDbPlugin
+from databao_context_engine.plugins.databases.mssql.mssql_introspector import MSSQLIntrospector
 from tests.plugins.databases.database_contracts import (
     CheckConstraintExists,
     ColumnIs,
@@ -312,8 +313,12 @@ def mssql_container_with_demo_schema(mssql_container: SqlServerContainer):
     return mssql_container
 
 
-def test_mssql_introspection(mssql_container_with_demo_schema):
+@pytest.mark.parametrize("batched", [True, False])
+def test_mssql_introspection(mssql_container_with_demo_schema, batched):
     plugin = MSSQLDbPlugin()
+
+    MSSQLIntrospector._USE_BATCH = batched
+
     config_file = _create_config_file_from_container(mssql_container_with_demo_schema)
     result = execute_datasource_plugin(plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name")
     assert isinstance(result, DatabaseIntrospectionResult)

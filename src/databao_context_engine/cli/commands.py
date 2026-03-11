@@ -195,7 +195,7 @@ def retrieve(
 
     databao_engine = DatabaoContextEngine(domain_dir=ctx.obj["project_dir"])
 
-    retrieve_results = databao_engine.search_context(retrieve_text=text, limit=limit, datasource_ids=datasource_ids)
+    retrieve_results = databao_engine.search_context(search_text=text, limit=limit, datasource_ids=datasource_ids)
 
     display_texts = [context_search_result.context_result for context_search_result in retrieve_results]
     if output_file is not None:

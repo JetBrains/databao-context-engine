@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
 
 import yaml
@@ -11,6 +12,7 @@ import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute_plugin
 from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import PreparedDatasource
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
@@ -26,12 +28,19 @@ class BuildService:
         *,
         project_layout: ProjectLayout,
         chunk_embedding_service: ChunkEmbeddingService,
+        description_provider: DescriptionProvider | None = None,
     ) -> None:
         self._project_layout = project_layout
         self._chunk_embedding_service = chunk_embedding_service
+        self._description_provider = description_provider
 
-    def process_prepared_source(
-        self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin, generate_embeddings: bool = True
+    def build_context(
+        self,
+        *,
+        prepared_source: PreparedDatasource,
+        plugin: BuildPlugin,
+        should_enrich_context: bool,
+        should_index: bool,
     ) -> BuiltDatasourceContext:
         """Process a single source to build its context.
 
@@ -44,23 +53,11 @@ class BuildService:
         """
         result = self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
 
-        if not generate_embeddings:
-            return result
+        if should_enrich_context:
+            result = self._enrich_context(built_context=result, plugin=plugin)
 
-        chunks = plugin.divide_context_into_chunks(result.context)
-
-        perf.set_attribute("chunk_count", len(chunks))
-
-        if not chunks:
-            logger.info("No chunks for %s — skipping.", prepared_source.datasource_id.relative_path_to_config_file())
-            return result
-
-        self._chunk_embedding_service.embed_chunks(
-            chunks=chunks,
-            result=result,
-            full_type=prepared_source.datasource_type.full_type,
-            datasource_id=result.datasource_id,
-        )
+        if should_index:
+            self._index_context(built_context=result, plugin=plugin)
 
         return result
 
@@ -78,21 +75,24 @@ class BuildService:
         """
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        chunks = plugin.divide_context_into_chunks(built.context)
+        self._index_context(built_context=built, plugin=plugin, override=True)
+
+    def _index_context(
+        self, *, built_context: BuiltDatasourceContext, plugin: BuildPlugin, override: bool = False
+    ) -> None:
+        chunks = plugin.divide_context_into_chunks(built_context.context)
         perf.set_attribute("chunk_count", len(chunks))
 
         if not chunks:
-            logger.info(
-                "No chunks for %s — skipping indexing.", context.datasource_id.relative_path_to_context_file().name
-            )
+            logger.info("No chunks for %s — skipping indexing.", built_context.datasource_id)
             return
 
         self._chunk_embedding_service.embed_chunks(
             chunks=chunks,
-            result=built,
-            full_type=built.datasource_type,
-            datasource_id=built.datasource_id,
-            override=True,
+            result=built_context,
+            full_type=built_context.datasource_type,
+            datasource_id=built_context.datasource_id,
+            override=override,
         )
 
     def _deserialize_built_context(
@@ -112,3 +112,24 @@ class BuildService:
             typed_context = TypeAdapter(context_type).validate_python(built.context)
 
         return replace(built, context=typed_context)
+
+    def enrich_built_context(
+        self, context: DatasourceContext, plugin: BuildPlugin, should_index: bool
+    ) -> BuiltDatasourceContext:
+        built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
+
+        enriched_context = self._enrich_context(built_context=built, plugin=plugin)
+
+        if should_index:
+            self._index_context(built_context=enriched_context, plugin=plugin, override=True)
+
+        return enriched_context
+
+    @perf.perf_span("plugin.enrich_context")
+    def _enrich_context(self, built_context: BuiltDatasourceContext, plugin: BuildPlugin) -> BuiltDatasourceContext:
+        if not self._description_provider:
+            raise ValueError("Prompt provider should never be None when enrich_context is enabled")
+
+        new_context = plugin.enrich_context(built_context.context, self._description_provider)
+
+        return replace(built_context, context=new_context, context_built_at=datetime.now())

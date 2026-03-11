@@ -3,10 +3,11 @@ from dataclasses import dataclass
 from io import BufferedReader
 from typing import Any, Mapping, Protocol, TypeVar, runtime_checkable
 
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 
 
-@dataclass
+@dataclass(kw_only=True)
 class EmbeddableChunk:
     """A chunk that will be embedded as a vector and used when searching context from a given AI prompt.
 
@@ -16,6 +17,7 @@ class EmbeddableChunk:
     """
 
     embeddable_text: str
+    keyword_indexable_text: str | None = None
     content: Any
 
 
@@ -43,6 +45,22 @@ class BaseBuildPlugin(Protocol):
             The set of supported types for this plugin.
         """
         ...
+
+    def enrich_context(self, context: Any, description_provider: DescriptionProvider) -> Any:
+        """Optional step to enrich a context previously built.
+
+        After a context has been built, this step will be called optionally to enrich it with LLM-generated content.
+
+        The typical use-case is to add descriptions to the resources identified in the context if none was previously extracted.
+
+        Args:
+            context: The context to be enriched
+            description_provider: This class provides a way to interact with an LLM to describe a text given a context.
+
+        Returns:
+            The enriched context as an object of type `self.context_type`.
+        """
+        return context
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         """Divides the datasource context into meaningful chunks.
@@ -180,6 +198,7 @@ class DatasourceType:
 class AbstractConfigFile(ABC):
     type: str
     name: str
+    enabled: bool = True
 
 
 # Config files can either be defined:

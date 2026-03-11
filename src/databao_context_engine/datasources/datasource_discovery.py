@@ -62,30 +62,31 @@ def discover_datasources(project_layout: ProjectLayout) -> list[DatasourceId]:
     datasource_ids: list[DatasourceId] = []
     for dirpath, dirnames, filenames in os.walk(project_layout.src_dir):
         for config_file_name in filenames:
-            context_file = Path(dirpath).joinpath(config_file_name)
+            context_file = Path(dirpath) / config_file_name
+            if _is_backup_file(context_file):
+                continue
             datasource_id = _load_datasource_id(project_layout, context_file)
             if datasource_id is not None:
                 datasource_ids.append(datasource_id)
 
-    return sorted(datasource_ids, key=lambda id: str(id.relative_path_to_config_file()).lower())
+    return sorted(datasource_ids, key=lambda ds_id: str(ds_id.relative_path_to_config_file()).lower())
 
 
-def _is_datasource_file(p: Path) -> bool:
-    # ignore backup files
-    return p.is_file() and not p.suffix.endswith("~")
+def _is_backup_file(p: Path) -> bool:
+    return p.is_file() and p.suffix.endswith("~")
 
 
 def validate_datasource_ids(project_layout: ProjectLayout, datasource_ids: list[DatasourceId]) -> list[DatasourceId]:
-    for datasource_id in sorted(datasource_ids, key=lambda id: str(id)):
+    for datasource_id in sorted(datasource_ids, key=lambda ds_id: str(ds_id)):
         config_file_path = project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
         if not config_file_path.is_file():
             raise ValueError(f"Datasource config file not found: {config_file_path}")
 
-    def _is_datasource_id_valid(datasource_id: DatasourceId) -> bool:
-        config_file_path = project_layout.src_dir.joinpath(datasource_id.relative_path_to_config_file())
-        return _is_valid_config_file(config_file_path)
-
-    return [datasource_id for datasource_id in datasource_ids if _is_datasource_id_valid(datasource_id)]
+    return [
+        datasource_id
+        for datasource_id in datasource_ids
+        if _is_valid_config_file(project_layout.src_dir / datasource_id.relative_path_to_config_file())
+    ]
 
 
 def _load_datasource_id(project_layout: ProjectLayout, config_file: Path) -> DatasourceId | None:

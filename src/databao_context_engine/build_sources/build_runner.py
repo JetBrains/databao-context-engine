@@ -3,13 +3,13 @@ import logging
 import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.export_results import (
-    append_result_to_all_results,
+    delete_all_results_file,
     export_build_result,
-    reset_all_results,
 )
 from databao_context_engine.build_sources.types import (
     BuildDatasourceResult,
     DatasourceStatus,
+    EnrichContextResult,
     IndexDatasourceResult,
 )
 from databao_context_engine.datasources.datasource_context import (
@@ -17,6 +17,7 @@ from databao_context_engine.datasources.datasource_context import (
     read_datasource_type_from_context,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
+from databao_context_engine.datasources.types import PreparedConfig
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
@@ -26,7 +27,10 @@ logger = logging.getLogger(__name__)
 
 @perf.perf_run(
     operation="build",
-    attrs=lambda *, generate_embeddings=True, **_: {"generate_embeddings": generate_embeddings},
+    attrs=lambda *, should_index, should_enrich_context, **_: {
+        "should_index": should_index,
+        "should_enrich_context": should_enrich_context,
+    },
 )
 @perf.perf_span("build.total")
 def build(
@@ -34,7 +38,8 @@ def build(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
-    generate_embeddings: bool = True,
+    should_index: bool,
+    should_enrich_context: bool,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -57,7 +62,7 @@ def build(
     results: list[BuildDatasourceResult] = []
     failed = 0
     skipped = 0
-    reset_all_results(project_layout.output_dir)
+    delete_all_results_file(project_layout)
     for datasource_id in datasource_ids:
         try:
             result = _build_one_datasource(
@@ -65,7 +70,8 @@ def build(
                 plugin_loader=plugin_loader,
                 build_service=build_service,
                 datasource_id=datasource_id,
-                generate_embeddings=generate_embeddings,
+                should_index=should_index,
+                should_enrich_context=should_enrich_context,
             )
             results.append(result)
             if result.status == DatasourceStatus.SKIPPED:
@@ -100,9 +106,13 @@ def _build_one_datasource(
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     datasource_id,
-    generate_embeddings: bool,
+    should_index: bool,
+    should_enrich_context: bool,
 ) -> BuildDatasourceResult:
     prepared_source = prepare_source(project_layout, datasource_id)
+    if isinstance(prepared_source, PreparedConfig) and prepared_source.config.get("enabled") is False:
+        logger.info(f"Skipping disabled datasource {prepared_source.datasource_id.datasource_path}")
+        return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
 
     perf.set_attribute("datasource_type", prepared_source.datasource_type.full_type)
 
@@ -119,10 +129,11 @@ def _build_one_datasource(
         )
         return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
 
-    result = build_service.process_prepared_source(
+    result = build_service.build_context(
         prepared_source=prepared_source,
         plugin=plugin,
-        generate_embeddings=generate_embeddings,
+        should_index=should_index,
+        should_enrich_context=should_enrich_context,
     )
 
     output_dir = project_layout.output_dir
@@ -130,13 +141,105 @@ def _build_one_datasource(
 
     perf.set_attribute("context_size_bytes", context_file_path.stat().st_size)
 
-    append_result_to_all_results(output_dir, result)
-
     return BuildDatasourceResult(
         datasource_id=datasource_id,
         status=DatasourceStatus.OK,
         datasource_type=DatasourceType(full_type=result.datasource_type),
         context_built_at=result.context_built_at,
+        context_file_path=context_file_path,
+    )
+
+
+@perf.perf_run(
+    operation="enrich_context",
+    attrs=lambda *, should_index, **_: {
+        "should_index": should_index,
+    },
+)
+@perf.perf_span("enrich_context.total")
+def run_enrich_context(
+    *,
+    project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
+    build_service: BuildService,
+    contexts: list[DatasourceContext],
+    should_index: bool,
+) -> list[EnrichContextResult]:
+    results: list[EnrichContextResult] = []
+    ok = 0
+    skipped = 0
+    failed = 0
+
+    for context in contexts:
+        try:
+            logger.info(f"Enriching context for datasource {context.datasource_id}")
+
+            result = _enrich_one_context(
+                project_layout=project_layout,
+                context=context,
+                plugin_loader=plugin_loader,
+                build_service=build_service,
+                should_index=should_index,
+            )
+
+            results.append(result)
+            if result.status == DatasourceStatus.OK:
+                ok += 1
+            elif result.status == DatasourceStatus.SKIPPED:
+                skipped += 1
+        except Exception as e:
+            logger.debug(str(e), exc_info=True, stack_info=True)
+            logger.info(f"Failed to enrich context for datasource ({context.datasource_id}): {str(e)}")
+            failed += 1
+            results.append(
+                EnrichContextResult(datasource_id=context.datasource_id, status=DatasourceStatus.FAILED, error=str(e))
+            )
+
+    logger.debug(
+        "Successfully indexed %d/%d datasource(s). %s",
+        ok,
+        len(contexts),
+        f"Skipped {skipped}. Failed {failed}." if (skipped or failed) else "",
+    )
+
+    return results
+
+
+@perf.perf_span(
+    "datasource.total",
+    datasource_id=lambda *, context, **_: str(context.datasource_id),
+)
+def _enrich_one_context(
+    *,
+    project_layout: ProjectLayout,
+    context: DatasourceContext,
+    plugin_loader: DatabaoContextPluginLoader,
+    build_service: BuildService,
+    should_index: bool,
+) -> EnrichContextResult:
+    perf.set_attribute("context_size_bytes", len(context.context.encode("utf-8")))
+
+    datasource_type = read_datasource_type_from_context(context)
+    perf.set_attribute("datasource_type", getattr(datasource_type, "full_type", datasource_type))
+
+    plugin = plugin_loader.get_plugin_for_datasource_type(datasource_type)
+    if plugin is None:
+        logger.warning(
+            "No plugin for datasource type '%s' — skipping context enrichment for datasource %s.",
+            getattr(datasource_type, "full_type", datasource_type),
+            context.datasource_id,
+        )
+        return EnrichContextResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
+
+    enriched_context = build_service.enrich_built_context(context=context, plugin=plugin, should_index=should_index)
+
+    output_dir = project_layout.output_dir
+    context_file_path = export_build_result(output_dir, enriched_context)
+
+    return EnrichContextResult(
+        datasource_id=context.datasource_id,
+        status=DatasourceStatus.OK,
+        context_built_at=enriched_context.context_built_at,
         context_file_path=context_file_path,
     )
 

@@ -1,19 +1,21 @@
 import asyncio
 import concurrent.futures
+import logging
 import queue
 import threading
 from collections.abc import Coroutine
 from typing import Any, Sequence
 
 import asyncpg
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.postgresql.config_file import (
     PostgresConfigFile,
     PostgresConnectionProperties,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class _SyncAsyncpgConnection:
@@ -188,39 +190,32 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
 
         return connection.fetch_scalar_values("SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false")
 
-    def collect_catalog_model(
-        self, connection: _SyncAsyncpgConnection, catalog: str, schemas: list[str]
-    ) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
+    @override
+    def collect_stats(
+        self,
+        connection,
+        catalog: str,
+        schemas: list[str],
+        relations: list[dict],
+        columns: list[dict],
+    ) -> tuple[list[dict], list[dict]]:
+        table_stats_query = SQLQuery(self._sql_table_stats(), (schemas,))
+        table_stats = self._fetchall_dicts(connection, table_stats_query.sql, table_stats_query.params)
 
-        comps = self._component_queries()
-        results: dict[str, list[dict]] = {name: [] for name in comps}
+        column_stats_query = SQLQuery(self._sql_column_stats(), (schemas,))
+        column_stats = self._fetchall_dicts(connection, column_stats_query.sql, column_stats_query.params)
 
-        for cq, sql in comps.items():
-            results[cq] = self._fetchall_dicts(connection, sql, (schemas,)) or []
-
-        # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
-        results["column_stats"] = self._parse_column_stats_arrays(results.get("column_stats", []))
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=schemas,
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-            partitions=results.get("partitions", []),
-            table_stats=results.get("table_stats", []),
-            column_stats=results.get("column_stats", []),
+        enriched_column_stats = self._enrich_column_stats(
+            column_stats or [],
+            table_stats or [],
         )
 
-    def _parse_column_stats_arrays(self, column_stats: list[dict]) -> list[dict]:
-        """Simple parser that doesn't handle quoted strings with commas or escapes."""
+        return table_stats, enriched_column_stats
+
+    def _enrich_column_stats(self, column_stats: list[dict], table_stats: list[dict]) -> list[dict]:
 
         def parse_pg_array(arr_str: str | None) -> list[str] | None:
+            """Simple parser that doesn't handle quoted strings with commas or escapes."""
             if not arr_str or not isinstance(arr_str, str):
                 return None
             if not arr_str.startswith("{") or not arr_str.endswith("}"):
@@ -230,32 +225,62 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 return []
             return [v.strip() for v in content.split(",") if v.strip()]
 
+        table_row_counts = {}
+        for ts in table_stats:
+            schema = ts.get("schema_name")
+            table = ts.get("table_name")
+            row_count = ts.get("row_count")
+            if schema and table and row_count is not None:
+                table_row_counts[(schema, table)] = row_count
+
         for row in column_stats:
-            if "most_common_vals" in row:
-                row["most_common_vals"] = parse_pg_array(row["most_common_vals"])
-            if "most_common_freqs" in row:
-                row["most_common_freqs"] = parse_pg_array(row["most_common_freqs"])
+            schema_name = row.get("schema_name")
+            table_name = row.get("table_name")
+            row_count = table_row_counts.get((schema_name, table_name))
+
             if "histogram_bounds" in row:
-                row["histogram_bounds"] = parse_pg_array(row["histogram_bounds"])
+                bounds = parse_pg_array(row["histogram_bounds"])
+                if bounds and len(bounds) > 0:
+                    row["min_value"] = bounds[0]
+                    row["max_value"] = bounds[-1]
+
+            null_frac = row.get("null_frac")
+            if null_frac is not None and row_count is not None:
+                row["null_count"] = round(row_count * null_frac)
+                row["non_null_count"] = row_count - row["null_count"]
+
+            n_distinct = row.get("n_distinct")
+            distinct_count = None
+            if n_distinct is not None and row_count is not None:
+                if n_distinct < 0:
+                    distinct_count = round(abs(n_distinct) * row_count)
+                elif n_distinct > 0:
+                    distinct_count = round(n_distinct)
+
+            cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_count)
+            row["cardinality_kind"] = cardinality_kind
+            row["distinct_count"] = low_cardinality_distinct_count
+
+            vals_str = row.get("most_common_vals")
+            freqs_str = row.get("most_common_freqs")
+            top_n = 5
+            if vals_str and freqs_str and row_count is not None:
+                vals = parse_pg_array(vals_str)
+                freqs = parse_pg_array(freqs_str)
+                if vals and freqs and len(vals) == len(freqs):
+                    try:
+                        row["top_values"] = [(str(v), round(float(f) * row_count)) for v, f in zip(vals, freqs)][:top_n]
+                    except (ValueError, TypeError):
+                        logger.warning(
+                            f"Failed to parse column stats for {schema_name}.{table_name}.{row['column_name']}"
+                        )
 
         return column_stats
 
-    def _component_queries(self) -> dict[str, str]:
-        return {
-            "relations": self._sql_relations(),
-            "columns": self._sql_columns(),
-            "pk": self._sql_primary_keys(),
-            "uq": self._sql_uniques(),
-            "checks": self._sql_checks(),
-            "fks": self._sql_foreign_keys(),
-            "idx": self._sql_indexes(),
-            "partitions": self._sql_partitions(),
-            "table_stats": self._sql_table_stats(),
-            "column_stats": self._sql_column_stats(),
-        }
-
-    def _sql_relations(self) -> str:
-        return """
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT 
                 n.nspname AS schema_name,
                 c.relname AS table_name,
@@ -276,10 +301,21 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             ORDER BY 
                 schema_name,
                 c.relname
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_columns(self) -> str:
-        return """
+    @override
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "c.relkind IN ('r','p')")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "c.relkind IN ('v','m','f')")
+
+    def _columns_sql_query(self, schemas: list[str], relation_kind_filter: str) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname AS table_name,
@@ -301,17 +337,23 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
             WHERE 
                 n.nspname = ANY($1)
                 AND a.attnum > 0
-                AND c.relkind IN ('r','p','v','m','f') 
+                AND """
+            + relation_kind_filter
+            + """
                 AND NOT a.attisdropped
                 AND NOT c.relispartition
             ORDER BY 
                 schema_name,
                 c.relname, 
                 a.attnum
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_primary_keys(self) -> str:
-        return """
+    @override
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname        AS table_name,
@@ -333,10 +375,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname, 
                 con.conname, 
                 k.pos
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_uniques(self) -> str:
-        return """
+    @override
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname        AS table_name,
@@ -358,10 +404,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname, 
                 con.conname, 
                 k.pos
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_checks(self) -> str:
-        return """
+    @override
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname AS table_name,
@@ -380,10 +430,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 schema_name, 
                 c.relname, 
                 con.conname
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_foreign_keys(self) -> str:
-        return """
+    @override
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname           AS table_name,
@@ -421,10 +475,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname, 
                 con.conname, 
                 src.ord
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_indexes(self) -> str:
-        return """
+    @override
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             SELECT
                 n.nspname AS schema_name,
                 c.relname                                   AS table_name,
@@ -459,10 +517,14 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 c.relname, 
                 idx.relname, 
                 k.pos
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_partitions(self) -> str:
-        return """
+    @override
+    def get_partitions_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            """
             WITH partitions AS (
                 SELECT
                     parentrel.oid,
@@ -497,7 +559,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 rel.relname, 
                 part.partstrat, 
                 partitions.partition_tables
-               """
+               """,
+            (schemas,),
+        )
 
     def _sql_table_stats(self) -> str:
         return """

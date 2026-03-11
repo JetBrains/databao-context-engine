@@ -9,11 +9,11 @@ from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabase
 
 
 class ClickhouseConnectionProperties(BaseModel):
-    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
+    host: Annotated[str, ConfigPropertyAnnotation(required=True)] = "localhost"
     port: int | None = None
     database: str | None = None
     username: str | None = None
-    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+    password: Annotated[str | None, ConfigPropertyAnnotation(secret=True)] = None
     additional_properties: dict[str, Any] = {}
 
     def to_clickhouse_kwargs(self) -> dict[str, Any]:

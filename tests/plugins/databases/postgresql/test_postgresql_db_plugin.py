@@ -15,6 +15,7 @@ from databao_context_engine.plugins.databases.database_chunker import (
     DatabaseTableChunkContent,
 )
 from databao_context_engine.plugins.databases.databases_types import (
+    CardinalityBucket,
     DatabaseCatalog,
     DatabaseColumn,
     DatabaseIntrospectionResult,
@@ -773,6 +774,7 @@ def test_postgres_statistics(create_db_schema, postgres_container: PostgresConta
                         null_count=0,
                         non_null_count=100,
                         distinct_count=2,
+                        cardinality_kind=CardinalityBucket.VERY_LOW,
                         top_values={"active": 70, "inactive": 30},
                         total_row_count=100,
                     ),
@@ -784,6 +786,7 @@ def test_postgres_statistics(create_db_schema, postgres_container: PostgresConta
                         null_count=20,
                         non_null_count=80,
                         distinct_count=2,
+                        cardinality_kind=CardinalityBucket.VERY_LOW,
                         top_values={"A": 50, "B": 30},
                         total_row_count=100,
                     ),
@@ -797,6 +800,7 @@ def test_postgres_statistics(create_db_schema, postgres_container: PostgresConta
                         min_value="1",
                         max_value="100",
                         total_row_count=100,
+                        cardinality_kind=CardinalityBucket.HIGH,
                     ),
                 ],
             )

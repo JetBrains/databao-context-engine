@@ -8,12 +8,14 @@ import pytest
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
 from databao_context_engine.plugins.databases.databases_types import (
+    CardinalityBucket,
     DatabaseIntrospectionResult,
 )
 from databao_context_engine.plugins.databases.duckdb.duckdb_db_plugin import DuckDbPlugin
 from tests.plugins.databases.database_contracts import (
     CheckConstraintExists,
     ColumnIs,
+    ColumnStatsExists,
     ForeignKeyExists,
     IndexExists,
     PrimaryKeyIs,
@@ -21,6 +23,7 @@ from tests.plugins.databases.database_contracts import (
     SamplesEqual,
     TableExists,
     TableKindIs,
+    TableStatsRowCountIs,
     UniqueConstraintExists,
     assert_contract,
 )
@@ -41,8 +44,7 @@ def execute_duckdb_queries(db_file: Path, *queries: str):
 
 @contextlib.contextmanager
 def seed_rows(db_file: Path, full_table_name: str, rows: Sequence[Mapping[str, Any]]):
-    conn = duckdb.connect(database=str(db_file))
-    try:
+    with duckdb.connect(database=str(db_file)) as conn:
         conn.execute(f"TRUNCATE TABLE {full_table_name}")
 
         if rows:
@@ -54,10 +56,10 @@ def seed_rows(db_file: Path, full_table_name: str, rows: Sequence[Mapping[str, A
             data = [tuple(r[c] for c in columns) for r in rows]
             conn.executemany(sql, data)
 
-        yield
-    finally:
+    yield
+
+    with duckdb.connect(database=str(db_file)) as conn:
         conn.execute(f"TRUNCATE TABLE {full_table_name}")
-        conn.close()
 
 
 @pytest.fixture
@@ -270,6 +272,71 @@ def test_duckdb_samples_in_big(duckdb_with_demo_schema: Path):
             result,
             [
                 SamplesCountIs("test_db", "custom", "users", count=limit),
+            ],
+        )
+
+
+def test_duckdb_table_and_column_statistics(duckdb_with_demo_schema: Path):
+    rows = [
+        {"user_id": 1, "name": "Alice", "email": "alice@example.com", "is_active": 1},
+        {"user_id": 2, "name": "Bob", "email": "bob@example.com", "is_active": 1},
+        {"user_id": 3, "name": "Charlie", "email": "charlie@example.com", "is_active": 0},
+        {"user_id": 4, "name": "Alice", "email": "alice2@example.com", "is_active": 1},
+        {"user_id": 5, "name": "Dave", "email": "dave@example.com", "is_active": 1},
+    ]
+
+    with seed_rows(duckdb_with_demo_schema, "custom.users", rows):
+        plugin = DuckDbPlugin()
+        config = _create_config_file_from_container(duckdb_with_demo_schema)
+        result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name")
+        assert isinstance(result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            result,
+            [
+                TableStatsRowCountIs("test_db", "custom", "users", row_count=5, approximate=True),
+                ColumnStatsExists(
+                    "test_db",
+                    "custom",
+                    "users",
+                    "user_id",
+                    distinct_count=5,
+                    cardinality_kind=CardinalityBucket.LOW,
+                    min_value="1",
+                    max_value="5",
+                    total_row_count=5,
+                ),
+                ColumnStatsExists(
+                    "test_db",
+                    "custom",
+                    "users",
+                    "name",
+                    distinct_count=4,
+                    cardinality_kind=CardinalityBucket.VERY_LOW,
+                    min_value="Alice",
+                    max_value="Dave",
+                    total_row_count=5,
+                ),
+                ColumnStatsExists(
+                    "test_db",
+                    "custom",
+                    "users",
+                    "email",
+                    distinct_count=5,
+                    cardinality_kind=CardinalityBucket.LOW,
+                    total_row_count=5,
+                ),
+                ColumnStatsExists(
+                    "test_db",
+                    "custom",
+                    "users",
+                    "is_active",
+                    distinct_count=2,
+                    cardinality_kind=CardinalityBucket.VERY_LOW,
+                    min_value="0",
+                    max_value="1",
+                    total_row_count=5,
+                ),
             ],
         )
 

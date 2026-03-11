@@ -29,7 +29,6 @@ def test_init_project_dir(tmp_path: Path):
     src_dir = project_dir.joinpath(SOURCE_FOLDER_NAME)
     assert src_dir.is_dir()
     assert src_dir.joinpath("files").is_dir()
-    assert src_dir.joinpath("databases").is_dir()
 
     examples_dir = project_dir.joinpath(EXAMPLES_FOLDER_NAME)
     assert examples_dir.is_dir()

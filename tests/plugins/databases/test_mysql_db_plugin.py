@@ -7,11 +7,13 @@ from testcontainers.mysql import MySqlContainer  # type: ignore
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.databases.databases_types import CardinalityBucket, DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.mysql.mysql_db_plugin import MySQLDbPlugin
+from databao_context_engine.plugins.databases.mysql.mysql_introspector import MySQLIntrospector
 from tests.plugins.databases.database_contracts import (
     CheckConstraintExists,
     ColumnIs,
+    ColumnStatsExists,
     ForeignKeyExists,
     IndexExists,
     PrimaryKeyIs,
@@ -20,6 +22,7 @@ from tests.plugins.databases.database_contracts import (
     TableDescriptionContains,
     TableExists,
     TableKindIs,
+    TableStatsRowCountIs,
     UniqueConstraintExists,
     assert_contract,
 )
@@ -255,8 +258,11 @@ def mysql_container_with_demo_schema(mysql_container: MySqlContainer):
     return mysql_container
 
 
-def test_mysql_introspection(mysql_container_with_demo_schema):
+@pytest.mark.parametrize("batched", [True, False])
+def test_mysql_introspection(mysql_container_with_demo_schema, batched: bool):
     plugin = MySQLDbPlugin()
+    MySQLIntrospector._USE_BATCH = batched
+
     config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
     result = execute_datasource_plugin(plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name")
 
@@ -515,6 +521,157 @@ def test_mysql_samples_in_big(mysql_container_with_demo_schema, create_mysql_con
             [
                 TableExists("catalog_main", "catalog_main", "table_products"),
                 SamplesCountIs("catalog_main", "catalog_main", "table_products", count=limit),
+            ],
+        )
+
+
+def test_mysql_table_and_column_statistics(mysql_container_with_demo_schema, create_mysql_conn):
+    """Test comprehensive column statistics: low cardinality with skewed distribution, nulls, and multiple data types"""
+    rows = [
+        {"id": 1, "sku": "SKU-A", "price": 10.50, "description": "Product A"},
+        {"id": 2, "sku": "SKU-B", "price": 10.50, "description": "Product B"},
+        {"id": 3, "sku": "SKU-C", "price": 10.50, "description": "Product C"},
+        {"id": 4, "sku": "SKU-D", "price": 30.00, "description": "Product D"},
+        {"id": 5, "sku": "SKU-E", "price": 30.00, "description": "Product E"},
+        {"id": 6, "sku": "SKU-F", "price": 20.00, "description": None},
+        {"id": 7, "sku": "SKU-G", "price": 40.00, "description": None},
+        {"id": 8, "sku": "SKU-H", "price": 50.00, "description": None},
+    ]
+
+    cleanup = [
+        "DELETE FROM table_order_items;",
+        "DELETE FROM table_products;",
+    ]
+
+    with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
+        plugin = MySQLDbPlugin()
+        config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+        result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
+        assert isinstance(result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            result,
+            [
+                TableStatsRowCountIs("catalog_main", "catalog_main", "table_products", row_count=8, approximate=True),
+                ColumnStatsExists(
+                    "catalog_main",
+                    "catalog_main",
+                    "table_products",
+                    "price",
+                    null_count=0,
+                    non_null_count=8,
+                    distinct_count=5,
+                    cardinality_kind=CardinalityBucket.LOW,
+                    min_value=10.5,
+                    max_value=50.0,
+                    has_top_values=True,
+                    top_values={
+                        10.5: 3,
+                        30.0: 2,
+                        20.0: 1,
+                        40.0: 1,
+                        50.0: 1,
+                    },
+                    total_row_count=8,
+                ),
+            ],
+        )
+
+
+def test_mysql_column_statistics_with_nulls(mysql_container_with_demo_schema, create_mysql_conn):
+    """Test TEXT column statistics with nulls and repeated values.
+
+    MySQL doesn't create histograms for columns with unique indexes (id, sku),
+    so only price and description columns will have statistics.
+    """
+    rows = [
+        {"id": 1, "sku": "SKU-A", "price": 10.00, "description": "Common"},
+        {"id": 2, "sku": "SKU-B", "price": 20.00, "description": "Common"},
+        {"id": 3, "sku": "SKU-C", "price": 30.00, "description": "Common"},
+        {"id": 4, "sku": "SKU-D", "price": 40.00, "description": "Rare"},
+        {"id": 5, "sku": "SKU-E", "price": 50.00, "description": None},
+        {"id": 6, "sku": "SKU-F", "price": 60.00, "description": None},
+    ]
+
+    cleanup = [
+        "DELETE FROM table_order_items;",
+        "DELETE FROM table_products;",
+    ]
+
+    with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
+        plugin = MySQLDbPlugin()
+        config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+        result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
+        assert isinstance(result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            result,
+            [
+                TableStatsRowCountIs("catalog_main", "catalog_main", "table_products", row_count=6, approximate=True),
+                ColumnStatsExists(
+                    "catalog_main",
+                    "catalog_main",
+                    "table_products",
+                    "description",
+                    null_count=2,
+                    non_null_count=4,
+                    distinct_count=2,
+                    cardinality_kind=CardinalityBucket.VERY_LOW,
+                    min_value="Common",
+                    max_value="Rare",
+                    has_top_values=True,
+                    top_values={
+                        "Common": 3,
+                        "Rare": 1,
+                    },
+                    total_row_count=6,
+                ),
+            ],
+        )
+
+
+def test_mysql_high_cardinality_statistics(mysql_container_with_demo_schema, create_mysql_conn):
+    """Test column statistics with high cardinality data (triggers equi-height histogram)"""
+    # Create 150 distinct values to exceed MySQL's singleton histogram threshold
+    rows = [
+        {"id": i, "sku": f"SKU-{i:04d}", "price": float(i * 10), "description": f"Product {i}"} for i in range(1, 151)
+    ]
+
+    cleanup = [
+        "DELETE FROM table_order_items;",
+        "DELETE FROM table_products;",
+    ]
+
+    with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
+        plugin = MySQLDbPlugin()
+        config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+        result = execute_datasource_plugin(
+            plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
+        )
+        assert isinstance(result, DatabaseIntrospectionResult)
+
+        assert_contract(
+            result,
+            [
+                TableStatsRowCountIs("catalog_main", "catalog_main", "table_products", row_count=150, approximate=True),
+                # High cardinality price column should report stats with equi-height histogram
+                ColumnStatsExists(
+                    "catalog_main",
+                    "catalog_main",
+                    "table_products",
+                    "price",
+                    null_count=0,
+                    non_null_count=150,
+                    distinct_count=None,
+                    cardinality_kind=CardinalityBucket.HIGH,
+                    min_value=10.0,
+                    max_value=1500.0,
+                    total_row_count=150,
+                ),
             ],
         )
 

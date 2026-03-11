@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import clickhouse_connect
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.clickhouse.config_file import ClickhouseConfigFile
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 
 
 class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
@@ -33,34 +32,10 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             None,
         )
 
-    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
-
-        schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
-
-        comps = self._component_queries()
-        results: dict[str, list[dict]] = {cq: [] for cq in comps}
-        for cq, template_sql in comps.items():
-            sql = template_sql.replace("{SCHEMAS}", schemas_sql)
-            results[cq] = self._fetchall_dicts(connection, sql, None)
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=schemas,
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=[],
-            uq_cols=[],
-            checks=[],
-            fk_cols=[],
-            idx_cols=results.get("idx", []),
-        )
-
-    def _component_queries(self) -> dict[str, str]:
-        return {"relations": self._sql_relations(), "columns": self._sql_columns(), "idx": self._sql_indexes()}
-
-    def _sql_relations(self) -> str:
-        return r"""
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 t.database AS schema_name,
                 t.name AS table_name,
@@ -86,13 +61,30 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             FROM 
                 system.tables t
             WHERE 
-                t.database IN ({SCHEMAS})
+                has({schemas:Array(String)}, t.database)
             ORDER BY 
                 t.name
-        """
+        """,
+            {"schemas": schemas},
+        )
 
-    def _sql_columns(self) -> str:
-        return r"""
+    @override
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(
+            schemas,
+            "t.engine = 'table'",
+        )
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(
+            schemas,
+            "t.engine <> 'table'",
+        )
+
+    def _columns_sql_query(self, schemas: list[str], engine_filter: str) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 c.database AS schema_name,
                 c.table AS table_name,
@@ -107,15 +99,23 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
                 c.comment AS description
             FROM 
                 system.columns c
+                JOIN system.tables t ON t.database = c.database AND t.name = c.table
             WHERE 
-                c.database IN ({SCHEMAS})
+                has({schemas:Array(String)}, c.database)
+                AND """
+            + engine_filter
+            + r"""
             ORDER BY 
                 c.table, 
                 c.position
-        """
+        """,
+            {"schemas": schemas},
+        )
 
-    def _sql_indexes(self) -> str:
-        return r"""
+    @override
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 i.database AS schema_name,
                 i.table AS table_name,
@@ -128,11 +128,13 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
             FROM 
                 system.data_skipping_indices i
             WHERE 
-                i.database IN ({SCHEMAS})
+                has({schemas:Array(String)}, i.database)
             ORDER BY 
                 i.table, 
                 i.name
-        """
+        """,
+            {"schemas": schemas},
+        )
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT %s'
@@ -142,6 +144,3 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
         res = connection.query(sql, parameters=params) if params else connection.query(sql)
         cols = [c.lower() for c in res.column_names]
         return [dict(zip(cols, row)) for row in res.result_rows]
-
-    def _quote_literal(self, value: str) -> str:
-        return "'" + str(value).replace("'", "\\'") + "'"

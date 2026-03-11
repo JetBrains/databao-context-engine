@@ -13,7 +13,11 @@ from databao_context_engine.services.models import ChunkEmbedding
 
 
 def test_write_chunks_and_embeddings(persistence, chunk_repo, embedding_repo, table_name):
-    chunks = [EmbeddableChunk("A", "a"), EmbeddableChunk("B", "b"), EmbeddableChunk("C", "c")]
+    chunks = [
+        EmbeddableChunk(embeddable_text="A", content="a"),
+        EmbeddableChunk(embeddable_text="B", content="b"),
+        EmbeddableChunk(embeddable_text="C", content="c"),
+    ]
     chunk_embeddings = [
         ChunkEmbedding(
             original_chunk=chunks[0],
@@ -61,13 +65,25 @@ def test_empty_pairs_raises_value_error(persistence, table_name):
 def test_mid_batch_failure_rolls_back(persistence, chunk_repo, embedding_repo, monkeypatch, table_name):
     pairs = [
         ChunkEmbedding(
-            EmbeddableChunk("A", "a"), _vec(0.0), embedded_text="A", display_text="a", generated_description="a"
+            EmbeddableChunk(embeddable_text="A", content="a"),
+            _vec(0.0),
+            embedded_text="A",
+            display_text="a",
+            generated_description="a",
         ),
         ChunkEmbedding(
-            EmbeddableChunk("B", "b"), _vec(1.0), embedded_text="B", display_text="b", generated_description="b"
+            EmbeddableChunk(embeddable_text="B", content="b"),
+            _vec(1.0),
+            embedded_text="B",
+            display_text="b",
+            generated_description="b",
         ),
         ChunkEmbedding(
-            EmbeddableChunk("C", "c"), _vec(2.0), embedded_text="C", display_text="c", generated_description="c"
+            EmbeddableChunk(embeddable_text="C", content="c"),
+            _vec(2.0),
+            embedded_text="C",
+            display_text="c",
+            generated_description="c",
         ),
     ]
 
@@ -144,7 +160,7 @@ def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_rep
 
     pairs = [
         ChunkEmbedding(
-            original_chunk=EmbeddableChunk(et, obj),
+            original_chunk=EmbeddableChunk(embeddable_text=et, content=obj),
             vec=_vec(float(i)),
             embedded_text=et,
             display_text=str(obj),
@@ -172,15 +188,27 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
 ):
     ds1_pairs = [
         ChunkEmbedding(
-            EmbeddableChunk("A", "a"), _vec(0.0), embedded_text="A", display_text="a", generated_description="g"
+            EmbeddableChunk(embeddable_text="A", content="a"),
+            _vec(0.0),
+            embedded_text="A",
+            display_text="a",
+            generated_description="g",
         ),
         ChunkEmbedding(
-            EmbeddableChunk("B", "b"), _vec(1.0), embedded_text="B", display_text="b", generated_description="g"
+            EmbeddableChunk(embeddable_text="B", content="b"),
+            _vec(1.0),
+            embedded_text="B",
+            display_text="b",
+            generated_description="g",
         ),
     ]
     ds2_pairs = [
         ChunkEmbedding(
-            EmbeddableChunk("X", "x"), _vec(2.0), embedded_text="X", display_text="x", generated_description="g"
+            EmbeddableChunk(embeddable_text="X", content="x"),
+            _vec(2.0),
+            embedded_text="X",
+            display_text="x",
+            generated_description="g",
         ),
     ]
 
@@ -197,7 +225,11 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
 
     new_ds1_pairs = [
         ChunkEmbedding(
-            EmbeddableChunk("C", "c"), _vec(3.0), embedded_text="C", display_text="c", generated_description="g"
+            EmbeddableChunk(embeddable_text="C", content="c"),
+            _vec(3.0),
+            embedded_text="C",
+            display_text="c",
+            generated_description="g",
         ),
     ]
     persistence.write_chunks_and_embeddings(

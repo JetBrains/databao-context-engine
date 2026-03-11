@@ -107,7 +107,6 @@ class _ProjectCreator:
     def create_default_src_dir(self) -> None:
         self.src_dir.mkdir(parents=False, exist_ok=False)
 
-        self.src_dir.joinpath("databases").mkdir(parents=False, exist_ok=False)
         self.src_dir.joinpath("files").mkdir(parents=False, exist_ok=False)
 
     def create_logs_dir(self) -> None:
@@ -120,6 +119,6 @@ class _ProjectCreator:
 
     def create_dce_config_file(self) -> None:
         self.config_file.touch()
-        ProjectConfig(ollama_model_id=self.ollama_model_id, ollama_model_dim=self.ollama_model_dim).save(
-            self.config_file
+        ProjectConfig.save_config_file(
+            self.config_file, ollama_model_id=self.ollama_model_id, ollama_model_dim=self.ollama_model_dim
         )

@@ -5,8 +5,10 @@ from pydantic import TypeAdapter
 
 from databao_context_engine.build_sources import (
     BuildDatasourceResult,
+    EnrichContextResult,
     IndexDatasourceResult,
     build_all_datasources,
+    enrich_built_contexts,
     index_built_contexts,
 )
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
@@ -79,6 +81,7 @@ class DatabaoContextDomainManager:
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         *,
         should_index: bool = True,
+        should_enrich_context: bool = False,
     ) -> list[BuildDatasourceResult]:
         """Build the context for datasources in the domain.
 
@@ -88,19 +91,49 @@ class DatabaoContextDomainManager:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
             chunk_embedding_mode: The mode to use for chunk embedding.
             should_index: Whether to build a semantic index for the context.
+            should_enrich_context: Whether to enrich the context with LLM-generated content.
 
         Returns:
             The list of all built results.
         """
         # TODO: Filter which datasources to build by datasource_ids
-        project_config = self._project_layout.read_config_file()
         return build_all_datasources(
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
             chunk_embedding_mode=chunk_embedding_mode,
-            generate_embeddings=should_index,
-            ollama_model_id=project_config.ollama_model_id,
-            ollama_model_dim=project_config.ollama_model_dim,
+            should_index=should_index,
+            should_enrich_context=should_enrich_context,
+        )
+
+    def enrich_built_contexts(
+        self,
+        *,
+        datasource_ids: list[DatasourceId] | None = None,
+        should_index: bool = True,
+        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+    ) -> list[EnrichContextResult]:
+        """Enrich the context with LLM-generated content for the given datasources.
+
+        Args:
+            datasource_ids: The list of datasource ids to enrich contexts for. If None, all datasources contexts will be enriched.
+            chunk_embedding_mode: The mode to use for chunk embedding.
+            should_index: Whether to re-build the semantic index for the enriched context.
+
+        Returns:
+            The list of all context enrichment results.
+        """
+        engine = self.get_engine_for_domain()
+
+        contexts: list[DatasourceContext] = (
+            engine.get_all_contexts() if datasource_ids is None else engine.get_datasource_contexts(datasource_ids)
+        )
+
+        return enrich_built_contexts(
+            project_layout=self._project_layout,
+            plugin_loader=self._plugin_loader,
+            contexts=contexts,
+            chunk_embedding_mode=chunk_embedding_mode,
+            should_index=should_index,
         )
 
     def index_built_contexts(
@@ -121,20 +154,15 @@ class DatabaoContextDomainManager:
             The summary of the index operation.
         """
         engine: DatabaoContextEngine = self.get_engine_for_domain()
-        contexts: list[DatasourceContext] = engine.get_all_contexts()
+        contexts: list[DatasourceContext] = (
+            engine.get_all_contexts() if datasource_ids is None else engine.get_datasource_contexts(datasource_ids)
+        )
 
-        if datasource_ids is not None:
-            wanted_paths = {d.datasource_path for d in datasource_ids}
-            contexts = [c for c in contexts if c.datasource_id.datasource_path in wanted_paths]
-
-        project_config = self._project_layout.read_config_file()
         return index_built_contexts(
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
             contexts=contexts,
             chunk_embedding_mode=chunk_embedding_mode,
-            ollama_model_id=project_config.ollama_model_id,
-            ollama_model_dim=project_config.ollama_model_dim,
         )
 
     def check_datasource_connection(

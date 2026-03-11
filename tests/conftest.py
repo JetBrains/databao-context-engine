@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import shutil
+import uuid
 from pathlib import Path
 
 import duckdb
 import pytest
 
+from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.project.init_project import init_project_dir
-from databao_context_engine.project.layout import ProjectLayout, get_config_file
+from databao_context_engine.project.layout import ProjectLayout
+from databao_context_engine.project.project_config import ProjectConfig
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.persistence_service import PersistenceService
 from databao_context_engine.services.table_name_policy import TableNamePolicy
@@ -17,7 +20,6 @@ from databao_context_engine.storage.repositories.embedding_model_registry_reposi
     EmbeddingModelRegistryRepository,
 )
 from databao_context_engine.storage.repositories.embedding_repository import EmbeddingRepository
-from databao_context_engine.system.properties import get_db_path
 
 
 @pytest.fixture(scope="session")
@@ -34,8 +36,8 @@ def dce_path(mocker, tmp_path: Path):
 
 
 @pytest.fixture
-def db_path(dce_path: Path) -> Path:
-    return get_db_path(dce_path)
+def db_path(project_layout: ProjectLayout) -> Path:
+    return project_layout.db_path
 
 
 @pytest.fixture
@@ -77,7 +79,7 @@ def resolver(conn, registry_repo):
 
 @pytest.fixture
 def persistence(conn, chunk_repo, embedding_repo):
-    return PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
+    return PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo, dim=768)
 
 
 @pytest.fixture
@@ -111,4 +113,9 @@ def project_path(tmp_path) -> Path:
 
 @pytest.fixture
 def project_layout(project_path) -> ProjectLayout:
-    return ProjectLayout(project_dir=project_path, config_file=get_config_file(project_path))
+    return ProjectLayout(
+        project_dir=project_path,
+        project_config=ProjectConfig(
+            project_id=uuid.uuid4(), ollama_embedding_model_details=EmbeddingModelDetails.default()
+        ),
+    )

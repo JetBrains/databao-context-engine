@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode, ChunkEmbeddingService
@@ -14,7 +15,7 @@ from databao_context_engine.services.table_name_policy import TableNamePolicy
 def test_embed_flow_persists_chunks_and_embeddings(
     conn, chunk_repo, embedding_repo, registry_repo, resolver, chunk_embedding_mode
 ):
-    persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
+    persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo, dim=768)
     embedding_provider = _StubProvider(dim=768, model_id="dummy:v1", embedder="tests")
     description_provider = _StubDescriptionProvider()
 
@@ -27,9 +28,9 @@ def test_embed_flow_persists_chunks_and_embeddings(
     )
 
     chunks = [
-        EmbeddableChunk("alpha", "Alpha"),
-        EmbeddableChunk("beta", "Beta"),
-        EmbeddableChunk("gamma", "Gamma"),
+        EmbeddableChunk(embeddable_text="alpha", content="Alpha"),
+        EmbeddableChunk(embeddable_text="beta", content="Beta"),
+        EmbeddableChunk(embeddable_text="gamma", content="Gamma"),
     ]
     chunk_embedding_service.embed_chunks(
         chunks=chunks,
@@ -67,7 +68,7 @@ def test_embed_flow_persists_chunks_and_embeddings(
 def test_embed_flow_is_idempotent_on_resolver(conn, chunk_repo, embedding_repo, registry_repo, resolver):
     embedding_provider = _StubProvider(embedder="tests", model_id="idempotent:v1", dim=768)
     description_provider = _StubDescriptionProvider()
-    persistence = PersistenceService(conn, chunk_repo, embedding_repo)
+    persistence = PersistenceService(conn, chunk_repo, embedding_repo, dim=768)
     service = ChunkEmbeddingService(
         persistence_service=persistence,
         embedding_provider=embedding_provider,
@@ -75,8 +76,18 @@ def test_embed_flow_is_idempotent_on_resolver(conn, chunk_repo, embedding_repo, 
         description_provider=description_provider,
     )
 
-    service.embed_chunks(chunks=[EmbeddableChunk("x", "...")], result="", full_type="folder/type", datasource_id="s")
-    service.embed_chunks(chunks=[EmbeddableChunk("y", "...")], result="", full_type="folder/type", datasource_id="s")
+    service.embed_chunks(
+        chunks=[EmbeddableChunk(embeddable_text="x", content="...")],
+        result="",
+        full_type="folder/type",
+        datasource_id="s",
+    )
+    service.embed_chunks(
+        chunks=[EmbeddableChunk(embeddable_text="y", content="...")],
+        result="",
+        full_type="folder/type",
+        datasource_id="s",
+    )
 
     (count,) = conn.execute(
         "SELECT COUNT(*) FROM embedding_model_registry WHERE embedder=? AND model_id=?",
@@ -87,14 +98,13 @@ def test_embed_flow_is_idempotent_on_resolver(conn, chunk_repo, embedding_repo, 
 
 class _StubProvider:
     def __init__(self, dim=768, model_id="stub-model", embedder="ollama"):
-        self.dim = dim
-        self.model_id = model_id
+        self.embedding_model_details = EmbeddingModelDetails(model_id=model_id, model_dim=dim)
         self.embedder = embedder
         self._calls = 0
 
     def embed(self, text: str):
         self._calls += 1
-        return [float(self._calls)] * self.dim
+        return [float(self._calls)] * self.embedding_model_details.model_dim
 
     def embed_many(self, texts: list[str]) -> list[list[float]]:
         out: list[list[float]] = []

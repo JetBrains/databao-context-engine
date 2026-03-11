@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import duckdb
+from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
-from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
+
+logger = logging.getLogger(__name__)
 
 
 class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
@@ -22,7 +24,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
             raise ConnectionError(f"No DuckDB database was found at path {duckdb_path.resolve()}")
 
         database_path = str(duckdb_path.resolve())
-        return duckdb.connect(database=database_path)
+        return duckdb.connect(database=database_path, read_only=True)
 
     def _get_catalogs(self, connection, file_config: DuckDBConfigFile) -> list[str]:
         rows = self._fetchall_dicts(connection, "SELECT database_name FROM duckdb_databases();", None)
@@ -36,40 +38,10 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         sql = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE catalog_name = ANY(?)"
         return SQLQuery(sql, (catalogs,))
 
-    def collect_catalog_model(self, connection, catalog: str, schemas: list[str]) -> list[DatabaseSchema] | None:
-        if not schemas:
-            return []
-
-        comps = self._component_queries()
-        results: dict[str, list[dict]] = {cq: [] for cq in comps}
-
-        for cq, sql in comps.items():
-            results[cq] = self._fetchall_dicts(connection, sql, (schemas,))
-
-        return IntrospectionModelBuilder.build_schemas_from_components(
-            schemas=schemas,
-            rels=results.get("relations", []),
-            cols=results.get("columns", []),
-            pk_cols=results.get("pk", []),
-            uq_cols=results.get("uq", []),
-            checks=results.get("checks", []),
-            fk_cols=results.get("fks", []),
-            idx_cols=results.get("idx", []),
-        )
-
-    def _component_queries(self) -> dict[str, str]:
-        return {
-            "relations": self._sql_relations(),
-            "columns": self._sql_columns(),
-            "pk": self._sql_primary_keys(),
-            "uq": self._sql_unique(),
-            "checks": self._sql_checks(),
-            "fks": self._sql_foreign_keys(),
-            "idx": self._sql_indexes(),
-        }
-
-    def _sql_relations(self) -> str:
-        return r"""
+    @override
+    def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 table_schema AS schema_name,
                 table_name,
@@ -86,10 +58,21 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 table_schema = ANY(?)
             ORDER BY 
                 table_name; 
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_columns(self) -> str:
-        return r"""
+    @override
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "t.table_type = 'BASE TABLE'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "t.table_type <> 'BASE TABLE'")
+
+    def _columns_sql_query(self, schemas: list[str], table_type_filter: str) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 c.table_schema AS schema_name,
                 c.table_name,
@@ -105,16 +88,26 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 NULL::VARCHAR AS description
             FROM 
                 information_schema.columns c
+                JOIN information_schema.tables t
+                    ON t.table_schema = c.table_schema
+                    AND t.table_name = c.table_name
             WHERE 
                 c.table_schema = ANY(?)
+                AND """
+            + table_type_filter
+            + r"""
             ORDER BY 
                 c.table_schema,
                 c.table_name, 
                 c.ordinal_position; 
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_primary_keys(self) -> str:
-        return r"""
+    @override
+    def get_primary_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             WITH d AS (
                 SELECT 
                     *
@@ -148,10 +141,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 table_name, 
                 constraint_name, 
                 position;
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_unique(self) -> str:
-        return r"""
+    @override
+    def get_unique_constraints_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             WITH d AS (
                 SELECT 
                     *
@@ -185,10 +182,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 table_name, 
                 constraint_name, 
                 position;
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_checks(self) -> str:
-        return r"""
+    @override
+    def get_checks_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             SELECT
                 d.schema_name,
                 d.table_name,
@@ -204,10 +205,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 d.schema_name, 
                 d.table_name, 
                 d.constraint_name; 
-           """
+           """,
+            (schemas,),
+        )
 
-    def _sql_foreign_keys(self) -> str:
-        return r"""
+    @override
+    def get_foreign_keys_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             WITH d AS (
                 SELECT 
                     *
@@ -271,10 +276,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 c.table_name, 
                 c.constraint_name, 
                 c.position;
-        """
+        """,
+            (schemas,),
+        )
 
-    def _sql_indexes(self) -> str:
-        return r"""
+    @override
+    def get_indexes_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return SQLQuery(
+            r"""
             WITH idx AS (
                 SELECT
                     schema_name,
@@ -302,7 +311,85 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 table_name,
                 index_name,
                 position;
-         """
+         """,
+            (schemas,),
+        )
+
+    @override
+    def collect_stats(
+        self,
+        connection,
+        catalog: str,
+        schemas: list[str],
+        relations: list[dict],
+        columns: list[dict],
+    ) -> tuple[list[dict], list[dict]]:
+        table_stats = []
+        column_stats = []
+
+        for relation in relations:
+            if relation.get("kind") != "table":
+                continue
+
+            schema_name = relation["schema_name"]
+            table_name = relation["table_name"]
+
+            try:
+                summary_query = f'SUMMARIZE "{schema_name}"."{table_name}"'
+                summary_rows = self._fetchall_dicts(connection, summary_query, None)
+
+                if not summary_rows:
+                    continue
+
+                row_count = summary_rows[0].get("count")
+                table_stats.append(
+                    {
+                        "schema_name": schema_name,
+                        "table_name": table_name,
+                        "row_count": row_count,
+                        "approximate": True,
+                    }
+                )
+
+                for row in summary_rows:
+                    column_name = row.get("column_name")
+                    if not column_name:
+                        continue
+
+                    null_percentage = row.get("null_percentage")
+                    null_count = None
+                    non_null_count = None
+                    if null_percentage is not None and row_count is not None:
+                        null_frac = float(null_percentage) / 100.0
+                        null_count = round(row_count * null_frac)
+                        non_null_count = row_count - null_count
+
+                    # currently min/max values are strings, so we might need to convert them to the appropriate type
+                    # also, duckdb doesn't provide most_common_vals/most_common_freqs
+                    # but there are avg, std, q25 etc. available, we can use them as well
+                    approx_distinct_count = row.get("approx_unique")
+                    cardinality_kind, distinct_count = self._compute_cardinality_stats(approx_distinct_count)
+
+                    column_stats.append(
+                        {
+                            "schema_name": schema_name,
+                            "table_name": table_name,
+                            "column_name": column_name,
+                            "null_count": null_count,
+                            "non_null_count": non_null_count,
+                            "distinct_count": distinct_count,
+                            "cardinality_kind": cardinality_kind,
+                            "min_value": row.get("min"),
+                            "max_value": row.get("max"),
+                            "most_common_vals": None,
+                            "most_common_freqs": None,
+                        }
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to collect stats for {schema_name}.{table_name}: {e}")
+                continue
+
+        return table_stats, column_stats
 
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT ?'
