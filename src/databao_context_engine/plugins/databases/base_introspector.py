@@ -31,6 +31,7 @@ class BaseIntrospector(Generic[T], ABC):
     supports_catalogs: bool = True
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
     _SAMPLE_LIMIT: int = 5
+    _LOW_CARDINALITY_THRESHOLD = 20
 
     def check_connection(self, file_config: T) -> None:
         with self._connect(file_config) as connection:
@@ -251,11 +252,13 @@ class BaseIntrospector(Generic[T], ABC):
 
     @staticmethod
     def _compute_cardinality_stats(
-        distinct_count: int | None, *, low_cardinality_threshold: int = 20
+        distinct_count: int | None,
     ) -> tuple[CardinalityBucket, int | None]:
         cardinality_kind = CardinalityBucket.from_distinct_count(distinct_count)
         low_cardinality_distinct_count = (
-            distinct_count if distinct_count is not None and distinct_count < low_cardinality_threshold else None
+            distinct_count
+            if distinct_count is not None and distinct_count < BaseIntrospector._LOW_CARDINALITY_THRESHOLD
+            else None
         )
         return cardinality_kind, low_cardinality_distinct_count
 
