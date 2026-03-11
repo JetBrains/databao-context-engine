@@ -129,5 +129,10 @@ class _ProjectCreator:
 
     def create_gitignore_file(self) -> None:
         db_path = get_output_dir(self.project_dir).joinpath("dce.duckdb")
-        entries = [db_path.relative_to(self.project_dir).as_posix()]
+        logs_path = get_logs_dir(self.project_dir)
+
+        entries = [
+            db_path.relative_to(self.project_dir).as_posix(),
+            f"{logs_path.relative_to(self.project_dir).as_posix()}/",
+        ]
         self.gitignore_file.write_text("\n".join(entries))
