@@ -2,6 +2,7 @@ from databao_context_engine.build_sources.types import (
     BuildDatasourceResult,
     DatasourceResult,
     DatasourceStatus,
+    EnrichContextResult,
     IndexDatasourceResult,
 )
 from databao_context_engine.databao_context_domain_manager import DatabaoContextDomainManager
@@ -108,6 +109,7 @@ __all__ = [
     "BuildDatasourceResult",
     "DatasourceResult",
     "DatasourceStatus",
+    "EnrichContextResult",
     "IndexDatasourceResult",
     "CheckDatasourceConnectionResult",
     "AthenaConfigFile",

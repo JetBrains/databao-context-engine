@@ -1,5 +1,4 @@
 import logging
-import textwrap
 import time
 from typing import Any
 
@@ -42,12 +41,6 @@ class OllamaService:
             raise ValueError(f"Unexpected embedding response schema. {data}")
 
         return [[float(n) for n in vec] for vec in vectors]
-
-    def describe(self, *, model: str, text: str, context: str) -> str:
-        """Ask Ollama to generate a short description for `text`."""
-        prompt = self._build_description_prompt(text=text, context=context)
-
-        return self.prompt(model=model, prompt=prompt)
 
     def prompt(self, *, model: str, prompt: str, temperature: float = 0.1, timeout: float | None = None) -> str:
         """Ask Ollama to generate a response for `text`."""
@@ -150,25 +143,3 @@ class OllamaService:
             return resp.json()
         except ValueError as e:
             raise OllamaPermanentError(f"Invalid JSON from Ollama for {path}") from e
-
-    @staticmethod
-    def _build_description_prompt(text: str, context: str) -> str:
-        base = """
-        You are a helpful assistant.
-        
-        I will give you some TEXT and CONTEXT.
-        Write a concise, human-readable description of the TEXT suitable for displaying in a UI.
-        - 1-2 sentences
-        - Be factual and avoid speculation
-        - No markdown
-        - No preambles or labels, just the description itself.
-        - Your entire reply MUST be only the description itself. No extra commentary.
-        
-        CONTEXT:
-        {context}
-        
-        TEXT:
-        {text}
-        """
-
-        return textwrap.dedent(base).format(context=context, text=text).strip()

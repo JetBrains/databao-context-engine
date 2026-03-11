@@ -94,15 +94,16 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
         table_stats, column_stats = self.collect_stats(
             connection,
+            catalog=catalog,
             schemas=schemas,
             relations=results.get("relations", []),
-            columns=results.get("columns", []),
+            columns=results.get("table_columns", []) + results.get("view_columns", []),
         )
 
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results.get("relations", []),
-            cols=results.get("columns", []),
+            cols=results.get("table_columns", []) + results.get("view_columns", []),
             pk_cols=results.get("pk", []),
             uq_cols=results.get("uq", []),
             checks=results.get("checks", []),
@@ -118,13 +119,15 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     ) -> dict[str, SQLQuery | None]:
         return {
             "relations": self.get_relations_sql_query(catalog, schemas),
-            "columns": self.get_columns_sql_query(catalog, schemas),
+            "table_columns": self.get_table_columns_sql_query(catalog, schemas),
             "pk": self.get_primary_keys_sql_query(catalog, schemas),
             "uq": self.get_unique_constraints_sql_query(catalog, schemas),
             "checks": self.get_checks_sql_query(catalog, schemas),
             "fks": self.get_foreign_keys_sql_query(catalog, schemas),
             "idx": self.get_indexes_sql_query(catalog, schemas),
             "partitions": self.get_partitions_sql_query(catalog, schemas),
+            # view_columns should stay at the end, in case it breaks, so that everything before is still executed
+            "view_columns": self.get_view_columns_sql_query(catalog, schemas),
         }
 
     @override
@@ -156,7 +159,14 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(catalog, schemas, "t.TABLE_TYPE = 'BASE TABLE'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(catalog, schemas, "t.TABLE_TYPE <> 'BASE TABLE'")
+
+    def _columns_sql_query(self, catalog: str, schemas: list[str], table_type_filter: str) -> SQLQuery:
         schemas_sql = ", ".join(self._quote_literal(s) for s in schemas)
         return SQLQuery(
             rf"""
@@ -182,8 +192,12 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 NULLIF(c.COLUMN_COMMENT, '')         AS description
             FROM 
                 INFORMATION_SCHEMA.COLUMNS c
+                JOIN INFORMATION_SCHEMA.TABLES t
+                    ON t.TABLE_SCHEMA = c.TABLE_SCHEMA
+                    AND t.TABLE_NAME = c.TABLE_NAME
             WHERE 
                 c.TABLE_SCHEMA IN ({schemas_sql})
+                AND {table_type_filter}
             ORDER BY 
                 c.TABLE_SCHEMA,
                 c.TABLE_NAME, 
@@ -352,6 +366,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def collect_stats(
         self,
         connection,
+        catalog: str,
         schemas: list[str],
         relations: list[dict],
         columns: list[dict],
@@ -467,7 +482,10 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         null_frac = float(histogram.get("null-values") or 0.0)
         null_count = max(0, min(table_row_count, round(null_frac * table_row_count)))
 
-        stat_dict["distinct_count"] = distinct_count
+        cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_count)
+
+        stat_dict["cardinality_kind"] = cardinality_kind
+        stat_dict["distinct_count"] = low_cardinality_distinct_count
         stat_dict["non_null_count"] = table_row_count - null_count
         stat_dict["null_count"] = null_count
 
@@ -499,7 +517,10 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         for b in buckets:
             if isinstance(b, list) and len(b) >= 4:
                 distinct_est += int(b[3] or 0)
-        stat_dict["distinct_count"] = distinct_est
+
+        cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_est)
+        stat_dict["cardinality_kind"] = cardinality_kind
+        stat_dict["distinct_count"] = low_cardinality_distinct_count
 
         if buckets:
             first_bucket = buckets[0]

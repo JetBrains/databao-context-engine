@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from databao_context_engine import (
@@ -16,8 +17,18 @@ from databao_context_engine import (
     DatasourceId,
     DatasourceType,
 )
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.project.layout import get_output_dir
-from tests.utils.dummy_build_plugin import SimplePydanticConfig, load_dummy_plugins
+from databao_context_engine.serialization.yaml import to_yaml_string
+from tests.utils.dummy_build_plugin import (
+    DummyDefaultDatasourcePlugin,
+    DummyEnrichableDatasourcePlugin,
+    DummyFilePlugin,
+    DummyPluginWithOtherPydanticConfig,
+    DummyPluginWithSimplePydanticConfig,
+    SimplePydanticConfig,
+)
+from tests.utils.fakes import FakeDescriptionProvider
 from tests.utils.project_creation import (
     given_datasource_config_file,
     given_output_dir_with_built_contexts,
@@ -25,10 +36,20 @@ from tests.utils.project_creation import (
 )
 
 
+def _load_dummy_plugin():
+    return {
+        DatasourceType(full_type="dummy_default"): DummyDefaultDatasourcePlugin(),
+        DatasourceType(full_type="dummy_enrichable"): DummyEnrichableDatasourcePlugin(),
+        DatasourceType(full_type="dummy_txt"): DummyFilePlugin(),
+        DatasourceType(full_type="dummy_simple_pydantic"): DummyPluginWithSimplePydanticConfig(),
+        DatasourceType(full_type="dummy_other_pydantic"): DummyPluginWithOtherPydanticConfig(),
+    }
+
+
 @pytest.fixture
 def domain_manager(project_path: Path) -> DatabaoContextDomainManager:
     return DatabaoContextDomainManager(
-        domain_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=load_dummy_plugins())
+        domain_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_by_type=_load_dummy_plugin())
     )
 
 
@@ -130,7 +151,9 @@ def test_databao_context_domain_manager__index_built_contexts_indexes_all_when_n
     c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
     c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
 
-    given_output_dir_with_built_contexts(domain_manager._project_layout, [c1, c2])
+    given_output_dir_with_built_contexts(
+        domain_manager._project_layout, [(c1.datasource_id, c1.context), (c2.datasource_id, c2.context)]
+    )
 
     index_fn = mocker.patch(
         "databao_context_engine.databao_context_domain_manager.index_built_contexts",
@@ -154,7 +177,10 @@ def test_databao_context_domain_manager__index_built_contexts_filters_by_datasou
     c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
     c3 = DatasourceContext(DatasourceId.from_string_repr("full/c.yaml"), context="C")
 
-    given_output_dir_with_built_contexts(domain_manager._project_layout, [c1, c2, c3])
+    given_output_dir_with_built_contexts(
+        domain_manager._project_layout,
+        [(c1.datasource_id, c1.context), (c2.datasource_id, c2.context), (c3.datasource_id, c3.context)],
+    )
 
     index_fn = mocker.patch(
         "databao_context_engine.databao_context_domain_manager.index_built_contexts",
@@ -176,6 +202,80 @@ def test_databao_context_domain_manager__index_built_contexts_filters_by_datasou
         contexts=[c1, c3],
         chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     )
+
+
+def test_databao_context_domain_manager__build_context_with_enriching(domain_manager, mocker):
+    fake_provider = FakeDescriptionProvider()
+    mocker.patch(
+        "databao_context_engine.build_sources.build_wiring.create_ollama_description_provider",
+        return_value=fake_provider,
+    )
+
+    given_datasource_config_file(
+        domain_manager._project_layout,
+        datasource_name="dummy/my_enrichable_data",
+        config_content={"type": "dummy_enrichable", "name": "my_enrichable_data"},
+    )
+
+    build_result = domain_manager.build_context(
+        datasource_ids=None,
+        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        should_index=False,
+        should_enrich_context=True,
+    )
+
+    assert len(build_result) == 1
+    context_file_path = build_result[0].context_file_path
+    assert context_file_path is not None
+
+    enriched_payload = yaml.safe_load(context_file_path.read_text())
+    assert enriched_payload["context"]["description"] == "ENRICHED::fake-desc::my_enrichable_data"
+    assert fake_provider.calls == [("my_enrichable_data", "dummy_enrichable")]
+
+
+def test_databao_context_domain_manager__enrich_built_contexts_with_dummy_plugin(domain_manager, mocker):
+    fake_provider = FakeDescriptionProvider()
+    mocker.patch(
+        "databao_context_engine.build_sources.build_wiring.create_ollama_description_provider",
+        return_value=fake_provider,
+    )
+
+    given_datasource_config_file(
+        domain_manager._project_layout,
+        datasource_name="dummy/my_enrichable_data",
+        config_content={"type": "dummy_enrichable", "name": "my_enrichable_data"},
+    )
+    datasource_id = DatasourceId.from_string_repr("dummy/my_enrichable_data.yaml")
+    given_output_dir_with_built_contexts(
+        domain_manager._project_layout,
+        contexts=[
+            (
+                datasource_id,
+                to_yaml_string(
+                    BuiltDatasourceContext(
+                        datasource_id=str(datasource_id),
+                        datasource_type="dummy_enrichable",
+                        context_built_at=datetime.now(),
+                        context={"value": "my_enrichable_data", "description": None},
+                    )
+                ),
+            ),
+        ],
+    )
+
+    enriched_result = domain_manager.enrich_built_contexts(
+        datasource_ids=None,
+        chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+        should_index=False,
+    )
+
+    assert len(enriched_result) == 1
+    context_file_path = enriched_result[0].context_file_path
+    assert context_file_path is not None
+
+    enriched_payload = yaml.safe_load(context_file_path.read_text())
+    assert enriched_payload["context"]["description"] == "ENRICHED::fake-desc::my_enrichable_data"
+    assert fake_provider.calls == [("my_enrichable_data", "dummy_enrichable")]
 
 
 def test_databao_context_domain_manager__create_datasource_config__fails_invalid_config_content(domain_manager):

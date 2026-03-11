@@ -98,7 +98,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results.get("relations", []),
-            cols=results.get("columns", []),
+            cols=results.get("table_columns", []) + results.get("view_columns", []),
             pk_cols=results.get("pk", []),
             uq_cols=results.get("uq", []),
             checks=results.get("checks", []),
@@ -112,13 +112,15 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
     ) -> dict[str, SQLQuery | None]:
         return {
             "relations": self.get_relations_sql_query(catalog, schemas),
-            "columns": self.get_columns_sql_query(catalog, schemas),
+            "table_columns": self.get_table_columns_sql_query(catalog, schemas),
             "pk": self.get_primary_keys_sql_query(catalog, schemas),
             "uq": self.get_unique_constraints_sql_query(catalog, schemas),
             "checks": self.get_checks_sql_query(catalog, schemas),
             "fks": self.get_foreign_keys_sql_query(catalog, schemas),
             "idx": self.get_indexes_sql_query(catalog, schemas),
             "partitions": self.get_partitions_sql_query(catalog, schemas),
+            # view_columns should stay at the end, in case it breaks, so that everything before is still executed
+            "view_columns": self.get_view_columns_sql_query(catalog, schemas),
         }
 
     @override
@@ -171,7 +173,14 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "o.type = 'U'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "o.type = 'V'")
+
+    def _columns_sql_query(self, schemas: list[str], object_type_filter: str) -> SQLQuery:
         # TODO: simplify case when for datatype
         schemas_in = ", ".join(f"({self._quote_literal(s)})" for s in schemas)
         return SQLQuery(
@@ -199,7 +208,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
                 CAST(ep.value AS nvarchar(4000)) AS description
             FROM 
                 sys.columns c
-                JOIN sys.objects o ON o.object_id = c.object_id AND o.type IN ('U','V')
+                JOIN sys.objects o ON o.object_id = c.object_id AND {object_type_filter}
                 JOIN sys.schemas s ON s.schema_id = o.schema_id
                 JOIN sys.types t ON t.user_type_id = c.user_type_id
                 LEFT JOIN sys.computed_columns cc ON cc.object_id = c.object_id AND cc.column_id = c.column_id    

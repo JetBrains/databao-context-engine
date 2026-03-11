@@ -63,7 +63,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "t.table_type = 'BASE TABLE'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(schemas, "t.table_type <> 'BASE TABLE'")
+
+    def _columns_sql_query(self, schemas: list[str], table_type_filter: str) -> SQLQuery:
         return SQLQuery(
             r"""
             SELECT
@@ -81,8 +88,14 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 NULL::VARCHAR AS description
             FROM 
                 information_schema.columns c
+                JOIN information_schema.tables t
+                    ON t.table_schema = c.table_schema
+                    AND t.table_name = c.table_name
             WHERE 
                 c.table_schema = ANY(?)
+                AND """
+            + table_type_filter
+            + r"""
             ORDER BY 
                 c.table_schema,
                 c.table_name, 
@@ -306,6 +319,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     def collect_stats(
         self,
         connection,
+        catalog: str,
         schemas: list[str],
         relations: list[dict],
         columns: list[dict],
@@ -353,6 +367,9 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                     # currently min/max values are strings, so we might need to convert them to the appropriate type
                     # also, duckdb doesn't provide most_common_vals/most_common_freqs
                     # but there are avg, std, q25 etc. available, we can use them as well
+                    approx_distinct_count = row.get("approx_unique")
+                    cardinality_kind, distinct_count = self._compute_cardinality_stats(approx_distinct_count)
+
                     column_stats.append(
                         {
                             "schema_name": schema_name,
@@ -360,7 +377,8 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                             "column_name": column_name,
                             "null_count": null_count,
                             "non_null_count": non_null_count,
-                            "distinct_count": row.get("approx_unique"),
+                            "distinct_count": distinct_count,
+                            "cardinality_kind": cardinality_kind,
                             "min_value": row.get("min"),
                             "max_value": row.get("max"),
                             "most_common_vals": None,

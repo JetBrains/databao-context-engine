@@ -5,6 +5,7 @@ from typing import Annotated, Any, TypedDict
 
 from pydantic import BaseModel
 
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     AbstractConfigFile,
     BuildDatasourcePlugin,
@@ -114,6 +115,25 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return [EmbeddableChunk(embeddable_text="Dummy chunk", content="Dummy content")]
+
+
+class DummyEnrichableDatasourcePlugin(DefaultBuildDatasourcePlugin):
+    id = "jetbrains/dummy_enrichable"
+    name = "Dummy Plugin with custom enrich context"
+    context_type = dict
+
+    def supported_types(self) -> set[str]:
+        return {"dummy_enrichable"}
+
+    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
+        return {"value": datasource_name, "description": None}
+
+    def enrich_context(self, context: Any, description_provider: DescriptionProvider) -> Any:
+        description = description_provider.describe(text=context["value"], context="dummy_enrichable")
+        return {**context, "description": f"ENRICHED::{description}"}
+
+    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+        return []
 
 
 class DummyFilePlugin(BuildFilePlugin):
