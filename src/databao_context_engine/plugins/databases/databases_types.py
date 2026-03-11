@@ -76,17 +76,32 @@ class CardinalityRange:
         return self.min_value <= count < self.max_value
 
 
-class CardinalityBucket(Enum):
-    ZERO = CardinalityRange(0, 1)
-    ONE = CardinalityRange(1, 2)
-    VERY_LOW = CardinalityRange(2, 5)
-    LOW = CardinalityRange(5, 10)
-    LOW_MEDIUM = CardinalityRange(10, 20)
-    MEDIUM = CardinalityRange(20, 50)
-    MEDIUM_HIGH = CardinalityRange(50, 100)
-    HIGH = CardinalityRange(100, 1000)
-    VERY_HIGH = CardinalityRange(1000, None)
-    UNKNOWN = "UNKNOWN"
+class CardinalityBucket(str, Enum):
+    ZERO = "0"
+    ONE = "1"
+    VERY_LOW = "2-4"
+    LOW = "5-9"
+    LOW_MEDIUM = "10-19"
+    MEDIUM = "20-49"
+    MEDIUM_HIGH = "50-99"
+    HIGH = "100-999"
+    VERY_HIGH = "1000+"
+    UNKNOWN = "unknown"
+
+    @property
+    def range(self) -> CardinalityRange | None:
+        return {
+            CardinalityBucket.ZERO: CardinalityRange(0, 1),
+            CardinalityBucket.ONE: CardinalityRange(1, 2),
+            CardinalityBucket.VERY_LOW: CardinalityRange(2, 5),
+            CardinalityBucket.LOW: CardinalityRange(5, 10),
+            CardinalityBucket.LOW_MEDIUM: CardinalityRange(10, 20),
+            CardinalityBucket.MEDIUM: CardinalityRange(20, 50),
+            CardinalityBucket.MEDIUM_HIGH: CardinalityRange(50, 100),
+            CardinalityBucket.HIGH: CardinalityRange(100, 1000),
+            CardinalityBucket.VERY_HIGH: CardinalityRange(1000, None),
+            CardinalityBucket.UNKNOWN: None,
+        }[self]
 
     @classmethod
     def from_distinct_count(cls, distinct_count: int | None) -> "CardinalityBucket":
@@ -94,26 +109,12 @@ class CardinalityBucket(Enum):
             return cls.UNKNOWN
 
         for bucket in cls:
-            if bucket == cls.UNKNOWN:
+            if bucket is cls.UNKNOWN:
                 continue
-            if bucket.value.contains(distinct_count):
+            if bucket.range is not None and bucket.range.contains(distinct_count):
                 return bucket
 
         return cls.HIGH
-
-    @property
-    def label(self) -> str:
-        if self is CardinalityBucket.UNKNOWN:
-            return "unknown"
-
-        lower_bound = self.value.min_value
-        upper_bound = self.value.max_value
-
-        if upper_bound is None:
-            return f"{lower_bound}+"
-        if upper_bound == lower_bound + 1:
-            return str(lower_bound)
-        return f"{lower_bound}-{upper_bound - 1}"
 
 
 @dataclass
