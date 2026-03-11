@@ -91,6 +91,23 @@ def test_dbt_plugin__build_context_fails_with_invalid_manifest_file(tmp_path):
         )
 
 
+def test_dbt_plugin__build_context_fails_with_invalid_context_filter_pattern(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    with pytest.raises(ValidationError):
+        execute_datasource_plugin(
+            under_test,
+            DatasourceType(full_type="dbt"),
+            {
+                "name": "test_config",
+                "type": "dbt",
+                "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+                "context_filter": {"include": [{}]},
+            },
+            "test_config",
+        )
+
+
 def test_dbt_plugin__build_context(dbt_target_folder_path, expected_orders_model):
     under_test = DbtPlugin()
 
@@ -140,6 +157,179 @@ def test_dbt_plugin__build_context_without_catalog(dbt_target_folder_path, expec
 
     orders_model = next(model for model in result.models if model.id == "model.toastie_winkel.orders")
     assert orders_model == expected_orders_model_without_catalog
+
+
+def test_dbt_plugin__build_context_with_context_filter(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {"include": ["model.toastie_winkel.orders", "model.toastie_winkel.stg_orders"]},
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    assert {model.id for model in result.models} == {"model.toastie_winkel.orders", "model.toastie_winkel.stg_orders"}
+
+
+def test_dbt_plugin__build_context_with_context_filter_filter_by_unique_id_wildcard(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {"include": ["model.toastie_winkel.stg_*"]},
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    assert {model.id for model in result.models} == {
+        "model.toastie_winkel.stg_customers",
+        "model.toastie_winkel.stg_orders",
+        "model.toastie_winkel.stg_payments",
+    }
+
+
+def test_dbt_plugin__build_context_with_context_filter_filter_by_unique_id_question_mark(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {"include": ["model.toastie_winkel.stg_order?"]},
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    assert {model.id for model in result.models} == {"model.toastie_winkel.stg_orders"}
+
+
+def test_dbt_plugin__build_context_with_context_filter_filter_by_unique_id_character_set(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {"include": ["model.toastie_winkel.stg_[cp]*"]},
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    assert {model.id for model in result.models} == {
+        "model.toastie_winkel.stg_customers",
+        "model.toastie_winkel.stg_payments",
+    }
+
+
+def test_dbt_plugin__build_context_with_context_filter_database_rule(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {"include": [{"database": "toastie_winkel", "schema": "main", "name": "stg_*"}]},
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    assert {model.id for model in result.models} == {
+        "model.toastie_winkel.stg_customers",
+        "model.toastie_winkel.stg_orders",
+        "model.toastie_winkel.stg_payments",
+    }
+
+
+def test_dbt_plugin__build_context_with_context_filter_include_then_exclude(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {
+                "include": ["model.toastie_winkel.stg_*"],
+                "exclude": ["model.toastie_winkel.stg_orders"],
+            },
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    assert {model.id for model in result.models} == {
+        "model.toastie_winkel.stg_customers",
+        "model.toastie_winkel.stg_payments",
+    }
+
+
+def test_dbt_plugin__build_context_with_context_filter_filter_with_exact_unique_id(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {"include": ["model.toastie_winkel.stg_orders"]},
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    assert {model.id for model in result.models} == {"model.toastie_winkel.stg_orders"}
+
+
+def test_dbt_plugin__build_context_with_context_filter_excluding_tests(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {
+                "include": ["model.toastie_winkel.*"],
+                "exclude": [{"resource_type": "test"}],
+            },
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    orders_model = next(model for model in result.models if model.id == "model.toastie_winkel.orders")
+    assert all((column.constraints or []) == [] for column in orders_model.columns)
 
 
 @pytest.fixture

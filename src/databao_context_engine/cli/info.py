@@ -4,17 +4,17 @@ from pathlib import Path
 
 import click
 
-from databao_context_engine import DceInfo, DceProjectInfo, get_databao_context_engine_info
-from databao_context_engine.project.info import get_databao_context_engine_project_info
+from databao_context_engine import DceDomainInfo, DceInfo, get_databao_context_engine_info
+from databao_context_engine.project.info import get_databao_context_engine_domain_info
 
 
 def echo_info(project_dir: Path) -> None:
     dce_info = get_databao_context_engine_info()
-    dce_project_info = get_databao_context_engine_project_info(project_dir=project_dir)
+    dce_project_info = get_databao_context_engine_domain_info(project_dir=project_dir)
     click.echo(_generate_info_string(dce_info, dce_project_info))
 
 
-def _generate_info_string(dce_info: DceInfo, project_info: DceProjectInfo) -> str:
+def _generate_info_string(dce_info: DceInfo, project_info: DceDomainInfo) -> str:
     info_lines = []
     info_lines.append(f"Databao context engine version: {dce_info.version}")
     info_lines.append(f"Databao context engine storage dir: {dce_info.dce_path}")

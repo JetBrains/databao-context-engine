@@ -51,6 +51,14 @@ class BuildDatasourceResult(DatasourceResult):
 
 
 @dataclass(frozen=True)
+class EnrichContextResult(DatasourceResult):
+    """Enrich context result for a single datasource."""
+
+    context_built_at: datetime | None = None
+    context_file_path: Path | None = None
+
+
+@dataclass(frozen=True)
 class IndexDatasourceResult(DatasourceResult):
     """Index result for a single datasource."""
 

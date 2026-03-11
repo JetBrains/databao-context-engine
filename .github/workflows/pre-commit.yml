@@ -33,6 +33,7 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           python-version: ${{ matrix.python-version }}
+          uv-sync-args: "--all-extras"
 
       - name: Cache pre-commit hooks
         uses: actions/cache@v4

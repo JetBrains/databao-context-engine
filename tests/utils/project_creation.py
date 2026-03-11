@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Any
 
-from databao_context_engine.datasources.datasource_context import DatasourceContext
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.project.layout import (
     ProjectLayout,
@@ -36,13 +35,13 @@ def given_raw_source_file(project_dir: Path, file_name: str, file_content: str) 
 
 
 def given_output_dir_with_built_contexts(
-    project_layout: ProjectLayout, datasource_contexts: list[DatasourceContext]
+    project_layout: ProjectLayout, contexts: list[tuple[DatasourceId, str]]
 ) -> Path:
     output_dir = get_output_dir(project_layout.project_dir)
     output_dir.mkdir(exist_ok=True)
 
-    for context in datasource_contexts:
-        _create_output_context(output_dir, context.datasource_id, context.context)
+    for datasource_id, context in contexts:
+        _create_output_context(output_dir, datasource_id, context)
 
     return output_dir
 

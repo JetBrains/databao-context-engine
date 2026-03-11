@@ -289,7 +289,7 @@ def test_bigquery_plugin_execute(bq_demo_schema: bigquery.Client):
 def test_bigquery_check_connection():
     plugin = BigQueryDbPlugin()
     config_file = _create_config()
-    check_connection_for_datasource(plugin, DatasourceType(full_type="bigquery"), config_file, "file_name")
+    check_connection_for_datasource(plugin, DatasourceType(full_type="bigquery"), config_file)
 
 
 def test_bigquery_run_sql_with_params():

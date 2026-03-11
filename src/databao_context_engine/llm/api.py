@@ -1,9 +1,9 @@
 from pathlib import Path
 
+from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.llm.errors import OllamaError
 from databao_context_engine.llm.factory import (
-    DEFAULT_DESCRIPTION_GENERATOR_MODEL,
-    DEFAULT_EMBED_MODEL_ID,
+    DEFAULT_PROMPT_GENERATOR_MODEL,
     create_ollama_service,
 )
 from databao_context_engine.llm.install import resolve_ollama_bin
@@ -47,11 +47,12 @@ def download_ollama_models_if_needed(
 
     if download_embed_model:
         try:
-            ollama_service.pull_model_if_needed(model=DEFAULT_EMBED_MODEL_ID)
+            # FIXME: This method should take either a project or a model_id as argument to know which model to download
+            ollama_service.pull_model_if_needed(model=EmbeddingModelDetails.default().model_id)
         except OllamaError as e:
             raise e
     if download_description_generator_model:
         try:
-            ollama_service.pull_model_if_needed(model=DEFAULT_DESCRIPTION_GENERATOR_MODEL)
+            ollama_service.pull_model_if_needed(model=DEFAULT_PROMPT_GENERATOR_MODEL)
         except OllamaError as e:
             raise e

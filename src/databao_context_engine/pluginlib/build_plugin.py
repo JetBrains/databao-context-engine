@@ -3,10 +3,11 @@ from dataclasses import dataclass
 from io import BufferedReader
 from typing import Any, Mapping, Protocol, TypeVar, runtime_checkable
 
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 
 
-@dataclass
+@dataclass(kw_only=True)
 class EmbeddableChunk:
     """A chunk that will be embedded as a vector and used when searching context from a given AI prompt.
 
@@ -16,6 +17,7 @@ class EmbeddableChunk:
     """
 
     embeddable_text: str
+    keyword_indexable_text: str | None = None
     content: Any
 
 
@@ -43,6 +45,22 @@ class BaseBuildPlugin(Protocol):
             The set of supported types for this plugin.
         """
         ...
+
+    def enrich_context(self, context: Any, description_provider: DescriptionProvider) -> Any:
+        """Optional step to enrich a context previously built.
+
+        After a context has been built, this step will be called optionally to enrich it with LLM-generated content.
+
+        The typical use-case is to add descriptions to the resources identified in the context if none was previously extracted.
+
+        Args:
+            context: The context to be enriched
+            description_provider: This class provides a way to interact with an LLM to describe a text given a context.
+
+        Returns:
+            The enriched context as an object of type `self.context_type`.
+        """
+        return context
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         """Divides the datasource context into meaningful chunks.
@@ -91,7 +109,7 @@ class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
         """
         ...
 
-    def check_connection(self, full_type: str, datasource_name: str, file_config: T) -> None:
+    def check_connection(self, full_type: str, file_config: T) -> None:
         """Check whether the configuration to the datasource is working.
 
         The function is expected to succeed without a result if the connection is working.
@@ -100,7 +118,6 @@ class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
         Args:
             full_type: The type of the datasource to build.
               This type should be exactly the same as the one found in the file_config
-            datasource_name: The name of the datasource to build
             file_config: The config file of the datasource to build.
                 This argument will be an object of type `self.config_file_type`.
 
@@ -181,6 +198,7 @@ class DatasourceType:
 class AbstractConfigFile(ABC):
     type: str
     name: str
+    enabled: bool = True
 
 
 # Config files can either be defined:

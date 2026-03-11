@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.databases.databases_types import CardinalityBucket, DatabaseIntrospectionResult
 
 logger = logging.getLogger(__name__)
 
@@ -375,7 +376,14 @@ class SamplesEqual(Fact):
 
     def check(self, a: IntrospectionAsserter) -> None:
         actual = a.samples(self.catalog, self.schema, self.table)
-        if list(actual) != list(self.rows):
+
+        # Convert rows to hashable tuples
+        def row_to_tuple(row: Mapping[str, Any]) -> tuple:
+            return tuple(sorted(row.items()))
+
+        actual_tuples = [row_to_tuple(row) for row in actual]
+        expected_tuples = [row_to_tuple(row) for row in self.rows]
+        if Counter(actual_tuples) != Counter(expected_tuples):
             a.fail(
                 f"Expected samples == {list(self.rows)!r}, got {list(actual)!r}",
                 [self.catalog, self.schema, self.table, "samples"],
@@ -396,6 +404,133 @@ class SamplesCountIs(Fact):
                 f"Expected samples count={self.count}, got {len(actual)}",
                 [self.catalog, self.schema, self.table, "samples"],
             )
+
+
+@dataclass(frozen=True)
+class TableStatsRowCountIs(Fact):
+    catalog: str
+    schema: str
+    table: str
+    row_count: int
+    approximate: bool = True
+
+    def check(self, a: IntrospectionAsserter) -> None:
+        t = a.table(self.catalog, self.schema, self.table)
+        stats = getattr(t, "stats", None)
+        path = [self.catalog, self.schema, self.table, "stats"]
+
+        if stats is None:
+            a.fail("Expected table stats, but none found", path)
+
+        actual_row_count = getattr(stats, "row_count", None)
+        if actual_row_count != self.row_count:
+            a.fail(f"Expected row_count={self.row_count}, got {actual_row_count}", path)
+
+        actual_approximate = getattr(stats, "approximate", True)
+        if actual_approximate != self.approximate:
+            a.fail(f"Expected approximate={self.approximate}, got {actual_approximate}", path)
+
+
+@dataclass(frozen=True)
+class ColumnStatsExists(Fact):
+    catalog: str
+    schema: str
+    table: str
+    column: str
+
+    null_count: int | None = None
+    non_null_count: int | None = None
+    distinct_count: int | None = None
+    distinct_count_tolerance: float | None = None
+    cardinality_kind: CardinalityBucket | None = None
+    min_value: Any | None = None
+    max_value: Any | None = None
+    has_top_values: bool | None = None
+    top_values: dict[Any, int] | None = None
+    total_row_count: int | None = None
+
+    def check(self, a: IntrospectionAsserter) -> None:
+        c = a.column(self.catalog, self.schema, self.table, self.column)
+        stats = getattr(c, "stats", None)
+        path = [self.catalog, self.schema, self.table, self.column, "stats"]
+
+        if stats is None:
+            a.fail("Expected column stats, but none found", path)
+
+        if self.null_count is not None:
+            actual = getattr(stats, "null_count", None)
+            if actual != self.null_count:
+                a.fail(f"Expected null_count={self.null_count}, got {actual}", path)
+
+        if self.non_null_count is not None:
+            actual = getattr(stats, "non_null_count", None)
+            if actual != self.non_null_count:
+                a.fail(f"Expected non_null_count={self.non_null_count}, got {actual}", path)
+
+        if self.distinct_count is not None:
+            actual = getattr(stats, "distinct_count", None)
+            expected = self.distinct_count
+            tol = self.distinct_count_tolerance
+
+            if actual is None:
+                a.fail("Expected distinct_count to have a value, but got None", path)
+
+            elif tol is not None:
+                if expected == 0:
+                    if actual != 0:
+                        a.fail(f"Expected distinct_count=0, got {actual}", path)
+                else:
+                    if abs(actual - expected) > expected * tol:
+                        a.fail(
+                            f"Expected distinct_count={expected} ±{tol * 100:.0f}% "
+                            f"(allowed deviation {expected * tol:.2f}), got {actual}",
+                            path,
+                        )
+
+            elif actual != expected:
+                a.fail(f"Expected distinct_count={expected}, got {actual}", path)
+
+        if self.cardinality_kind is not None:
+            actual = getattr(stats, "cardinality_kind", None)
+            if actual != self.cardinality_kind:
+                a.fail(f"Expected cardinality_kind={self.cardinality_kind}, got {actual}", path)
+
+        if self.min_value is not None:
+            actual = getattr(stats, "min_value", None)
+            if actual != self.min_value:
+                a.fail(f"Expected min_value={self.min_value}, got {actual}", path)
+
+        if self.max_value is not None:
+            actual = getattr(stats, "max_value", None)
+            if actual != self.max_value:
+                a.fail(f"Expected max_value={self.max_value}, got {actual}", path)
+
+        if self.has_top_values is not None:
+            actual_top_values = getattr(stats, "top_values", None)
+            has_values = actual_top_values is not None and len(actual_top_values) > 0
+            if has_values != self.has_top_values:
+                a.fail(f"Expected has_top_values={self.has_top_values}, got {has_values}", path)
+
+        if self.top_values is not None:
+            actual_top_values = getattr(stats, "top_values", None)
+            if actual_top_values is None:
+                a.fail(f"Expected top_values={self.top_values}, but top_values is None", path)
+                return
+
+            actual_dict = {value: count for value, count in actual_top_values}
+            for expected_value, expected_count in self.top_values.items():
+                actual_count = actual_dict.get(expected_value)
+                if actual_count != expected_count:
+                    a.fail(
+                        f"Expected top_values[{expected_value!r}]={expected_count}, got {actual_count}. "
+                        f"Full actual: {actual_dict}",
+                        path,
+                    )
+
+        if self.total_row_count is not None:
+            actual = getattr(stats, "total_row_count", None)
+            if actual != self.total_row_count:
+                a.fail(f"Expected total_row_count={self.total_row_count}, got {actual}", path)
 
 
 def assert_contract(result: DatabaseIntrospectionResult, facts: Iterable[Fact]) -> None:

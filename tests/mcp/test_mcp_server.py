@@ -143,7 +143,7 @@ async def test_run_mcp_server__all_results_tool(dce_path: Path, project: Project
     async with run_mcp_server_stdio_test(project.project_dir, dce_path=dce_path) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
 
-        assert all(context.context in all_results.content[0].text for context in project.output.datasource_contexts)
+        assert all(context in all_results.content[0].text for (_, context) in project.output.datasource_contexts)
 
 
 @pytest.mark.anyio
@@ -152,4 +152,4 @@ async def test_run_mcp_server__with_custom_host_and_port(dce_path: Path, project
         project_dir=project.project_dir, dce_path=dce_path, host="localhost", port=8001
     ) as session:
         all_results = await session.call_tool(name="all_results_tool", arguments={})
-        assert all(context.context in all_results.content[0].text for context in project.output.datasource_contexts)
+        assert all(context in all_results.content[0].text for (_, context) in project.output.datasource_contexts)

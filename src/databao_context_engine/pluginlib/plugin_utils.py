@@ -32,7 +32,7 @@ def execute_datasource_plugin(
 
 
 def check_connection_for_datasource(
-    plugin: BuildDatasourcePlugin, datasource_type: DatasourceType, config: Mapping[str, Any], datasource_name: str
+    plugin: BuildDatasourcePlugin, datasource_type: DatasourceType, config: Mapping[str, Any]
 ) -> None:
     if not isinstance(plugin, BuildDatasourcePlugin):
         raise ValueError("Connection checks can only be performed on BuildDatasourcePlugin")
@@ -41,7 +41,6 @@ def check_connection_for_datasource(
 
     plugin.check_connection(
         full_type=datasource_type.full_type,
-        datasource_name=datasource_name,
         file_config=validated_config,
     )
 

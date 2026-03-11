@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from databao_context_engine import DatabaoContextPluginLoader, DatabaoContextProjectManager, DatasourceType
+from databao_context_engine import DatabaoContextDomainManager, DatabaoContextPluginLoader, DatasourceType
 from databao_context_engine.plugins.resources.parquet_plugin import ParquetPlugin
 from tests.utils.config_wizard import MockUserInputCallback
 
@@ -11,7 +11,7 @@ def test_add_parquet_datasource_config(project_path: Path):
             DatasourceType(full_type="parquet"): ParquetPlugin(),
         }
     )
-    project_manager = DatabaoContextProjectManager(project_dir=project_path, plugin_loader=plugin_loader)
+    project_manager = DatabaoContextDomainManager(domain_dir=project_path, plugin_loader=plugin_loader)
 
     inputs = [
         "my_url_to_file.parquet",  # url

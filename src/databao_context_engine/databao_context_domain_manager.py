@@ -5,13 +5,16 @@ from pydantic import TypeAdapter
 
 from databao_context_engine.build_sources import (
     BuildDatasourceResult,
+    EnrichContextResult,
     IndexDatasourceResult,
     build_all_datasources,
+    enrich_built_contexts,
     index_built_contexts,
 )
 from databao_context_engine.databao_context_engine import DatabaoContextEngine
 from databao_context_engine.datasources.check_config import (
     CheckDatasourceConnectionResult,
+    check_datasource_config_connection,
 )
 from databao_context_engine.datasources.check_config import (
     check_datasource_connection as check_datasource_connection_internal,
@@ -36,39 +39,39 @@ from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 
-class DatabaoContextProjectManager:
-    """Project Manager for Databao Context Projects.
+class DatabaoContextDomainManager:
+    """Domain Manager for Databao Context Projects.
 
-    This project manager is responsible for configuring and building a Databao Context Project.
-    The project_dir should already have been initialized before a Project manager can be used.
+    This domain manager is responsible for configuring and building a Databao Context Domain.
+    The domain_dir should already have been initialized before a Domain manager can be used.
 
     Attributes:
-        project_dir: The root directory of the Databao Context Project.
+        domain_dir: The root directory of the Databao Context Domain.
     """
 
-    project_dir: Path
+    domain_dir: Path
     _project_layout: ProjectLayout
 
-    def __init__(self, project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
-        """Initialize the DatabaoContextProjectManager.
+    def __init__(self, domain_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
+        """Initialize the DatabaoContextDomainManager.
 
         Args:
-            project_dir: The root directory of the Databao Context Project.
+            domain_dir: The root directory of the Databao Context Domain.
             plugin_loader: Plugin loader which will be created anew by default unless provided.
-            This object could be reused betwee project managers to reduce some overhead on the plugin discovery.
+            This object could be reused between domain managers to reduce some overhead on the plugin discovery.
         """
-        self._project_layout = ensure_project_dir(project_dir=project_dir)
-        self.project_dir = project_dir
+        self._project_layout = ensure_project_dir(project_dir=domain_dir)
+        self.domain_dir = domain_dir
         self._plugin_loader = plugin_loader if plugin_loader else DatabaoContextPluginLoader()
 
     def get_configured_datasource_list(self) -> list[ConfiguredDatasource]:
-        """Return the list of datasources configured in the project.
+        """Return the list of datasources configured in the domain.
 
-        This method returns all datasources configured in the src folder of the project,
+        This method returns all datasources configured in the src folder of the domain,
         no matter whether the datasource configuration is valid or not.
 
         Returns:
-            The list of datasources configured in the project.
+            The list of datasources configured in the domain.
         """
         return get_datasource_list(self._project_layout)
 
@@ -78,8 +81,9 @@ class DatabaoContextProjectManager:
         chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         *,
         should_index: bool = True,
+        should_enrich_context: bool = False,
     ) -> list[BuildDatasourceResult]:
-        """Build the context for datasources in the project.
+        """Build the context for datasources in the domain.
 
         Any datasource with an invalid configuration will be skipped.
 
@@ -87,19 +91,49 @@ class DatabaoContextProjectManager:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
             chunk_embedding_mode: The mode to use for chunk embedding.
             should_index: Whether to build a semantic index for the context.
+            should_enrich_context: Whether to enrich the context with LLM-generated content.
 
         Returns:
             The list of all built results.
         """
         # TODO: Filter which datasources to build by datasource_ids
-        project_config = self._project_layout.read_config_file()
         return build_all_datasources(
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
             chunk_embedding_mode=chunk_embedding_mode,
-            generate_embeddings=should_index,
-            ollama_model_id=project_config.ollama_model_id,
-            ollama_model_dim=project_config.ollama_model_dim,
+            should_index=should_index,
+            should_enrich_context=should_enrich_context,
+        )
+
+    def enrich_built_contexts(
+        self,
+        *,
+        datasource_ids: list[DatasourceId] | None = None,
+        should_index: bool = True,
+        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
+    ) -> list[EnrichContextResult]:
+        """Enrich the context with LLM-generated content for the given datasources.
+
+        Args:
+            datasource_ids: The list of datasource ids to enrich contexts for. If None, all datasources contexts will be enriched.
+            chunk_embedding_mode: The mode to use for chunk embedding.
+            should_index: Whether to re-build the semantic index for the enriched context.
+
+        Returns:
+            The list of all context enrichment results.
+        """
+        engine = self.get_engine_for_domain()
+
+        contexts: list[DatasourceContext] = (
+            engine.get_all_contexts() if datasource_ids is None else engine.get_datasource_contexts(datasource_ids)
+        )
+
+        return enrich_built_contexts(
+            project_layout=self._project_layout,
+            plugin_loader=self._plugin_loader,
+            contexts=contexts,
+            chunk_embedding_mode=chunk_embedding_mode,
+            should_index=should_index,
         )
 
     def index_built_contexts(
@@ -119,39 +153,58 @@ class DatabaoContextProjectManager:
         Returns:
             The summary of the index operation.
         """
-        engine: DatabaoContextEngine = self.get_engine_for_project()
-        contexts: list[DatasourceContext] = engine.get_all_contexts()
+        engine: DatabaoContextEngine = self.get_engine_for_domain()
+        contexts: list[DatasourceContext] = (
+            engine.get_all_contexts() if datasource_ids is None else engine.get_datasource_contexts(datasource_ids)
+        )
 
-        if datasource_ids is not None:
-            wanted_paths = {d.datasource_path for d in datasource_ids}
-            contexts = [c for c in contexts if c.datasource_id.datasource_path in wanted_paths]
-
-        project_config = self._project_layout.read_config_file()
         return index_built_contexts(
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
             contexts=contexts,
             chunk_embedding_mode=chunk_embedding_mode,
-            ollama_model_id=project_config.ollama_model_id,
-            ollama_model_dim=project_config.ollama_model_dim,
         )
 
     def check_datasource_connection(
         self, datasource_ids: list[DatasourceId] | None = None
-    ) -> list[CheckDatasourceConnectionResult]:
-        """Check the connection for datasources in the project.
+    ) -> dict[DatasourceId, CheckDatasourceConnectionResult]:
+        """Check the connection for datasources in the domain.
 
         Args:
             datasource_ids: The list of datasource ids to check. If None, all datasources will be checked.
 
         Returns:
-            The list of all connection check results, sorted by datasource id.
+            The dict of all connection check results
         """
-        return sorted(
-            check_datasource_connection_internal(
-                project_layout=self._project_layout, plugin_loader=self._plugin_loader, datasource_ids=datasource_ids
-            ).values(),
-            key=lambda result: str(result.datasource_id),
+        return check_datasource_connection_internal(
+            project_layout=self._project_layout, plugin_loader=self._plugin_loader, datasource_ids=datasource_ids
+        )
+
+    def check_datasource_config_connection(
+        self,
+        datasource_type: DatasourceType,
+        datasource_name: str,
+        config_content: ConfigFile | dict[str, Any],
+    ) -> CheckDatasourceConnectionResult:
+        """Validate config and check the connection for it without creating datasource.
+
+        Args:
+            datasource_type: The type of the datasource to verify.
+            datasource_name: The name of the datasource to verify.
+            config_content: The content of the datasource configuration to verify.
+
+        Returns:
+            The connection check result
+        """
+        datasource_name_without_folders = datasource_name.split("/")[-1]
+        actual_config_content = self._validate_and_dump_config_content(
+            config_content, datasource_name_without_folders, datasource_type, True
+        )
+        return check_datasource_config_connection(
+            plugin_loader=self._plugin_loader,
+            datasource_type=datasource_type,
+            datasource_name=datasource_name,
+            config_content=actual_config_content,
         )
 
     def create_datasource_config(
@@ -162,7 +215,7 @@ class DatabaoContextProjectManager:
         overwrite_existing: bool = False,
         validate_config_content: bool = True,
     ) -> ConfiguredDatasource:
-        """Create a new datasource configuration file in the project.
+        """Create a new datasource configuration file in the domain.
 
         The config content can be either a dict representation of the config or directly using the config type declared by a Datasource plugin.
         If the content is provided as a dict, the dict will be validated against the configuration expected by the plugin.
@@ -198,7 +251,7 @@ class DatabaoContextProjectManager:
         overwrite_existing: bool = False,
         validate_config_content: bool = True,
     ) -> ConfiguredDatasource:
-        """Create a new datasource configuration file in the project interactively.
+        """Create a new datasource configuration file in the domain interactively.
 
         Args:
             datasource_type: The type of the datasource to create.
@@ -243,7 +296,7 @@ class DatabaoContextProjectManager:
         datasource_name: str | None = None,
         datasource_id: DatasourceId | None = None,
     ) -> DatasourceId | None:
-        """Check if a datasource configuration file already exists in the project.
+        """Check if a datasource configuration file already exists in the domain.
 
         Args:
             datasource_name: The name of the datasource.
@@ -285,13 +338,13 @@ class DatabaoContextProjectManager:
         """
         return datasource_id.absolute_path_to_config_file(self._project_layout)
 
-    def get_engine_for_project(self) -> DatabaoContextEngine:
-        """Instantiate a DatabaoContextEngine for the project.
+    def get_engine_for_domain(self) -> DatabaoContextEngine:
+        """Instantiate a DatabaoContextEngine for the domain.
 
         Returns:
-            A DatabaoContextEngine instance for the project.
+            A DatabaoContextEngine instance for the domain.
         """
-        return DatabaoContextEngine(project_dir=self.project_dir)
+        return DatabaoContextEngine(domain_dir=self.domain_dir)
 
     def _validate_and_dump_config_content(
         self,

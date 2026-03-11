@@ -103,6 +103,47 @@ def test_dbt_plugin_with_semantic_models__divide_context_into_chunks(dbt_target_
     assert len(result) == expected_number_of_chunks
 
 
+def test_dbt_plugin_with_semantic_models__build_context_with_context_filter_filter(dbt_target_folder_path):
+    under_test = DbtPlugin()
+
+    result = execute_datasource_plugin(
+        under_test,
+        DatasourceType(full_type="dbt"),
+        {
+            "name": "test_config",
+            "type": "dbt",
+            "dbt_target_folder_path": str(dbt_target_folder_path.resolve()),
+            "context_filter": {
+                "include": [
+                    "model.web_shop_orders.fct_sales",
+                    "semantic_model.web_shop_orders.fct_sales",
+                    "metric.web_shop_orders.*",
+                ]
+            },
+        },
+        "test_config",
+    )
+
+    assert isinstance(result, DbtContext)
+    assert {model.name for model in result.models} == {"fct_sales"}
+    assert {semantic_model.id for semantic_model in result.semantic_layer.semantic_models} == {
+        "semantic_model.web_shop_orders.fct_sales"
+    }
+    assert {metric.id for metric in result.semantic_layer.metrics} == {
+        "metric.web_shop_orders.revenue",
+        "metric.web_shop_orders.cumulative_revenue",
+        "metric.web_shop_orders.order_count",
+        "metric.web_shop_orders.product_count",
+        "metric.web_shop_orders.customer_count",
+        "metric.web_shop_orders.seller_count",
+        "metric.web_shop_orders.order_delivered_on_time_pct",
+        "metric.web_shop_orders.orders_w_reviews_pct",
+        "metric.web_shop_orders.payment_count",
+        "metric.web_shop_orders.sum_payment",
+        "metric.web_shop_orders.avg_payment",
+    }
+
+
 @pytest.fixture
 def expected_order_payments_semantic_model() -> DbtSemanticModel:
     return DbtSemanticModel(

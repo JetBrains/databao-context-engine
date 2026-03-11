@@ -2,12 +2,12 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Collection, Iterable
 
 import yaml
 
 from databao_context_engine.datasources.types import Datasource, DatasourceId, DatasourceType
-from databao_context_engine.project.layout import ALL_RESULTS_FILE_NAME, ProjectLayout
+from databao_context_engine.project.layout import DEPRECATED_ALL_RESULTS_FILE_NAME, ProjectLayout
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def _get_datasources_with_context(project_layout: ProjectLayout) -> list[Datasou
             relative_context_file = context_file.relative_to(project_layout.output_dir)
 
             if context_file.suffix not in DatasourceId.ALLOWED_YAML_SUFFIXES or (
-                len(relative_context_file.parts) == 1 and context_file_name == ALL_RESULTS_FILE_NAME
+                len(relative_context_file.parts) == 1 and context_file_name == DEPRECATED_ALL_RESULTS_FILE_NAME
             ):
                 continue
 
@@ -83,6 +83,12 @@ def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Data
             )
 
     return result
+
+
+def get_datasource_contexts(
+    project_layout: ProjectLayout, datasource_ids: Collection[DatasourceId]
+) -> list[DatasourceContext]:
+    return [get_datasource_context(project_layout, datasource_id) for datasource_id in datasource_ids]
 
 
 def get_datasource_context(project_layout: ProjectLayout, datasource_id: DatasourceId) -> DatasourceContext:

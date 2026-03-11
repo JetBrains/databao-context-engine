@@ -91,15 +91,18 @@ class _MigrationManager:
     _insert_migration_sql: LiteralString = "INSERT INTO migration_history (name, version, checksum) VALUES (?, ?, ?)"
 
     def __init__(self, db_path: Path, migration_files: list[Path]):
-        self._migration_files = migration_files
         self._db_path = db_path
-        self._requested_migrations = [_create_migration(file) for file in migration_files]
+        migrations = [_create_migration(file) for file in migration_files]
+        migrations.sort(key=lambda m: m.version)
+        self._requested_migrations = migrations
 
     def migrate(self) -> None:
         applied_migrations: list[MigrationDTO] = self.init_db_and_load_applied_migrations()
+        logger.debug("Applied migrations: %s", applied_migrations)
         applied_checksums = [m.checksum for m in applied_migrations]
         applied_versions = [m.version for m in applied_migrations]
         migrations_to_apply = [m for m in self._requested_migrations if m.checksum not in applied_checksums]
+        logger.debug("Migrations to apply: %s", ", ".join([f"{m.version}: {m.name}" for m in migrations_to_apply]))
         duplicated_versions = [
             migration.version for migration in migrations_to_apply if migration.version in applied_versions
         ]

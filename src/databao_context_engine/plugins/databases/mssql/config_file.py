@@ -9,12 +9,12 @@ from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabase
 
 
 class MSSQLConnectionProperties(BaseModel):
-    host: Annotated[str, ConfigPropertyAnnotation(default_value="localhost", required=True)]
+    host: Annotated[str, ConfigPropertyAnnotation(required=True)] = "localhost"
     port: int | None = None
     instance_name: str | None = None
     database: str | None = None
     user: str | None = None
-    password: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+    password: Annotated[str | None, ConfigPropertyAnnotation(secret=True)] = None
     encrypt: str | None = None
     additional_properties: dict[str, Any] = {}
 

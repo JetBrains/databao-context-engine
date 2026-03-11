@@ -51,7 +51,7 @@ def _plugins_map_with(*plugins):
 
 def test_engine_run_sql_happy_path(project_path):
     plugins_map = _plugins_map_with(DummySqlPlugin())
-    engine = DatabaoContextEngine(project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
+    engine = DatabaoContextEngine(domain_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
     given_datasource_config_file(
         engine._project_layout,
         datasource_name="databases/my_ds",
@@ -78,7 +78,7 @@ def test_engine_run_sql_params_passthrough(project_path):
             return super().run_sql(file_config, sql, params, read_only)
 
     plugins_map = _plugins_map_with(CapturingSqlPlugin())
-    engine = DatabaoContextEngine(project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
+    engine = DatabaoContextEngine(domain_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
     given_datasource_config_file(
         engine._project_layout,
         datasource_name="databases/my_ds2",
@@ -95,7 +95,7 @@ def test_engine_run_sql_params_passthrough(project_path):
 
 def test_engine_run_sql_unsupported_plugin(project_path):
     plugins_map = _plugins_map_with(DummyNonSqlPlugin())
-    engine = DatabaoContextEngine(project_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
+    engine = DatabaoContextEngine(domain_dir=project_path, plugin_loader=DatabaoContextPluginLoader(plugins_map))
     given_datasource_config_file(
         engine._project_layout,
         datasource_name="databases/no_sql",

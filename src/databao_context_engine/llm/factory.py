@@ -1,12 +1,13 @@
-from databao_context_engine.llm.config import OllamaConfig
+from databao_context_engine.llm.config import EmbeddingModelDetails, OllamaConfig
 from databao_context_engine.llm.descriptions.ollama import OllamaDescriptionProvider
 from databao_context_engine.llm.embeddings.ollama import OllamaEmbeddingProvider
 from databao_context_engine.llm.install import resolve_ollama_bin
+from databao_context_engine.llm.prompts.ollama import OllamaPromptProvider
+from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.llm.runtime import OllamaRuntime
 from databao_context_engine.llm.service import OllamaService
 
-DEFAULT_EMBED_MODEL_ID = "nomic-embed-text:v1.5"
-DEFAULT_DESCRIPTION_GENERATOR_MODEL = "llama3.2:1b"
+DEFAULT_PROMPT_GENERATOR_MODEL = "llama3.2:3b"
 
 
 def _create_ollama_service_common(
@@ -42,28 +43,34 @@ def create_ollama_service(
 def create_ollama_embedding_provider(
     service: OllamaService,
     *,
-    model_id: str | None = None,
-    dim: int | None = None,
+    model_details: EmbeddingModelDetails,
     pull_if_needed: bool = True,
 ) -> OllamaEmbeddingProvider:
-    if model_id is None:
-        model_id = DEFAULT_EMBED_MODEL_ID
-    if dim is None:
-        dim = 768
-
     if pull_if_needed:
-        service.pull_model_if_needed(model=model_id, timeout=900)
+        service.pull_model_if_needed(model=model_details.model_id, timeout=900)
 
-    return OllamaEmbeddingProvider(service=service, model_id=model_id, dim=dim)
+    return OllamaEmbeddingProvider(service=service, model_details=model_details)
 
 
 def create_ollama_description_provider(
     service: OllamaService,
     *,
-    model_id: str = DEFAULT_DESCRIPTION_GENERATOR_MODEL,
+    model_id: str = DEFAULT_PROMPT_GENERATOR_MODEL,
     pull_if_needed: bool = True,
 ):
     if pull_if_needed:
         service.pull_model_if_needed(model=model_id, timeout=900)
 
     return OllamaDescriptionProvider(service=service, model_id=model_id)
+
+
+def create_ollama_prompt_provider(
+    service: OllamaService,
+    *,
+    model_id: str = DEFAULT_PROMPT_GENERATOR_MODEL,
+    pull_if_needed: bool = True,
+) -> PromptProvider:
+    if pull_if_needed:
+        service.pull_model_if_needed(model=model_id, timeout=900)
+
+    return OllamaPromptProvider(service=service, model_id=model_id)

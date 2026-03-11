@@ -1,6 +1,6 @@
 import os
 
-from databao_context_engine.llm.config import OllamaConfig
+from databao_context_engine.llm.config import EmbeddingModelDetails, OllamaConfig
 from databao_context_engine.llm.descriptions.ollama import OllamaDescriptionProvider
 from databao_context_engine.llm.embeddings.ollama import OllamaEmbeddingProvider
 from databao_context_engine.llm.runtime import OllamaRuntime
@@ -37,10 +37,12 @@ def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path
     service.pull_model_if_needed(model=MODEL, timeout=180)
     service.pull_model_if_needed(model=CHAT_MODEL, timeout=300)
 
-    embedding_provider = OllamaEmbeddingProvider(service=service, model_id=MODEL, dim=768)
+    embedding_provider = OllamaEmbeddingProvider(
+        service=service, model_details=EmbeddingModelDetails(model_id=MODEL, model_dim=768)
+    )
     description_provider = OllamaDescriptionProvider(service=service, model_id=CHAT_MODEL)
 
-    persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo)
+    persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo, dim=768)
     chunk_embedding_service = ChunkEmbeddingService(
         persistence_service=persistence,
         shard_resolver=resolver,
@@ -48,7 +50,10 @@ def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path
         description_provider=description_provider,
     )
 
-    chunks = [EmbeddableChunk("alpha", "Alpha"), EmbeddableChunk("beta", "Beta")]
+    chunks = [
+        EmbeddableChunk(embeddable_text="alpha", content="Alpha"),
+        EmbeddableChunk(embeddable_text="beta", content="Beta"),
+    ]
     chunk_embedding_service.embed_chunks(chunks=chunks, result="", full_type="type/md", datasource_id="some-id")
 
     chunk_rows = chunk_repo.list()
@@ -56,9 +61,13 @@ def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path
     chunk_ids = [r.chunk_id for r in chunk_rows]
 
     expected_table = TableNamePolicy().build(
-        embedder=embedding_provider.embedder, model_id=embedding_provider.model_id, dim=embedding_provider.dim
+        embedder=embedding_provider.embedder,
+        model_id=embedding_provider.embedding_model_details.model_id,
+        dim=embedding_provider.embedding_model_details.model_dim,
     )
-    reg = registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id)
+    reg = registry_repo.get(
+        embedder=embedding_provider.embedder, model_id=embedding_provider.embedding_model_details.model_id
+    )
     assert reg and reg.table_name == expected_table and reg.dim == 768
 
     (emb_count,) = conn.execute(

@@ -2,19 +2,19 @@ from pathlib import Path
 
 import pytest
 
-from databao_context_engine import DatabaoContextPluginLoader, DatabaoContextProjectManager, DatasourceType
+from databao_context_engine import DatabaoContextDomainManager, DatabaoContextPluginLoader, DatasourceType
 from databao_context_engine.plugins.databases.bigquery.bigquery_db_plugin import BigQueryDbPlugin
 from tests.utils.config_wizard import MockUserInputCallback
 
 
 @pytest.fixture
-def project_manager(project_path: Path) -> DatabaoContextProjectManager:
+def project_manager(project_path: Path) -> DatabaoContextDomainManager:
     plugin_loader = DatabaoContextPluginLoader(
         plugins_by_type={
             DatasourceType(full_type="bigquery"): BigQueryDbPlugin(),
         }
     )
-    return DatabaoContextProjectManager(project_dir=project_path, plugin_loader=plugin_loader)
+    return DatabaoContextDomainManager(domain_dir=project_path, plugin_loader=plugin_loader)
 
 
 def test_add_bigquery_datasource_config_with_default_auth(project_manager):

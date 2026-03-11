@@ -110,3 +110,10 @@ def test_load_descriptor_yaml_elsewhere_is_CONFIG(project_layout: ProjectLayout)
 def test_load_descriptor_no_extension_returns_none(project_layout: ProjectLayout):
     p = _mk(project_layout.src_dir / "misc" / "NOEXT", "data")
     assert _load_datasource_id(project_layout, p) is None
+
+
+def test_skips_backup_files(project_layout: ProjectLayout):
+    _mk(project_layout.src_dir / "databases" / "pg.yaml~", "data")
+
+    ids = discover_datasources(project_layout)
+    assert ids == []

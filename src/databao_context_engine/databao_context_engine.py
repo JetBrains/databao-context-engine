@@ -1,13 +1,14 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Collection
 
 from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
     get_all_contexts,
     get_context_header_for_datasource,
     get_datasource_context,
+    get_datasource_contexts,
     get_introspected_datasource_list,
 )
 from databao_context_engine.datasources.execute_sql_query import run_sql
@@ -16,17 +17,18 @@ from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
-from databao_context_engine.retrieve_embeddings import retrieve_embeddings
+from databao_context_engine.search_context import search_context as search_context_internal
+from databao_context_engine.search_context.search_service import ContextSearchMode
 
 
-@dataclass
+@dataclass(frozen=True)
 class ContextSearchResult:
-    """The result of a search in the project's contexts.
+    """The result of a search in the domain's contexts.
 
     Attributes:
         datasource_id: The ID of the datasource that generated the result.
         datasource_type: The type of the datasource that generated the result.
-        distance: The distance between the search text and the result.
+        score: The retrieval score of the result.
         context_result: The actual content of the result that was found as a YAML string.
             This content will be a subpart of the full context of the datasource.
             In some cases, its content won't contain the exact same attributes as what can be
@@ -35,33 +37,33 @@ class ContextSearchResult:
 
     datasource_id: DatasourceId
     datasource_type: DatasourceType
-    distance: float
+    score: float
     context_result: str
 
 
 class DatabaoContextEngine:
-    """Engine for reading and using the contexts generated in a Databao Context Project.
+    """Engine for reading and using the contexts generated in a Databao Context Domain.
 
-    The Databao Context Project should already have datasources configured and built (see DatabaoContextProjectManager), so that they can be used in the Engine.
+    The Databao Context Domain should already have datasources configured and built (see DatabaoContextDomainManager), so that they can be used in the Engine.
 
     Attributes:
-        project_dir: The root directory of the Databao Context Project.
+        domain_dir: The root directory of the Databao Context Domain.
     """
 
-    project_dir: Path
+    domain_dir: Path
     _project_layout: ProjectLayout
     _plugin_loader: DatabaoContextPluginLoader
 
-    def __init__(self, project_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
+    def __init__(self, domain_dir: Path, plugin_loader: DatabaoContextPluginLoader | None = None) -> None:
         """Initialize the DatabaoContextEngine.
 
         Args:
-            project_dir: The root directory of the Databao Context Project.
-                There must be a valid DatabaoContextProject in this directory.
+            domain_dir: The root directory of the Databao Context Domain.
+                There must be a valid DatabaoContextDomain in this directory.
             plugin_loader: Optional plugin loader to use for loading plugins.
         """
-        self._project_layout = ensure_project_dir(project_dir=project_dir)
-        self.project_dir = project_dir
+        self._project_layout = ensure_project_dir(project_dir=domain_dir)
+        self.domain_dir = domain_dir
         self._plugin_loader = plugin_loader or DatabaoContextPluginLoader()
 
     def get_introspected_datasource_list(self) -> list[Datasource]:
@@ -80,24 +82,35 @@ class DatabaoContextEngine:
 
         Returns:
             The context for this datasource.
-        """
+        """  # noqa: DOC501
         return get_datasource_context(project_layout=self._project_layout, datasource_id=datasource_id)
 
-    def get_all_contexts(self) -> list[DatasourceContext]:
-        """Return all contexts generated in the project.
+    def get_datasource_contexts(self, datasource_ids: Collection[DatasourceId]) -> list[DatasourceContext]:
+        """Return the context available for a given list of datasources.
+
+        Args:
+            datasource_ids: The list of datasources IDs to get the context for.
 
         Returns:
-             A list of all contexts generated in the project.
+            The context for those datasources.
+        """
+        return get_datasource_contexts(project_layout=self._project_layout, datasource_ids=datasource_ids)
+
+    def get_all_contexts(self) -> list[DatasourceContext]:
+        """Return all contexts generated in the domain.
+
+        Returns:
+             A list of all contexts generated in the domain.
         """
         return get_all_contexts(project_layout=self._project_layout)
 
     def get_all_contexts_formatted(self) -> str:
-        """Return a fprmatted string of all datasource contexts in the project.
+        """Return a fprmatted string of all datasource contexts in the domain.
 
         The returned string is a concatenation of all datasource contexts, adding a header to separate each context.
 
         Returns:
-            A fprmatted string of all datasource contexts in the project.
+            A fprmatted string of all datasource contexts in the domain.
         """
         all_contexts = self.get_all_contexts()
 
@@ -107,35 +120,38 @@ class DatabaoContextEngine:
 
     def search_context(
         self,
-        retrieve_text: str,
+        search_text: str,
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
+        context_search_mode: ContextSearchMode | None = None,
     ) -> list[ContextSearchResult]:
         """Search in the available context for the closest matches to the given text.
 
         Args:
-            retrieve_text: The text to search for in the contexts.
+            search_text: The text to search for in the contexts.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
             datasource_ids: If provided, the search results will only come from the datasources with these IDs.
+            context_search_mode: Search strategy to use. Defaults to HYBRID_SEARCH if None is provided.
 
         Returns:
-            A list of the results found for the search, sorted by distance.
+            A list of the results found for the search, sorted by score.
         """
-        project_config = self._project_layout.read_config_file()
-        results = retrieve_embeddings(
+        if context_search_mode is None:
+            context_search_mode = ContextSearchMode.HYBRID_SEARCH
+
+        results = search_context_internal(
             project_layout=self._project_layout,
-            retrieve_text=retrieve_text,
+            search_text=search_text,
             limit=limit,
             datasource_ids=datasource_ids,
-            ollama_model_id=project_config.ollama_model_id,
-            ollama_model_dim=project_config.ollama_model_dim,
+            context_search_mode=context_search_mode,
         )
 
         return [
             ContextSearchResult(
                 datasource_id=result.datasource_id,
                 datasource_type=result.datasource_type,
-                distance=result.cosine_distance,
+                score=result.score.score,
                 context_result=result.display_text,
             )
             for result in results

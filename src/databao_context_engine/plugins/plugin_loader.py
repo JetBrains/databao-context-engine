@@ -1,4 +1,5 @@
 import logging
+from importlib.util import find_spec
 
 from databao_context_engine.introspection.property_extract import get_property_list_from_type
 from databao_context_engine.pluginlib.build_plugin import (
@@ -136,12 +137,10 @@ def _load_builtin_file_plugins() -> list[BuildFilePlugin]:
 
     plugins: list[BuildFilePlugin] = [InternalUnstructuredFilesPlugin()]
 
-    try:
+    if find_spec("docling") is not None:
         from databao_context_engine.plugins.files.pdf_plugin import PDFPlugin
 
         plugins.append(PDFPlugin())
-    except ImportError:
-        pass
 
     return plugins
 

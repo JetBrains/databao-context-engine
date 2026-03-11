@@ -5,12 +5,20 @@ from typing import Any, Mapping, Sequence
 
 import pytest
 
+from databao_context_engine import SQLiteConfigFile, SQLiteConnectionConfig
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.databases.databases_types import (
+    DatabaseCatalog,
+    DatabaseColumn,
+    DatabaseIntrospectionResult,
+    DatabaseSchema,
+    DatabaseTable,
+)
 from databao_context_engine.plugins.databases.sqlite.sqlite_db_plugin import SQLiteDbPlugin
 from tests.plugins.databases.database_contracts import (
     ColumnIs,
+    Fact,
     ForeignKeyExists,
     IndexExists,
     PrimaryKeyIs,
@@ -21,6 +29,7 @@ from tests.plugins.databases.database_contracts import (
     UniqueConstraintExists,
     assert_contract,
 )
+from tests.utils.fakes import FakeDescriptionProvider
 
 
 @pytest.fixture
@@ -143,12 +152,53 @@ def sqlite_with_demo_schema(temp_sqlite_file: Path):
     return temp_sqlite_file
 
 
+def given_broken_view(temp_sqlite_file: Path):
+    execute_sqlite_queries(
+        temp_sqlite_file,
+        """
+        CREATE TABLE orders_for_view (
+                                         order_id         INTEGER NOT NULL,
+                                         order_amount     INTEGER NOT NULL
+        );
+        """,
+        """
+        CREATE VIEW broken_view AS
+        SELECT order_id, order_amount
+        FROM orders_for_view
+        """,
+        """
+        DROP TABLE orders_for_view
+        """,
+    )
+
+
 def _create_config_file_from_sqlite(sqlite_path: Path, datasource_name: str | None = "file_name") -> Mapping[str, Any]:
     return {
         "type": "sqlite",
         "name": datasource_name,
         "connection": dict(database_path=str(sqlite_path)),
     }
+
+
+def test_sqlite_check_connection__fails_if_path_is_incorrect(tmp_path: Path):
+    sqlite_file = tmp_path / "missing_file.sqlite"
+
+    plugin = SQLiteDbPlugin()
+    config = SQLiteConfigFile(name="file_name", connection=SQLiteConnectionConfig(database_path=str(sqlite_file)))
+
+    with pytest.raises(ConnectionError):
+        plugin.check_connection("sqlite", config)
+
+
+def test_sqlite_check_connection__fails_if_path_is_not_a_sqlite_db(tmp_path: Path):
+    sqlite_file = tmp_path / "wrong_file.sqlite"
+    sqlite_file.write_text("Not a SQLite file", encoding="utf-8")
+
+    plugin = SQLiteDbPlugin()
+    config = SQLiteConfigFile(name="file_name", connection=SQLiteConnectionConfig(database_path=str(sqlite_file)))
+
+    with pytest.raises(sqlite3.DatabaseError):
+        plugin.check_connection("sqlite", config)
 
 
 def test_sqlite_plugin_introspection_demo_schema(sqlite_with_demo_schema: Path):
@@ -159,78 +209,102 @@ def test_sqlite_plugin_introspection_demo_schema(sqlite_with_demo_schema: Path):
 
     assert_contract(
         result,
-        [
-            TableExists("default", "main", "users"),
-            TableKindIs("default", "main", "users", "table"),
-            ColumnIs("default", "main", "users", "user_id", type="INTEGER", nullable=False),
-            ColumnIs("default", "main", "users", "name", type="VARCHAR", nullable=False),
-            ColumnIs("default", "main", "users", "email", type="VARCHAR", nullable=False),
-            ColumnIs("default", "main", "users", "is_active", type="INTEGER", nullable=False, default_equals="1"),
-            PrimaryKeyIs("default", "main", "users", ["user_id"]),
-            UniqueConstraintExists("default", "main", "users", ["email"]),
-            TableExists("default", "main", "products"),
-            TableKindIs("default", "main", "products", "table"),
-            ColumnIs("default", "main", "products", "product_id", type="INTEGER", nullable=False),
-            ColumnIs("default", "main", "products", "sku", type="VARCHAR", nullable=False),
-            ColumnIs("default", "main", "products", "price", type="DECIMAL(10,2)", nullable=False),
-            PrimaryKeyIs("default", "main", "products", ["product_id"]),
-            UniqueConstraintExists("default", "main", "products", ["sku"]),
-            TableExists("default", "main", "orders"),
-            TableKindIs("default", "main", "orders", "table"),
-            ColumnIs("default", "main", "orders", "order_id", type="INTEGER", nullable=False),
-            ColumnIs("default", "main", "orders", "user_id", type="INTEGER", nullable=False),
-            ColumnIs("default", "main", "orders", "order_number", type="VARCHAR", nullable=False),
-            ColumnIs(
-                "default",
-                "main",
-                "orders",
-                "status",
-                type="VARCHAR",
-                nullable=False,
-                default_contains="PENDING",
-            ),
-            ColumnIs("default", "main", "orders", "placed_at", type="TIMESTAMP", nullable=False),
-            ColumnIs("default", "main", "orders", "amount_cents", type="INTEGER", nullable=False),
-            PrimaryKeyIs("default", "main", "orders", ["order_id"]),
-            UniqueConstraintExists("default", "main", "orders", ["user_id", "order_number"]),
-            ForeignKeyExists(
-                "default",
-                "main",
-                "orders",
-                from_columns=["user_id"],
-                ref_table="main.users",
-                ref_columns=["user_id"],
-            ),
-            IndexExists(
-                "default", "main", "orders", name="idx_orders_user_placed_at", columns=["user_id", "placed_at"]
-            ),
-            TableExists("default", "main", "order_items"),
-            TableKindIs("default", "main", "order_items", "table"),
-            PrimaryKeyIs("default", "main", "order_items", ["order_id", "product_id"]),
-            ForeignKeyExists(
-                "default",
-                "main",
-                "order_items",
-                from_columns=["order_id"],
-                ref_table="main.orders",
-                ref_columns=["order_id"],
-            ),
-            ForeignKeyExists(
-                "default",
-                "main",
-                "order_items",
-                from_columns=["product_id"],
-                ref_table="main.products",
-                ref_columns=["product_id"],
-            ),
-            IndexExists("default", "main", "order_items", name="idx_oi_product", columns=["product_id"]),
-            TableExists("default", "main", "recent_paid_orders"),
-            TableKindIs("default", "main", "recent_paid_orders", "view"),
-            ColumnIs("default", "main", "recent_paid_orders", "order_id"),
-            ColumnIs("default", "main", "recent_paid_orders", "user_id"),
-            ColumnIs("default", "main", "recent_paid_orders", "placed_at"),
-            ColumnIs("default", "main", "recent_paid_orders", "amount_cents"),
-        ],
+        expected_demo_schema_facts(),
+    )
+
+
+def expected_demo_schema_facts() -> list[Fact]:
+    return [
+        TableExists("default", "main", "users"),
+        TableKindIs("default", "main", "users", "table"),
+        ColumnIs("default", "main", "users", "user_id", type="INTEGER", nullable=False),
+        ColumnIs("default", "main", "users", "name", type="VARCHAR", nullable=False),
+        ColumnIs("default", "main", "users", "email", type="VARCHAR", nullable=False),
+        ColumnIs("default", "main", "users", "is_active", type="INTEGER", nullable=False, default_equals="1"),
+        PrimaryKeyIs("default", "main", "users", ["user_id"]),
+        UniqueConstraintExists("default", "main", "users", ["email"]),
+        TableExists("default", "main", "products"),
+        TableKindIs("default", "main", "products", "table"),
+        ColumnIs("default", "main", "products", "product_id", type="INTEGER", nullable=False),
+        ColumnIs("default", "main", "products", "sku", type="VARCHAR", nullable=False),
+        ColumnIs("default", "main", "products", "price", type="DECIMAL(10,2)", nullable=False),
+        PrimaryKeyIs("default", "main", "products", ["product_id"]),
+        UniqueConstraintExists("default", "main", "products", ["sku"]),
+        TableExists("default", "main", "orders"),
+        TableKindIs("default", "main", "orders", "table"),
+        ColumnIs("default", "main", "orders", "order_id", type="INTEGER", nullable=False),
+        ColumnIs("default", "main", "orders", "user_id", type="INTEGER", nullable=False),
+        ColumnIs("default", "main", "orders", "order_number", type="VARCHAR", nullable=False),
+        ColumnIs(
+            "default",
+            "main",
+            "orders",
+            "status",
+            type="VARCHAR",
+            nullable=False,
+            default_contains="PENDING",
+        ),
+        ColumnIs("default", "main", "orders", "placed_at", type="TIMESTAMP", nullable=False),
+        ColumnIs("default", "main", "orders", "amount_cents", type="INTEGER", nullable=False),
+        PrimaryKeyIs("default", "main", "orders", ["order_id"]),
+        UniqueConstraintExists("default", "main", "orders", ["user_id", "order_number"]),
+        ForeignKeyExists(
+            "default",
+            "main",
+            "orders",
+            from_columns=["user_id"],
+            ref_table="main.users",
+            ref_columns=["user_id"],
+        ),
+        IndexExists("default", "main", "orders", name="idx_orders_user_placed_at", columns=["user_id", "placed_at"]),
+        TableExists("default", "main", "order_items"),
+        TableKindIs("default", "main", "order_items", "table"),
+        PrimaryKeyIs("default", "main", "order_items", ["order_id", "product_id"]),
+        ForeignKeyExists(
+            "default",
+            "main",
+            "order_items",
+            from_columns=["order_id"],
+            ref_table="main.orders",
+            ref_columns=["order_id"],
+        ),
+        ForeignKeyExists(
+            "default",
+            "main",
+            "order_items",
+            from_columns=["product_id"],
+            ref_table="main.products",
+            ref_columns=["product_id"],
+        ),
+        IndexExists("default", "main", "order_items", name="idx_oi_product", columns=["product_id"]),
+        TableExists("default", "main", "recent_paid_orders"),
+        TableKindIs("default", "main", "recent_paid_orders", "view"),
+        ColumnIs("default", "main", "recent_paid_orders", "order_id"),
+        ColumnIs("default", "main", "recent_paid_orders", "user_id"),
+        ColumnIs("default", "main", "recent_paid_orders", "placed_at"),
+        ColumnIs("default", "main", "recent_paid_orders", "amount_cents"),
+    ]
+
+
+def expected_demo_schema_facts_without_views():
+    return [
+        fact
+        for fact in expected_demo_schema_facts()
+        if not (isinstance(fact, ColumnIs) and fact.table == "recent_paid_orders")
+    ]
+
+
+def test_sqlite_plugin_introspection_demo_schema__with_broken_view(sqlite_with_demo_schema: Path):
+    given_broken_view(sqlite_with_demo_schema)
+
+    plugin = SQLiteDbPlugin()
+    config = _create_config_file_from_sqlite(sqlite_with_demo_schema)
+    result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name")
+    assert isinstance(result, DatabaseIntrospectionResult)
+
+    assert_contract(
+        result,
+        expected_demo_schema_facts_without_views(),
     )
 
 
@@ -269,3 +343,53 @@ def test_sqlite_samples_in_big(sqlite_with_demo_schema: Path):
         assert isinstance(result, DatabaseIntrospectionResult)
 
         assert_contract(result, [SamplesCountIs("default", "main", "users", count=limit)])
+
+
+def test_sqlite_plugin_enrich_context():
+    plugin = SQLiteDbPlugin()
+
+    context = DatabaseIntrospectionResult(
+        catalogs=[
+            DatabaseCatalog(
+                name="default",
+                schemas=[
+                    DatabaseSchema(
+                        name="main",
+                        tables=[
+                            DatabaseTable(
+                                name="users",
+                                description=None,
+                                columns=[
+                                    DatabaseColumn(name="id", type="INTEGER", nullable=False, description=None),
+                                    DatabaseColumn(
+                                        name="email",
+                                        type="VARCHAR",
+                                        nullable=False,
+                                        description="existing-email-description",
+                                    ),
+                                ],
+                                samples=[],
+                            )
+                        ],
+                        description=None,
+                    )
+                ],
+                description=None,
+            )
+        ]
+    )
+
+    enriched = plugin.enrich_context(context, FakeDescriptionProvider())
+
+    catalog = enriched.catalogs[0]
+    schema = catalog.schemas[0]
+    table = schema.tables[0]
+    id_column = table.columns[0]
+    email_column = table.columns[1]
+
+    assert catalog.description == "fake-desc::default"
+    assert schema.description == "fake-desc::main"
+    assert table.description == "fake-desc::users"
+    assert id_column.description is not None
+    assert id_column.description.startswith("fake-desc::")
+    assert email_column.description == "existing-email-description"

@@ -2,6 +2,7 @@ import pytest
 
 from databao_context_engine import DatabaoContextEngine, Datasource, DatasourceContext, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.project.layout import DEPRECATED_ALL_RESULTS_FILE_NAME
 from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.project_creation import (
     given_datasource_config_file,
@@ -13,11 +14,11 @@ def test_databao_engine__can_not_be_created_on_non_existing_project(tmp_path):
     non_existing_project_dir = tmp_path / "non-existing-project"
 
     with pytest.raises(ValueError):
-        DatabaoContextEngine(project_dir=non_existing_project_dir)
+        DatabaoContextEngine(domain_dir=non_existing_project_dir)
 
 
 def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
-    databao_context_engine = DatabaoContextEngine(project_dir=project_path)
+    databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
 
     given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
@@ -30,7 +31,7 @@ def test_databao_engine__get_datasource_list_with_no_datasources(project_path):
 
 
 def test_databao_engine__get_datasource_list_with_multiple_datasources(project_path):
-    databao_context_engine = DatabaoContextEngine(project_dir=project_path)
+    databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
     given_datasource_config_file(
         databao_context_engine._project_layout,
         datasource_name="full/a",
@@ -50,15 +51,13 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
     given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
-            DatasourceContext(
-                datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
-                context=to_yaml_string(
-                    {"datasource_id": "full/a.yaml", "datasource_type": "any", "context": "Context for a"}
-                ),
+            (
+                DatasourceId.from_string_repr("full/a.yaml"),
+                to_yaml_string({"datasource_id": "full/a.yaml", "datasource_type": "any", "context": "Context for a"}),
             ),
-            DatasourceContext(
-                datasource_id=DatasourceId.from_string_repr("other/b.yaml"),
-                context=to_yaml_string(
+            (
+                DatasourceId.from_string_repr("other/b.yaml"),
+                to_yaml_string(
                     {"datasource_id": "other/b.yaml", "datasource_type": "type", "context": "Context for b"}
                 ),
             ),
@@ -74,14 +73,14 @@ def test_databao_engine__get_datasource_list_with_multiple_datasources(project_p
 
 
 def test_databao_engine__get_datasource_context(project_path):
-    databao_context_engine = DatabaoContextEngine(project_dir=project_path)
+    databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
 
     given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
+            (DatasourceId.from_string_repr("full/a.yaml"), "Context for a"),
+            (DatasourceId.from_string_repr("other/c.yaml"), "Context for c"),
+            (DatasourceId.from_string_repr("full/b.yaml"), "Context for b"),
         ],
     )
 
@@ -92,15 +91,37 @@ def test_databao_engine__get_datasource_context(project_path):
     )
 
 
-def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_path):
-    databao_context_engine = DatabaoContextEngine(project_dir=project_path)
+def test_databao_engine__get_datasource_contexts(project_path):
+    databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
 
     given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
+            (DatasourceId.from_string_repr("full/a.yaml"), "Context for a"),
+            (DatasourceId.from_string_repr("other/c.yaml"), "Context for c"),
+            (DatasourceId.from_string_repr("full/b.yaml"), "Context for b"),
+        ],
+    )
+
+    result = databao_context_engine.get_datasource_contexts(
+        [DatasourceId.from_string_repr("full/b.yaml"), DatasourceId.from_string_repr("full/a.yaml")]
+    )
+
+    assert result == [
+        DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
+        DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
+    ]
+
+
+def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_path):
+    databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
+
+    given_output_dir_with_built_contexts(
+        databao_context_engine._project_layout,
+        [
+            (DatasourceId.from_string_repr("full/a.yaml"), "Context for a"),
+            (DatasourceId.from_string_repr("other/c.yaml"), "Context for c"),
+            (DatasourceId.from_string_repr("full/b.yaml"), "Context for b"),
         ],
     )
 
@@ -109,17 +130,23 @@ def test_databao_engine__get_datasource_context_for_unbuilt_datasource(project_p
 
 
 def test_databao_engine__get_all_contexts(project_path):
-    databao_context_engine = DatabaoContextEngine(project_dir=project_path)
+    databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
 
     given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("files/d.txt.yaml"), context="Context for d"),
+            (DatasourceId.from_string_repr("full/a.yaml"), "Context for a"),
+            (DatasourceId.from_string_repr("other/c.yaml"), "Context for c"),
+            (DatasourceId.from_string_repr("full/b.yaml"), "Context for b"),
+            (DatasourceId.from_string_repr("files/d.txt.yaml"), "Context for d"),
         ],
     )
+    # Make sure backup files, duckdb and all_results.yaml files are ignored
+    (databao_context_engine._project_layout.output_dir / DEPRECATED_ALL_RESULTS_FILE_NAME).touch()
+    databao_context_engine._project_layout.db_path.touch()
+    DatasourceId.from_string_repr("full/a.yaml").absolute_path_to_context_file(
+        databao_context_engine._project_layout
+    ).with_suffix(".yaml~").touch()
 
     result = databao_context_engine.get_all_contexts()
 
@@ -132,14 +159,14 @@ def test_databao_engine__get_all_contexts(project_path):
 
 
 def test_databao_engine__get_all_contexts_formatted(project_path):
-    databao_context_engine = DatabaoContextEngine(project_dir=project_path)
+    databao_context_engine = DatabaoContextEngine(domain_dir=project_path)
 
     given_output_dir_with_built_contexts(
         databao_context_engine._project_layout,
         [
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/a.yaml"), context="Context for a"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("other/c.yaml"), context="Context for c"),
-            DatasourceContext(datasource_id=DatasourceId.from_string_repr("full/b.yaml"), context="Context for b"),
+            (DatasourceId.from_string_repr("full/a.yaml"), "Context for a"),
+            (DatasourceId.from_string_repr("other/c.yaml"), "Context for c"),
+            (DatasourceId.from_string_repr("full/b.yaml"), "Context for b"),
         ],
     )
 

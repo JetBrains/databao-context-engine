@@ -37,7 +37,7 @@ class McpServer:
         mcp = FastMCP(host=host or "127.0.0.1", port=port or 8000, lifespan=mcp_server_lifespan)
 
         @mcp.tool(
-            description="Retrieve the contents of the all_results file",
+            description="Read all available contexts",
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
         def all_results_tool():
@@ -48,7 +48,7 @@ class McpServer:
             annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False),
         )
         def retrieve_tool(text: str, limit: int | None):
-            retrieve_results = self._databao_context_engine.search_context(retrieve_text=text, limit=limit)
+            retrieve_results = self._databao_context_engine.search_context(search_text=text, limit=limit)
 
             display_results = [context_search_result.context_result for context_search_result in retrieve_results]
 

@@ -10,8 +10,8 @@ EXAMPLES_FOLDER_NAME = "examples"
 LOGS_FOLDER_NAME = "logs"
 DEPRECATED_CONFIG_FILE_NAME = "nemory.ini"
 CONFIG_FILE_NAME = "dce.ini"
-ALL_RESULTS_FILE_NAME = "all_results.yaml"
-
+DEPRECATED_ALL_RESULTS_FILE_NAME = "all_results.yaml"
+PERF_LOGS_FILE_NAME = "perf.jsonl"
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class ProjectLayout:
     project_dir: Path
-    config_file: Path
-
-    def read_config_file(self) -> ProjectConfig:
-        return ProjectConfig.from_file(self.config_file)
+    project_config: ProjectConfig
 
     @property
     def src_dir(self) -> Path:
@@ -31,6 +28,10 @@ class ProjectLayout:
     @property
     def output_dir(self) -> Path:
         return get_output_dir(self.project_dir)
+
+    @property
+    def db_path(self) -> Path:
+        return self.output_dir / "dce.duckdb"
 
 
 def ensure_project_dir(project_dir: Path) -> ProjectLayout:
@@ -69,6 +70,10 @@ def get_logs_dir(project_dir: Path) -> Path:
     return project_dir.joinpath(LOGS_FOLDER_NAME)
 
 
+def get_performance_logs_file(project_dir: Path) -> Path:
+    return get_logs_dir(project_dir).joinpath(PERF_LOGS_FILE_NAME)
+
+
 def create_datasource_config_file(
     project_layout: ProjectLayout, datasource_relative_name: str, config_content: str, overwrite_existing: bool
 ) -> Path:
@@ -103,11 +108,11 @@ class _ProjectValidator:
                 f"The current project directory has not been initialized. It should contain a src directory. [project_dir: {self.project_dir.resolve()}]"
             )
 
-        return ProjectLayout(project_dir=self.project_dir, config_file=self.config_file)
+        return ProjectLayout(project_dir=self.project_dir, project_config=ProjectConfig.from_file(self.config_file))
 
     def validate(self) -> ProjectLayout | None:
         if self.config_file is not None and self.is_src_valid():
-            return ProjectLayout(project_dir=self.project_dir, config_file=self.config_file)
+            return ProjectLayout(project_dir=self.project_dir, project_config=ProjectConfig.from_file(self.config_file))
         return None
 
     def is_src_valid(self) -> bool:

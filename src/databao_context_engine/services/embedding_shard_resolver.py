@@ -1,5 +1,6 @@
 import duckdb
 
+from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 from databao_context_engine.storage.repositories.embedding_model_registry_repository import (
     EmbeddingModelRegistryRepository,
@@ -18,26 +19,30 @@ class EmbeddingShardResolver:
         self._registry = registry_repo
         self._policy = table_name_policy or TableNamePolicy()
 
-    def resolve(self, *, embedder: str, model_id: str) -> tuple[str, int]:
-        row = self._registry.get(embedder=embedder, model_id=model_id)
+    def resolve(self, *, embedder: str, embedding_model_details: EmbeddingModelDetails) -> tuple[str, int]:
+        row = self._registry.get(embedder=embedder, model_id=embedding_model_details.model_id)
         if not row:
-            raise ValueError(f"Model not registered: {embedder}:{model_id}")
+            raise ValueError(f"Model not registered: {embedder}:{embedding_model_details.model_id}")
         return row.table_name, row.dim
 
-    def resolve_or_create(self, *, embedder: str, model_id: str, dim: int) -> str:
-        row = self._registry.get(embedder=embedder, model_id=model_id)
+    def resolve_or_create(self, *, embedder: str, embedding_model_details: EmbeddingModelDetails) -> str:
+        row = self._registry.get(embedder=embedder, model_id=embedding_model_details.model_id)
         if row:
-            if row.dim != dim:
-                raise ValueError(f"Model already registered with dim={row.dim}, requested dim={dim}")
+            if row.dim != embedding_model_details.model_dim:
+                raise ValueError(
+                    f"Model already registered with dim={row.dim}, requested dim={embedding_model_details.model_dim}"
+                )
             return row.table_name
 
-        table_name = self._policy.build(embedder=embedder, model_id=model_id, dim=dim)
-        self._create_table_and_index(table_name, dim)
+        table_name = self._policy.build(
+            embedder=embedder, model_id=embedding_model_details.model_id, dim=embedding_model_details.model_dim
+        )
+        self._create_table_and_index(table_name, embedding_model_details.model_dim)
 
         self._registry.create(
             embedder=embedder,
-            model_id=model_id,
-            dim=dim,
+            model_id=embedding_model_details.model_id,
+            dim=embedding_model_details.model_dim,
             table_name=table_name,
         )
 
