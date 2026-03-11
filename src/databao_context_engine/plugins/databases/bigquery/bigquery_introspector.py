@@ -122,7 +122,14 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
         return SQLQuery(" UNION ALL ".join(parts), None)
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(catalog, schemas, "t.table_type = 'BASE TABLE'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query(catalog, schemas, "t.table_type <> 'BASE TABLE'")
+
+    def _columns_sql_query(self, catalog: str, schemas: list[str], table_type_filter: str) -> SQLQuery:
         cat = self._quote_ident(catalog)
         parts = []
         for schema in schemas:
@@ -142,12 +149,16 @@ class BigQueryIntrospector(BaseIntrospector[BigQueryConfigFile]):
                     END AS generated,
                     cfp.description
                 FROM {cat}.{sch}.INFORMATION_SCHEMA.COLUMNS c
+                JOIN {cat}.{sch}.INFORMATION_SCHEMA.TABLES t
+                    ON t.table_schema = c.table_schema
+                    AND t.table_name = c.table_name
                 LEFT JOIN {cat}.{sch}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS cfp
                     ON c.table_catalog = cfp.table_catalog
                     AND c.table_schema = cfp.table_schema
                     AND c.table_name = cfp.table_name
                     AND c.column_name = cfp.column_name
                     AND cfp.column_name = cfp.field_path
+                WHERE {table_type_filter}
             """)
         return SQLQuery(" UNION ALL ".join(parts), None)
 

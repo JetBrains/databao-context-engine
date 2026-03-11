@@ -73,7 +73,14 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
         )
 
     @override
-    def get_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+    def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query("m.type = 'table'")
+
+    @override
+    def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
+        return self._columns_sql_query("m.type <> 'table'")
+
+    def _columns_sql_query(self, table_type_filter: str) -> SQLQuery:
         return SQLQuery(
             sql=f"""
             SELECT
@@ -96,7 +103,7 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
                 sqlite_master m
                 JOIN pragma_table_xinfo(m.name) c
             WHERE 
-                m.type IN ('table','view')
+                {table_type_filter}
                 AND m.name NOT LIKE 'sqlite_%'
             ORDER BY 
                 m.name, 

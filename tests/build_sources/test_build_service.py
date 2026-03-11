@@ -50,7 +50,7 @@ def test_build_context_no_chunks_skips_write_and_embed(svc, chunk_embed_svc, moc
     mocker.patch("databao_context_engine.build_sources.build_service.execute_plugin", return_value=mk_result())
     plugin.divide_context_into_chunks.return_value = []
 
-    out = svc.build_context(prepared_source=prepared, plugin=plugin, should_index=True)
+    out = svc.build_context(prepared_source=prepared, plugin=plugin, should_index=True, should_enrich_context=False)
 
     chunk_embed_svc.embed_chunks.assert_not_called()
     assert isinstance(out, BuiltDatasourceContext)
@@ -67,7 +67,7 @@ def test_build_context_happy_path_creates_row_and_embeds(svc, chunk_embed_svc, m
     chunks = [EmbeddableChunk(embeddable_text="a", content="A"), EmbeddableChunk(embeddable_text="b", content="B")]
     plugin.divide_context_into_chunks.return_value = chunks
 
-    out = svc.build_context(prepared_source=prepared, plugin=plugin, should_index=True)
+    out = svc.build_context(prepared_source=prepared, plugin=plugin, should_index=True, should_enrich_context=False)
 
     chunk_embed_svc.embed_chunks.assert_called_once_with(
         chunks=chunks,
@@ -90,7 +90,7 @@ def test_build_context_execute_error_bubbles_and_no_writes(svc, chunk_embed_svc,
     )
 
     with pytest.raises(RuntimeError):
-        svc.build_context(prepared_source=prepared, plugin=plugin, should_index=True)
+        svc.build_context(prepared_source=prepared, plugin=plugin, should_index=True, should_enrich_context=False)
 
     chunk_embed_svc.embed_chunks.assert_not_called()
 
@@ -106,7 +106,7 @@ def test_build_context_embed_error_bubbles_after_row_creation(svc, chunk_embed_s
     chunk_embed_svc.embed_chunks.side_effect = RuntimeError("embed-fail")
 
     with pytest.raises(RuntimeError):
-        svc.build_context(prepared_source=prepared, plugin=plugin, should_index=True)
+        svc.build_context(prepared_source=prepared, plugin=plugin, should_index=True, should_enrich_context=False)
 
 
 def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
@@ -178,7 +178,7 @@ def test_build_context_generate_embeddings_false_skips_chunking_and_embed(svc, c
     result = mk_result(name="files/noembed.md", typ="files/md", result={"context": "ok"})
     mocker.patch("databao_context_engine.build_sources.build_service.execute_plugin", return_value=result)
 
-    out = svc.build_context(prepared_source=prepared, plugin=plugin, should_index=False)
+    out = svc.build_context(prepared_source=prepared, plugin=plugin, should_index=False, should_enrich_context=False)
 
     plugin.divide_context_into_chunks.assert_not_called()
     chunk_embed_svc.embed_chunks.assert_not_called()

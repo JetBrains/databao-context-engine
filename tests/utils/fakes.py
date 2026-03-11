@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
+from databao_context_engine.llm.descriptions.provider import DescriptionProvider
+
 
 class FakeRunDTO:
     def __init__(self, run_id: int, started_at: datetime | None = None):
@@ -53,3 +55,24 @@ class FakeSource:
         self.path = path
         self.main_type = main_type
         self.subtype = subtype
+
+
+class FakeDescriptionProvider(DescriptionProvider):
+    describer = "fake"
+    model_id = "fake-model"
+
+    def __init__(self, *, fail_at: set[int] | None = None):
+        self.calls: list[tuple[str, str]] = []
+        self._fail_at = set(fail_at or [])
+
+    def describe(self, text: str, context: str) -> str:
+        call_idx = len(self.calls)
+        self.calls.append((text, context))
+
+        if call_idx in self._fail_at:
+            raise RuntimeError("fake describe failure")
+
+        return f"fake-desc::{text}"
+
+    def prompt_for_description(self, prompt: str) -> str:
+        return prompt

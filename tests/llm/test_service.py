@@ -195,7 +195,7 @@ def test_describe_happy_path():
     session.set_next_post(_StubResponse(status=200, json_obj={"response": "  some description  "}))
     service = OllamaService(OllamaConfig(host="host", port=11434, timeout=12.0), session=session)
 
-    desc = service.describe(model="llama3", text="hello", context="world")
+    desc = service.prompt(model="llama3", prompt="Prompt asking for a description")
 
     assert desc == "some description"
 
@@ -215,7 +215,7 @@ def test_describe_missing_response_raises_valueerror():
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
     with pytest.raises(ValueError):
-        service.describe(model="m", text="t", context="c")
+        service.prompt(model="m", prompt="t")
 
 
 def test_describe_non_string_response_raises_valueerror():
@@ -224,7 +224,7 @@ def test_describe_non_string_response_raises_valueerror():
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
     with pytest.raises(ValueError):
-        service.describe(model="m", text="t", context="c")
+        service.prompt(model="m", prompt="t")
 
 
 def test_describe_timeout_raises_transient_error():
@@ -233,7 +233,7 @@ def test_describe_timeout_raises_transient_error():
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
     with pytest.raises(OllamaTransientError):
-        service.describe(model="m", text="t", context="c")
+        service.prompt(model="m", prompt="t")
 
 
 def test_describe_http_error_raises_permanent_with_body():
@@ -242,7 +242,7 @@ def test_describe_http_error_raises_permanent_with_body():
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
     with pytest.raises(OllamaPermanentError) as ei:
-        service.describe(model="m", text="t", context="c")
+        service.prompt(model="m", prompt="t")
     assert "internal error" in str(ei.value)
 
 
@@ -252,7 +252,7 @@ def test_describe_malformed_json_raises_permanent_error():
     service = OllamaService(OllamaConfig(host="x"), session=session)
 
     with pytest.raises(OllamaPermanentError):
-        service.describe(model="m", text="t", context="c")
+        service.prompt(model="m", prompt="t")
 
 
 class _StubResponse:
