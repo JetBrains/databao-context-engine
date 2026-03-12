@@ -4,7 +4,7 @@ import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
-from databao_context_engine.progress.progress import ProgressStep, ProgressCallback, ProgressEmitter
+from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter, ProgressStep
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.models import ChunkEmbedding
@@ -53,7 +53,6 @@ class ChunkEmbeddingService:
             (chunk.content if isinstance(chunk.content, str) else to_yaml_string(chunk.content)) for chunk in chunks
         ]
         embedding_texts = [chunk.embeddable_text for chunk in chunks]
-
 
         vecs = self._embed_many(embedding_texts)
 

@@ -20,7 +20,7 @@ from databao_context_engine.datasources.datasource_discovery import discover_dat
 from databao_context_engine.datasources.types import PreparedConfig
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
-from databao_context_engine.progress.progress import ProgressStep, ProgressCallback, ProgressEmitter
+from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter, ProgressStep
 from databao_context_engine.project.layout import ProjectLayout
 
 logger = logging.getLogger(__name__)

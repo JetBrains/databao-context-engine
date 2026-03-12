@@ -16,7 +16,7 @@ from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
-from databao_context_engine.progress.progress import ProgressStep, ProgressCallback, ProgressEmitter
+from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter, ProgressStep
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 
