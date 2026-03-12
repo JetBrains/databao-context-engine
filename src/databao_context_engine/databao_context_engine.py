@@ -147,8 +147,6 @@ class DatabaoContextEngine:
             limit=limit,
             datasource_ids=datasource_ids,
             context_search_mode=context_search_mode,
-            ollama_model_id=project_config.ollama_model_id,
-            ollama_model_dim=project_config.ollama_model_dim,
             chunk_type=chunk_type
         )
 
