@@ -1,6 +1,6 @@
 [project]
 name = "databao-context-engine"
-version = "0.6.1.dev1"
+version = "0.6.2"
 description = "Semantic context for your LLMs — generated automatically"
 readme = "README.md"
 requires-python = ">=3.11"
