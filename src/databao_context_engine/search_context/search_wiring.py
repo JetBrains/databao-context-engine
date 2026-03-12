@@ -34,6 +34,8 @@ def search_context(
     limit: int | None,
     datasource_ids: list[DatasourceId] | None,
     context_search_mode: ContextSearchMode,
+        chunk_type: str | None = None,
+
 ) -> list[SearchResult]:
     with open_duckdb_connection(project_layout.db_path) as conn:
         ollama_service = create_ollama_service()
@@ -52,6 +54,7 @@ def search_context(
             datasource_ids=datasource_ids,
             rag_mode=rag_mode,
             context_search_mode=context_search_mode,
+            chunk_type=chunk_type,
         )
 
 
