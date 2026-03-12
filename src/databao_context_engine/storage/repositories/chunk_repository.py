@@ -18,6 +18,7 @@ class ChunkRepository:
         self,
         *,
         full_type: str,
+        chunk_type: str,
         datasource_id: str,
         embeddable_text: str,
         display_text: Optional[str],
@@ -27,13 +28,13 @@ class ChunkRepository:
             row = self._conn.execute(
                 """
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text)
+                chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text)
             VALUES
                 (?, ?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [full_type, datasource_id, embeddable_text, display_text, keyword_index_text],
+                [full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text],
             ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
@@ -152,12 +153,12 @@ class ChunkRepository:
         *,
         full_type: str,
         datasource_id: str,
-        chunk_contents: Sequence[Tuple[str, Optional[str], str]],
+        chunk_contents: Sequence[Tuple[str, Optional[str], str, str]],
     ) -> Sequence[int]:
         values_sql = ", ".join(["(?, ?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text)
+                chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text)
             VALUES
                 {values_sql}
             RETURNING
@@ -165,8 +166,8 @@ class ChunkRepository:
         """
 
         params: list[Any] = []
-        for embeddable_text, display_text, keyword_index_text in chunk_contents:
-            params.extend([full_type, datasource_id, embeddable_text, display_text, keyword_index_text])
+        for embeddable_text, display_text, keyword_index_text, chunk_type in chunk_contents:
+            params.extend([full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text])
 
         rows = self._conn.execute(sql, params).fetchall()
 
@@ -185,10 +186,11 @@ class ChunkRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> ChunkDTO:
-        chunk_id, full_type, datasource_id, embeddable_text, display_text, created_at, keyword_index_text = row
+        chunk_id, full_type, chunk_type, datasource_id, embeddable_text, display_text, created_at, keyword_index_text = row
         return ChunkDTO(
             chunk_id=int(chunk_id),
             full_type=full_type,
+            chunk_type=chunk_type,
             datasource_id=datasource_id,
             embeddable_text=embeddable_text,
             display_text=display_text,
