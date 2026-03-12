@@ -48,13 +48,14 @@ class SearchContextService:
         },
     )
     def search(
-        self,
-        *,
-        search_text: str,
-        limit: int | None = None,
-        datasource_ids: list[DatasourceId] | None = None,
-        rag_mode: RAG_MODE,
-        context_search_mode: ContextSearchMode,
+            self,
+            *,
+            search_text: str,
+            limit: int | None = None,
+            datasource_ids: list[DatasourceId] | None = None,
+            rag_mode: RAG_MODE,
+            context_search_mode: ContextSearchMode,
+            chunk_type: str | None = None,
     ) -> list[SearchResult]:
         if limit is None:
             limit = 10
@@ -65,6 +66,7 @@ class SearchContextService:
             datasource_ids=datasource_ids,
             rag_mode=rag_mode,
             context_search_mode=context_search_mode,
+            chunk_type=chunk_type
         )
 
         logger.debug(f"Found {len(search_results)} search results")
@@ -90,6 +92,7 @@ class SearchContextService:
         datasource_ids: list[DatasourceId] | None = None,
         rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
+        chunk_type: str | None = None
     ) -> list[SearchResult]:
         if context_search_mode == ContextSearchMode.KEYWORD_SEARCH:
             query_text = self._rewrite_search_query(text) if rag_mode == RAG_MODE.REWRITE_QUERY else text
@@ -98,6 +101,7 @@ class SearchContextService:
                 query_text=query_text,
                 limit=limit,
                 datasource_ids=datasource_ids,
+                chunk_type=chunk_type
             )
 
         table_name, dimension = self._shard_resolver.resolve(
@@ -130,6 +134,7 @@ class SearchContextService:
                     dimension=dimension,
                     limit=limit,
                     datasource_ids=datasource_ids,
+                    chunk_type=chunk_type
                 )
             case ContextSearchMode.HYBRID_SEARCH:
                 return self._chunk_search_repo.search_chunks_with_hybrid_search(
@@ -139,6 +144,7 @@ class SearchContextService:
                     dimension=dimension,
                     limit=limit,
                     datasource_ids=datasource_ids,
+                    chunk_type=chunk_type
                 )
 
     @perf.perf_span("search_context.rewrite_query")
