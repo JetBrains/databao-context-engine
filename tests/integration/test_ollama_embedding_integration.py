@@ -1,7 +1,6 @@
 import os
 
 from databao_context_engine.llm.config import EmbeddingModelDetails, OllamaConfig
-from databao_context_engine.llm.descriptions.ollama import OllamaDescriptionProvider
 from databao_context_engine.llm.embeddings.ollama import OllamaEmbeddingProvider
 from databao_context_engine.llm.runtime import OllamaRuntime
 from databao_context_engine.llm.service import OllamaService
@@ -40,14 +39,12 @@ def test_ollama_embed_and_persist_e2e(conn, chunk_repo, embedding_repo, tmp_path
     embedding_provider = OllamaEmbeddingProvider(
         service=service, model_details=EmbeddingModelDetails(model_id=MODEL, model_dim=768)
     )
-    description_provider = OllamaDescriptionProvider(service=service, model_id=CHAT_MODEL)
 
     persistence = PersistenceService(conn=conn, chunk_repo=chunk_repo, embedding_repo=embedding_repo, dim=768)
     chunk_embedding_service = ChunkEmbeddingService(
         persistence_service=persistence,
         shard_resolver=resolver,
         embedding_provider=embedding_provider,
-        description_provider=description_provider,
     )
 
     chunks = [

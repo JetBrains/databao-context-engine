@@ -17,7 +17,6 @@ from databao_context_engine.llm.factory import (
 )
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
-from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 from databao_context_engine.services.factories import create_chunk_embedding_service
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.migrate import migrate
@@ -28,7 +27,6 @@ logger = logging.getLogger(__name__)
 def build_all_datasources(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
-    chunk_embedding_mode: ChunkEmbeddingMode,
     should_index: bool,
     should_enrich_context: bool,
 ) -> list[BuildDatasourceResult]:
@@ -56,7 +54,6 @@ def build_all_datasources(
         build_service = _create_build_service(
             conn,
             project_layout=project_layout,
-            chunk_embedding_mode=chunk_embedding_mode,
             should_enrich_context=should_enrich_context,
         )
         return build(
@@ -72,7 +69,6 @@ def enrich_built_contexts(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
     contexts: list[DatasourceContext],
-    chunk_embedding_mode: ChunkEmbeddingMode,
     should_index: bool,
 ) -> list[EnrichContextResult]:
     logger.debug("Starting to enrich %d context(s) for project %s", len(contexts), project_layout.project_dir.resolve())
@@ -86,7 +82,6 @@ def enrich_built_contexts(
         build_service = _create_build_service(
             conn,
             project_layout=project_layout,
-            chunk_embedding_mode=chunk_embedding_mode,
             should_enrich_context=True,
         )
         return run_enrich_context(
@@ -102,7 +97,6 @@ def index_built_contexts(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
     contexts: list[DatasourceContext],
-    chunk_embedding_mode: ChunkEmbeddingMode,
 ) -> list[IndexDatasourceResult]:
     """Index the contexts into the database.
 
@@ -123,7 +117,6 @@ def index_built_contexts(
         build_service = _create_build_service(
             conn,
             project_layout=project_layout,
-            chunk_embedding_mode=chunk_embedding_mode,
             should_enrich_context=False,
         )
         return run_indexing(
@@ -135,24 +128,17 @@ def _create_build_service(
     conn: DuckDBPyConnection,
     *,
     project_layout: ProjectLayout,
-    chunk_embedding_mode: ChunkEmbeddingMode,
     should_enrich_context: bool,
 ) -> BuildService:
     ollama_service = create_ollama_service()
     embedding_provider = create_ollama_embedding_provider(
         ollama_service, model_details=project_layout.project_config.ollama_embedding_model_details
     )
-    description_provider = (
-        create_ollama_description_provider(ollama_service)
-        if chunk_embedding_mode.should_generate_description() or should_enrich_context
-        else None
-    )
+    description_provider = create_ollama_description_provider(ollama_service) if should_enrich_context else None
 
     chunk_embedding_service = create_chunk_embedding_service(
         conn,
         embedding_provider=embedding_provider,
-        description_provider=description_provider,
-        chunk_embedding_mode=chunk_embedding_mode,
     )
 
     return BuildService(
