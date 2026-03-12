@@ -8,6 +8,7 @@ from typing import Any, Generic, Mapping, Protocol, Sequence, TypeVar, Union
 import databao_context_engine.perf.core as perf
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.databases_types import (
+    CardinalityBucket,
     DatabaseCatalog,
     DatabaseIntrospectionResult,
     DatabaseSchema,
@@ -15,6 +16,8 @@ from databao_context_engine.plugins.databases.databases_types import (
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
 from databao_context_engine.plugins.databases.introspection_scope_matcher import IntrospectionScopeMatcher
+from databao_context_engine.plugins.databases.sampling_scope import SamplingConfig
+from databao_context_engine.plugins.databases.sampling_scope_matcher import SamplingScopeMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +26,24 @@ class SupportsIntrospectionScope(Protocol):
     introspection_scope: IntrospectionScope | None
 
 
-T = TypeVar("T", bound="SupportsIntrospectionScope")
+class SupportsSamplingScope(Protocol):
+    sampling: SamplingConfig | None
+
+
+class SupportsDatabaseScopes(SupportsIntrospectionScope, SupportsSamplingScope, Protocol):
+    """Marker protocol for configs usable with BaseIntrospector."""
+
+    pass
+
+
+T = TypeVar("T", bound="SupportsDatabaseScopes")
 
 
 class BaseIntrospector(Generic[T], ABC):
     supports_catalogs: bool = True
     _IGNORED_SCHEMAS: set[str] = {"information_schema"}
     _SAMPLE_LIMIT: int = 5
+    _LOW_CARDINALITY_THRESHOLD = 20
 
     def check_connection(self, file_config: T) -> None:
         with self._connect(file_config) as connection:
@@ -68,8 +82,12 @@ class BaseIntrospector(Generic[T], ABC):
                 if not introspected_schemas:
                     continue
 
+                sampling_matcher = SamplingScopeMatcher(file_config.sampling, ignored_schemas=self._ignored_schemas())
                 self._collect_samples_for_schemas_timed(
-                    connection=catalog_connection, catalog=catalog, schemas=introspected_schemas
+                    connection=catalog_connection,
+                    catalog=catalog,
+                    schemas=introspected_schemas,
+                    sampling_matcher=sampling_matcher,
                 )
 
                 introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=introspected_schemas))
@@ -86,11 +104,12 @@ class BaseIntrospector(Generic[T], ABC):
 
     @perf.perf_span("db.collect_samples", attrs=lambda self, *, catalog, **_: {"catalog": catalog})
     def _collect_samples_for_schemas_timed(
-        self, *, connection: Any, catalog: str, schemas: list[DatabaseSchema]
+        self, *, connection: Any, catalog: str, schemas: list[DatabaseSchema], sampling_matcher: SamplingScopeMatcher
     ) -> None:
         for schema in schemas:
             for table in schema.tables:
-                table.samples = self._collect_samples_for_table(connection, catalog, schema.name, table.name)
+                if sampling_matcher.should_sample(catalog, schema.name, table.name):
+                    table.samples = self._collect_samples_for_table(connection, catalog, schema.name, table.name)
 
     def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
         if self.supports_catalogs:
@@ -133,7 +152,7 @@ class BaseIntrospector(Generic[T], ABC):
 
         columns = table_columns + view_columns
         # TODO collecting samples and table/column stats should be separate steps, it's a temporary fix
-        table_stats, column_stats = self.collect_stats(connection, schemas, relations, columns)
+        table_stats, column_stats = self.collect_stats(connection, catalog, schemas, relations, columns)
 
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
@@ -246,6 +265,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_stats(
         self,
         connection,
+        catalog: str,
         schemas: list[str],
         relations: list[dict],
         columns: list[dict],
@@ -264,6 +284,18 @@ class BaseIntrospector(Generic[T], ABC):
                 logger.warning("Failed to fetch samples for %s.%s (catalog=%s): %s", schema, table, catalog, e)
                 samples = []
         return samples
+
+    @staticmethod
+    def _compute_cardinality_stats(
+        distinct_count: int | None,
+    ) -> tuple[CardinalityBucket, int | None]:
+        cardinality_kind = CardinalityBucket.from_distinct_count(distinct_count)
+        low_cardinality_distinct_count = (
+            distinct_count
+            if distinct_count is not None and distinct_count < BaseIntrospector._LOW_CARDINALITY_THRESHOLD
+            else None
+        )
+        return cardinality_kind, low_cardinality_distinct_count
 
     @abstractmethod
     def _connect(self, file_config: T, *, catalog: str | None = None) -> Any:

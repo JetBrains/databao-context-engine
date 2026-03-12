@@ -3,7 +3,6 @@ from unittest.mock import Mock
 import pytest
 
 from databao_context_engine.llm.config import EmbeddingModelDetails
-from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
@@ -24,11 +23,9 @@ def _vec(fill: float, dim: int) -> list[float]:
 
 def test_noop_on_empty_chunks(persistence, resolver, chunk_repo, embedding_repo, registry_repo):
     embedding_provider = Mock(spec=EmbeddingProvider)
-    description_provider = Mock(spec=DescriptionProvider)
     service = ChunkEmbeddingService(
         persistence_service=persistence,
         embedding_provider=embedding_provider,
-        description_provider=description_provider,
         shard_resolver=resolver,
     )
     embedding_provider.embedder = "tests"
@@ -41,12 +38,10 @@ def test_noop_on_empty_chunks(persistence, resolver, chunk_repo, embedding_repo,
     assert registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id) is None
 
     embedding_provider.embed.assert_not_called()
-    description_provider.describe.assert_not_called()
 
 
 def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embedding_repo, registry_repo):
     embedding_provider = Mock(spec=EmbeddingProvider)
-    description_provider = Mock(spec=DescriptionProvider)
 
     embedding_provider.embedder = "ollama"
     embedding_provider.embedding_model_details = EmbeddingModelDetails(model_id="nomic-embed-text:v1.5", model_dim=768)
@@ -57,12 +52,9 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
         _vec(2.0, embedding_provider.embedding_model_details.model_dim),
     ]
 
-    description_provider.describe.side_effect = lambda *, text, context: f"desc-{text}"
-
     service = ChunkEmbeddingService(
         persistence_service=persistence,
         embedding_provider=embedding_provider,
-        description_provider=description_provider,
         shard_resolver=resolver,
     )
 
@@ -98,19 +90,16 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
 
 def test_provider_failure_writes_nothing(persistence, resolver, chunk_repo, embedding_repo, registry_repo):
     embedding_provider = Mock(spec=EmbeddingProvider)
-    description_provider = Mock(spec=DescriptionProvider)
 
     embedding_provider.embedder = "tests"
     embedding_provider.model_id = "model:v1"
     embedding_provider.dim = 768
 
     embedding_provider.embed_many.side_effect = RuntimeError("provider embed failed")
-    description_provider.describe.side_effect = lambda *, text, context: f"desc-{text}"
 
     service = ChunkEmbeddingService(
         persistence_service=persistence,
         embedding_provider=embedding_provider,
-        description_provider=description_provider,
         shard_resolver=resolver,
     )
 

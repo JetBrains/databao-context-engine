@@ -7,7 +7,7 @@ from testcontainers.mysql import MySqlContainer  # type: ignore
 
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.plugin_utils import execute_datasource_plugin
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.databases.databases_types import CardinalityBucket, DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.mysql.mysql_db_plugin import MySQLDbPlugin
 from databao_context_engine.plugins.databases.mysql.mysql_introspector import MySQLIntrospector
 from tests.plugins.databases.database_contracts import (
@@ -563,6 +563,7 @@ def test_mysql_table_and_column_statistics(mysql_container_with_demo_schema, cre
                     null_count=0,
                     non_null_count=8,
                     distinct_count=5,
+                    cardinality_kind=CardinalityBucket.LOW,
                     min_value=10.5,
                     max_value=50.0,
                     has_top_values=True,
@@ -619,6 +620,7 @@ def test_mysql_column_statistics_with_nulls(mysql_container_with_demo_schema, cr
                     null_count=2,
                     non_null_count=4,
                     distinct_count=2,
+                    cardinality_kind=CardinalityBucket.VERY_LOW,
                     min_value="Common",
                     max_value="Rare",
                     has_top_values=True,
@@ -664,7 +666,8 @@ def test_mysql_high_cardinality_statistics(mysql_container_with_demo_schema, cre
                     "price",
                     null_count=0,
                     non_null_count=150,
-                    distinct_count=150,
+                    distinct_count=None,
+                    cardinality_kind=CardinalityBucket.HIGH,
                     min_value=10.0,
                     max_value=1500.0,
                     total_row_count=150,

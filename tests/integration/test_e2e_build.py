@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from databao_context_engine import ChunkEmbeddingMode, DatabaoContextDomainManager
+from databao_context_engine import DatabaoContextDomainManager
 from databao_context_engine.llm.config import EmbeddingModelDetails
 from tests.utils.project_creation import given_raw_source_file
 
@@ -49,9 +49,7 @@ def test_e2e_build_with_fake_provider(
 ):
     given_raw_source_file(project_path, "note.md", "# Hello\nworld\n")
 
-    result = DatabaoContextDomainManager(domain_dir=project_path).build_context(
-        datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
-    )
+    result = DatabaoContextDomainManager(domain_dir=project_path).build_context(datasource_ids=None)
 
     assert len(result) == 1
 
@@ -83,9 +81,7 @@ def test_one_source_fails_but_others_succeed(
 
     given_raw_source_file(project_path, "note.md", "# Hello\nworld\n")
 
-    result = DatabaoContextDomainManager(domain_dir=project_path).build_context(
-        datasource_ids=None, chunk_embedding_mode=ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY
-    )
+    result = DatabaoContextDomainManager(domain_dir=project_path).build_context(datasource_ids=None)
 
     assert len(result) == 1
 

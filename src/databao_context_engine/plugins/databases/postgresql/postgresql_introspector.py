@@ -194,6 +194,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     def collect_stats(
         self,
         connection,
+        catalog: str,
         schemas: list[str],
         relations: list[dict],
         columns: list[dict],
@@ -249,11 +250,16 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 row["non_null_count"] = row_count - row["null_count"]
 
             n_distinct = row.get("n_distinct")
+            distinct_count = None
             if n_distinct is not None and row_count is not None:
                 if n_distinct < 0:
-                    row["distinct_count"] = round(abs(n_distinct) * row_count)
+                    distinct_count = round(abs(n_distinct) * row_count)
                 elif n_distinct > 0:
-                    row["distinct_count"] = round(n_distinct)
+                    distinct_count = round(n_distinct)
+
+            cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_count)
+            row["cardinality_kind"] = cardinality_kind
+            row["distinct_count"] = low_cardinality_distinct_count
 
             vals_str = row.get("most_common_vals")
             freqs_str = row.get("most_common_freqs")
@@ -305,7 +311,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
 
     @override
     def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
-        return self._columns_sql_query(schemas, "c.relkind NOT IN ('r','p')")
+        return self._columns_sql_query(schemas, "c.relkind IN ('v','m','f')")
 
     def _columns_sql_query(self, schemas: list[str], relation_kind_filter: str) -> SQLQuery:
         return SQLQuery(

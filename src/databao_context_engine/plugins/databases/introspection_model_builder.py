@@ -272,6 +272,7 @@ class IntrospectionModelBuilder:
                     null_count=stat_row.get("null_count"),
                     non_null_count=stat_row.get("non_null_count"),
                     distinct_count=stat_row.get("distinct_count"),
+                    cardinality_kind=stat_row.get("cardinality_kind"),
                     min_value=stat_row.get("min_value"),
                     max_value=stat_row.get("max_value"),
                     top_values=stat_row.get("top_values"),

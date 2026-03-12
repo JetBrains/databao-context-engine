@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
-from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
+from databao_context_engine.plugins.databases.databases_types import CardinalityBucket, DatabaseIntrospectionResult
 
 logger = logging.getLogger(__name__)
 
@@ -375,7 +376,14 @@ class SamplesEqual(Fact):
 
     def check(self, a: IntrospectionAsserter) -> None:
         actual = a.samples(self.catalog, self.schema, self.table)
-        if list(actual) != list(self.rows):
+
+        # Convert rows to hashable tuples
+        def row_to_tuple(row: Mapping[str, Any]) -> tuple:
+            return tuple(sorted(row.items()))
+
+        actual_tuples = [row_to_tuple(row) for row in actual]
+        expected_tuples = [row_to_tuple(row) for row in self.rows]
+        if Counter(actual_tuples) != Counter(expected_tuples):
             a.fail(
                 f"Expected samples == {list(self.rows)!r}, got {list(actual)!r}",
                 [self.catalog, self.schema, self.table, "samples"],
@@ -433,6 +441,8 @@ class ColumnStatsExists(Fact):
     null_count: int | None = None
     non_null_count: int | None = None
     distinct_count: int | None = None
+    distinct_count_tolerance: float | None = None
+    cardinality_kind: CardinalityBucket | None = None
     min_value: Any | None = None
     max_value: Any | None = None
     has_top_values: bool | None = None
@@ -459,8 +469,31 @@ class ColumnStatsExists(Fact):
 
         if self.distinct_count is not None:
             actual = getattr(stats, "distinct_count", None)
-            if actual != self.distinct_count:
-                a.fail(f"Expected distinct_count={self.distinct_count}, got {actual}", path)
+            expected = self.distinct_count
+            tol = self.distinct_count_tolerance
+
+            if actual is None:
+                a.fail("Expected distinct_count to have a value, but got None", path)
+
+            elif tol is not None:
+                if expected == 0:
+                    if actual != 0:
+                        a.fail(f"Expected distinct_count=0, got {actual}", path)
+                else:
+                    if abs(actual - expected) > expected * tol:
+                        a.fail(
+                            f"Expected distinct_count={expected} ±{tol * 100:.0f}% "
+                            f"(allowed deviation {expected * tol:.2f}), got {actual}",
+                            path,
+                        )
+
+            elif actual != expected:
+                a.fail(f"Expected distinct_count={expected}, got {actual}", path)
+
+        if self.cardinality_kind is not None:
+            actual = getattr(stats, "cardinality_kind", None)
+            if actual != self.cardinality_kind:
+                a.fail(f"Expected cardinality_kind={self.cardinality_kind}, got {actual}", path)
 
         if self.min_value is not None:
             actual = getattr(stats, "min_value", None)

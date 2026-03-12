@@ -78,7 +78,7 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
 
     @override
     def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
-        return self._columns_sql_query("m.type <> 'table'")
+        return self._columns_sql_query("m.type = 'view'")
 
     def _columns_sql_query(self, table_type_filter: str) -> SQLQuery:
         return SQLQuery(

@@ -178,7 +178,7 @@ class MSSQLIntrospector(BaseIntrospector[MSSQLConfigFile]):
 
     @override
     def get_view_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
-        return self._columns_sql_query(schemas, "o.type <> 'U'")
+        return self._columns_sql_query(schemas, "o.type = 'V'")
 
     def _columns_sql_query(self, schemas: list[str], object_type_filter: str) -> SQLQuery:
         # TODO: simplify case when for datatype

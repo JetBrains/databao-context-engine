@@ -94,6 +94,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
         table_stats, column_stats = self.collect_stats(
             connection,
+            catalog=catalog,
             schemas=schemas,
             relations=results.get("relations", []),
             columns=results.get("table_columns", []) + results.get("view_columns", []),
@@ -365,6 +366,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def collect_stats(
         self,
         connection,
+        catalog: str,
         schemas: list[str],
         relations: list[dict],
         columns: list[dict],
@@ -480,7 +482,10 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         null_frac = float(histogram.get("null-values") or 0.0)
         null_count = max(0, min(table_row_count, round(null_frac * table_row_count)))
 
-        stat_dict["distinct_count"] = distinct_count
+        cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_count)
+
+        stat_dict["cardinality_kind"] = cardinality_kind
+        stat_dict["distinct_count"] = low_cardinality_distinct_count
         stat_dict["non_null_count"] = table_row_count - null_count
         stat_dict["null_count"] = null_count
 
@@ -512,7 +517,10 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         for b in buckets:
             if isinstance(b, list) and len(b) >= 4:
                 distinct_est += int(b[3] or 0)
-        stat_dict["distinct_count"] = distinct_est
+
+        cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_est)
+        stat_dict["cardinality_kind"] = cardinality_kind
+        stat_dict["distinct_count"] = low_cardinality_distinct_count
 
         if buckets:
             first_bucket = buckets[0]

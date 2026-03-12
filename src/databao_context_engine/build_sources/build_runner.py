@@ -20,10 +20,30 @@ from databao_context_engine.datasources.datasource_discovery import discover_dat
 from databao_context_engine.datasources.types import PreparedConfig
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
-from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter
+from databao_context_engine.progress.progress import ProgressStep, ProgressCallback, ProgressEmitter
 from databao_context_engine.project.layout import ProjectLayout
 
 logger = logging.getLogger(__name__)
+
+
+def _build_step_plan(*, should_index: bool, should_enrich_context: bool) -> tuple[ProgressStep, ...]:
+    steps: list[ProgressStep] = [ProgressStep.PLUGIN_EXECUTION]
+
+    if should_enrich_context:
+        steps.append(ProgressStep.CONTEXT_ENRICHMENT)
+
+    if should_index:
+        steps.append(ProgressStep.EMBEDDING)
+        steps.append(ProgressStep.PERSISTENCE)
+
+    return tuple(steps)
+
+
+def _index_step_plan() -> tuple[ProgressStep, ...]:
+    return (
+        ProgressStep.EMBEDDING,
+        ProgressStep.PERSISTENCE,
+    )
 
 
 @perf.perf_run(
@@ -159,6 +179,14 @@ def _build_one_datasource(
             prepared_source.datasource_id.relative_path_to_config_file(),
         )
         return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
+
+    ProgressEmitter(progress).datasource_step_plan_set(
+        datasource_id=str(datasource_id),
+        step_plan=_build_step_plan(
+            should_index=should_index,
+            should_enrich_context=should_enrich_context,
+        ),
+    )
 
     result = build_service.build_context(
         prepared_source=prepared_source,
@@ -379,6 +407,11 @@ def _index_one_context(
             context.datasource_id,
         )
         return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
+
+    ProgressEmitter(progress).datasource_step_plan_set(
+        datasource_id=str(context.datasource_id),
+        step_plan=_index_step_plan(),
+    )
 
     build_service.index_built_context(context=context, plugin=plugin, progress=progress)
     return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK)

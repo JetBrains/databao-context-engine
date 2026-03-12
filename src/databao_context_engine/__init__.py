@@ -72,7 +72,6 @@ from databao_context_engine.project.info import (
 )
 from databao_context_engine.project.init_project import InitDomainError, InitErrorReason
 from databao_context_engine.search_context.search_service import ContextSearchMode
-from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 __all__ = [
     "DatabaoContextEngine",
@@ -84,7 +83,6 @@ __all__ = [
     "DatabaoContextDomainManager",
     "UserInputCallback",
     "Choice",
-    "ChunkEmbeddingMode",
     "ContextSearchMode",
     "DatasourceConnectionStatus",
     "DatasourceType",

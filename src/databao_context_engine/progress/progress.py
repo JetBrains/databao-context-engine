@@ -9,10 +9,17 @@ class ProgressKind(str, Enum):
     OPERATION_STARTED = "operation_started"
     OPERATION_FINISHED = "operation_finished"
     DATASOURCE_STARTED = "datasource_started"
-    DATASOURCE_TOTAL_STEPS_SET = "datasource_total_steps_set"
+    DATASOURCE_STEP_PLAN_SET = "datasource_step_plan_set"
+    DATASOURCE_STEP_PROGRESS = "datasource_step_progress"
     DATASOURCE_STEP_COMPLETED = "datasource_step_completed"
-    DATASOURCE_CURRENT_STEP_PROGRESS = "datasource_current_step_progress"
     DATASOURCE_FINISHED = "datasource_finished"
+
+
+class ProgressStep(str, Enum):
+    PLUGIN_EXECUTION = "plugin_execution"
+    CONTEXT_ENRICHMENT = "context_enrichment"
+    EMBEDDING = "embedding"
+    PERSISTENCE = "persistence"
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,8 +33,8 @@ class ProgressEvent:
     datasource_index: int | None = None
     datasource_total: int | None = None
 
-    total_steps: int | None = None
-    step_increment: int | None = None
+    step_plan: tuple[ProgressStep, ...] | None = None
+    step: ProgressStep | None = None
     current_units_completed: int | None = None
     current_units_total: int | None = None
 
@@ -73,35 +80,37 @@ class ProgressEmitter:
             )
         )
 
-    def datasource_total_steps_set(self, *, datasource_id: str, total_steps: int) -> None:
+    def datasource_step_plan_set(self, *, datasource_id: str, step_plan: tuple[ProgressStep, ...]) -> None:
         self.emit(
             ProgressEvent(
-                kind=ProgressKind.DATASOURCE_TOTAL_STEPS_SET,
+                kind=ProgressKind.DATASOURCE_STEP_PLAN_SET,
                 datasource_id=datasource_id,
-                total_steps=total_steps,
+                step_plan=step_plan,
             )
         )
 
-    def datasource_step_completed(self, *, datasource_id: str, step_count: int = 1) -> None:
+    def datasource_step_completed(self, *, datasource_id: str, step: ProgressStep) -> None:
         self.emit(
             ProgressEvent(
                 kind=ProgressKind.DATASOURCE_STEP_COMPLETED,
                 datasource_id=datasource_id,
-                step_increment=step_count,
+                step=step,
             )
         )
 
-    def datasource_current_step_progress(
+    def datasource_step_progress(
         self,
         *,
         datasource_id: str,
+        step: ProgressStep,
         completed_units: int,
         total_units: int,
     ) -> None:
         self.emit(
             ProgressEvent(
-                kind=ProgressKind.DATASOURCE_CURRENT_STEP_PROGRESS,
+                kind=ProgressKind.DATASOURCE_STEP_PROGRESS,
                 datasource_id=datasource_id,
+                step=step,
                 current_units_completed=completed_units,
                 current_units_total=total_units,
             )

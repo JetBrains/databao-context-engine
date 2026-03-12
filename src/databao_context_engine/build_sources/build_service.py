@@ -16,7 +16,7 @@ from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
-from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter
+from databao_context_engine.progress.progress import ProgressStep, ProgressCallback, ProgressEmitter
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 
@@ -57,20 +57,22 @@ class BuildService:
 
         emitter = ProgressEmitter(progress)
 
+        emitter.datasource_step_completed(
+            datasource_id=result.datasource_id,
+            step=ProgressStep.PLUGIN_EXECUTION,
+        )
+
         if should_enrich_context:
             result = self._enrich_context(built_context=result, plugin=plugin)
+            emitter.datasource_step_completed(
+                datasource_id=result.datasource_id,
+                step=ProgressStep.CONTEXT_ENRICHMENT,
+            )
 
         if not should_index:
-            emitter.datasource_total_steps_set(datasource_id=result.datasource_id, total_steps=1)
-            emitter.datasource_step_completed(datasource_id=result.datasource_id)
             return result
 
-        self._index_context(
-            built_context=result,
-            plugin=plugin,
-            progress=progress,
-            include_plugin_execution_step=True,
-        )
+        self._index_context(built_context=result, plugin=plugin, progress=progress)
 
         return result
 
@@ -94,13 +96,7 @@ class BuildService:
         """
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        self._index_context(
-            built_context=built,
-            plugin=plugin,
-            override=True,
-            progress=progress,
-            include_plugin_execution_step=False,
-        )
+        self._index_context(built_context=built, plugin=plugin, override=True, progress=progress)
 
     def _index_context(
         self,
@@ -109,29 +105,13 @@ class BuildService:
         plugin: BuildPlugin,
         override: bool = False,
         progress: ProgressCallback | None = None,
-        include_plugin_execution_step: bool,
     ) -> None:
         chunks = plugin.divide_context_into_chunks(built_context.context)
         perf.set_attribute("chunk_count", len(chunks))
 
-        emitter = ProgressEmitter(progress)
-
         if not chunks:
             logger.info("No chunks for %s — skipping indexing.", built_context.datasource_id)
-            if include_plugin_execution_step:
-                emitter.datasource_total_steps_set(datasource_id=built_context.datasource_id, total_steps=1)
-                emitter.datasource_step_completed(datasource_id=built_context.datasource_id)
             return
-
-        total_steps = (1 if include_plugin_execution_step else 0) + self._chunk_embedding_service.indexing_step_count()
-
-        emitter.datasource_total_steps_set(
-            datasource_id=built_context.datasource_id,
-            total_steps=total_steps,
-        )
-
-        if include_plugin_execution_step:
-            emitter.datasource_step_completed(datasource_id=built_context.datasource_id)
 
         self._chunk_embedding_service.embed_chunks(
             chunks=chunks,
@@ -168,9 +148,7 @@ class BuildService:
         enriched_context = self._enrich_context(built_context=built, plugin=plugin)
 
         if should_index:
-            self._index_context(
-                built_context=enriched_context, plugin=plugin, override=True, include_plugin_execution_step=False
-            )
+            self._index_context(built_context=enriched_context, plugin=plugin, override=True)
 
         return enriched_context
 

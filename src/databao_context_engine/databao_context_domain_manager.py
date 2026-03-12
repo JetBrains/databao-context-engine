@@ -37,7 +37,6 @@ from databao_context_engine.project.layout import (
     create_datasource_config_file as create_datasource_config_file_internal,
 )
 from databao_context_engine.serialization.yaml import to_yaml_string
-from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingMode
 
 
 class DatabaoContextDomainManager:
@@ -79,7 +78,6 @@ class DatabaoContextDomainManager:
     def build_context(
         self,
         datasource_ids: list[DatasourceId] | None = None,
-        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         *,
         should_index: bool = True,
         should_enrich_context: bool = False,
@@ -91,7 +89,6 @@ class DatabaoContextDomainManager:
 
         Args:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
-            chunk_embedding_mode: The mode to use for chunk embedding.
             should_index: Whether to build a semantic index for the context.
             should_enrich_context: Whether to enrich the context with LLM-generated content.
             progress: The progress callback to use for the build process.
@@ -103,7 +100,6 @@ class DatabaoContextDomainManager:
         return build_all_datasources(
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
-            chunk_embedding_mode=chunk_embedding_mode,
             should_index=should_index,
             should_enrich_context=should_enrich_context,
             progress=progress,
@@ -114,13 +110,11 @@ class DatabaoContextDomainManager:
         *,
         datasource_ids: list[DatasourceId] | None = None,
         should_index: bool = True,
-        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
     ) -> list[EnrichContextResult]:
         """Enrich the context with LLM-generated content for the given datasources.
 
         Args:
             datasource_ids: The list of datasource ids to enrich contexts for. If None, all datasources contexts will be enriched.
-            chunk_embedding_mode: The mode to use for chunk embedding.
             should_index: Whether to re-build the semantic index for the enriched context.
 
         Returns:
@@ -136,14 +130,12 @@ class DatabaoContextDomainManager:
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
             contexts=contexts,
-            chunk_embedding_mode=chunk_embedding_mode,
             should_index=should_index,
         )
 
     def index_built_contexts(
         self,
         datasource_ids: list[DatasourceId] | None = None,
-        chunk_embedding_mode: ChunkEmbeddingMode = ChunkEmbeddingMode.EMBEDDABLE_TEXT_ONLY,
         progress: ProgressCallback | None = None,
     ) -> list[IndexDatasourceResult]:
         """Index built datasource contexts into the embeddings database.
@@ -153,7 +145,6 @@ class DatabaoContextDomainManager:
 
         Args:
             datasource_ids: The list of datsource ids to index. If None, all datsources will be indexed.
-            chunk_embedding_mode: The mode to use for chunk embedding.
             progress: The progress callback to use for the indexing process.
 
         Returns:
@@ -168,7 +159,6 @@ class DatabaoContextDomainManager:
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
             contexts=contexts,
-            chunk_embedding_mode=chunk_embedding_mode,
             progress=progress,
         )
 

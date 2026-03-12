@@ -65,11 +65,64 @@ class Index:
     predicate: str | None = None
 
 
+@dataclass(frozen=True)
+class CardinalityRange:
+    min_value: int
+    max_value: int | None  # exclusive upper bound; None = no upper bound
+
+    def contains(self, count: int) -> bool:
+        if self.max_value is None:
+            return count >= self.min_value
+        return self.min_value <= count < self.max_value
+
+
+class CardinalityBucket(str, Enum):
+    ZERO = "0"
+    ONE = "1"
+    VERY_LOW = "2-4"
+    LOW = "5-9"
+    LOW_MEDIUM = "10-19"
+    MEDIUM = "20-49"
+    MEDIUM_HIGH = "50-99"
+    HIGH = "100-999"
+    VERY_HIGH = "1000+"
+    UNKNOWN = "unknown"
+
+    @property
+    def range(self) -> CardinalityRange | None:
+        return {
+            CardinalityBucket.ZERO: CardinalityRange(0, 1),
+            CardinalityBucket.ONE: CardinalityRange(1, 2),
+            CardinalityBucket.VERY_LOW: CardinalityRange(2, 5),
+            CardinalityBucket.LOW: CardinalityRange(5, 10),
+            CardinalityBucket.LOW_MEDIUM: CardinalityRange(10, 20),
+            CardinalityBucket.MEDIUM: CardinalityRange(20, 50),
+            CardinalityBucket.MEDIUM_HIGH: CardinalityRange(50, 100),
+            CardinalityBucket.HIGH: CardinalityRange(100, 1000),
+            CardinalityBucket.VERY_HIGH: CardinalityRange(1000, None),
+            CardinalityBucket.UNKNOWN: None,
+        }[self]
+
+    @classmethod
+    def from_distinct_count(cls, distinct_count: int | None) -> "CardinalityBucket":
+        if distinct_count is None or distinct_count < 0:
+            return cls.UNKNOWN
+
+        for bucket in cls:
+            if bucket is cls.UNKNOWN:
+                continue
+            if bucket.range is not None and bucket.range.contains(distinct_count):
+                return bucket
+
+        return cls.HIGH
+
+
 @dataclass
 class ColumnStats:
     null_count: int | None = None
     non_null_count: int | None = None
     distinct_count: int | None = None
+    cardinality_kind: CardinalityBucket | None = None
     min_value: Any | None = None
     max_value: Any | None = None
     top_values: list[tuple[Any, int]] | None = None  # (value, frequency) pairs

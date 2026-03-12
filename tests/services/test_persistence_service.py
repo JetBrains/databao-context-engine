@@ -24,21 +24,18 @@ def test_write_chunks_and_embeddings(persistence, chunk_repo, embedding_repo, ta
             vec=_vec(0.0),
             embedded_text=chunks[0].embeddable_text,
             display_text=chunks[0].content,
-            generated_description="g1",
         ),
         ChunkEmbedding(
             original_chunk=chunks[1],
             vec=_vec(1.0),
             embedded_text=chunks[1].embeddable_text,
             display_text=chunks[1].content,
-            generated_description="g2",
         ),
         ChunkEmbedding(
             original_chunk=chunks[2],
             vec=_vec(2.0),
             embedded_text=chunks[2].embeddable_text,
             display_text=chunks[2].content,
-            generated_description="g3",
         ),
     ]
 
@@ -69,21 +66,18 @@ def test_mid_batch_failure_rolls_back(persistence, chunk_repo, embedding_repo, m
             _vec(0.0),
             embedded_text="A",
             display_text="a",
-            generated_description="a",
         ),
         ChunkEmbedding(
             EmbeddableChunk(embeddable_text="B", content="b"),
             _vec(1.0),
             embedded_text="B",
             display_text="b",
-            generated_description="b",
         ),
         ChunkEmbedding(
             EmbeddableChunk(embeddable_text="C", content="c"),
             _vec(2.0),
             embedded_text="C",
             display_text="c",
-            generated_description="c",
         ),
     ]
 
@@ -164,7 +158,6 @@ def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_rep
             vec=_vec(float(i)),
             embedded_text=et,
             display_text=str(obj),
-            generated_description="g1",
         )
         for i, (et, obj) in enumerate(complex_items)
     ]
@@ -192,14 +185,12 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
             _vec(0.0),
             embedded_text="A",
             display_text="a",
-            generated_description="g",
         ),
         ChunkEmbedding(
             EmbeddableChunk(embeddable_text="B", content="b"),
             _vec(1.0),
             embedded_text="B",
             display_text="b",
-            generated_description="g",
         ),
     ]
     ds2_pairs = [
@@ -208,7 +199,6 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
             _vec(2.0),
             embedded_text="X",
             display_text="x",
-            generated_description="g",
         ),
     ]
 
@@ -229,7 +219,6 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
             _vec(3.0),
             embedded_text="C",
             display_text="c",
-            generated_description="g",
         ),
     ]
     persistence.write_chunks_and_embeddings(
