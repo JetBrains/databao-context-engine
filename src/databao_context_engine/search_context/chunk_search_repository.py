@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass(kw_only=True, frozen=True)
 class VectorSearchCandidate:
     chunk_id: int
+    chunk_type: str
     display_text: str
     embeddable_text: str
     cosine_distance: float
@@ -25,6 +26,7 @@ class VectorSearchCandidate:
 @dataclass(kw_only=True, frozen=True)
 class Bm25SearchCandidate:
     chunk_id: int
+    chunk_type: str
     display_text: str
     embeddable_text: str
     bm25_score: float
@@ -64,6 +66,7 @@ class KeywordSearchScore:
 @dataclass(kw_only=True, frozen=True)
 class SearchResult:
     chunk_id: int
+    chunk_type: str
     display_text: str
     embeddable_text: str
     datasource_type: DatasourceType
@@ -89,6 +92,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
+            chunk_type: str | None = None
     ) -> list[SearchResult]:
         """Read only similarity search on a specific embedding shard table."""
         vector_candidates = self._get_vector_candidates(
@@ -97,10 +101,12 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=limit,
             datasource_ids=datasource_ids,
+            chunk_type=chunk_type
         )
         return [
             SearchResult(
                 chunk_id=candidate.chunk_id,
+                chunk_type=candidate.chunk_type,
                 display_text=candidate.display_text,
                 embeddable_text=candidate.embeddable_text,
                 datasource_type=candidate.datasource_type,
@@ -119,6 +125,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
+        chunk_type: str | None = None,
     ) -> list[VectorSearchCandidate]:
         """Read only vector candidates on a specific embedding shard table."""
         params: list[Any] = [list(search_vec), self._DEFAULT_DISTANCE_THRESHOLD, limit]
@@ -130,6 +137,7 @@ class ChunkSearchRepository:
             WITH vector_candidates AS (
                 SELECT
                     c.chunk_id,
+                    c.chunk_type,
                     COALESCE(c.display_text, c.embeddable_text) AS display_text,
                     c.embeddable_text,
                     array_cosine_distance(e.vec, CAST($1 AS FLOAT[{dimension}])) AS cosine_distance,
@@ -142,6 +150,7 @@ class ChunkSearchRepository:
             )
             SELECT
                 vc.chunk_id,
+                vc.chunk_type,
                 vc.display_text,
                 vc.embeddable_text,
                 vc.cosine_distance,
@@ -151,6 +160,7 @@ class ChunkSearchRepository:
                 vector_candidates vc
             WHERE
                 vc.cosine_distance < $2
+                {"AND vc.chunk_type = '%s'"%chunk_type if chunk_type else ''}
             ORDER BY
                 vc.cosine_distance ASC
             LIMIT $3
@@ -161,11 +171,12 @@ class ChunkSearchRepository:
         return [
             VectorSearchCandidate(
                 chunk_id=row[0],
-                display_text=row[1],
-                embeddable_text=row[2],
-                cosine_distance=row[3],
-                datasource_type=DatasourceType(full_type=row[4]),
-                datasource_id=DatasourceId.from_string_repr(row[5]),
+                chunk_type=row[1],
+                display_text=row[2],
+                embeddable_text=row[3],
+                cosine_distance=row[4],
+                datasource_type=DatasourceType(full_type=row[5]),
+                datasource_id=DatasourceId.from_string_repr(row[6]),
             )
             for row in rows
         ]
@@ -180,6 +191,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
+            chunk_type: str | None = None
     ) -> list[SearchResult]:
         """Hybrid retrieval combining vector similarity and BM25 with Reciprocal Rank Fusion (RRF).
 
@@ -193,12 +205,14 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=candidate_limit,
             datasource_ids=datasource_ids,
+            chunk_type=chunk_type
         )
 
         bm25_candidates = self._get_bm25_candidates(
             query_text=search_text,
             limit=candidate_limit,
             datasource_ids=datasource_ids,
+            chunk_type=chunk_type
         )
         return self._fuse_by_rrf(
             vector_candidates=vector_candidates,
@@ -213,17 +227,20 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
+        chunk_type: str | None = None
     ) -> list[SearchResult]:
         """Read only BM25 search over chunk text."""
         bm25_candidates = self._get_bm25_candidates(
             query_text=query_text,
             limit=limit,
             datasource_ids=datasource_ids,
+            chunk_type=chunk_type
         )
 
         return [
             SearchResult(
                 chunk_id=candidate.chunk_id,
+                chunk_type=candidate.chunk_type,
                 display_text=candidate.display_text,
                 embeddable_text=candidate.embeddable_text,
                 datasource_type=candidate.datasource_type,
@@ -240,6 +257,7 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
+            chunk_type: str | None = None
     ) -> list[Bm25SearchCandidate]:
         datasource_values = [str(datasource_id) for datasource_id in datasource_ids] if datasource_ids else None
         filter_sql = "WHERE c.datasource_id IN ?" if datasource_values else ""
@@ -253,6 +271,7 @@ class ChunkSearchRepository:
             WITH bm25_candidates AS (
                 SELECT
                     c.chunk_id,
+                    c.chunk_type,
                     COALESCE(c.display_text, c.embeddable_text) AS display_text,
                     c.embeddable_text,
                     c.full_type,
@@ -267,6 +286,7 @@ class ChunkSearchRepository:
             )
             SELECT
                 b.chunk_id,
+                b.chunk_type,
                 b.display_text,
                 b.embeddable_text,
                 b.bm25_score,
@@ -276,6 +296,7 @@ class ChunkSearchRepository:
                 bm25_candidates b
             WHERE
                 b.bm25_score IS NOT NULL
+                {"AND b.chunk_type = '%s'"%chunk_type if chunk_type else ''}
             ORDER BY
                 b.bm25_score DESC
             LIMIT ?
@@ -286,11 +307,12 @@ class ChunkSearchRepository:
         return [
             Bm25SearchCandidate(
                 chunk_id=row[0],
-                display_text=row[1],
-                embeddable_text=row[2],
-                bm25_score=row[3],
-                datasource_type=DatasourceType(full_type=row[4]),
-                datasource_id=DatasourceId.from_string_repr(row[5]),
+                chunk_type=row[1],
+                display_text=row[2],
+                embeddable_text=row[3],
+                bm25_score=row[4],
+                datasource_type=DatasourceType(full_type=row[5]),
+                datasource_id=DatasourceId.from_string_repr(row[6]),
             )
             for row in rows
         ]
@@ -330,6 +352,7 @@ class ChunkSearchRepository:
             results.append(
                 SearchResult(
                     chunk_id=chunk_id,
+                    chunk_type=data_candidate.chunk_type,
                     display_text=data_candidate.display_text,
                     embeddable_text=data_candidate.embeddable_text,
                     datasource_type=data_candidate.datasource_type,
