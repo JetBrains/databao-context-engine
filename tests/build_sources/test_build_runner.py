@@ -15,7 +15,6 @@ def _result(name="files/demo.md", typ="files/md"):
     return BuiltDatasourceContext(
         datasource_id=name,
         datasource_type=typ,
-        context_built_at=datetime.now(),
         context={"ok": True},
     )
 

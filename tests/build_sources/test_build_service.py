@@ -15,7 +15,6 @@ def mk_result(*, name="files/foo.md", typ="files/md", result=None):
     return BuiltDatasourceContext(
         datasource_id=name,
         datasource_type=typ,
-        context_built_at=datetime.now(),
         context=result if result is not None else {"ok": True},
     )
 

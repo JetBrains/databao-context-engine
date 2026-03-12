@@ -249,7 +249,6 @@ def test_databao_context_domain_manager__enrich_built_contexts_with_dummy_plugin
                     BuiltDatasourceContext(
                         datasource_id=str(datasource_id),
                         datasource_type="dummy_enrichable",
-                        context_built_at=datetime.now(),
                         context={"value": "my_enrichable_data", "description": None},
                     )
                 ),
