@@ -112,6 +112,27 @@ class EmbeddingRepository:
         ).rowcount
         return int(deleted or 0)
 
+    def delete_by_datasource_context_hash_id(self, *, table_name: str, datasource_context_hash_id: int) -> int:
+        TableNamePolicy.validate_table_name(table_name=table_name)
+
+        deleted = self._conn.execute(
+            f"""
+            DELETE FROM
+                {table_name}
+            WHERE
+                chunk_id IN (
+                    SELECT
+                        chunk_id
+                    FROM
+                        chunk
+                    WHERE
+                        datasource_context_hash_id = ?
+                )
+            """,
+            [datasource_context_hash_id],
+        ).rowcount
+        return int(deleted or 0)
+
     def list(self, table_name: str) -> list[EmbeddingDTO]:
         TableNamePolicy.validate_table_name(table_name=table_name)
         rows = self._conn.execute(

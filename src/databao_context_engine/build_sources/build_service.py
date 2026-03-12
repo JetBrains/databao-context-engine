@@ -58,7 +58,7 @@ class BuildService:
         """
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        self.index_built_context(built_context=built, plugin=plugin, context_hash=context.context_hash, override=True)
+        self.index_built_context(built_context=built, plugin=plugin, context_hash=context.context_hash)
 
     def index_built_context(
         self,
@@ -66,8 +66,12 @@ class BuildService:
         built_context: BuiltDatasourceContext,
         plugin: BuildPlugin,
         context_hash: DatasourceContextHash,
-        override: bool = False,
+        force_index: bool = False,
     ) -> None:
+        if not force_index and self._chunk_embedding_service.is_index_up_to_date(context_hash=context_hash):
+            logger.info("Index is already up-to-date, skipping.")
+            return
+
         chunks = plugin.divide_context_into_chunks(built_context.context)
         perf.set_attribute("chunk_count", len(chunks))
 
@@ -80,7 +84,7 @@ class BuildService:
             context_hash=context_hash,
             full_type=built_context.datasource_type,
             datasource_id=built_context.datasource_id,
-            override=override,
+            override=force_index,
         )
 
     def _deserialize_built_context(

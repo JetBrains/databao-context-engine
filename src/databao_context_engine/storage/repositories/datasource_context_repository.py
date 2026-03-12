@@ -64,6 +64,21 @@ class DatasourceContextHashRepository:
         ).fetchone()
         return self._row_to_dto(row) if row else None
 
+    def delete(self, *, datasource_context_hash_id: int) -> int:
+        row = self._conn.execute(
+            """
+            DELETE FROM
+                datasource_context_hash
+            WHERE
+                datasource_context_hash_id = ?
+                RETURNING
+                    datasource_context_hash_id
+            """,
+            [datasource_context_hash_id],
+        )
+
+        return 1 if row else 0
+
     def delete_by_datasource_id_and_hash(self, *, datasource_id: str, hash_algorithm: str, hash_: str) -> int:
         rows = self._conn.execute(
             """

@@ -118,7 +118,6 @@ def test_build_processes_file_source_and_exports(
                 hash_algorithm="XXH3_128",
                 hashed_at=datetime.now(),
             ),
-            override=False,
         )
 
 
