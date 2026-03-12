@@ -93,3 +93,6 @@ class ChunkEmbeddingService:
     @perf.perf_span("embedding.embed_many")
     def _embed_many(self, embedding_texts: list[str]) -> list[list[float]]:
         return self._embedding_provider.embed_many(embedding_texts)
+
+    def is_index_up_to_date(self, context_hash: DatasourceContextHash) -> bool:
+        return self._persistence_service.has_datasource_context_hash(context_hash=context_hash)

@@ -208,7 +208,7 @@ def _build_one_datasource(
     if should_index:
         context_hash = hash_context_file(datasource_id=prepared_source.datasource_id, context_path=context_file_path)
         build_service.index_built_context(
-            built_context=result, plugin=plugin, context_hash=context_hash, override=False, progress=progress
+            built_context=result, plugin=plugin, context_hash=context_hash, progress=progress
         )
 
     return BuildDatasourceResult(
@@ -316,9 +316,7 @@ def _enrich_one_context(
 
     if should_index:
         context_hash = hash_context_file(datasource_id=context.datasource_id, context_path=context_file_path)
-        build_service.index_built_context(
-            built_context=enriched_context, plugin=plugin, context_hash=context_hash, override=True
-        )
+        build_service.index_built_context(built_context=enriched_context, plugin=plugin, context_hash=context_hash)
 
     return EnrichContextResult(
         datasource_id=context.datasource_id,

@@ -57,11 +57,8 @@ class PersistenceService:
         # Outside the transaction due to duckdb limitations.
         # DuckDB FK checks can behave unexpectedly across multiple statements in the same transaction when deleting
         # and re-inserting related rows. It also does not support on delete cascade yet.
-        # Given that there is a foreign key from embedding to chunk, the embedding must be deleted first.
         if override:
-            self._delete_existing_embeddings(table_name=table_name, datasource_id=datasource_id)
-            self._delete_existing_chunks(datasource_id=datasource_id)
-            self._delete_datasource_context_hash(context_hash=context_hash)
+            self._delete_existing_context_hash(context_hash, table_name)
 
         with transaction(self._conn):
             datasource_context_hash_id = self._insert_datasource_context_hash(context_hash)
@@ -78,20 +75,42 @@ class PersistenceService:
                 chunk_embeddings=chunk_embeddings,
             )
 
-    @perf.perf_span("persistence.override.delete_embeddings")
-    def _delete_existing_embeddings(self, *, table_name: str, datasource_id: str) -> None:
-        self._embedding_repo.delete_by_datasource_id(table_name=table_name, datasource_id=datasource_id)
-
-    @perf.perf_span("persistence.override.delete_chunks")
-    def _delete_existing_chunks(self, *, datasource_id: str) -> None:
-        self._chunk_repo.delete_by_datasource_id(datasource_id=datasource_id)
-
-    @perf.perf_span("persistence.override.delete_chunks")
-    def _delete_datasource_context_hash(self, *, context_hash: DatasourceContextHash) -> None:
-        self._datasource_context_hash_repo.delete_by_datasource_id_and_hash(
+    def _delete_existing_context_hash(self, context_hash: DatasourceContextHash, table_name: str):
+        """Delete a context hash (if it exists) and all embeddings and chunks linked to it."""
+        existing_datasource_context_hash = self._datasource_context_hash_repo.get_by_datasource_id_and_hash(
             datasource_id=str(context_hash.datasource_id),
             hash_algorithm=context_hash.hash_algorithm,
             hash_=context_hash.hash,
+        )
+
+        if existing_datasource_context_hash:
+            # Given that there is a foreign key from embedding to chunk and from chunk to datasource_context_hash,
+            # the order of operations is important.
+            self._delete_existing_embeddings(
+                table_name=table_name,
+                datasource_context_hash_id=existing_datasource_context_hash.datasource_context_hash_id,
+            )
+            self._delete_existing_chunks(
+                datasource_context_hash_id=existing_datasource_context_hash.datasource_context_hash_id
+            )
+            self._delete_datasource_context_hash(
+                datasource_context_hash_id=existing_datasource_context_hash.datasource_context_hash_id
+            )
+
+    @perf.perf_span("persistence.override.delete_embeddings")
+    def _delete_existing_embeddings(self, *, table_name: str, datasource_context_hash_id: int) -> None:
+        self._embedding_repo.delete_by_datasource_context_hash_id(
+            table_name=table_name, datasource_context_hash_id=datasource_context_hash_id
+        )
+
+    @perf.perf_span("persistence.override.delete_chunks")
+    def _delete_existing_chunks(self, *, datasource_context_hash_id: int) -> None:
+        self._chunk_repo.delete_by_datasource_context_hash_id(datasource_context_hash_id=datasource_context_hash_id)
+
+    @perf.perf_span("persistence.override.delete_chunks")
+    def _delete_datasource_context_hash(self, *, datasource_context_hash_id: int) -> None:
+        self._datasource_context_hash_repo.delete(
+            datasource_context_hash_id=datasource_context_hash_id,
         )
 
     @perf.perf_span("persistence.insert_datasource_context")
@@ -129,4 +148,14 @@ class PersistenceService:
     ) -> None:
         self._embedding_repo.bulk_insert(
             table_name=table_name, chunk_ids=chunk_ids, vecs=[ce.vec for ce in chunk_embeddings], dim=self._dim
+        )
+
+    def has_datasource_context_hash(self, context_hash: DatasourceContextHash) -> bool:
+        return (
+            self._datasource_context_hash_repo.get_by_datasource_id_and_hash(
+                datasource_id=str(context_hash.datasource_id),
+                hash_algorithm=context_hash.hash_algorithm,
+                hash_=context_hash.hash,
+            )
+            is not None
         )
