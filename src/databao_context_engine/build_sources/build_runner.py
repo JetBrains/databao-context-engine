@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.build_service import BuildService
@@ -149,7 +150,7 @@ def _build_one_datasource(
         datasource_id=datasource_id,
         status=DatasourceStatus.OK,
         datasource_type=DatasourceType(full_type=result.datasource_type),
-        context_built_at=result.context_built_at,
+        context_built_at=datetime.now(),
         context_file_path=context_file_path,
     )
 
@@ -246,7 +247,6 @@ def _enrich_one_context(
     return EnrichContextResult(
         datasource_id=context.datasource_id,
         status=DatasourceStatus.OK,
-        context_built_at=enriched_context.context_built_at,
         context_file_path=context_file_path,
     )
 

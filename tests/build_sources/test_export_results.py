@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -17,7 +16,6 @@ def _make_result(*, id: str, full_type: str, payload: object) -> BuiltDatasource
     return BuiltDatasourceContext(
         datasource_id=id,
         datasource_type=full_type,
-        context_built_at=datetime.now(),
         context=payload,
     )
 

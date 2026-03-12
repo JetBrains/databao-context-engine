@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from datetime import datetime
 from typing import Any
 
 import yaml
@@ -111,4 +110,4 @@ class BuildService:
 
         new_context = plugin.enrich_context(built_context.context, self._description_provider)
 
-        return replace(built_context, context=new_context, context_built_at=datetime.now())
+        return replace(built_context, context=new_context)

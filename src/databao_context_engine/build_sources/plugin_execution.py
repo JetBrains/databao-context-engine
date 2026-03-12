@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, cast
 
 from databao_context_engine.datasources.types import PreparedConfig, PreparedDatasource
@@ -26,11 +25,6 @@ class BuiltDatasourceContext:
     The type of the built data source
     """
 
-    context_built_at: datetime
-    """
-    The time at which the context was built
-    """
-
     context: Any
     """
     A dictionary containing the actual context generated for the data source.
@@ -45,7 +39,6 @@ def execute_plugin(
     return BuiltDatasourceContext(
         datasource_id=str(prepared_datasource.datasource_id),
         datasource_type=prepared_datasource.datasource_type.full_type,
-        context_built_at=datetime.now(),
         context=built_context,
     )
 
