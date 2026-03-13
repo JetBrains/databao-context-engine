@@ -118,14 +118,31 @@ def get_datasource_context(project_layout: ProjectLayout, datasource_id: Datasou
 
 
 def get_all_contexts(project_layout: ProjectLayout) -> list[DatasourceContext]:
-    result = []
     all_introspected_datasource_ids = _get_datasources_with_context(project_layout)
-    for datasource_id in all_introspected_datasource_ids:
-        result.append(get_datasource_context(project_layout, datasource_id))
-    return result
+    return [get_datasource_context(project_layout, datasource_id) for datasource_id in all_introspected_datasource_ids]
+
+
+def get_datasource_context_hashes(
+    project_layout: ProjectLayout, datasource_ids: Collection[DatasourceId]
+) -> list[DatasourceContextHash]:
+    return [
+        hash_context_file(datasource_id, datasource_id.absolute_path_to_context_file(project_layout))
+        for datasource_id in datasource_ids
+    ]
+
+
+def get_all_datasource_context_hashes(project_layout: ProjectLayout) -> list[DatasourceContextHash]:
+    all_introspected_datasource_ids = _get_datasources_with_context(project_layout)
+    return [
+        hash_context_file(datasource_id, datasource_id.absolute_path_to_context_file(project_layout))
+        for datasource_id in all_introspected_datasource_ids
+    ]
 
 
 def hash_context_file(datasource_id: DatasourceId, context_path: Path) -> DatasourceContextHash:
+    if not context_path.is_file():
+        raise ValueError(f"Context file not found for datasource {str(datasource_id)}")
+
     h = xxhash.xxh3_128()
     with open(context_path, "rb") as f:
         while bytes := f.read(65536):
