@@ -3,6 +3,7 @@ import os
 from duckdb import DuckDBPyConnection
 
 import databao_context_engine.perf.core as perf
+from databao_context_engine.build_sources.build_wiring import create_build_service
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.factory import (
@@ -11,8 +12,10 @@ from databao_context_engine.llm.factory import (
     create_ollama_service,
 )
 from databao_context_engine.llm.prompts.provider import PromptProvider
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.search_context.chunk_search_repository import ChunkSearchRepository, SearchResult
+from databao_context_engine.search_context.search_runner import run_context_search
 from databao_context_engine.search_context.search_service import RAG_MODE, ContextSearchMode, SearchContextService
 from databao_context_engine.services.factories import create_shard_resolver
 from databao_context_engine.storage.connection import open_duckdb_connection
@@ -30,6 +33,7 @@ from databao_context_engine.storage.connection import open_duckdb_connection
 @perf.perf_span("search_context.total")
 def search_context(
     project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
     search_text: str,
     limit: int | None,
     datasource_ids: list[DatasourceId] | None,
@@ -46,7 +50,13 @@ def search_context(
         search_context_service = _create_search_context_service(
             conn, embedding_provider=embedding_provider, prompt_provider=prompt_provider
         )
-        return search_context_service.search(
+        build_service = create_build_service(
+            conn, project_layout=project_layout, plugin_loader=plugin_loader, should_enrich_context=False
+        )
+        return run_context_search(
+            project_layout=project_layout,
+            search_context_service=search_context_service,
+            build_service=build_service,
             search_text=search_text,
             limit=limit,
             datasource_ids=datasource_ids,

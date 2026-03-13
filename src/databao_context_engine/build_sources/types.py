@@ -54,7 +54,6 @@ class BuildDatasourceResult(DatasourceResult):
 class EnrichContextResult(DatasourceResult):
     """Enrich context result for a single datasource."""
 
-    context_built_at: datetime | None = None
     context_file_path: Path | None = None
 
 

@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+import time_machine
 import yaml
 from pydantic import ValidationError
 
@@ -17,6 +18,7 @@ from databao_context_engine import (
     DatasourceType,
 )
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.project.layout import get_output_dir
 from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.dummy_build_plugin import (
@@ -143,58 +145,105 @@ def test_databao_context_domain_manager__build_with_multiple_datasource(domain_m
 
 
 def test_databao_context_domain_manager__index_built_contexts_indexes_all_when_no_ids(domain_manager, mocker):
-    c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
-    c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
+    with time_machine.travel("2025-03-11 10:30:00", tick=False):
+        c1 = DatasourceContext(
+            DatasourceId.from_string_repr("full/a.yaml"),
+            context="A",
+            context_hash=DatasourceContextHash(
+                datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+                hash="9b0498cbe3839becd0d496e05c553485",
+                hash_algorithm="XXH3_128",
+                hashed_at=datetime.now(),
+            ),
+        )
+        c2 = DatasourceContext(
+            DatasourceId.from_string_repr("other/b.yaml"),
+            context="B",
+            context_hash=DatasourceContextHash(
+                datasource_id=DatasourceId.from_string_repr("other/b.yaml"),
+                hash="9d1b9bc4078a3e7274d3766ca02423f3",
+                hash_algorithm="XXH3_128",
+                hashed_at=datetime.now(),
+            ),
+        )
 
-    given_output_dir_with_built_contexts(
-        domain_manager._project_layout, [(c1.datasource_id, c1.context), (c2.datasource_id, c2.context)]
-    )
+        given_output_dir_with_built_contexts(
+            domain_manager._project_layout, [(c1.datasource_id, c1.context), (c2.datasource_id, c2.context)]
+        )
 
-    index_fn = mocker.patch(
-        "databao_context_engine.databao_context_domain_manager.index_built_contexts",
-        autospec=True,
-        return_value="OK",
-    )
+        index_fn = mocker.patch(
+            "databao_context_engine.databao_context_domain_manager.index_built_contexts",
+            autospec=True,
+            return_value="OK",
+        )
 
-    result = domain_manager.index_built_contexts(datasource_ids=None)
+        result = domain_manager.index_built_contexts(datasource_ids=None)
 
-    assert result == "OK"
-    index_fn.assert_called_once_with(
-        project_layout=domain_manager._project_layout,
-        plugin_loader=domain_manager._plugin_loader,
-        contexts=[c1, c2],
-    )
+        assert result == "OK"
+        index_fn.assert_called_once_with(
+            project_layout=domain_manager._project_layout,
+            plugin_loader=domain_manager._plugin_loader,
+            contexts=[c1, c2],
+        )
 
 
 def test_databao_context_domain_manager__index_built_contexts_filters_by_datasource_path(domain_manager, mocker):
-    c1 = DatasourceContext(DatasourceId.from_string_repr("full/a.yaml"), context="A")
-    c2 = DatasourceContext(DatasourceId.from_string_repr("other/b.yaml"), context="B")
-    c3 = DatasourceContext(DatasourceId.from_string_repr("full/c.yaml"), context="C")
+    with time_machine.travel("2025-03-11 10:30:00", tick=False):
+        c1 = DatasourceContext(
+            DatasourceId.from_string_repr("full/a.yaml"),
+            context="A",
+            context_hash=DatasourceContextHash(
+                datasource_id=DatasourceId.from_string_repr("full/a.yaml"),
+                hash="9b0498cbe3839becd0d496e05c553485",
+                hash_algorithm="XXH3_128",
+                hashed_at=datetime.now(),
+            ),
+        )
+        c2 = DatasourceContext(
+            DatasourceId.from_string_repr("other/b.yaml"),
+            context="B",
+            context_hash=DatasourceContextHash(
+                datasource_id=DatasourceId.from_string_repr("other/b.yaml"),
+                hash="9d1b9bc4078a3e7274d3766ca02423f3",
+                hash_algorithm="XXH3_128",
+                hashed_at=datetime.now(),
+            ),
+        )
+        c3 = DatasourceContext(
+            DatasourceId.from_string_repr("full/c.yaml"),
+            context="C",
+            context_hash=DatasourceContextHash(
+                datasource_id=DatasourceId.from_string_repr("full/c.yaml"),
+                hash="5abe4bc5963a3172616e98f5aa1c80c0",
+                hash_algorithm="XXH3_128",
+                hashed_at=datetime.now(),
+            ),
+        )
 
-    given_output_dir_with_built_contexts(
-        domain_manager._project_layout,
-        [(c1.datasource_id, c1.context), (c2.datasource_id, c2.context), (c3.datasource_id, c3.context)],
-    )
+        given_output_dir_with_built_contexts(
+            domain_manager._project_layout,
+            [(c1.datasource_id, c1.context), (c2.datasource_id, c2.context), (c3.datasource_id, c3.context)],
+        )
 
-    index_fn = mocker.patch(
-        "databao_context_engine.databao_context_domain_manager.index_built_contexts",
-        autospec=True,
-        return_value="OK",
-    )
+        index_fn = mocker.patch(
+            "databao_context_engine.databao_context_domain_manager.index_built_contexts",
+            autospec=True,
+            return_value="OK",
+        )
 
-    wanted = [
-        DatasourceId.from_string_repr("full/a.yaml"),
-        DatasourceId.from_string_repr("full/c.yaml"),
-    ]
+        wanted = [
+            DatasourceId.from_string_repr("full/a.yaml"),
+            DatasourceId.from_string_repr("full/c.yaml"),
+        ]
 
-    result = domain_manager.index_built_contexts(datasource_ids=wanted)
+        result = domain_manager.index_built_contexts(datasource_ids=wanted)
 
-    assert result == "OK"
-    index_fn.assert_called_once_with(
-        project_layout=domain_manager._project_layout,
-        plugin_loader=domain_manager._plugin_loader,
-        contexts=[c1, c3],
-    )
+        assert result == "OK"
+        index_fn.assert_called_once_with(
+            project_layout=domain_manager._project_layout,
+            plugin_loader=domain_manager._plugin_loader,
+            contexts=[c1, c3],
+        )
 
 
 def test_databao_context_domain_manager__build_context_with_enriching(domain_manager, mocker):
@@ -247,7 +296,6 @@ def test_databao_context_domain_manager__enrich_built_contexts_with_dummy_plugin
                     BuiltDatasourceContext(
                         datasource_id=str(datasource_id),
                         datasource_type="dummy_enrichable",
-                        context_built_at=datetime.now(),
                         context={"value": "my_enrichable_data", "description": None},
                     )
                 ),

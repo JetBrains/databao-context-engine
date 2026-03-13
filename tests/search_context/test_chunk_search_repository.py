@@ -1,24 +1,31 @@
 import pytest
 
 from databao_context_engine import DatasourceId
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.search_context.chunk_search_repository import (
     ChunkSearchRepository,
     KeywordSearchScore,
     SearchResult,
 )
-from tests.utils.factories import make_chunk_and_embedding
+from tests.utils.factories import (
+    make_chunk_and_embedding,
+    make_chunk_and_embedding_for_datasource_context_hash,
+    make_datasource_context_hash,
+)
 
 DIM = 768
 
 
 def test_similarity_returns_display_and_distance(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -37,6 +44,7 @@ def test_similarity_returns_display_and_distance(
         search_vec=retrieve_vec,
         dimension=DIM,
         limit=10,
+        datasource_context_hashes=_all_datasource_context_hashes(datasource_context_hash_repo),
     )
 
     assert len(results) == 1
@@ -50,12 +58,14 @@ def test_similarity_returns_display_and_distance(
 
 def test_limit_is_applied(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
     for i in range(3):
         make_chunk_and_embedding(
+            datasource_context_hash_repo=datasource_context_hash_repo,
             chunk_repo=chunk_repo,
             embedding_repo=embedding_repo,
             table_name=table_name,
@@ -74,6 +84,7 @@ def test_limit_is_applied(
         search_vec=retrieve_vec,
         dimension=DIM,
         limit=2,
+        datasource_context_hashes=_all_datasource_context_hashes(datasource_context_hash_repo),
     )
 
     assert len(results) == 2
@@ -81,6 +92,7 @@ def test_limit_is_applied(
 
 def test_search_over_multiple_dataources(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
@@ -88,6 +100,7 @@ def test_search_over_multiple_dataources(
     # Create 2 clickhouse chunks
     for i in range(2):
         make_chunk_and_embedding(
+            datasource_context_hash_repo=datasource_context_hash_repo,
             chunk_repo=chunk_repo,
             embedding_repo=embedding_repo,
             table_name=table_name,
@@ -100,6 +113,7 @@ def test_search_over_multiple_dataources(
 
     # Create postgres chunk
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -112,6 +126,7 @@ def test_search_over_multiple_dataources(
 
     # Create snowflake chunk
     make_chunk_and_embedding(
+        datasource_context_hash_repo=datasource_context_hash_repo,
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
         table_name=table_name,
@@ -130,6 +145,7 @@ def test_search_over_multiple_dataources(
         search_vec=retrieve_vec,
         dimension=DIM,
         limit=10,
+        datasource_context_hashes=_all_datasource_context_hashes(datasource_context_hash_repo),
     )
 
     assert len(results) == 4
@@ -159,17 +175,49 @@ def test_search_over_multiple_dataources(
     )
 
 
-def test_search_over_multiple_dataources_with_datasource_filter(
+def test_search_over_multiple_datasources_with_datasource_filter(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
-    # Create 2 clickhouse chunks
+    clickhouse_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_clickhouse_db.yaml",
+        hash_="clickhouse-hash",
+        hash_algorithm="xxh3",
+    )
+    postgres_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_postgres_db.yaml",
+        hash_="postgres-hash",
+        hash_algorithm="xxh3",
+    )
+    postgres_other_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_postgres_db.yaml",
+        hash_="postgres-other-hash",
+        hash_algorithm="xxh3",
+    )
+    snowflake_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_snowflake.yaml",
+        hash_="snowflake-hash",
+        hash_algorithm="xxh3",
+    )
+    snowflake_other_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_snowflake.yaml",
+        hash_="snowflake-other-hash",
+        hash_algorithm="xxh3",
+    )
+
     for i in range(2):
-        make_chunk_and_embedding(
+        make_chunk_and_embedding_for_datasource_context_hash(
             chunk_repo=chunk_repo,
             embedding_repo=embedding_repo,
+            datasource_context_hash_id=clickhouse_hash.datasource_context_hash_id,
             table_name=table_name,
             dimension=DIM,
             full_type="f/type",
@@ -178,10 +226,10 @@ def test_search_over_multiple_dataources_with_datasource_filter(
             display_text=f"c{i}",
         )
 
-    # Create postgres chunk
-    make_chunk_and_embedding(
+    make_chunk_and_embedding_for_datasource_context_hash(
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
+        datasource_context_hash_id=postgres_hash.datasource_context_hash_id,
         table_name=table_name,
         dimension=DIM,
         full_type="f/type",
@@ -189,17 +237,39 @@ def test_search_over_multiple_dataources_with_datasource_filter(
         embeddable_text="Embeddable Postgres Chunk",
         display_text="Display Postgres Chunk",
     )
-
-    # Create snowflake chunk
-    make_chunk_and_embedding(
+    make_chunk_and_embedding_for_datasource_context_hash(
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
+        datasource_context_hash_id=postgres_other_hash.datasource_context_hash_id,
+        table_name=table_name,
+        dimension=DIM,
+        full_type="f/type",
+        datasource_id="databases/test_postgres_db.yaml",
+        embeddable_text="Embeddable Postgres Chunk Other Hash",
+        display_text="Display Postgres Chunk Other Hash",
+    )
+
+    make_chunk_and_embedding_for_datasource_context_hash(
+        chunk_repo=chunk_repo,
+        embedding_repo=embedding_repo,
+        datasource_context_hash_id=snowflake_hash.datasource_context_hash_id,
         table_name=table_name,
         dimension=DIM,
         full_type="f/type",
         datasource_id="databases/test_snowflake.yaml",
         embeddable_text="Embeddable Snowflake Chunk",
         display_text="Display Snowflake Chunk",
+    )
+    make_chunk_and_embedding_for_datasource_context_hash(
+        chunk_repo=chunk_repo,
+        embedding_repo=embedding_repo,
+        datasource_context_hash_id=snowflake_other_hash.datasource_context_hash_id,
+        table_name=table_name,
+        dimension=DIM,
+        full_type="f/type",
+        datasource_id="databases/test_snowflake.yaml",
+        embeddable_text="Embeddable Snowflake Chunk Other Hash",
+        display_text="Display Snowflake Chunk Other Hash",
     )
 
     repo = ChunkSearchRepository(conn)
@@ -210,13 +280,17 @@ def test_search_over_multiple_dataources_with_datasource_filter(
         search_vec=retrieve_vec,
         dimension=DIM,
         limit=10,
-        datasource_ids=[
-            DatasourceId.from_string_repr("databases/test_snowflake.yaml"),
-            DatasourceId.from_string_repr("databases/test_postgres_db.yaml"),
+        datasource_context_hashes=[
+            _to_datasource_context_hash(snowflake_hash),
+            _to_datasource_context_hash(postgres_hash),
         ],
     )
 
     assert len(results) == 2
+    assert {result.display_text for result in results} == {
+        "Display Postgres Chunk",
+        "Display Snowflake Chunk",
+    }
     assert (
         len(
             _get_all_results_for_datasource_id(
@@ -249,13 +323,34 @@ def _get_all_results_for_datasource_id(results: list[SearchResult], datasource_i
 
 def test_keyword_search_returns_results_ordered_by_bm25(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
-    make_chunk_and_embedding(
+    clickhouse_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_clickhouse_db.yaml",
+        hash_="clickhouse-hash",
+        hash_algorithm="xxh3",
+    )
+    postgres_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_postgres_db.yaml",
+        hash_="postgres-hash",
+        hash_algorithm="xxh3",
+    )
+    snowflake_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_snowflake.yaml",
+        hash_="snowflake-hash",
+        hash_algorithm="xxh3",
+    )
+
+    make_chunk_and_embedding_for_datasource_context_hash(
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
+        datasource_context_hash_id=clickhouse_hash.datasource_context_hash_id,
         table_name=table_name,
         dimension=DIM,
         full_type="f/type",
@@ -263,9 +358,10 @@ def test_keyword_search_returns_results_ordered_by_bm25(
         embeddable_text="customer customer profile analysis",
         display_text="high-relevance",
     )
-    make_chunk_and_embedding(
+    make_chunk_and_embedding_for_datasource_context_hash(
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
+        datasource_context_hash_id=postgres_hash.datasource_context_hash_id,
         table_name=table_name,
         dimension=DIM,
         full_type="f/type",
@@ -273,9 +369,10 @@ def test_keyword_search_returns_results_ordered_by_bm25(
         embeddable_text="customer profile",
         display_text="medium-relevance",
     )
-    make_chunk_and_embedding(
+    make_chunk_and_embedding_for_datasource_context_hash(
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
+        datasource_context_hash_id=snowflake_hash.datasource_context_hash_id,
         table_name=table_name,
         dimension=DIM,
         full_type="f/type",
@@ -286,7 +383,15 @@ def test_keyword_search_returns_results_ordered_by_bm25(
     conn.execute("PRAGMA create_fts_index('chunk', 'chunk_id', 'embeddable_text', overwrite=1);")
 
     repo = ChunkSearchRepository(conn)
-    results = repo.search_chunks_by_keyword_relevance(query_text="customer profile", limit=10)
+    results = repo.search_chunks_by_keyword_relevance(
+        query_text="customer profile",
+        limit=10,
+        datasource_context_hashes=[
+            _to_datasource_context_hash(clickhouse_hash),
+            _to_datasource_context_hash(postgres_hash),
+            _to_datasource_context_hash(snowflake_hash),
+        ],
+    )
 
     assert len(results) == 2
     assert all(isinstance(result.score, KeywordSearchScore) for result in results)
@@ -296,29 +401,45 @@ def test_keyword_search_returns_results_ordered_by_bm25(
 
 def test_keyword_search_honors_datasource_filter(
     conn,
+    datasource_context_hash_repo,
     chunk_repo,
     embedding_repo,
     table_name,
 ):
-    make_chunk_and_embedding(
+    excluded_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_postgres_db.yaml",
+        hash_="postgres-hash-excluded",
+        hash_algorithm="xxh3",
+    )
+    included_hash = make_datasource_context_hash(
+        datasource_context_hash_repo,
+        datasource_id="databases/test_postgres_db.yaml",
+        hash_="postgres-hash-included",
+        hash_algorithm="xxh3",
+    )
+
+    make_chunk_and_embedding_for_datasource_context_hash(
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
+        datasource_context_hash_id=excluded_hash.datasource_context_hash_id,
         table_name=table_name,
         dimension=DIM,
         full_type="f/type",
-        datasource_id="databases/test_clickhouse_db.yaml",
+        datasource_id="databases/test_postgres_db.yaml",
         embeddable_text="customer retention metrics",
-        display_text="clickhouse-match",
+        display_text="excluded-match",
     )
-    make_chunk_and_embedding(
+    make_chunk_and_embedding_for_datasource_context_hash(
         chunk_repo=chunk_repo,
         embedding_repo=embedding_repo,
+        datasource_context_hash_id=included_hash.datasource_context_hash_id,
         table_name=table_name,
         dimension=DIM,
         full_type="f/type",
         datasource_id="databases/test_postgres_db.yaml",
         embeddable_text="customer retention details",
-        display_text="postgres-match",
+        display_text="included-match",
     )
     conn.execute("PRAGMA create_fts_index('chunk', 'chunk_id', 'embeddable_text', overwrite=1);")
 
@@ -326,9 +447,22 @@ def test_keyword_search_honors_datasource_filter(
     results = repo.search_chunks_by_keyword_relevance(
         query_text="customer retention",
         limit=10,
-        datasource_ids=[DatasourceId.from_string_repr("databases/test_postgres_db.yaml")],
+        datasource_context_hashes=[_to_datasource_context_hash(included_hash)],
     )
 
     assert len(results) == 1
-    assert results[0].display_text == "postgres-match"
+    assert results[0].display_text == "included-match"
     assert results[0].datasource_id == DatasourceId.from_string_repr("databases/test_postgres_db.yaml")
+
+
+def _to_datasource_context_hash(dto) -> DatasourceContextHash:
+    return DatasourceContextHash(
+        datasource_id=DatasourceId.from_string_repr(dto.datasource_id),
+        hash=dto.hash,
+        hash_algorithm=dto.hash_algorithm,
+        hashed_at=dto.hashed_at,
+    )
+
+
+def _all_datasource_context_hashes(datasource_context_hash_repo) -> list[DatasourceContextHash]:
+    return [_to_datasource_context_hash(dto) for dto in datasource_context_hash_repo.list()]

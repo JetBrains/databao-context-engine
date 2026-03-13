@@ -1,7 +1,10 @@
+from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
 
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
@@ -32,7 +35,15 @@ def test_noop_on_empty_chunks(persistence, resolver, chunk_repo, embedding_repo,
     embedding_provider.model_id = "model:v1"
     embedding_provider.dim = 768
 
-    service.embed_chunks(chunks=[], result="", full_type="databases/some", datasource_id="databases/test.yml")
+    datasource_id = DatasourceId.from_string_repr("databases/test.yml")
+    service.embed_chunks(
+        chunks=[],
+        context_hash=DatasourceContextHash(
+            datasource_id=datasource_id, hash="", hash_algorithm="", hashed_at=datetime.now()
+        ),
+        full_type="databases/some",
+        datasource_id=str(datasource_id),
+    )
 
     assert chunk_repo.list() == []
     assert registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id) is None
@@ -64,11 +75,14 @@ def test_embeds_resolves_and_persists(persistence, resolver, chunk_repo, embeddi
         EmbeddableChunk(embeddable_text="C", content="c"),
     ]
 
+    datasource_id = DatasourceId.from_string_repr("test.yml")
     service.embed_chunks(
         chunks=chunks,
-        result="",
+        context_hash=DatasourceContextHash(
+            datasource_id=datasource_id, hash="", hash_algorithm="", hashed_at=datetime.now()
+        ),
         full_type="databases/some",
-        datasource_id="test.yml",
+        datasource_id=str(datasource_id),
     )
 
     expected_table = _expected_table(embedding_provider)
@@ -104,14 +118,17 @@ def test_provider_failure_writes_nothing(persistence, resolver, chunk_repo, embe
     )
 
     with pytest.raises(RuntimeError):
+        datasource_id = DatasourceId.from_string_repr("test.yml")
         service.embed_chunks(
             chunks=[
                 EmbeddableChunk(embeddable_text="X", content="x"),
                 EmbeddableChunk(embeddable_text="Y", content="y"),
             ],
-            result="",
+            context_hash=DatasourceContextHash(
+                datasource_id=datasource_id, hash="", hash_algorithm="", hashed_at=datetime.now()
+            ),
             full_type="databases/some",
-            datasource_id="test.yml",
+            datasource_id=str(datasource_id),
         )
 
     assert registry_repo.get(embedder=embedding_provider.embedder, model_id=embedding_provider.model_id) is None

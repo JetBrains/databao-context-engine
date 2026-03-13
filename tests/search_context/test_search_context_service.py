@@ -1,6 +1,8 @@
+from datetime import datetime
 from unittest.mock import Mock
 
 from databao_context_engine import DatasourceId
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.search_context.chunk_search_repository import (
@@ -48,9 +50,11 @@ def test_retrieve_returns_results():
         embedding_provider=provider,
         prompt_provider=None,
     )
+    datasource_context_hashes = [_make_datasource_context_hash("full/a.yaml")]
 
     result = retrieve_service.search(
         search_text="hello world",
+        datasource_context_hashes=datasource_context_hashes,
         rag_mode=RAG_MODE.RAW_QUERY,
         context_search_mode=ContextSearchMode.HYBRID_SEARCH,
     )
@@ -68,7 +72,7 @@ def test_retrieve_returns_results():
         search_text="hello world",
         dimension=768,
         limit=10,
-        datasource_ids=None,
+        datasource_context_hashes=datasource_context_hashes,
     )
 
     assert result == expected
@@ -102,10 +106,12 @@ def test_retrieve_honors_limit():
         embedding_provider=provider,
         prompt_provider=None,
     )
+    datasource_context_hashes = [_make_datasource_context_hash("full/x.yaml")]
 
     result = retrieve_service.search(
         search_text="q",
         limit=3,
+        datasource_context_hashes=datasource_context_hashes,
         rag_mode=RAG_MODE.RAW_QUERY,
         context_search_mode=ContextSearchMode.HYBRID_SEARCH,
     )
@@ -144,9 +150,14 @@ def test_retrieve_keyword_mode_calls_bm25_search():
         embedding_provider=provider,
         prompt_provider=None,
     )
+    datasource_context_hashes = [_make_datasource_context_hash("full/kw.yaml")]
 
     result = retrieve_service.search(
-        search_text="q", limit=3, rag_mode=RAG_MODE.RAW_QUERY, context_search_mode=ContextSearchMode.KEYWORD_SEARCH
+        search_text="q",
+        limit=3,
+        datasource_context_hashes=datasource_context_hashes,
+        rag_mode=RAG_MODE.RAW_QUERY,
+        context_search_mode=ContextSearchMode.KEYWORD_SEARCH,
     )
 
     shard_resolver.resolve.assert_not_called()
@@ -154,7 +165,7 @@ def test_retrieve_keyword_mode_calls_bm25_search():
     chunk_search_repo.search_chunks_by_keyword_relevance.assert_called_once_with(
         query_text="q",
         limit=3,
-        datasource_ids=None,
+        datasource_context_hashes=datasource_context_hashes,
     )
     assert result == expected
 
@@ -187,9 +198,14 @@ def test_retrieve_vector_mode_calls_vector_search():
         embedding_provider=provider,
         prompt_provider=None,
     )
+    datasource_context_hashes = [_make_datasource_context_hash("full/vec.yaml")]
 
     result = retrieve_service.search(
-        search_text="q", limit=3, rag_mode=RAG_MODE.RAW_QUERY, context_search_mode=ContextSearchMode.VECTOR_SEARCH
+        search_text="q",
+        limit=3,
+        datasource_context_hashes=datasource_context_hashes,
+        rag_mode=RAG_MODE.RAW_QUERY,
+        context_search_mode=ContextSearchMode.VECTOR_SEARCH,
     )
 
     chunk_search_repo.search_chunks_by_vector_similarity.assert_called_once_with(
@@ -197,6 +213,15 @@ def test_retrieve_vector_mode_calls_vector_search():
         search_vec=[0.5] * 768,
         dimension=768,
         limit=3,
-        datasource_ids=None,
+        datasource_context_hashes=datasource_context_hashes,
     )
     assert result == expected
+
+
+def _make_datasource_context_hash(datasource_id: str) -> DatasourceContextHash:
+    return DatasourceContextHash(
+        datasource_id=DatasourceId.from_string_repr(datasource_id),
+        hash="hash",
+        hash_algorithm="xxh3",
+        hashed_at=datetime.now(),
+    )
