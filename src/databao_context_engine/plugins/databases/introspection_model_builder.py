@@ -145,6 +145,7 @@ class IntrospectionModelBuilder:
                         default_expression=c.get("default_expression"),
                         generated=c.get("generated"),
                         checks=[],
+                        samples=[],
                     )
                 )
 
