@@ -180,7 +180,7 @@ def _build_one_datasource(
         )
 
         if should_enrich_context:
-            result = build_service.enrich_built_context(result, progress=progress)
+            result = build_service.enrich_built_context(built_context=result, progress=progress)
 
         output_dir = project_layout.output_dir
         context_file_path = export_build_result(output_dir, result)
