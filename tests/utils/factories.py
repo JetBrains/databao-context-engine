@@ -67,6 +67,7 @@ def make_embedding(
     chunk_repo: ChunkRepository,
     embedding_repo: EmbeddingRepository,
     *,
+    datasource_context_hash_id: int,
     table_name: str,
     chunk_id: int | None = None,
     dim: int = 768,
@@ -74,7 +75,7 @@ def make_embedding(
 ) -> EmbeddingDTO:
     vec = vec or [0.0] * dim
     if chunk_id is None:
-        chunk = make_chunk(chunk_repo)
+        chunk = make_chunk(chunk_repo, datasource_context_hash_id=datasource_context_hash_id)
         chunk_id = chunk.chunk_id
 
     return embedding_repo.create(
@@ -106,6 +107,7 @@ def make_chunk_and_embedding_for_datasource_context_hash(
     make_embedding(
         chunk_repo,
         embedding_repo,
+        datasource_context_hash_id=datasource_context_hash_id,
         table_name=table_name,
         chunk_id=chunk.chunk_id,
         dim=dimension,
