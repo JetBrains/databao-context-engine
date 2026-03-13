@@ -44,11 +44,12 @@ def svc(chunk_embed_svc, mocker):
 def test_build_context_no_chunks_skips_write_and_embed(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
+    svc._plugin_loader.get_plugin_for_datasource_type.return_value = plugin
     prepared = mk_prepared(Path("files") / "one.md", full_type="files/md")
 
     mocker.patch("databao_context_engine.build_sources.build_service.execute_plugin", return_value=mk_result())
 
-    out = svc.build_context(prepared_source=prepared, plugin=plugin)
+    out = svc.build_context(prepared_source=prepared)
 
     chunk_embed_svc.embed_chunks.assert_not_called()
     assert isinstance(out, BuiltDatasourceContext)
@@ -57,12 +58,13 @@ def test_build_context_no_chunks_skips_write_and_embed(svc, chunk_embed_svc, moc
 def test_build_context_happy_path_returns_built_context(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
+    svc._plugin_loader.get_plugin_for_datasource_type.return_value = plugin
     prepared = mk_prepared(Path("files") / "two.md", full_type="files/md")
 
     result = mk_result(name="files/two.md", typ="files/md", result={"context": "ok"})
     mocker.patch("databao_context_engine.build_sources.build_service.execute_plugin", return_value=result)
 
-    out = svc.build_context(prepared_source=prepared, plugin=plugin)
+    out = svc.build_context(prepared_source=prepared)
 
     chunk_embed_svc.embed_chunks.assert_not_called()
     assert out is result
@@ -71,6 +73,7 @@ def test_build_context_happy_path_returns_built_context(svc, chunk_embed_svc, mo
 def test_build_context_execute_error_bubbles_and_no_writes(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
+    svc._plugin_loader.get_plugin_for_datasource_type.return_value = plugin
     prepared = mk_prepared(Path("files") / "boom.md", full_type="files/md")
 
     mocker.patch(
@@ -78,7 +81,7 @@ def test_build_context_execute_error_bubbles_and_no_writes(svc, chunk_embed_svc,
     )
 
     with pytest.raises(RuntimeError):
-        svc.build_context(prepared_source=prepared, plugin=plugin)
+        svc.build_context(prepared_source=prepared)
 
     chunk_embed_svc.embed_chunks.assert_not_called()
 
@@ -87,12 +90,11 @@ def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
     plugin.context_type = dict
+    svc._plugin_loader.get_plugin_for_datasource_type.return_value = plugin
 
-    built_at = datetime(2026, 2, 4, 12, 0, 0)
     raw = {
         "datasource_id": "files/two.md",
         "datasource_type": "files/md",
-        "context_built_at": built_at,
         "context": {"hello": "world"},
     }
     yaml_text = yaml.safe_dump(raw)
@@ -114,7 +116,7 @@ def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
     chunks = [EmbeddableChunk(embeddable_text="a", content="A"), EmbeddableChunk(embeddable_text="b", content="B")]
     plugin.divide_context_into_chunks.return_value = chunks
 
-    svc.index_datasource_context(context=ctx, plugin=plugin)
+    svc.index_datasource_context(context=ctx)
 
     plugin.divide_context_into_chunks.assert_called_once_with({"hello": "world"})
     chunk_embed_svc.embed_chunks.assert_called_once_with(
@@ -131,11 +133,11 @@ def test_index_built_context_no_chunks_skips_embed(svc, chunk_embed_svc, mocker)
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
     plugin.context_type = dict
+    svc._plugin_loader.get_plugin_for_datasource_type.return_value = plugin
 
     raw = {
         "datasource_id": "files/empty.md",
         "datasource_type": "files/md",
-        "context_built_at": datetime(2026, 2, 4, 12, 0, 0),
         "context": {"nothing": True},
     }
     yaml_text = yaml.safe_dump(raw)
@@ -154,7 +156,7 @@ def test_index_built_context_no_chunks_skips_embed(svc, chunk_embed_svc, mocker)
 
     plugin.divide_context_into_chunks.return_value = []
 
-    svc.index_datasource_context(context=ctx, plugin=plugin)
+    svc.index_datasource_context(context=ctx)
 
     chunk_embed_svc.embed_chunks.assert_not_called()
 
@@ -162,12 +164,13 @@ def test_index_built_context_no_chunks_skips_embed(svc, chunk_embed_svc, mocker)
 def test_build_context_generate_embeddings_false_skips_chunking_and_embed(svc, chunk_embed_svc, mocker):
     plugin = mocker.Mock(name="Plugin")
     plugin.name = "pluggy"
+    svc._plugin_loader.get_plugin_for_datasource_type.return_value = plugin
     prepared = mk_prepared(Path("files") / "noembed.md", full_type="files/md")
 
     result = mk_result(name="files/noembed.md", typ="files/md", result={"context": "ok"})
     mocker.patch("databao_context_engine.build_sources.build_service.execute_plugin", return_value=result)
 
-    out = svc.build_context(prepared_source=prepared, plugin=plugin)
+    out = svc.build_context(prepared_source=prepared)
 
     plugin.divide_context_into_chunks.assert_not_called()
     chunk_embed_svc.embed_chunks.assert_not_called()

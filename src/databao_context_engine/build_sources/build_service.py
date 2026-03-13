@@ -19,6 +19,7 @@ from databao_context_engine.datasources.types import PreparedDatasource
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
+    DatasourceType,
 )
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader, NoPluginFoundForDatasource
 from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter, ProgressStep
@@ -46,7 +47,6 @@ class BuildService:
         self,
         *,
         prepared_source: PreparedDatasource,
-        plugin: BuildPlugin,
         progress: ProgressCallback | None = None,
     ) -> BuiltDatasourceContext:
         """Process a single source to build its context.
@@ -56,6 +56,7 @@ class BuildService:
         """
         emitter = ProgressEmitter(progress)
 
+        plugin = self._get_plugin_for_datasource_type(prepared_source.datasource_type)
         result = self._execute_plugin(prepared_source=prepared_source, plugin=plugin)
 
         emitter.datasource_step_completed(
@@ -73,7 +74,6 @@ class BuildService:
         self,
         *,
         context: DatasourceContext,
-        plugin: BuildPlugin,
         force_index: bool = False,
         progress: ProgressCallback | None = None,
     ) -> None:
@@ -82,12 +82,14 @@ class BuildService:
         1) Reconstructs the `BuiltDatasourceContext` object from the yaml context string
         2) Calls the plugin's chunker and persists the resulting chunks and embeddings.
         """
+        plugin = self._get_plugin_for_context(context=context)
+
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        self.index_built_context(
+        self._index_built_context(
             built_context=built,
-            plugin=plugin,
             context_hash=context.context_hash,
+            plugin=plugin,
             force_index=force_index,
             progress=progress,
         )
@@ -96,10 +98,30 @@ class BuildService:
         self,
         *,
         built_context: BuiltDatasourceContext,
-        plugin: BuildPlugin,
         context_hash: DatasourceContextHash,
         force_index: bool = False,
         progress: ProgressCallback | None = None,
+    ) -> None:
+        plugin = self._get_plugin_for_datasource_type(
+            datasource_type=DatasourceType(full_type=built_context.datasource_type)
+        )
+
+        self._index_built_context(
+            built_context=built_context,
+            context_hash=context_hash,
+            plugin=plugin,
+            force_index=force_index,
+            progress=progress,
+        )
+
+    def _index_built_context(
+        self,
+        *,
+        built_context: BuiltDatasourceContext,
+        context_hash: DatasourceContextHash,
+        plugin: BuildPlugin,
+        force_index: bool = False,
+        progress: ProgressCallback | None,
     ) -> None:
         if not force_index and self._chunk_embedding_service.is_context_already_indexed(context_hash=context_hash):
             logger.info(f"Context for {str(context_hash.datasource_id)} has already been indexed, skipping indexing.")
@@ -111,6 +133,8 @@ class BuildService:
                     step=step,
                 )
             return
+
+        perf.set_attribute("datasource_type", built_context.datasource_type)
 
         chunks = plugin.divide_context_into_chunks(built_context.context)
         perf.set_attribute("chunk_count", len(chunks))
@@ -147,20 +171,32 @@ class BuildService:
         return replace(built, context=typed_context)
 
     def enrich_datasource_context(
-        self, context: DatasourceContext, plugin: BuildPlugin, progress: ProgressCallback | None = None
+        self, context: DatasourceContext, progress: ProgressCallback | None = None
     ) -> BuiltDatasourceContext:
+        plugin = self._get_plugin_for_context(context=context)
+
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        return self.enrich_built_context(built_context=built, plugin=plugin, progress=progress)
+        return self._enrich_built_context(built_context=built, plugin=plugin, progress=progress)
 
     @perf.perf_span("plugin.enrich_context")
     def enrich_built_context(
+        self, built_context: BuiltDatasourceContext, progress: ProgressCallback | None = None
+    ) -> BuiltDatasourceContext:
+        plugin = self._get_plugin_for_datasource_type(
+            datasource_type=DatasourceType(full_type=built_context.datasource_type)
+        )
+
+        return self._enrich_built_context(built_context=built_context, plugin=plugin, progress=progress)
+
+    def _enrich_built_context(
         self, built_context: BuiltDatasourceContext, plugin: BuildPlugin, progress: ProgressCallback | None = None
     ) -> BuiltDatasourceContext:
         if not self._description_provider:
             raise ValueError("Prompt provider should never be None when enrich_context is enabled")
 
         emitter = ProgressEmitter(progress)
+        perf.set_attribute("datasource_type", built_context.datasource_type)
 
         new_context = plugin.enrich_context(built_context.context, self._description_provider)
 
@@ -182,19 +218,25 @@ class BuildService:
 
                 context = get_datasource_context(self._project_layout, datasource_context_hash.datasource_id)
 
-                datasource_type = read_datasource_type_from_context(context)
-                perf.set_attribute("datasource_type", getattr(datasource_type, "full_type", datasource_type))
-
-                plugin = self._plugin_loader.get_plugin_for_datasource_type(datasource_type)
-                if plugin is None:
-                    raise NoPluginFoundForDatasource()
-
                 self.index_datasource_context(
                     context=context,
-                    plugin=plugin,
                     # Forcing the index prevents checking for the datasource context hash again since we just did
                     force_index=True,
                 )
+
+    def _get_plugin_for_context(self, context: DatasourceContext) -> BuildPlugin:
+        datasource_type = read_datasource_type_from_context(context)
+
+        return self._get_plugin_for_datasource_type(datasource_type=datasource_type)
+
+    def _get_plugin_for_datasource_type(self, datasource_type: DatasourceType) -> BuildPlugin:
+        plugin = self._plugin_loader.get_plugin_for_datasource_type(datasource_type)
+        if plugin is None:
+            raise NoPluginFoundForDatasource(
+                f"No plugin found for datasource type {datasource_type.full_type}", datasource_type=datasource_type
+            )
+
+        return plugin
 
     @staticmethod
     def build_context_step_plan() -> tuple[ProgressStep, ...]:

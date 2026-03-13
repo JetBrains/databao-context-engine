@@ -18,12 +18,11 @@ from databao_context_engine.build_sources.types import (
 from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
     hash_context_file,
-    read_datasource_type_from_context,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
 from databao_context_engine.datasources.types import PreparedConfig, PreparedDatasource
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
-from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
+from databao_context_engine.plugins.plugin_loader import NoPluginFoundForDatasource
 from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter, ProgressStep
 from databao_context_engine.project.layout import ProjectLayout
 
@@ -55,7 +54,6 @@ def _build_step_plan(*, should_index: bool, should_enrich_context: bool) -> tupl
 def build(
     *,
     project_layout: ProjectLayout,
-    plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     should_index: bool,
     should_enrich_context: bool,
@@ -98,7 +96,6 @@ def build(
         try:
             result = _build_one_datasource(
                 project_layout=project_layout,
-                plugin_loader=plugin_loader,
                 build_service=build_service,
                 datasource_id=datasource_id,
                 should_index=should_index,
@@ -151,7 +148,6 @@ def build(
 def _build_one_datasource(
     *,
     project_layout: ProjectLayout,
-    plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     datasource_id,
     should_index: bool,
@@ -169,50 +165,48 @@ def _build_one_datasource(
         f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
     )
 
-    plugin = plugin_loader.get_plugin_for_datasource_type(prepared_source.datasource_type)
-    if plugin is None:
+    try:
+        ProgressEmitter(progress).datasource_step_plan_set(
+            datasource_id=str(datasource_id),
+            step_plan=_build_step_plan(
+                should_index=should_index,
+                should_enrich_context=should_enrich_context,
+            ),
+        )
+
+        result = build_service.build_context(
+            prepared_source=prepared_source,
+            progress=progress,
+        )
+
+        if should_enrich_context:
+            result = build_service.enrich_built_context(result, progress=progress)
+
+        output_dir = project_layout.output_dir
+        context_file_path = export_build_result(output_dir, result)
+
+        perf.set_attribute("context_size_bytes", context_file_path.stat().st_size)
+
+        if should_index:
+            context_hash = hash_context_file(
+                datasource_id=prepared_source.datasource_id, context_path=context_file_path
+            )
+            build_service.index_built_context(built_context=result, context_hash=context_hash, progress=progress)
+
+        return BuildDatasourceResult(
+            datasource_id=datasource_id,
+            status=DatasourceStatus.OK,
+            datasource_type=DatasourceType(full_type=result.datasource_type),
+            context_built_at=datetime.now(),
+            context_file_path=context_file_path,
+        )
+    except NoPluginFoundForDatasource as e:
         logger.warning(
             "No plugin for '%s' (datasource=%s) — skipping.",
-            prepared_source.datasource_type.full_type,
+            e.datasource_type.full_type,
             prepared_source.datasource_id.relative_path_to_config_file(),
         )
         return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
-
-    ProgressEmitter(progress).datasource_step_plan_set(
-        datasource_id=str(datasource_id),
-        step_plan=_build_step_plan(
-            should_index=should_index,
-            should_enrich_context=should_enrich_context,
-        ),
-    )
-
-    result = build_service.build_context(
-        prepared_source=prepared_source,
-        plugin=plugin,
-        progress=progress,
-    )
-
-    if should_enrich_context:
-        result = build_service.enrich_built_context(result, plugin, progress)
-
-    output_dir = project_layout.output_dir
-    context_file_path = export_build_result(output_dir, result)
-
-    perf.set_attribute("context_size_bytes", context_file_path.stat().st_size)
-
-    if should_index:
-        context_hash = hash_context_file(datasource_id=prepared_source.datasource_id, context_path=context_file_path)
-        build_service.index_built_context(
-            built_context=result, plugin=plugin, context_hash=context_hash, progress=progress
-        )
-
-    return BuildDatasourceResult(
-        datasource_id=datasource_id,
-        status=DatasourceStatus.OK,
-        datasource_type=DatasourceType(full_type=result.datasource_type),
-        context_built_at=datetime.now(),
-        context_file_path=context_file_path,
-    )
 
 
 def _is_datasource_enabled(prepared_source: PreparedDatasource) -> bool:
@@ -233,7 +227,6 @@ def _is_datasource_enabled(prepared_source: PreparedDatasource) -> bool:
 def run_enrich_context(
     *,
     project_layout: ProjectLayout,
-    plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     contexts: list[DatasourceContext],
     should_index: bool,
@@ -250,7 +243,6 @@ def run_enrich_context(
             result = _enrich_one_context(
                 project_layout=project_layout,
                 context=context,
-                plugin_loader=plugin_loader,
                 build_service=build_service,
                 should_index=should_index,
             )
@@ -286,38 +278,33 @@ def _enrich_one_context(
     *,
     project_layout: ProjectLayout,
     context: DatasourceContext,
-    plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     should_index: bool,
 ) -> EnrichContextResult:
     perf.set_attribute("context_size_bytes", len(context.context.encode("utf-8")))
 
-    datasource_type = read_datasource_type_from_context(context)
-    perf.set_attribute("datasource_type", getattr(datasource_type, "full_type", datasource_type))
+    try:
+        enriched_context = build_service.enrich_datasource_context(context=context)
 
-    plugin = plugin_loader.get_plugin_for_datasource_type(datasource_type)
-    if plugin is None:
+        output_dir = project_layout.output_dir
+        context_file_path = export_build_result(output_dir, enriched_context)
+
+        if should_index:
+            context_hash = hash_context_file(datasource_id=context.datasource_id, context_path=context_file_path)
+            build_service.index_built_context(built_context=enriched_context, context_hash=context_hash)
+
+        return EnrichContextResult(
+            datasource_id=context.datasource_id,
+            status=DatasourceStatus.OK,
+            context_file_path=context_file_path,
+        )
+    except NoPluginFoundForDatasource as e:
         logger.warning(
             "No plugin for datasource type '%s' — skipping context enrichment for datasource %s.",
-            getattr(datasource_type, "full_type", datasource_type),
+            e.datasource_type.full_type,
             context.datasource_id,
         )
         return EnrichContextResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
-
-    enriched_context = build_service.enrich_datasource_context(context=context, plugin=plugin)
-
-    output_dir = project_layout.output_dir
-    context_file_path = export_build_result(output_dir, enriched_context)
-
-    if should_index:
-        context_hash = hash_context_file(datasource_id=context.datasource_id, context_path=context_file_path)
-        build_service.index_built_context(built_context=enriched_context, plugin=plugin, context_hash=context_hash)
-
-    return EnrichContextResult(
-        datasource_id=context.datasource_id,
-        status=DatasourceStatus.OK,
-        context_file_path=context_file_path,
-    )
 
 
 @perf.perf_run(operation="index")
@@ -325,7 +312,6 @@ def _enrich_one_context(
 def run_indexing(
     *,
     project_layout: ProjectLayout,
-    plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     contexts: list[DatasourceContext],
     progress: ProgressCallback | None = None,
@@ -356,9 +342,7 @@ def run_indexing(
         try:
             logger.info(f"Indexing datasource {context.datasource_id}")
 
-            result = _index_one_context(
-                context=context, plugin_loader=plugin_loader, build_service=build_service, progress=progress
-            )
+            result = _index_one_context(context=context, build_service=build_service, progress=progress)
 
             results.append(result)
             if result.status == DatasourceStatus.OK:
@@ -406,28 +390,23 @@ def run_indexing(
 def _index_one_context(
     *,
     context: DatasourceContext,
-    plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     progress: ProgressCallback | None = None,
 ) -> IndexDatasourceResult:
     perf.set_attribute("context_size_bytes", len(context.context.encode("utf-8")))
 
-    datasource_type = read_datasource_type_from_context(context)
-    perf.set_attribute("datasource_type", getattr(datasource_type, "full_type", datasource_type))
+    try:
+        ProgressEmitter(progress).datasource_step_plan_set(
+            datasource_id=str(context.datasource_id),
+            step_plan=BuildService.index_step_plan(),
+        )
 
-    plugin = plugin_loader.get_plugin_for_datasource_type(datasource_type)
-    if plugin is None:
+        build_service.index_datasource_context(context=context, progress=progress)
+        return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK)
+    except NoPluginFoundForDatasource as e:
         logger.warning(
             "No plugin for datasource type '%s' — skipping indexing for %s.",
-            getattr(datasource_type, "full_type", datasource_type),
+            e.datasource_type.full_type,
             context.datasource_id,
         )
         return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
-
-    ProgressEmitter(progress).datasource_step_plan_set(
-        datasource_id=str(context.datasource_id),
-        step_plan=BuildService.index_step_plan(),
-    )
-
-    build_service.index_datasource_context(context=context, plugin=plugin, progress=progress)
-    return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK)
