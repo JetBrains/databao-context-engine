@@ -56,7 +56,6 @@ def build_all_datasources(
         )
         return build(
             project_layout=project_layout,
-            plugin_loader=plugin_loader,
             build_service=build_service,
             should_index=should_index,
             should_enrich_context=should_enrich_context,
@@ -85,7 +84,6 @@ def enrich_built_contexts(
         )
         return run_enrich_context(
             project_layout=project_layout,
-            plugin_loader=plugin_loader,
             build_service=build_service,
             contexts=contexts,
             should_index=should_index,
@@ -119,9 +117,7 @@ def index_built_contexts(
             plugin_loader=plugin_loader,
             should_enrich_context=False,
         )
-        return run_indexing(
-            project_layout=project_layout, plugin_loader=plugin_loader, build_service=build_service, contexts=contexts
-        )
+        return run_indexing(project_layout=project_layout, build_service=build_service, contexts=contexts)
 
 
 def create_build_service(
