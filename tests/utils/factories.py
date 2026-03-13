@@ -84,6 +84,35 @@ def make_embedding(
     )
 
 
+def make_chunk_and_embedding_for_datasource_context_hash(
+    chunk_repo: ChunkRepository,
+    embedding_repo: EmbeddingRepository,
+    datasource_context_hash_id: int,
+    table_name: str,
+    dimension: int,
+    full_type: str,
+    datasource_id: str,
+    embeddable_text: str,
+    display_text: str,
+):
+    chunk = make_chunk(
+        chunk_repo,
+        datasource_context_hash_id=datasource_context_hash_id,
+        full_type=full_type,
+        datasource_id=datasource_id,
+        embeddable_text=embeddable_text,
+        display_text=display_text,
+    )
+    make_embedding(
+        chunk_repo,
+        embedding_repo,
+        table_name=table_name,
+        chunk_id=chunk.chunk_id,
+        dim=dimension,
+        vec=[1.0] + [0.0] * (dimension - 1),
+    )
+
+
 def make_chunk_and_embedding(
     datasource_context_hash_repo: DatasourceContextHashRepository,
     chunk_repo: ChunkRepository,
@@ -99,19 +128,14 @@ def make_chunk_and_embedding(
         datasource_context_hash_repo, datasource_id=datasource_id
     )
 
-    chunk = make_chunk(
-        chunk_repo,
+    make_chunk_and_embedding_for_datasource_context_hash(
+        chunk_repo=chunk_repo,
+        embedding_repo=embedding_repo,
         datasource_context_hash_id=datasource_context_hash.datasource_context_hash_id,
+        table_name=table_name,
+        dimension=dimension,
         full_type=full_type,
         datasource_id=datasource_id,
         embeddable_text=embeddable_text,
         display_text=display_text,
-    )
-    make_embedding(
-        chunk_repo,
-        embedding_repo,
-        table_name=table_name,
-        chunk_id=chunk.chunk_id,
-        dim=dimension,
-        vec=[1.0] + [0.0] * (dimension - 1),
     )

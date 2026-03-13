@@ -6,6 +6,7 @@ from typing import Any
 import duckdb
 
 import databao_context_engine.perf.core as perf
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
@@ -88,7 +89,7 @@ class ChunkSearchRepository:
         search_vec: Sequence[float],
         dimension: int,
         limit: int,
-        datasource_ids: list[DatasourceId] | None = None,
+        datasource_context_hashes: list[DatasourceContextHash],
     ) -> list[SearchResult]:
         """Read only similarity search on a specific embedding shard table."""
         vector_candidates = self._get_vector_candidates(
@@ -96,7 +97,7 @@ class ChunkSearchRepository:
             search_vec=search_vec,
             dimension=dimension,
             limit=limit,
-            datasource_ids=datasource_ids,
+            datasource_context_hashes=datasource_context_hashes,
         )
         return [
             SearchResult(
@@ -118,27 +119,41 @@ class ChunkSearchRepository:
         search_vec: Sequence[float],
         dimension: int,
         limit: int,
-        datasource_ids: list[DatasourceId] | None = None,
+        datasource_context_hashes: list[DatasourceContextHash],
     ) -> list[VectorSearchCandidate]:
         """Read only vector candidates on a specific embedding shard table."""
-        params: list[Any] = [list(search_vec), self._DEFAULT_DISTANCE_THRESHOLD, limit]
-        if datasource_ids:
-            params.append([str(datasource_id) for datasource_id in datasource_ids])
+        if not datasource_context_hashes:
+            return []
+
+        allowed_hashes_sql, hash_params = self._build_allowed_hashes_values(datasource_context_hashes)
+        params: list[Any] = [
+            *hash_params,
+            list(search_vec),
+            self._DEFAULT_DISTANCE_THRESHOLD,
+            limit,
+        ]
 
         rows = self._conn.execute(
             f"""
-            WITH vector_candidates AS (
+            WITH allowed_hashes(datasource_id, hash, hash_algorithm) AS (
+                VALUES {allowed_hashes_sql}
+            ),
+            vector_candidates AS (
                 SELECT
                     c.chunk_id,
                     COALESCE(c.display_text, c.embeddable_text) AS display_text,
                     c.embeddable_text,
-                    array_cosine_distance(e.vec, CAST($1 AS FLOAT[{dimension}])) AS cosine_distance,
+                    array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) AS cosine_distance,
                     c.full_type,
                     c.datasource_id
                 FROM
                     {table_name} e
                     JOIN chunk c ON e.chunk_id = c.chunk_id
-                {"WHERE c.datasource_id IN $4" if datasource_ids else ""}
+                    JOIN datasource_context_hash h ON c.datasource_context_hash_id = h.datasource_context_hash_id
+                    JOIN allowed_hashes ah
+                        ON h.datasource_id = ah.datasource_id
+                        AND h.hash = ah.hash
+                        AND h.hash_algorithm = ah.hash_algorithm
             )
             SELECT
                 vc.chunk_id,
@@ -150,10 +165,10 @@ class ChunkSearchRepository:
             FROM
                 vector_candidates vc
             WHERE
-                vc.cosine_distance < $2
+                vc.cosine_distance < ?
             ORDER BY
                 vc.cosine_distance ASC
-            LIMIT $3
+            LIMIT ?
             """,
             params,
         ).fetchall()
@@ -179,7 +194,7 @@ class ChunkSearchRepository:
         search_text: str,
         dimension: int,
         limit: int,
-        datasource_ids: list[DatasourceId] | None = None,
+        datasource_context_hashes: list[DatasourceContextHash],
     ) -> list[SearchResult]:
         """Hybrid retrieval combining vector similarity and BM25 with Reciprocal Rank Fusion (RRF).
 
@@ -192,13 +207,13 @@ class ChunkSearchRepository:
             search_vec=search_vec,
             dimension=dimension,
             limit=candidate_limit,
-            datasource_ids=datasource_ids,
+            datasource_context_hashes=datasource_context_hashes,
         )
 
         bm25_candidates = self._get_bm25_candidates(
             query_text=search_text,
             limit=candidate_limit,
-            datasource_ids=datasource_ids,
+            datasource_context_hashes=datasource_context_hashes,
         )
         return self._fuse_by_rrf(
             vector_candidates=vector_candidates,
@@ -212,13 +227,13 @@ class ChunkSearchRepository:
         *,
         query_text: str,
         limit: int,
-        datasource_ids: list[DatasourceId] | None = None,
+        datasource_context_hashes: list[DatasourceContextHash],
     ) -> list[SearchResult]:
         """Read only BM25 search over chunk text."""
         bm25_candidates = self._get_bm25_candidates(
             query_text=query_text,
             limit=limit,
-            datasource_ids=datasource_ids,
+            datasource_context_hashes=datasource_context_hashes,
         )
 
         return [
@@ -239,18 +254,20 @@ class ChunkSearchRepository:
         *,
         query_text: str,
         limit: int,
-        datasource_ids: list[DatasourceId] | None = None,
+        datasource_context_hashes: list[DatasourceContextHash],
     ) -> list[Bm25SearchCandidate]:
-        datasource_values = [str(datasource_id) for datasource_id in datasource_ids] if datasource_ids else None
-        filter_sql = "WHERE c.datasource_id IN ?" if datasource_values else ""
-        params: list[Any] = [query_text]
-        if datasource_values:
-            params.append(datasource_values)
-        params.append(limit)
+        if not datasource_context_hashes:
+            return []
+
+        allowed_hashes_sql, hash_params = self._build_allowed_hashes_values(datasource_context_hashes)
+        params: list[Any] = [*hash_params, query_text, limit]
 
         rows = self._conn.execute(
             f"""
-            WITH bm25_candidates AS (
+            WITH allowed_hashes(datasource_id, hash, hash_algorithm) AS (
+                VALUES {allowed_hashes_sql}
+            ),
+            bm25_candidates AS (
                 SELECT
                     c.chunk_id,
                     COALESCE(c.display_text, c.embeddable_text) AS display_text,
@@ -263,7 +280,11 @@ class ChunkSearchRepository:
                     ) AS bm25_score
                 FROM
                     chunk c
-                {filter_sql}
+                    JOIN datasource_context_hash h ON c.datasource_context_hash_id = h.datasource_context_hash_id
+                    JOIN allowed_hashes ah
+                        ON h.datasource_id = ah.datasource_id
+                        AND h.hash = ah.hash
+                        AND h.hash_algorithm = ah.hash_algorithm
             )
             SELECT
                 b.chunk_id,
@@ -294,6 +315,20 @@ class ChunkSearchRepository:
             )
             for row in rows
         ]
+
+    @staticmethod
+    def _build_allowed_hashes_values(datasource_context_hashes: list[DatasourceContextHash]) -> tuple[str, list[Any]]:
+        allowed_hashes_sql = ", ".join(["(?, ?, ?)"] * len(datasource_context_hashes))
+        params: list[Any] = []
+        for datasource_context_hash in datasource_context_hashes:
+            params.extend(
+                [
+                    str(datasource_context_hash.datasource_id),
+                    datasource_context_hash.hash,
+                    datasource_context_hash.hash_algorithm,
+                ]
+            )
+        return allowed_hashes_sql, params
 
     @perf.perf_span("chunk_search._fuse_by_rrf")
     def _fuse_by_rrf(

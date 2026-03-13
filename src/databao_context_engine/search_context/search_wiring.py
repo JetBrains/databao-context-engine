@@ -13,6 +13,7 @@ from databao_context_engine.llm.factory import (
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.search_context.chunk_search_repository import ChunkSearchRepository, SearchResult
+from databao_context_engine.search_context.search_runner import run_context_search
 from databao_context_engine.search_context.search_service import RAG_MODE, ContextSearchMode, SearchContextService
 from databao_context_engine.services.factories import create_shard_resolver
 from databao_context_engine.storage.connection import open_duckdb_connection
@@ -46,7 +47,9 @@ def search_context(
         search_context_service = _create_search_context_service(
             conn, embedding_provider=embedding_provider, prompt_provider=prompt_provider
         )
-        return search_context_service.search(
+        return run_context_search(
+            project_layout=project_layout,
+            search_context_service=search_context_service,
             search_text=search_text,
             limit=limit,
             datasource_ids=datasource_ids,
