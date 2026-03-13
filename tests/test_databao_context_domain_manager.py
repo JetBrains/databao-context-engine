@@ -163,6 +163,7 @@ def test_databao_context_domain_manager__index_built_contexts_indexes_all_when_n
         project_layout=domain_manager._project_layout,
         plugin_loader=domain_manager._plugin_loader,
         contexts=[c1, c2],
+        progress=None,
     )
 
 
@@ -194,6 +195,7 @@ def test_databao_context_domain_manager__index_built_contexts_filters_by_datasou
         project_layout=domain_manager._project_layout,
         plugin_loader=domain_manager._plugin_loader,
         contexts=[c1, c3],
+        progress=None,
     )
 
 
