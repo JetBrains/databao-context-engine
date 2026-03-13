@@ -5,12 +5,14 @@ from types import SimpleNamespace
 import pytest
 import time_machine
 
-from databao_context_engine import DatabaoContextPluginLoader, DatasourceContext, DatasourceId
+from databao_context_engine import DatasourceContext, DatasourceId, DatasourceStatus
 from databao_context_engine.build_sources import build_runner
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.datasources.types import PreparedConfig, PreparedFile
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
+from databao_context_engine.plugins.plugin_loader import NoPluginFoundForDatasource
+from databao_context_engine.serialization.yaml import to_yaml_string
 
 
 def _result(name="files/demo.md", typ="files/md"):
@@ -43,7 +45,6 @@ def test_build_returns_early_when_no_sources(stub_sources, mock_build_service, p
     stub_sources([])
     build_runner.build(
         project_layout=project_layout,
-        plugin_loader=DatabaoContextPluginLoader(),
         build_service=mock_build_service,
         should_index=True,
         should_enrich_context=False,
@@ -64,20 +65,18 @@ def test_build_skips_source_without_plugin(
             )
         ]
     )
+    mock_build_service.build_context.side_effect = [NoPluginFoundForDatasource("boom", DatasourceType(full_type="md"))]
 
-    build_runner.build(
+    results = build_runner.build(
         project_layout=project_layout,
-        plugin_loader=DatabaoContextPluginLoader(plugins_by_type={}),
         build_service=mock_build_service,
         should_index=True,
         should_enrich_context=False,
     )
-    mock_build_service.start_run.assert_not_called()
-    mock_build_service.build_context.assert_not_called()
-    mock_build_service.finalize_run.assert_not_called()
+    mock_build_service.build_context.assert_called_once()
 
-    exports = list(fake_output_dir.glob("*.yaml"))
-    assert not any(p.name != "all_results.yaml" for p in exports)
+    assert len(results) == 1
+    assert results[0].status == DatasourceStatus.SKIPPED
 
 
 def test_build_processes_file_source_and_exports(
@@ -93,8 +92,6 @@ def test_build_processes_file_source_and_exports(
             )
         ]
     )
-    plugin = mocker.Mock(name="BuildFilePlugin")
-    plugin_loader = DatabaoContextPluginLoader(plugins_by_type={DatasourceType(full_type="files/md"): plugin})
 
     with time_machine.travel("2025-03-11 10:30:00", tick=False):
         result = _result(name="files/one.md", typ="files/md")
@@ -102,7 +99,6 @@ def test_build_processes_file_source_and_exports(
 
         build_runner.build(
             project_layout=project_layout,
-            plugin_loader=plugin_loader,
             build_service=mock_build_service,
             should_index=True,
             should_enrich_context=False,
@@ -111,7 +107,6 @@ def test_build_processes_file_source_and_exports(
         mock_build_service.build_context.assert_called_once()
         mock_build_service.index_built_context.assert_called_once_with(
             built_context=result,
-            plugin=plugin,
             context_hash=DatasourceContextHash(
                 datasource_id=DatasourceId.from_string_repr(result.datasource_id),
                 hash="a59b9fa8606781aaf033490eb635ed7e",
@@ -121,7 +116,7 @@ def test_build_processes_file_source_and_exports(
         )
 
 
-def test_build_continues_on_service_exception(stub_sources, stub_prepare, mock_build_service, mocker, project_layout):
+def test_build_continues_on_service_exception(stub_sources, stub_prepare, mock_build_service, project_layout):
     stub_sources(
         [
             (DatasourceId(datasource_path="files/a", config_file_suffix=".md")),
@@ -140,14 +135,10 @@ def test_build_continues_on_service_exception(stub_sources, stub_prepare, mock_b
             ),
         ]
     )
-    plugin_loader = DatabaoContextPluginLoader(
-        plugins_by_type={DatasourceType(full_type="files/md"): mocker.Mock(name="BuildFilePlugin")}
-    )
     mock_build_service.build_context.side_effect = [RuntimeError("boom"), _result(name="files/b.md")]
 
     build_runner.build(
         project_layout=project_layout,
-        plugin_loader=plugin_loader,
         build_service=mock_build_service,
         should_index=True,
         should_enrich_context=False,
@@ -156,15 +147,10 @@ def test_build_continues_on_service_exception(stub_sources, stub_prepare, mock_b
     assert mock_build_service.build_context.call_count == 2
 
 
-def test_run_indexing_indexes_when_plugin_exists(mocker, mock_build_service, project_layout):
-    plugin = mocker.Mock(name="BuildFilePlugin")
-    ds_type = DatasourceType(full_type="files/md")
-
-    mocker.patch.object(build_runner, "read_datasource_type_from_context", return_value=ds_type)
-
+def test_run_indexing_indexes_when_plugin_exists(mock_build_service, project_layout):
     ctx = DatasourceContext(
         datasource_id=DatasourceId.from_string_repr("files/one.md"),
-        context="irrelevant for this test",
+        context=to_yaml_string({"type": "md"}),
         context_hash=DatasourceContextHash(
             datasource_id=DatasourceId.from_string_repr("files/one.md"),
             hash="irrelevant for this test",
@@ -175,46 +161,14 @@ def test_run_indexing_indexes_when_plugin_exists(mocker, mock_build_service, pro
 
     build_runner.run_indexing(
         project_layout=project_layout,
-        plugin_loader=DatabaoContextPluginLoader(plugins_by_type={ds_type: plugin}),
         build_service=mock_build_service,
         contexts=[ctx],
     )
 
-    mock_build_service.index_datasource_context.assert_called_once_with(context=ctx, plugin=plugin)
+    mock_build_service.index_datasource_context.assert_called_once_with(context=ctx)
 
 
-def test_run_indexing_skips_when_plugin_missing(mocker, mock_build_service, project_layout, caplog):
-    ds_type = DatasourceType(full_type="files/md")
-
-    mocker.patch.object(build_runner, "read_datasource_type_from_context", return_value=ds_type)
-
-    ctx = DatasourceContext(
-        datasource_id=DatasourceId.from_string_repr("files/one.md"),
-        context="irrelevant for this test",
-        context_hash=DatasourceContextHash(
-            datasource_id=DatasourceId.from_string_repr("files/one.md"),
-            hash="irrelevant for this test",
-            hash_algorithm="irrelevant for this test",
-            hashed_at=datetime.now(),
-        ),
-    )
-
-    build_runner.run_indexing(
-        project_layout=project_layout,
-        plugin_loader=DatabaoContextPluginLoader(plugins_by_type={}),
-        build_service=mock_build_service,
-        contexts=[ctx],
-    )
-
-    mock_build_service.index_datasource_context.assert_not_called()
-
-
-def test_run_indexing_continues_on_exception(mocker, mock_build_service, project_layout):
-    plugin = mocker.Mock(name="BuildFilePlugin")
-    ds_type = DatasourceType(full_type="files/md")
-
-    mocker.patch.object(build_runner, "read_datasource_type_from_context", return_value=ds_type)
-
+def test_run_indexing_continues_on_exception(mock_build_service, project_layout):
     c1 = DatasourceContext(
         DatasourceId.from_string_repr("files/a.md"),
         context="a",
@@ -240,17 +194,16 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
 
     build_runner.run_indexing(
         project_layout=project_layout,
-        plugin_loader=DatabaoContextPluginLoader(plugins_by_type={ds_type: plugin}),
         build_service=mock_build_service,
         contexts=[c1, c2],
     )
 
     assert mock_build_service.index_datasource_context.call_count == 2
-    mock_build_service.index_datasource_context.assert_any_call(context=c1, plugin=plugin)
-    mock_build_service.index_datasource_context.assert_any_call(context=c2, plugin=plugin)
+    mock_build_service.index_datasource_context.assert_any_call(context=c1)
+    mock_build_service.index_datasource_context.assert_any_call(context=c2)
 
 
-def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_build_service, project_layout, mocker):
+def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_build_service, project_layout):
     datasource_id = DatasourceId.from_string_repr("configs/my_source.yaml")
     stub_sources([datasource_id])
 
@@ -265,13 +218,8 @@ def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_bui
         ]
     )
 
-    plugin_loader = DatabaoContextPluginLoader(
-        plugins_by_type={DatasourceType(full_type="my/type"): mocker.Mock(name="BuildDatasourcePlugin")}
-    )
-
     build_runner.build(
         project_layout=project_layout,
-        plugin_loader=plugin_loader,
         build_service=mock_build_service,
         should_index=True,
         should_enrich_context=False,
