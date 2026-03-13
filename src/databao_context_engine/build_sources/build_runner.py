@@ -1,5 +1,7 @@
 import logging
 
+from pydantic import TypeAdapter
+
 import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.export_results import (
@@ -17,7 +19,7 @@ from databao_context_engine.datasources.datasource_context import (
     read_datasource_type_from_context,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
-from databao_context_engine.datasources.types import PreparedConfig
+from databao_context_engine.datasources.types import PreparedConfig, PreparedDatasource
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
@@ -110,7 +112,7 @@ def _build_one_datasource(
     should_enrich_context: bool,
 ) -> BuildDatasourceResult:
     prepared_source = prepare_source(project_layout, datasource_id)
-    if isinstance(prepared_source, PreparedConfig) and prepared_source.config.get("enabled") is False:
+    if not _is_datasource_enabled(prepared_source):
         logger.info(f"Skipping disabled datasource {prepared_source.datasource_id.datasource_path}")
         return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
 
@@ -148,6 +150,14 @@ def _build_one_datasource(
         context_built_at=result.context_built_at,
         context_file_path=context_file_path,
     )
+
+
+def _is_datasource_enabled(prepared_source: PreparedDatasource) -> bool:
+    if isinstance(prepared_source, PreparedConfig):
+        enabled_attribute = prepared_source.config.get("enabled", True)
+        return TypeAdapter(bool).validate_python(enabled_attribute)
+
+    return True
 
 
 @perf.perf_run(
