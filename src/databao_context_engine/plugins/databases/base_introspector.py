@@ -110,6 +110,8 @@ class BaseIntrospector(Generic[T], ABC):
             for table in schema.tables:
                 if sampling_matcher.should_sample(catalog, schema.name, table.name):
                     table.samples = self._collect_samples_for_table(connection, catalog, schema.name, table.name)
+                    for column in table.columns:
+                        column.samples = [sample[column.name] for sample in table.samples]
 
     def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
         if self.supports_catalogs:
