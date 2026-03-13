@@ -155,7 +155,7 @@ class ChunkRepository:
         datasource_id: str,
         chunk_contents: Sequence[Tuple[str, Optional[str], str, str]],
     ) -> Sequence[int]:
-        values_sql = ", ".join(["(?, ?, ?, ?, ?)"] * len(chunk_contents))
+        values_sql = ", ".join(["(?, ?, ?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
             INSERT INTO
                 chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text)
