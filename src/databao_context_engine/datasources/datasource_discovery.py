@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any
+import re
 
 import yaml
 
@@ -20,6 +21,7 @@ from databao_context_engine.templating.renderer import render_template
 
 logger = logging.getLogger(__name__)
 
+_INVALID_CHAR_RE = re.compile(r"[^A-Za-z0-9_]")
 
 def get_datasource_list(project_layout: ProjectLayout) -> list[ConfiguredDatasource]:
     result = []
@@ -124,7 +126,7 @@ def prepare_source(project_layout: ProjectLayout, datasource_id: DatasourceId) -
         datasource_id=datasource_id,
         datasource_type=DatasourceType(full_type=ds_type),
         config=config,
-        datasource_name=datasource_path.stem,
+        datasource_name=_INVALID_CHAR_RE.sub("_", datasource_path.stem)
     )
 
 
