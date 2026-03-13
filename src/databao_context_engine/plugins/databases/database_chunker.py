@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from typing import Any
 
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.plugins.databases.databases_types import (
@@ -22,6 +23,7 @@ class DatabaseColumnChunkContent:
     schema_name: str
     table_name: str
     column: DatabaseColumn
+    samples: list[Any]
 
 
 def build_database_chunks(result: DatabaseIntrospectionResult) -> list[EmbeddableChunk]:
@@ -60,6 +62,7 @@ def _create_column_chunk(
             schema_name=schema_name,
             table_name=table.name,
             column=column,
+            samples=[sample[column.name] for sample in table.samples]
         ),
     )
 
