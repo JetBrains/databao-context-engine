@@ -132,7 +132,7 @@ class DatabaoContextEngine:
             search_text: The text to search for in the contexts.
             limit: The maximum number of results to return. If None is provided, a default limit of 10 will be used.
             datasource_ids: If provided, the search results will only come from the datasources with these IDs.
-            context_search_mode: Search strategy to use.
+            context_search_mode: Search strategy to use. Defaults to HYBRID_SEARCH if None is provided.
             chunk_type: If provided, the search results will only come from the chunks of this type.
 
         Returns:

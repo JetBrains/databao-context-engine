@@ -30,7 +30,7 @@ class ChunkRepository:
             INSERT INTO
                 chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text)
             VALUES
-                (?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?)
             RETURNING
                 *
             """,
