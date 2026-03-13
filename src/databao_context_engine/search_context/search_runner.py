@@ -1,3 +1,4 @@
+from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.datasources.datasource_context import (
     get_all_datasource_context_hashes,
     get_datasource_context_hashes,
@@ -11,6 +12,7 @@ def run_context_search(
     *,
     project_layout: ProjectLayout,
     search_context_service: SearchContextService,
+    build_service: BuildService,
     search_text: str,
     limit: int | None,
     datasource_ids: list[DatasourceId] | None,
@@ -22,6 +24,8 @@ def run_context_search(
         if datasource_ids
         else get_all_datasource_context_hashes(project_layout)
     )
+
+    build_service.index_context_if_necessary(datasource_context_hashes=context_hashes)
 
     return search_context_service.search(
         search_text=search_text,

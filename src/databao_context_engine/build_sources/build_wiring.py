@@ -48,9 +48,10 @@ def build_all_datasources(
 
     migrate(db_path)
     with open_duckdb_connection(db_path) as conn:
-        build_service = _create_build_service(
+        build_service = create_build_service(
             conn,
             project_layout=project_layout,
+            plugin_loader=plugin_loader,
             should_enrich_context=should_enrich_context,
         )
         return build(
@@ -76,9 +77,10 @@ def enrich_built_contexts(
         migrate(db_path)
 
     with open_duckdb_connection(db_path) as conn:
-        build_service = _create_build_service(
+        build_service = create_build_service(
             conn,
             project_layout=project_layout,
+            plugin_loader=plugin_loader,
             should_enrich_context=True,
         )
         return run_enrich_context(
@@ -111,9 +113,10 @@ def index_built_contexts(
         migrate(db_path)
 
     with open_duckdb_connection(db_path) as conn:
-        build_service = _create_build_service(
+        build_service = create_build_service(
             conn,
             project_layout=project_layout,
+            plugin_loader=plugin_loader,
             should_enrich_context=False,
         )
         return run_indexing(
@@ -121,10 +124,11 @@ def index_built_contexts(
         )
 
 
-def _create_build_service(
+def create_build_service(
     conn: DuckDBPyConnection,
     *,
     project_layout: ProjectLayout,
+    plugin_loader: DatabaoContextPluginLoader,
     should_enrich_context: bool,
 ) -> BuildService:
     ollama_service = create_ollama_service()
@@ -141,5 +145,6 @@ def _create_build_service(
     return BuildService(
         project_layout=project_layout,
         chunk_embedding_service=chunk_embedding_service,
+        plugin_loader=plugin_loader,
         description_provider=description_provider,
     )

@@ -9,12 +9,18 @@ from pydantic import BaseModel, TypeAdapter
 
 import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext, execute_plugin
-from databao_context_engine.datasources.datasource_context import DatasourceContext, DatasourceContextHash
+from databao_context_engine.datasources.datasource_context import (
+    DatasourceContext,
+    DatasourceContextHash,
+    get_datasource_context,
+    read_datasource_type_from_context,
+)
 from databao_context_engine.datasources.types import PreparedDatasource
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
 )
+from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader, NoPluginFoundForDatasource
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.services.chunk_embedding_service import ChunkEmbeddingService
 
@@ -27,10 +33,12 @@ class BuildService:
         *,
         project_layout: ProjectLayout,
         chunk_embedding_service: ChunkEmbeddingService,
+        plugin_loader: DatabaoContextPluginLoader,
         description_provider: DescriptionProvider | None = None,
     ) -> None:
         self._project_layout = project_layout
         self._chunk_embedding_service = chunk_embedding_service
+        self._plugin_loader = plugin_loader
         self._description_provider = description_provider
 
     def build_context(
@@ -50,7 +58,13 @@ class BuildService:
     def _execute_plugin(self, *, prepared_source: PreparedDatasource, plugin: BuildPlugin) -> BuiltDatasourceContext:
         return execute_plugin(self._project_layout, prepared_source, plugin)
 
-    def index_datasource_context(self, *, context: DatasourceContext, plugin: BuildPlugin) -> None:
+    def index_datasource_context(
+        self,
+        *,
+        context: DatasourceContext,
+        plugin: BuildPlugin,
+        force_index: bool = False,
+    ) -> None:
         """Index a context file using the given plugin.
 
         1) Reconstructs the `BuiltDatasourceContext` object from the yaml context string
@@ -58,7 +72,9 @@ class BuildService:
         """
         built = self._deserialize_built_context(context=context, context_type=plugin.context_type)
 
-        self.index_built_context(built_context=built, plugin=plugin, context_hash=context.context_hash)
+        self.index_built_context(
+            built_context=built, plugin=plugin, context_hash=context.context_hash, force_index=force_index
+        )
 
     def index_built_context(
         self,
@@ -120,3 +136,26 @@ class BuildService:
         new_context = plugin.enrich_context(built_context.context, self._description_provider)
 
         return replace(built_context, context=new_context)
+
+    def index_context_if_necessary(self, datasource_context_hashes: list[DatasourceContextHash]) -> None:
+        for datasource_context_hash in datasource_context_hashes:
+            if not self._chunk_embedding_service.is_index_up_to_date(context_hash=datasource_context_hash):
+                logger.info(
+                    f"Index is not up-to-date for datasource {str(datasource_context_hash.datasource_id)}, it will be re-indexed."
+                )
+
+                context = get_datasource_context(self._project_layout, datasource_context_hash.datasource_id)
+
+                datasource_type = read_datasource_type_from_context(context)
+                perf.set_attribute("datasource_type", getattr(datasource_type, "full_type", datasource_type))
+
+                plugin = self._plugin_loader.get_plugin_for_datasource_type(datasource_type)
+                if plugin is None:
+                    raise NoPluginFoundForDatasource()
+
+                self.index_datasource_context(
+                    context=context,
+                    plugin=plugin,
+                    # Forcing the index prevents checking for the datasource context hash again since we just did
+                    force_index=True,
+                )

@@ -37,6 +37,7 @@ def svc(chunk_embed_svc, mocker):
     return BuildService(
         project_layout=mocker.Mock(name="ProjectLayout"),
         chunk_embedding_service=chunk_embed_svc,
+        plugin_loader=mocker.Mock(name="PluginLoader"),
     )
 
 
