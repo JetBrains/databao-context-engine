@@ -1,34 +1,20 @@
-import sqlite3
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from databao_context_engine import DatabaoContextDomainManager, DatasourceId, SQLiteConfigFile, SQLiteConnectionConfig
-from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.storage.connection import open_duckdb_connection
 from databao_context_engine.storage.repositories.chunk_repository import ChunkRepository
 from databao_context_engine.storage.repositories.datasource_context_repository import DatasourceContextHashRepository
+from tests.integration.sqlite_integration_test_utils import create_sqlite_with_base_schema, execute_sqlite_queries
+from tests.utils.ollama_test_fakes import FakeOllamaEmbeddingProvider
 from tests.utils.project_creation import given_datasource_config_file
 
 
-@dataclass(frozen=True)
-class _FakeProvider:
-    embedder: str = "fake"
-    embedding_model_details: EmbeddingModelDetails = EmbeddingModelDetails(model_id="dummy", model_dim=768)
-
-    def embed(self, text: str) -> list[float]:
-        seed = float(len(text) % 10)
-        return [seed] * self.embedding_model_details.model_dim
-
-    def embed_many(self, texts: list[str]) -> list[list[float]]:
-        return [self.embed(text) for text in texts]
-
-
 @pytest.fixture
-def fake_provider() -> _FakeProvider:
-    return _FakeProvider()
+def fake_provider() -> FakeOllamaEmbeddingProvider:
+    return FakeOllamaEmbeddingProvider()
 
 
 @pytest.fixture
@@ -37,35 +23,6 @@ def use_fake_embedding_provider(mocker, fake_provider):
     mocker.patch(
         "databao_context_engine.build_sources.build_wiring.create_ollama_embedding_provider",
         return_value=fake_provider,
-    )
-
-
-def execute_sqlite_queries(db_file: Path, *queries: str):
-    conn = sqlite3.connect(database=str(db_file))
-    try:
-        conn.execute("PRAGMA foreign_keys = ON")
-        with conn:
-            for q in queries:
-                conn.execute(q)
-    finally:
-        conn.close()
-
-
-def create_sqlite_with_base_schema(sqlite_path: Path):
-    execute_sqlite_queries(
-        sqlite_path,
-        """
-        CREATE TABLE users (
-            user_id   INTEGER NOT NULL,
-            name      VARCHAR NOT NULL,
-            email     VARCHAR NOT NULL,
-            is_active INTEGER NOT NULL DEFAULT 1,
-
-            CONSTRAINT pk_users PRIMARY KEY (user_id),
-            CONSTRAINT uq_users_email UNIQUE (email),
-            CONSTRAINT chk_users_email CHECK (email LIKE '%@%')
-        );
-        """.strip(),
     )
 
 
