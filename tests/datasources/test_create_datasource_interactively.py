@@ -66,7 +66,7 @@ def test_add_datasource_config__with_partial_values_filled(project_manager):
         True,  # confirm nested_dict
         "nested_field",  # nested_field
         "5",  # other_nested_property
-        "",  # optional_with_default (will use default: "1111")
+        "",  # optional_with_default (will use default: 1111)
     ]
     user_input_callback = MockUserInputCallback(inputs=inputs)
 
@@ -85,7 +85,7 @@ def test_add_datasource_config__with_partial_values_filled(project_manager):
         "nested_dict": {
             "nested_field": "nested_field",
             "other_nested_property": "5",
-            "optional_with_default": "1111",
+            "optional_with_default": 1111,
         },
     }
 
