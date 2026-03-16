@@ -16,7 +16,7 @@ format:
 
 .PHONY: mypy
 mypy:
-	@uv run mypy . --exclude dist --exclude docs
+	@uv run mypy
 
 .PHONY: sync
 sync:

@@ -101,7 +101,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             catalog=catalog,
             schemas=schemas,
             relations=results.get("relations", []),
-            columns=results.get("columns", []),
+            columns=results.get("table_columns", []),
         )
 
         return IntrospectionModelBuilder.build_schemas_from_components(
