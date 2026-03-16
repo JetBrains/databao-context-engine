@@ -101,8 +101,8 @@ class BuildService:
         force_index: bool = False,
         progress: ProgressCallback | None = None,
     ) -> None:
-        if not force_index and self._chunk_embedding_service.is_index_up_to_date(context_hash=context_hash):
-            logger.info("Index is already up-to-date, skipping.")
+        if not force_index and self._chunk_embedding_service.is_context_already_indexed(context_hash=context_hash):
+            logger.info(f"Context for {str(context_hash.datasource_id)} has already been indexed, skipping indexing.")
             return
 
         chunks = plugin.divide_context_into_chunks(built_context.context)
@@ -168,9 +168,9 @@ class BuildService:
 
     def index_context_if_necessary(self, datasource_context_hashes: list[DatasourceContextHash]) -> None:
         for datasource_context_hash in datasource_context_hashes:
-            if not self._chunk_embedding_service.is_index_up_to_date(context_hash=datasource_context_hash):
+            if not self._chunk_embedding_service.is_context_already_indexed(context_hash=datasource_context_hash):
                 logger.info(
-                    f"Index is not up-to-date for datasource {str(datasource_context_hash.datasource_id)}, it will be re-indexed."
+                    f"Index is missing for the current context of datasource {str(datasource_context_hash.datasource_id)}, it will be re-indexed."
                 )
 
                 context = get_datasource_context(self._project_layout, datasource_context_hash.datasource_id)

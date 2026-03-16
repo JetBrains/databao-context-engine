@@ -109,7 +109,7 @@ def test_index_built_context_happy_path_embeds(svc, chunk_embed_svc, mocker):
         ),
     )
 
-    chunk_embed_svc.is_index_up_to_date.return_value = False
+    chunk_embed_svc.is_context_already_indexed.return_value = False
 
     chunks = [EmbeddableChunk(embeddable_text="a", content="A"), EmbeddableChunk(embeddable_text="b", content="B")]
     plugin.divide_context_into_chunks.return_value = chunks
