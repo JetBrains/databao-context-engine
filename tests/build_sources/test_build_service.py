@@ -29,9 +29,7 @@ def mk_prepared(path: Path, full_type: str) -> PreparedDatasource:
 
 @pytest.fixture
 def chunk_embed_svc(mocker):
-    svc = mocker.Mock(name="ChunkEmbeddingService")
-    svc.indexing_step_count.return_value = 2
-    return svc
+    return mocker.Mock(name="ChunkEmbeddingService")
 
 
 @pytest.fixture

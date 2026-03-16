@@ -33,8 +33,7 @@ def _build_step_plan(*, should_index: bool, should_enrich_context: bool) -> tupl
         steps.append(ProgressStep.CONTEXT_ENRICHMENT)
 
     if should_index:
-        steps.append(ProgressStep.EMBEDDING)
-        steps.append(ProgressStep.PERSISTENCE)
+        steps.extend(_index_step_plan())
 
     return tuple(steps)
 

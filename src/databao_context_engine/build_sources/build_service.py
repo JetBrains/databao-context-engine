@@ -69,10 +69,8 @@ class BuildService:
                 step=ProgressStep.CONTEXT_ENRICHMENT,
             )
 
-        if not should_index:
-            return result
-
-        self._index_context(built_context=result, plugin=plugin, progress=progress)
+        if should_index:
+            self._index_context(built_context=result, plugin=plugin, progress=progress)
 
         return result
 
