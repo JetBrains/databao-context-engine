@@ -17,6 +17,19 @@ from databao_context_engine.plugins.databases.snowflake.config_file import Snowf
 
 logger = logging.getLogger(__name__)
 
+_SEMISTRUCTURED_TYPES = {
+    "OBJECT",
+    "VARIANT",
+    "ARRAY",
+}
+
+_GEOSPATIAL_TYPES = {
+    "GEOGRAPHY",
+    "GEOMETRY",
+}
+
+_UNSUPPORTED_PROFILE_TYPES = _SEMISTRUCTURED_TYPES | _GEOSPATIAL_TYPES
+
 
 class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
     _IGNORED_SCHEMAS = {
@@ -398,9 +411,8 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         for (schema, table), columns_list in table_columns.items():
             try:
                 estimated_row_count = table_row_counts.get((schema, table))
-                column_names = [col_name for col_name, _ in columns_list]
                 table_col_stats = self._collect_column_stats_for_table(
-                    connection, schema, table, column_names, estimated_row_count
+                    connection, schema, table, columns_list, estimated_row_count
                 )
                 column_stats.extend(table_col_stats)
             except Exception as e:
@@ -436,10 +448,10 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         connection,
         schema: str,
         table: str,
-        columns: list[str],
+        columns_list: list[tuple[str, str]],
         estimated_row_count: int | None,
     ) -> list[dict]:
-        if not columns:
+        if not columns_list:
             return []
 
         sample_rate = self._determine_sample_rate(estimated_row_count)
@@ -449,17 +461,22 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         table_ref = f"{self._quote_ident(schema)}.{self._quote_ident(table)}"
 
         column_expressions = []
-        for column in columns:
+        for column, column_type in columns_list:
             column_quoted = self._quote_ident(column)
             safe_column = self._sanitize_column_name(column)
-            # TODO potentially it's better to use MIN/MAX only for specific column types
+            normalized_type = self._normalize_snowflake_type(column_type)
+
+            distinct_st = self._get_distinct_expression(column_quoted, normalized_type, safe_column)
+            min_st, max_st = self._get_min_max_expressions(column_quoted, normalized_type, safe_column)
+            topk_st = self._get_topk_expression(column_quoted, normalized_type, safe_column)
+
             column_expressions.append(
                 f"""
                 COUNT({column_quoted}) AS {self._quote_ident(f"nonnull_{safe_column}")},
-                APPROX_COUNT_DISTINCT({column_quoted}) AS {self._quote_ident(f"distinct_{safe_column}")},
-                MIN({column_quoted})::VARCHAR AS {self._quote_ident(f"min_{safe_column}")},
-                MAX({column_quoted})::VARCHAR AS {self._quote_ident(f"max_{safe_column}")},
-                APPROX_TOP_K({column_quoted}, 5) AS {self._quote_ident(f"topk_{safe_column}")}
+                {distinct_st},
+                {min_st},
+                {max_st},
+                {topk_st}
             """.strip()
             )
 
@@ -479,7 +496,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             sampled_count = stats_row["sampled_count"]
 
             column_stats = []
-            for column in columns:
+            for column, _ in columns_list:
                 safe_column = self._sanitize_column_name(column)
                 safe_col_lower = safe_column.lower()
 
@@ -523,6 +540,49 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         except Exception as e:
             logger.warning(f"Failed to collect column stats for {schema}.{table}: {e}")
             return []
+
+    def _normalize_snowflake_type(self, column_type: str) -> str:
+        return column_type.split("(", 1)[0].strip().upper()
+
+    def _supports_min_max(self, normalized_type: str) -> bool:
+        return normalized_type not in _UNSUPPORTED_PROFILE_TYPES
+
+    def _supports_approx_distinct(self, normalized_type: str) -> bool:
+        return normalized_type not in _UNSUPPORTED_PROFILE_TYPES
+
+    def _supports_top_k(self, normalized_type: str) -> bool:
+        return normalized_type not in _UNSUPPORTED_PROFILE_TYPES and normalized_type != "BINARY"
+
+    def _get_min_max_expressions(self, column_quoted: str, normalized_type: str, safe_column: str) -> tuple[str, str]:
+        min_alias = self._quote_ident(f"min_{safe_column}")
+        max_alias = self._quote_ident(f"max_{safe_column}")
+
+        if self._supports_min_max(normalized_type):
+            return (
+                f"MIN({column_quoted})::VARCHAR AS {min_alias}",
+                f"MAX({column_quoted})::VARCHAR AS {max_alias}",
+            )
+
+        return (
+            f"NULL::VARCHAR AS {min_alias}",
+            f"NULL::VARCHAR AS {max_alias}",
+        )
+
+    def _get_distinct_expression(self, column_quoted: str, normalized_type: str, safe_column: str) -> str:
+        alias = self._quote_ident(f"distinct_{safe_column}")
+
+        if self._supports_approx_distinct(normalized_type):
+            return f"APPROX_COUNT_DISTINCT({column_quoted}) AS {alias}"
+
+        return f"NULL AS {alias}"
+
+    def _get_topk_expression(self, column_quoted: str, normalized_type: str, safe_column: str) -> str:
+        alias = self._quote_ident(f"topk_{safe_column}")
+
+        if self._supports_top_k(normalized_type):
+            return f"APPROX_TOP_K({column_quoted}, 5) AS {alias}"
+
+        return f"NULL AS {alias}"
 
     def _sanitize_column_name(self, column: str) -> str:
         return column.replace('"', "").replace("'", "")
