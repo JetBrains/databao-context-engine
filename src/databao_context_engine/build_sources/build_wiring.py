@@ -16,6 +16,7 @@ from databao_context_engine.llm.factory import (
     create_ollama_service,
 )
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
+from databao_context_engine.progress.progress import ProgressCallback
 from databao_context_engine.project.layout import ProjectLayout
 from databao_context_engine.services.factories import create_chunk_embedding_service
 from databao_context_engine.storage.connection import open_duckdb_connection
@@ -29,6 +30,7 @@ def build_all_datasources(
     plugin_loader: DatabaoContextPluginLoader,
     should_index: bool,
     should_enrich_context: bool,
+    progress: ProgressCallback | None = None,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -62,6 +64,7 @@ def build_all_datasources(
             build_service=build_service,
             should_index=should_index,
             should_enrich_context=should_enrich_context,
+            progress=progress,
         )
 
 
@@ -97,6 +100,7 @@ def index_built_contexts(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
     contexts: list[DatasourceContext],
+    progress: ProgressCallback | None = None,
 ) -> list[IndexDatasourceResult]:
     """Index the contexts into the database.
 
@@ -120,7 +124,11 @@ def index_built_contexts(
             should_enrich_context=False,
         )
         return run_indexing(
-            project_layout=project_layout, plugin_loader=plugin_loader, build_service=build_service, contexts=contexts
+            project_layout=project_layout,
+            plugin_loader=plugin_loader,
+            build_service=build_service,
+            contexts=contexts,
+            progress=progress,
         )
 
 

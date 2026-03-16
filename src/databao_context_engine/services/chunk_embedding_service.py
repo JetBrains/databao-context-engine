@@ -4,6 +4,7 @@ import databao_context_engine.perf.core as perf
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter, ProgressStep
 from databao_context_engine.serialization.yaml import to_yaml_string
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
 from databao_context_engine.services.models import ChunkEmbedding
@@ -32,6 +33,7 @@ class ChunkEmbeddingService:
         full_type: str,
         datasource_id: str,
         override: bool = False,
+        progress: ProgressCallback | None = None,
     ) -> None:
         """Turn plugin chunks into persisted chunks and embeddings.
 
@@ -43,6 +45,8 @@ class ChunkEmbeddingService:
         if not chunks:
             return
 
+        emitter = ProgressEmitter(progress)
+
         logger.debug(f"Embedding {len(chunks)} chunks for datasource {datasource_id}")
 
         chunk_display_texts: list[str] = [
@@ -51,6 +55,11 @@ class ChunkEmbeddingService:
         embedding_texts = [chunk.embeddable_text for chunk in chunks]
 
         vecs = self._embed_many(embedding_texts)
+
+        emitter.datasource_step_completed(
+            datasource_id=datasource_id,
+            step=ProgressStep.EMBEDDING,
+        )
 
         enriched_embeddings: list[ChunkEmbedding] = [
             ChunkEmbedding(
@@ -73,6 +82,11 @@ class ChunkEmbeddingService:
             full_type=full_type,
             datasource_id=datasource_id,
             override=override,
+        )
+
+        emitter.datasource_step_completed(
+            datasource_id=datasource_id,
+            step=ProgressStep.PERSISTENCE,
         )
 
     @perf.perf_span("embedding.embed_many")
