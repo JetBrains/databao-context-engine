@@ -28,6 +28,7 @@ from databao_context_engine.datasources.datasource_discovery import get_datasour
 from databao_context_engine.datasources.types import ConfiguredDatasource, Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import ConfigFile, DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
+from databao_context_engine.progress.progress import ProgressCallback
 from databao_context_engine.project.layout import (
     ProjectLayout,
     ensure_project_dir,
@@ -80,6 +81,7 @@ class DatabaoContextDomainManager:
         *,
         should_index: bool = True,
         should_enrich_context: bool = False,
+        progress: ProgressCallback | None = None,
     ) -> list[BuildDatasourceResult]:
         """Build the context for datasources in the domain.
 
@@ -89,6 +91,7 @@ class DatabaoContextDomainManager:
             datasource_ids: The list of datasource ids to build. If None, all datasources will be built.
             should_index: Whether to build a semantic index for the context.
             should_enrich_context: Whether to enrich the context with LLM-generated content.
+            progress: The progress callback to use for the build process.
 
         Returns:
             The list of all built results.
@@ -99,6 +102,7 @@ class DatabaoContextDomainManager:
             plugin_loader=self._plugin_loader,
             should_index=should_index,
             should_enrich_context=should_enrich_context,
+            progress=progress,
         )
 
     def enrich_built_contexts(
@@ -132,6 +136,7 @@ class DatabaoContextDomainManager:
     def index_built_contexts(
         self,
         datasource_ids: list[DatasourceId] | None = None,
+        progress: ProgressCallback | None = None,
     ) -> list[IndexDatasourceResult]:
         """Index built datasource contexts into the embeddings database.
 
@@ -140,6 +145,7 @@ class DatabaoContextDomainManager:
 
         Args:
             datasource_ids: The list of datsource ids to index. If None, all datsources will be indexed.
+            progress: The progress callback to use for the indexing process.
 
         Returns:
             The summary of the index operation.
@@ -153,6 +159,7 @@ class DatabaoContextDomainManager:
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
             contexts=contexts,
+            progress=progress,
         )
 
     def check_datasource_connection(

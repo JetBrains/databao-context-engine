@@ -20,9 +20,29 @@ from databao_context_engine.datasources.datasource_discovery import discover_dat
 from databao_context_engine.datasources.types import PreparedConfig
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
+from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter, ProgressStep
 from databao_context_engine.project.layout import ProjectLayout
 
 logger = logging.getLogger(__name__)
+
+
+def _build_step_plan(*, should_index: bool, should_enrich_context: bool) -> tuple[ProgressStep, ...]:
+    steps: list[ProgressStep] = [ProgressStep.PLUGIN_EXECUTION]
+
+    if should_enrich_context:
+        steps.append(ProgressStep.CONTEXT_ENRICHMENT)
+
+    if should_index:
+        steps.extend(_index_step_plan())
+
+    return tuple(steps)
+
+
+def _index_step_plan() -> tuple[ProgressStep, ...]:
+    return (
+        ProgressStep.EMBEDDING,
+        ProgressStep.PERSISTENCE,
+    )
 
 
 @perf.perf_run(
@@ -40,6 +60,7 @@ def build(
     build_service: BuildService,
     should_index: bool,
     should_enrich_context: bool,
+    progress: ProgressCallback | None = None,
 ) -> list[BuildDatasourceResult]:
     """Build the context for all datasources in the project.
 
@@ -55,15 +76,26 @@ def build(
     """
     datasource_ids = discover_datasources(project_layout)
 
+    emitter = ProgressEmitter(progress)
+
     if not datasource_ids:
         logger.info("No sources discovered under %s", project_layout.src_dir)
+        emitter.operation_started(operation="build", total=0)
+        emitter.operation_finished(operation="build")
         return []
+
+    emitter.operation_started(operation="build", total=len(datasource_ids))
 
     results: list[BuildDatasourceResult] = []
     failed = 0
     skipped = 0
     delete_all_results_file(project_layout)
-    for datasource_id in datasource_ids:
+    for datasource_index, datasource_id in enumerate(datasource_ids, start=1):
+        emitter.datasource_started(
+            datasource_id=str(datasource_id),
+            index=datasource_index,
+            total=len(datasource_ids),
+        )
         try:
             result = _build_one_datasource(
                 project_layout=project_layout,
@@ -72,10 +104,19 @@ def build(
                 datasource_id=datasource_id,
                 should_index=should_index,
                 should_enrich_context=should_enrich_context,
+                progress=progress,
             )
             results.append(result)
             if result.status == DatasourceStatus.SKIPPED:
                 skipped += 1
+
+            emitter.datasource_finished(
+                datasource_id=str(datasource_id),
+                index=datasource_index,
+                total=len(datasource_ids),
+                status=result.status.value,
+                error=result.error,
+            )
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
             logger.info(f"Failed to build source at ({datasource_id.relative_path_to_config_file()}): {str(e)}")
@@ -83,6 +124,13 @@ def build(
             failed += 1
             results.append(
                 BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.FAILED, error=str(e))
+            )
+            emitter.datasource_finished(
+                datasource_id=str(datasource_id),
+                index=datasource_index,
+                total=len(datasource_ids),
+                status=DatasourceStatus.FAILED.value,
+                error=str(e),
             )
 
     ok = sum(1 for result in results if result.status == DatasourceStatus.OK)
@@ -93,6 +141,7 @@ def build(
         f"Skipped {skipped}. Failed {failed}." if (skipped or failed) else "",
     )
 
+    emitter.operation_finished(operation="build")
     return results
 
 
@@ -108,6 +157,7 @@ def _build_one_datasource(
     datasource_id,
     should_index: bool,
     should_enrich_context: bool,
+    progress: ProgressCallback | None = None,
 ) -> BuildDatasourceResult:
     prepared_source = prepare_source(project_layout, datasource_id)
     if isinstance(prepared_source, PreparedConfig) and prepared_source.config.get("enabled") is False:
@@ -129,10 +179,19 @@ def _build_one_datasource(
         )
         return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
 
+    ProgressEmitter(progress).datasource_step_plan_set(
+        datasource_id=str(datasource_id),
+        step_plan=_build_step_plan(
+            should_index=should_index,
+            should_enrich_context=should_enrich_context,
+        ),
+    )
+
     result = build_service.build_context(
         prepared_source=prepared_source,
         plugin=plugin,
         should_index=should_index,
+        progress=progress,
         should_enrich_context=should_enrich_context,
     )
 
@@ -252,6 +311,7 @@ def run_indexing(
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
     contexts: list[DatasourceContext],
+    progress: ProgressCallback | None = None,
 ) -> list[IndexDatasourceResult]:
     """Index a list of built datasource contexts.
 
@@ -262,28 +322,53 @@ def run_indexing(
     Returns:
         A list of per-context indexing results.
     """
+    emitter = ProgressEmitter(progress)
+    emitter.operation_started(operation="index", total=len(contexts))
+
     results: list[IndexDatasourceResult] = []
     ok = 0
     skipped = 0
     failed = 0
 
-    for context in contexts:
+    for context_index, context in enumerate(contexts, start=1):
+        emitter.datasource_started(
+            datasource_id=str(context.datasource_id),
+            index=context_index,
+            total=len(contexts),
+        )
         try:
             logger.info(f"Indexing datasource {context.datasource_id}")
 
-            result = _index_one_context(context=context, plugin_loader=plugin_loader, build_service=build_service)
+            result = _index_one_context(
+                context=context, plugin_loader=plugin_loader, build_service=build_service, progress=progress
+            )
 
             results.append(result)
             if result.status == DatasourceStatus.OK:
                 ok += 1
             elif result.status == DatasourceStatus.SKIPPED:
                 skipped += 1
+
+            emitter.datasource_finished(
+                datasource_id=str(context.datasource_id),
+                index=context_index,
+                total=len(contexts),
+                status=result.status.value,
+                error=result.error,
+            )
         except Exception as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
             logger.info(f"Failed to build source at ({context.datasource_id}): {str(e)}")
             failed += 1
             results.append(
                 IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.FAILED, error=str(e))
+            )
+            emitter.datasource_finished(
+                datasource_id=str(context.datasource_id),
+                index=context_index,
+                total=len(contexts),
+                status=DatasourceStatus.FAILED.value,
+                error=str(e),
             )
 
     logger.debug(
@@ -293,6 +378,7 @@ def run_indexing(
         f"Skipped {skipped}. Failed {failed}." if (skipped or failed) else "",
     )
 
+    emitter.operation_finished(operation="index")
     return results
 
 
@@ -305,6 +391,7 @@ def _index_one_context(
     context: DatasourceContext,
     plugin_loader: DatabaoContextPluginLoader,
     build_service: BuildService,
+    progress: ProgressCallback | None = None,
 ) -> IndexDatasourceResult:
     perf.set_attribute("context_size_bytes", len(context.context.encode("utf-8")))
 
@@ -320,5 +407,10 @@ def _index_one_context(
         )
         return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
 
-    build_service.index_built_context(context=context, plugin=plugin)
+    ProgressEmitter(progress).datasource_step_plan_set(
+        datasource_id=str(context.datasource_id),
+        step_plan=_index_step_plan(),
+    )
+
+    build_service.index_built_context(context=context, plugin=plugin, progress=progress)
     return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK)
