@@ -19,6 +19,7 @@ m2 = MigrationDTO(name="V02__second.sql", version=2, checksum="4584270cfb055f3a8
 m3 = MigrationDTO(name="V03__third.sql", version=3, checksum="308d96a49eefad4f1514ac746b3ac0c3")
 
 m2_duplicate_file = _test_migration_path("V02__second_duplicate.sql")
+m1_modified = _test_migration_path("modified/V01__init.sql")
 
 
 @pytest.fixture
@@ -66,5 +67,16 @@ def test_migrate_duplicated_name(db_path: Path) -> None:
     migrate(db_path, [m1_file, m2_file])
     with pytest.raises(MigrationError, match=re.escape("Migrations with versions [2] already exist")):
         migrate(db_path, [m2_duplicate_file])
+    assert_tables(db_path, "test_1", "test_2")
+    assert [m1, m2] == load_applied_migrations(db_path)
+
+
+def test_migrate_version_with_changed_hash(db_path: Path) -> None:
+    migrate(db_path, [m1_file, m2_file])
+
+    # Call migrate again but with a modified V01
+    migrate(db_path, [m1_modified, m2_file])
+
+    # Make sure the modified migration was skipped
     assert_tables(db_path, "test_1", "test_2")
     assert [m1, m2] == load_applied_migrations(db_path)

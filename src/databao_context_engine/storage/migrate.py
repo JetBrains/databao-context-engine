@@ -99,9 +99,22 @@ class _MigrationManager:
     def migrate(self) -> None:
         applied_migrations: list[MigrationDTO] = self.init_db_and_load_applied_migrations()
         logger.debug("Applied migrations: %s", applied_migrations)
-        applied_checksums = [m.checksum for m in applied_migrations]
+
+        applied_names = [m.name for m in applied_migrations]
         applied_versions = [m.version for m in applied_migrations]
-        migrations_to_apply = [m for m in self._requested_migrations if m.checksum not in applied_checksums]
+
+        if logger.isEnabledFor(logging.DEBUG):
+            applied_checksums = [m.checksum for m in applied_migrations]
+            modified_migrations_skipped = [
+                m for m in self._requested_migrations if m.name in applied_names and m.checksum not in applied_checksums
+            ]
+            for migration in modified_migrations_skipped:
+                logger.debug(
+                    "Skipping migration %s: the migration file has already been applied but its content has been modified. All new changes in the migration file won't be applied, make sure this is intended behaviour",
+                    migration.name,
+                )
+
+        migrations_to_apply = [m for m in self._requested_migrations if m.name not in applied_names]
         logger.debug("Migrations to apply: %s", ", ".join([f"{m.version}: {m.name}" for m in migrations_to_apply]))
         duplicated_versions = [
             migration.version for migration in migrations_to_apply if migration.version in applied_versions
