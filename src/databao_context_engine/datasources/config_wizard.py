@@ -14,7 +14,8 @@ class UserInputCallback(Protocol):
 
     def prompt(
         self,
-        text: str,
+        property_key: str,
+        required: bool,
         type: Choice | Any | None = None,
         default_value: Any | None = None,
         is_secret: bool = False,
@@ -48,7 +49,8 @@ def _build_config_content_from_properties(
             default_choice = config_file_property.default_type.__name__ if config_file_property.default_type else None
 
             chosen = user_input_callback.prompt(
-                text=f"{properties_prefix}{config_file_property.property_key}.type?",
+                property_key=f"{properties_prefix}{config_file_property.property_key}.type",
+                required=True,
                 type=Choice(sorted(choices.keys())),
                 default_value=default_choice,
             )
@@ -87,7 +89,8 @@ def _build_config_content_from_properties(
                 config_content[config_file_property.property_key] = nested_content
         else:
             property_value = user_input_callback.prompt(
-                text=f"{properties_prefix}{config_file_property.property_key}?{' (Optional)' if not config_file_property.required else ''}",
+                property_key=f"{properties_prefix}{config_file_property.property_key}",
+                required=config_file_property.required,
                 type=config_file_property.property_type,
                 default_value=config_file_property.default_value,
                 is_secret=config_file_property.secret,

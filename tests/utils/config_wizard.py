@@ -10,7 +10,8 @@ class MockUserInputCallback(UserInputCallback):
 
     def prompt(
         self,
-        text: str,
+        property_key: str,
+        required: bool,
         type: Choice | Any | None = None,
         default_value: Any | None = None,
         is_secret: bool = False,
