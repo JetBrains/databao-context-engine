@@ -7,6 +7,7 @@ import duckdb
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
 
@@ -320,19 +321,18 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[str],
-        relations: list[dict],
-        columns: list[dict],
+        schemas: list[DatabaseSchema],
     ) -> tuple[list[dict], list[dict]]:
         table_stats = []
         column_stats = []
 
-        for relation in relations:
-            if relation.get("kind") != "table":
-                continue
+        for s in schemas:
+            for t in s.tables:
+                if t.kind.value != "table":
+                    continue
 
-            schema_name = relation["schema_name"]
-            table_name = relation["table_name"]
+                schema_name = s.name
+                table_name = t.name
 
             try:
                 summary_query = f'SUMMARIZE "{schema_name}"."{table_name}"'

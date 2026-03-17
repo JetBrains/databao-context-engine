@@ -109,14 +109,6 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                             f"Snowflake multi-statement batch ended early after component #{ix} '{name}'"
                         )
 
-        table_stats, column_stats = self.collect_stats(
-            connection,
-            catalog=catalog,
-            schemas=schemas,
-            relations=results.get("relations", []),
-            columns=results.get("table_columns", []),
-        )
-
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results["relations"],
@@ -126,8 +118,6 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             checks=[],
             fk_cols=results["fks"],
             idx_cols=[],
-            table_stats=table_stats,
-            column_stats=column_stats,
         )
 
     def _get_catalog_introspection_queries_for_batched_mode(self, catalog: str, schemas: list[str]) -> list[dict]:
@@ -379,9 +369,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[str],
-        relations: list[dict],
-        columns: list[dict],
+        schemas: list[DatabaseSchema],
     ) -> tuple[list[dict], list[dict]]:
         """Collect table and column statistics using approximate queries with adaptive sampling.
 
@@ -396,16 +384,18 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         Returns:
             Tuple of (table_stats, column_stats) - both as lists of dicts
         """
-        table_stats = self._get_table_stats(connection, catalog, schemas)
+        schema_names = [s.name for s in schemas]
+        table_stats = self._get_table_stats(connection, catalog, schema_names)
         table_row_counts = {(ts["schema_name"], ts["table_name"]): ts["row_count"] for ts in table_stats}
 
         table_columns: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
-        base_tables = {(r["schema_name"], r["table_name"]) for r in relations if r.get("kind") == "table"}
 
-        for column in columns:
-            key = (column["schema_name"], column["table_name"])
-            if key in base_tables:
-                table_columns[key].append((column["column_name"], column["data_type"]))
+        for s in schemas:
+            for t in s.tables:
+                if t.kind.value == "table":
+                    key = (s.name, t.name)
+                    for c in t.columns:
+                        table_columns[key].append((c.name, c.type))
 
         column_stats = []
         for (schema, table), columns_list in table_columns.items():

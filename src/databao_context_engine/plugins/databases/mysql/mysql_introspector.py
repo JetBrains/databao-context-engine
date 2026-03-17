@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-from collections import defaultdict
 from typing import ClassVar
 
 import pymysql
@@ -92,14 +91,6 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                     if not ok:
                         raise RuntimeError(f"MySQL batch ended early after component #{ix} '{name}'")
 
-        table_stats, column_stats = self.collect_stats(
-            connection,
-            catalog=catalog,
-            schemas=schemas,
-            relations=results.get("relations", []),
-            columns=results.get("table_columns", []) + results.get("view_columns", []),
-        )
-
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results.get("relations", []),
@@ -110,8 +101,6 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             fk_cols=results.get("fks", []),
             idx_cols=results.get("idx", []),
             partitions=results.get("partitions", []),
-            table_stats=table_stats,
-            column_stats=column_stats,
         )
 
     def _get_catalog_introspection_queries_for_batched_mode(
@@ -367,23 +356,18 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[str],
-        relations: list[dict],
-        columns: list[dict],
+        schemas: list[DatabaseSchema],
     ) -> tuple[list[dict], list[dict]]:
-        self._run_analyze(connection, relations, columns)
-        table_stats = self._get_table_stats(connection, schemas)
-        column_stats = self._get_column_stats(connection, schemas, table_stats)
+        schema_names = [s.name for s in schemas]
+        self._run_analyze(connection, schemas)
+        table_stats = self._get_table_stats(connection, schema_names)
+        column_stats = self._get_column_stats(connection, schema_names, table_stats)
         return table_stats, column_stats
 
-    def _run_analyze(self, connection, relations: list[dict], columns: list[dict]) -> None:
-        table_columns: dict[tuple[str, str], list[str]] = defaultdict(list)
-        base_tables = {(r["schema_name"], r["table_name"]) for r in relations if r.get("kind") == "table"}
-
-        for col in columns:
-            key = (col["schema_name"], col["table_name"])
-            if key in base_tables:
-                table_columns[key].append(col["column_name"])
+    def _run_analyze(self, connection, schemas: list[DatabaseSchema]) -> None:
+        table_columns: dict[tuple[str, str], list[str]] = {
+            (s.name, t.name): [c.name for c in t.columns] for s in schemas for t in s.tables if t.kind.value == "table"
+        }
 
         n_buckets = 100  # postgres uses the same default
         with connection.cursor() as cur:

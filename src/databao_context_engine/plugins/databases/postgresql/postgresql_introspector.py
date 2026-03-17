@@ -10,6 +10,7 @@ import asyncpg
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
+from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
 from databao_context_engine.plugins.databases.postgresql.config_file import (
     PostgresConfigFile,
     PostgresConnectionProperties,
@@ -195,14 +196,13 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[str],
-        relations: list[dict],
-        columns: list[dict],
+        schemas: list[DatabaseSchema],
     ) -> tuple[list[dict], list[dict]]:
-        table_stats_query = SQLQuery(self._sql_table_stats(), (schemas,))
+        schema_names = [s.name for s in schemas]
+        table_stats_query = SQLQuery(self._sql_table_stats(), (schema_names,))
         table_stats = self._fetchall_dicts(connection, table_stats_query.sql, table_stats_query.params)
 
-        column_stats_query = SQLQuery(self._sql_column_stats(), (schemas,))
+        column_stats_query = SQLQuery(self._sql_column_stats(), (schema_names,))
         column_stats = self._fetchall_dicts(connection, column_stats_query.sql, column_stats_query.params)
 
         enriched_column_stats = self._enrich_column_stats(
