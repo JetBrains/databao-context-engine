@@ -14,6 +14,7 @@ def _test_migration_path(migration_name) -> Path:
 m1_file = _test_migration_path("V01__init.sql")
 m2_file = _test_migration_path("V02__second.sql")
 m3_file = _test_migration_path("V03__third.sql")
+m4_file = _test_migration_path("V04__hooked.sql")
 m1 = MigrationDTO(name="V01__init.sql", version=1, checksum="35e5a5b1c86224ce5020561e075a8689")
 m2 = MigrationDTO(name="V02__second.sql", version=2, checksum="4584270cfb055f3a8f7c9c4f9a608ca5")
 m3 = MigrationDTO(name="V03__third.sql", version=3, checksum="308d96a49eefad4f1514ac746b3ac0c3")
@@ -68,3 +69,12 @@ def test_migrate_duplicated_name(db_path: Path) -> None:
         migrate(db_path, [m2_duplicate_file])
     assert_tables(db_path, "test_1", "test_2")
     assert [m1, m2] == load_applied_migrations(db_path)
+
+
+def test_migrate_runs_python_hooks(db_path: Path) -> None:
+    migrate(db_path, [m1_file, m2_file, m3_file, m4_file])
+
+    assert_tables(db_path, "test_1", "test_2", "test_3", "test_4", "hook_marker")
+
+    with duckdb.connect(db_path) as conn:
+        assert conn.execute("SELECT * FROM test_4").fetchall() == [(4,)]
