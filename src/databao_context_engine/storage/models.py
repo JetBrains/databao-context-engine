@@ -13,6 +13,7 @@ class ChunkDTO:
     keyword_index_text: str
     display_text: Optional[str]
     created_at: datetime
+    chunk_type: str | None = None
 
 
 @dataclass(frozen=True)
