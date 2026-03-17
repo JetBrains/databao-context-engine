@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from databao_context_engine import DatabaoContextPluginLoader, DatasourceContext, DatasourceId
+from databao_context_engine import DatabaoContextPluginLoader, DatasourceContext, DatasourceId, DatasourceStatus
 from databao_context_engine.build_sources import build_runner
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.datasources.types import PreparedConfig, PreparedFile
@@ -209,25 +209,61 @@ def test_run_indexing_continues_on_exception(mocker, mock_build_service, project
 
 
 def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_build_service, project_layout, mocker):
-    datasource_id = DatasourceId.from_string_repr("configs/my_source.yaml")
-    stub_sources([datasource_id])
+    datasource_disabled_id = DatasourceId.from_string_repr("configs/my_source.yaml")
+    datasource_disabled_2_id = DatasourceId.from_string_repr("configs/my_source_2.yaml")
+    datasource_enabled_id = DatasourceId.from_string_repr("configs/my_source_3.yaml")
+    datasource_enabled_2_id = DatasourceId.from_string_repr("configs/my_source_4.yaml")
+    datasource_file_id = DatasourceId.from_string_repr("my_file.md")
+    stub_sources(
+        [
+            datasource_disabled_id,
+            datasource_disabled_2_id,
+            datasource_enabled_id,
+            datasource_enabled_2_id,
+            datasource_file_id,
+        ]
+    )
 
     stub_prepare(
         [
             PreparedConfig(
-                datasource_id=datasource_id,
+                datasource_id=datasource_disabled_id,
                 datasource_type=DatasourceType(full_type="my/type"),
                 config={"type": "my/type", "enabled": False},
                 datasource_name="my_source",
-            )
+            ),
+            PreparedConfig(
+                datasource_id=datasource_disabled_id,
+                datasource_type=DatasourceType(full_type="my/type"),
+                config={"type": "my/type", "enabled": "False"},
+                datasource_name="my_source_2",
+            ),
+            PreparedConfig(
+                datasource_id=datasource_enabled_id,
+                datasource_type=DatasourceType(full_type="my/type"),
+                config={"type": "my/type", "enabled": "True"},
+                datasource_name="my_source_3",
+            ),
+            PreparedConfig(
+                datasource_id=datasource_enabled_2_id,
+                datasource_type=DatasourceType(full_type="my/type"),
+                config={"type": "my/type", "enabled": True},
+                datasource_name="my_source_4",
+            ),
+            PreparedFile(
+                datasource_id=datasource_file_id,
+                datasource_type=DatasourceType(full_type="my/type"),
+            ),
         ]
     )
+
+    mock_build_service.build_context.return_value = _result()
 
     plugin_loader = DatabaoContextPluginLoader(
         plugins_by_type={DatasourceType(full_type="my/type"): mocker.Mock(name="BuildDatasourcePlugin")}
     )
 
-    build_runner.build(
+    results = build_runner.build(
         project_layout=project_layout,
         plugin_loader=plugin_loader,
         build_service=mock_build_service,
@@ -235,4 +271,10 @@ def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_bui
         should_enrich_context=False,
     )
 
-    mock_build_service.build_context.assert_not_called()
+    assert {result.datasource_id: result.status for result in results} == {
+        datasource_disabled_id: DatasourceStatus.SKIPPED,
+        datasource_disabled_2_id: DatasourceStatus.SKIPPED,
+        datasource_enabled_id: DatasourceStatus.OK,
+        datasource_enabled_2_id: DatasourceStatus.OK,
+        datasource_file_id: DatasourceStatus.OK,
+    }
