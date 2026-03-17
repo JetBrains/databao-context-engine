@@ -48,14 +48,14 @@ class SearchContextService:
         },
     )
     def search(
-            self,
-            *,
-            search_text: str,
-            limit: int | None = None,
-            datasource_ids: list[DatasourceId] | None = None,
-            rag_mode: RAG_MODE,
-            context_search_mode: ContextSearchMode,
-            chunk_types: list[str] | None = None,
+        self,
+        *,
+        search_text: str,
+        limit: int | None = None,
+        datasource_ids: list[DatasourceId] | None = None,
+        rag_mode: RAG_MODE,
+        context_search_mode: ContextSearchMode,
+        chunk_types: list[str] | None = None,
     ) -> list[SearchResult]:
         if limit is None:
             limit = 10
