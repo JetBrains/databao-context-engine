@@ -58,9 +58,11 @@ class SearchContextService:
         context_search_mode: ContextSearchMode,
         chunk_types: list[str] | None = None,
     ) -> list[SearchResult]:
-        if chunk_types is not None and (unavailable_types:=set(chunk_types).difference(self._available_chunk_types)):
-            raise ValueError(f"Chunk types {unavailable_types} are currently not supported for filtering."
-                             f" Supported types: {self._available_chunk_types}. ")
+        if chunk_types is not None and (unavailable_types := set(chunk_types).difference(self._available_chunk_types)):
+            raise ValueError(
+                f"Chunk types {unavailable_types} are currently not supported for filtering."
+                f" Supported types: {self._available_chunk_types}. "
+            )
         if limit is None:
             limit = 10
 
@@ -70,7 +72,7 @@ class SearchContextService:
             datasource_ids=datasource_ids,
             rag_mode=rag_mode,
             context_search_mode=context_search_mode,
-            chunk_types=chunk_types
+            chunk_types=chunk_types,
         )
 
         logger.debug(f"Found {len(search_results)} search results")
@@ -96,16 +98,13 @@ class SearchContextService:
         datasource_ids: list[DatasourceId] | None = None,
         rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
-        chunk_types: list[str] | None = None
+        chunk_types: list[str] | None = None,
     ) -> list[SearchResult]:
         if context_search_mode == ContextSearchMode.KEYWORD_SEARCH:
             query_text = self._rewrite_search_query(text) if rag_mode == RAG_MODE.REWRITE_QUERY else text
 
             return self._chunk_search_repo.search_chunks_by_keyword_relevance(
-                query_text=query_text,
-                limit=limit,
-                datasource_ids=datasource_ids,
-                chunk_types=chunk_types
+                query_text=query_text, limit=limit, datasource_ids=datasource_ids, chunk_types=chunk_types
             )
 
         table_name, dimension = self._shard_resolver.resolve(
@@ -138,7 +137,7 @@ class SearchContextService:
                     dimension=dimension,
                     limit=limit,
                     datasource_ids=datasource_ids,
-                    chunk_types=chunk_types
+                    chunk_types=chunk_types,
                 )
             case ContextSearchMode.HYBRID_SEARCH:
                 return self._chunk_search_repo.search_chunks_with_hybrid_search(
@@ -148,7 +147,7 @@ class SearchContextService:
                     dimension=dimension,
                     limit=limit,
                     datasource_ids=datasource_ids,
-                    chunk_types=chunk_types
+                    chunk_types=chunk_types,
                 )
 
     @perf.perf_span("search_context.rewrite_query")

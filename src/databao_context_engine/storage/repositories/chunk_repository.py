@@ -186,7 +186,16 @@ class ChunkRepository:
 
     @staticmethod
     def _row_to_dto(row: Tuple) -> ChunkDTO:
-        chunk_id, full_type, datasource_id, embeddable_text, display_text, created_at, keyword_index_text, chunk_type = row
+        (
+            chunk_id,
+            full_type,
+            datasource_id,
+            embeddable_text,
+            display_text,
+            created_at,
+            keyword_index_text,
+            chunk_type,
+        ) = row
         return ChunkDTO(
             chunk_id=int(chunk_id),
             full_type=full_type,

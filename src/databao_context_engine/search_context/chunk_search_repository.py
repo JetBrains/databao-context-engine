@@ -92,7 +92,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-        chunk_types: list[str] | None = None
+        chunk_types: list[str] | None = None,
     ) -> list[SearchResult]:
         """Read only similarity search on a specific embedding shard table."""
         vector_candidates = self._get_vector_candidates(
@@ -101,7 +101,7 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=limit,
             datasource_ids=datasource_ids,
-            chunk_types=chunk_types
+            chunk_types=chunk_types,
         )
         return [
             SearchResult(
@@ -131,10 +131,10 @@ class ChunkSearchRepository:
         params: list[Any] = [list(search_vec), self._DEFAULT_DISTANCE_THRESHOLD, limit]
         conditions = []
         if datasource_ids:
-            conditions.append(f"c.datasource_id IN $4")
+            conditions.append("c.datasource_id IN $4")
             params.append([str(datasource_id) for datasource_id in datasource_ids])
         if chunk_types:
-            conditions.append(f"vc.chunk_type IN $5")
+            conditions.append("vc.chunk_type IN $5")
             params.append(chunk_types)
 
         vector_candidates_filter_condition = (
@@ -199,7 +199,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-        chunk_types: list[str] | None = None
+        chunk_types: list[str] | None = None,
     ) -> list[SearchResult]:
         """Hybrid retrieval combining vector similarity and BM25 with Reciprocal Rank Fusion (RRF).
 
@@ -213,14 +213,11 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=candidate_limit,
             datasource_ids=datasource_ids,
-            chunk_types=chunk_types
+            chunk_types=chunk_types,
         )
 
         bm25_candidates = self._get_bm25_candidates(
-            query_text=search_text,
-            limit=candidate_limit,
-            datasource_ids=datasource_ids,
-            chunk_types=chunk_types
+            query_text=search_text, limit=candidate_limit, datasource_ids=datasource_ids, chunk_types=chunk_types
         )
         return self._fuse_by_rrf(
             vector_candidates=vector_candidates,
@@ -235,14 +232,11 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-        chunk_types: list[str] | None = None
+        chunk_types: list[str] | None = None,
     ) -> list[SearchResult]:
         """Read only BM25 search over chunk text."""
         bm25_candidates = self._get_bm25_candidates(
-            query_text=query_text,
-            limit=limit,
-            datasource_ids=datasource_ids,
-            chunk_types=chunk_types
+            query_text=query_text, limit=limit, datasource_ids=datasource_ids, chunk_types=chunk_types
         )
 
         return [
@@ -265,7 +259,7 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-        chunk_types: list[str] | None = None
+        chunk_types: list[str] | None = None,
     ) -> list[Bm25SearchCandidate]:
         datasource_values = [str(datasource_id) for datasource_id in datasource_ids] if datasource_ids else None
         filter_sql = "WHERE c.datasource_id IN ?" if datasource_values else ""
@@ -304,7 +298,7 @@ class ChunkSearchRepository:
                 bm25_candidates b
             WHERE
                 b.bm25_score IS NOT NULL
-                {"AND b.chunk_type IN ".format(chunk_types) if chunk_types else ''}
+                {"AND b.chunk_type IN " if chunk_types else ""}
             ORDER BY
                 b.bm25_score DESC
             LIMIT ?
@@ -326,9 +320,7 @@ class ChunkSearchRepository:
         ]
 
     def get_available_chunk_types(self) -> set[str]:
-        rows = self._conn.execute(
-            "SELECT DISTINCT chunk_type FROM chunk WHERE chunk_type IS NOT NULL"
-        ).fetchall()
+        rows = self._conn.execute("SELECT DISTINCT chunk_type FROM chunk WHERE chunk_type IS NOT NULL").fetchall()
         return {row[0] for row in rows}
 
     @perf.perf_span("chunk_search._fuse_by_rrf")

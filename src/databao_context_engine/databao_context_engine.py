@@ -147,7 +147,7 @@ class DatabaoContextEngine:
             limit=limit,
             datasource_ids=datasource_ids,
             context_search_mode=context_search_mode,
-            chunk_type=chunk_type
+            chunk_type=chunk_type,
         )
 
         return [

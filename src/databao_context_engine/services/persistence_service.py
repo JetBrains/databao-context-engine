@@ -88,7 +88,10 @@ class PersistenceService:
         return self._chunk_repo.bulk_insert(
             full_type=full_type,
             datasource_id=datasource_id,
-            chunk_contents=[(ce.embedded_text, ce.display_text, ce.keyword_indexable_text, ce.original_chunk.type) for ce in chunk_embeddings],
+            chunk_contents=[
+                (ce.embedded_text, ce.display_text, ce.keyword_indexable_text, ce.original_chunk.type)
+                for ce in chunk_embeddings
+            ],
         )
 
     @perf.perf_span("persistence.bulk_insert_embeddings")
