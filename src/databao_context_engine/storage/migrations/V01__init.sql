@@ -6,7 +6,6 @@ CREATE SEQUENCE IF NOT EXISTS chunk_id_seq START 1;
 
 CREATE TABLE IF NOT EXISTS chunk (
     chunk_id        BIGINT PRIMARY KEY DEFAULT nextval('chunk_id_seq'),
-    chunk_type      TEXT NOT NULL,
     full_type       TEXT NOT NULL,
     datasource_id   TEXT NOT NULL,
     embeddable_text TEXT NOT NULL,
