@@ -18,7 +18,7 @@ class ChunkRepository:
         self,
         *,
         full_type: str,
-        chunk_type: str,
+        chunk_type: str | None = None,
         datasource_id: str,
         embeddable_text: str,
         display_text: Optional[str],
