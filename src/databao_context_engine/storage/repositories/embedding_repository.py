@@ -1,10 +1,11 @@
 from array import array
-from typing import Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence
 
 import duckdb
 import pyarrow  # type: ignore[import-untyped]
 from _duckdb import ConstraintException
 
+from databao_context_engine.plugins.duckdb_tools import fetchall_dicts, fetchone_dicts
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 from databao_context_engine.storage.exceptions.exceptions import IntegrityError
 from databao_context_engine.storage.models import EmbeddingDTO
@@ -23,17 +24,19 @@ class EmbeddingRepository:
     ) -> EmbeddingDTO:
         try:
             TableNamePolicy.validate_table_name(table_name=table_name)
-            row = self._conn.execute(
-                f"""
-            INSERT INTO
-                {table_name} (chunk_id, vec)
-            VALUES
-                (?, ?)
-            RETURNING
-                *
-            """,
-                [chunk_id, vec],
-            ).fetchone()
+
+            row = fetchone_dicts(
+                cur=self._conn,
+                sql=f"""
+                INSERT INTO
+                    {table_name} (chunk_id, vec)
+                VALUES
+                    (?, ?)
+                RETURNING
+                    *
+                """,
+                params=[chunk_id, vec],
+            )
             if row is None:
                 raise RuntimeError("Embedding creation returned no object")
             return self._row_to_dto(row)
@@ -42,8 +45,10 @@ class EmbeddingRepository:
 
     def get(self, *, table_name: str, chunk_id: int) -> Optional[EmbeddingDTO]:
         TableNamePolicy.validate_table_name(table_name=table_name)
-        row = self._conn.execute(
-            f"""
+
+        row = fetchone_dicts(
+            cur=self._conn,
+            sql=f"""
             SELECT 
                 *
             FROM 
@@ -51,8 +56,8 @@ class EmbeddingRepository:
             WHERE 
                 chunk_id = ?
             """,
-            [chunk_id],
-        ).fetchone()
+            params=[chunk_id],
+        )
         return self._row_to_dto(row) if row else None
 
     def update(
@@ -135,16 +140,17 @@ class EmbeddingRepository:
 
     def list(self, table_name: str) -> list[EmbeddingDTO]:
         TableNamePolicy.validate_table_name(table_name=table_name)
-        rows = self._conn.execute(
-            f"""
-            SELECT
-                *
-            FROM                
-                {table_name}
-            ORDER BY 
-                chunk_id DESC
-            """
-        ).fetchall()
+        rows = fetchall_dicts(
+            cur=self._conn,
+            sql=f"""
+        SELECT
+            *
+        FROM                
+            {table_name}
+        ORDER BY 
+            chunk_id DESC
+        """,
+        )
         return [self._row_to_dto(r) for r in rows]
 
     def bulk_insert(
@@ -186,10 +192,10 @@ class EmbeddingRepository:
             self._conn.unregister(view_name)
 
     @staticmethod
-    def _row_to_dto(row: Tuple) -> EmbeddingDTO:
-        chunk_id, vec, created_at = row
+    def _row_to_dto(row: dict[str, Any]) -> EmbeddingDTO:
+        vec = row["vec"]
         return EmbeddingDTO(
-            chunk_id=int(chunk_id),
+            chunk_id=int(row["chunk_id"]),
             vec=list(vec) if not isinstance(vec, list) else vec,
-            created_at=created_at,
+            created_at=row["created_at"],
         )

@@ -1,5 +1,7 @@
 from typing import Any
 
+from duckdb import DuckDBPyConnection
+
 from databao_context_engine.pluginlib.config import DuckDBSecret
 
 
@@ -11,7 +13,14 @@ def generate_create_secret_sql(secret_name, duckdb_secret: DuckDBSecret) -> str:
 """
 
 
-def fetchall_dicts(cur, sql: str, params=None) -> list[dict[str, Any]]:
+def fetchone_dicts(cur: DuckDBPyConnection, sql: str, params: list | None = None) -> dict[str, Any] | None:
+    cur.execute(sql, params or [])
+    columns = [desc[0].lower() for desc in cur.description] if cur.description else []
+    row = cur.fetchone()
+    return dict(zip(columns, row)) if row else None
+
+
+def fetchall_dicts(cur: DuckDBPyConnection, sql: str, params: list | None = None) -> list[dict[str, Any]]:
     cur.execute(sql, params or [])
     columns = [desc[0].lower() for desc in cur.description] if cur.description else []
     rows = cur.fetchall()
