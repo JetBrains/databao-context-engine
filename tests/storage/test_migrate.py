@@ -74,9 +74,11 @@ def test_migrate_duplicated_name(db_path: Path) -> None:
 def test_migrate_version_with_changed_hash(db_path: Path) -> None:
     migrate(db_path, [m1_file, m2_file])
 
-    # Call migrate again but with a modified V01
-    migrate(db_path, [m1_modified, m2_file])
+    assert_tables(db_path, "test_1", "test_2")
+
+    # Call migrate again but with a modified V01 and an additional file
+    migrate(db_path, [m1_modified, m2_file, m3_file])
 
     # Make sure the modified migration was skipped
-    assert_tables(db_path, "test_1", "test_2")
-    assert [m1, m2] == load_applied_migrations(db_path)
+    assert_tables(db_path, "test_1", "test_2", "test_3")
+    assert [m1, m2, m3] == load_applied_migrations(db_path)
