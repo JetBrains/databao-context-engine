@@ -9,11 +9,11 @@ import databao_context_engine.perf.core as perf
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.databases_types import (
     CardinalityBucket,
-    ColumnStats,
+    ColumnStatsEntry,
     DatabaseCatalog,
     DatabaseIntrospectionResult,
     DatabaseSchema,
-    TableStats,
+    TableStatsEntry,
 )
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
@@ -134,36 +134,24 @@ class BaseIntrospector(Generic[T], ABC):
         table_stats, column_stats = self.collect_stats(connection, catalog, schemas)
 
         if table_stats:
-            table_stats_map = {(s.get("schema_name"), s.get("table_name")): s for s in table_stats}
+            table_stats_map = {(e.schema_name, e.table_name): e for e in table_stats}
             for schema in schemas:
                 for table in schema.tables:
-                    stats_dict = table_stats_map.get((schema.name, table.name))
-                    if stats_dict:
-                        table.stats = TableStats(
-                            row_count=stats_dict.get("row_count"),
-                            approximate=stats_dict.get("approximate", True),
-                        )
+                    entry = table_stats_map.get((schema.name, table.name))
+                    if entry:
+                        table.stats = entry.stats
 
         if column_stats:
-            column_stats_map = {
-                (s.get("schema_name"), s.get("table_name"), s.get("column_name")): s for s in column_stats
-            }
+            column_stats_map = {(e.schema_name, e.table_name, e.column_name): e for e in column_stats}
             for schema in schemas:
                 for table in schema.tables:
                     table_row_count = table.stats.row_count if table.stats else None
                     for column in table.columns:
-                        stats_dict = column_stats_map.get((schema.name, table.name, column.name))
-                        if stats_dict:
-                            column.stats = ColumnStats(
-                                null_count=stats_dict.get("null_count"),
-                                non_null_count=stats_dict.get("non_null_count"),
-                                distinct_count=stats_dict.get("distinct_count"),
-                                cardinality_kind=stats_dict.get("cardinality_kind"),
-                                min_value=stats_dict.get("min_value"),
-                                max_value=stats_dict.get("max_value"),
-                                top_values=stats_dict.get("top_values"),
-                                total_row_count=stats_dict.get("total_row_count") or table_row_count,
-                            )
+                        entry = column_stats_map.get((schema.name, table.name, column.name))
+                        if entry:
+                            if entry.stats.total_row_count is None:
+                                entry.stats.total_row_count = table_row_count
+                            column.stats = entry.stats
 
     def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
         if self.supports_catalogs:
@@ -317,7 +305,7 @@ class BaseIntrospector(Generic[T], ABC):
         connection,
         catalog: str,
         schemas: list[DatabaseSchema],
-    ) -> tuple[list[dict] | None, list[dict] | None]:
+    ) -> tuple[list[TableStatsEntry] | None, list[ColumnStatsEntry] | None]:
         return None, None
 
     def _collect_samples_for_table(self, connection, catalog: str, schema: str, table: str) -> list[dict[str, Any]]:

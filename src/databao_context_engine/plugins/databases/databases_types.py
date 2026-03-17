@@ -166,6 +166,21 @@ class TableStats:
 
 
 @dataclass
+class TableStatsEntry:
+    schema_name: str
+    table_name: str
+    stats: TableStats
+
+
+@dataclass
+class ColumnStatsEntry:
+    schema_name: str
+    table_name: str
+    column_name: str
+    stats: ColumnStats
+
+
+@dataclass
 class DatabaseTable:
     name: str
     columns: list[DatabaseColumn]

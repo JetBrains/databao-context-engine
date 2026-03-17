@@ -7,7 +7,13 @@ import duckdb
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
+from databao_context_engine.plugins.databases.databases_types import (
+    ColumnStats,
+    ColumnStatsEntry,
+    DatabaseSchema,
+    TableStats,
+    TableStatsEntry,
+)
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
 from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
 
@@ -322,9 +328,9 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         connection,
         catalog: str,
         schemas: list[DatabaseSchema],
-    ) -> tuple[list[dict], list[dict]]:
-        table_stats = []
-        column_stats = []
+    ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
+        table_stats: list[TableStatsEntry] = []
+        column_stats: list[ColumnStatsEntry] = []
 
         for s in schemas:
             for t in s.tables:
@@ -334,60 +340,60 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
                 schema_name = s.name
                 table_name = t.name
 
-            try:
-                summary_query = f'SUMMARIZE "{schema_name}"."{table_name}"'
-                summary_rows = self._fetchall_dicts(connection, summary_query, None)
+                try:
+                    summary_query = f'SUMMARIZE "{schema_name}"."{table_name}"'
+                    summary_rows = self._fetchall_dicts(connection, summary_query, None)
 
-                if not summary_rows:
-                    continue
-
-                row_count = summary_rows[0].get("count")
-                table_stats.append(
-                    {
-                        "schema_name": schema_name,
-                        "table_name": table_name,
-                        "row_count": row_count,
-                        "approximate": True,
-                    }
-                )
-
-                for row in summary_rows:
-                    column_name = row.get("column_name")
-                    if not column_name:
+                    if not summary_rows:
                         continue
 
-                    null_percentage = row.get("null_percentage")
-                    null_count = None
-                    non_null_count = None
-                    if null_percentage is not None and row_count is not None:
-                        null_frac = float(null_percentage) / 100.0
-                        null_count = round(row_count * null_frac)
-                        non_null_count = row_count - null_count
-
-                    # currently min/max values are strings, so we might need to convert them to the appropriate type
-                    # also, duckdb doesn't provide most_common_vals/most_common_freqs
-                    # but there are avg, std, q25 etc. available, we can use them as well
-                    approx_distinct_count = row.get("approx_unique")
-                    cardinality_kind, distinct_count = self._compute_cardinality_stats(approx_distinct_count)
-
-                    column_stats.append(
-                        {
-                            "schema_name": schema_name,
-                            "table_name": table_name,
-                            "column_name": column_name,
-                            "null_count": null_count,
-                            "non_null_count": non_null_count,
-                            "distinct_count": distinct_count,
-                            "cardinality_kind": cardinality_kind,
-                            "min_value": row.get("min"),
-                            "max_value": row.get("max"),
-                            "most_common_vals": None,
-                            "most_common_freqs": None,
-                        }
+                    row_count = summary_rows[0].get("count")
+                    table_stats.append(
+                        TableStatsEntry(
+                            schema_name=schema_name,
+                            table_name=table_name,
+                            stats=TableStats(row_count=row_count, approximate=True),
+                        )
                     )
-            except Exception as e:
-                logger.warning(f"Failed to collect stats for {schema_name}.{table_name}: {e}")
-                continue
+
+                    for row in summary_rows:
+                        column_name = row.get("column_name")
+                        if not column_name:
+                            continue
+
+                        null_percentage = row.get("null_percentage")
+                        null_count = None
+                        non_null_count = None
+                        if null_percentage is not None and row_count is not None:
+                            null_frac = float(null_percentage) / 100.0
+                            null_count = round(row_count * null_frac)
+                            non_null_count = row_count - null_count
+
+                        # currently min/max values are strings, so we might need to convert them to the appropriate type
+                        # also, duckdb doesn't provide most_common_vals/most_common_freqs
+                        # but there are avg, std, q25 etc. available, we can use them as well
+                        approx_distinct_count = row.get("approx_unique")
+                        cardinality_kind, distinct_count = self._compute_cardinality_stats(approx_distinct_count)
+
+                        column_stats.append(
+                            ColumnStatsEntry(
+                                schema_name=schema_name,
+                                table_name=table_name,
+                                column_name=column_name,
+                                stats=ColumnStats(
+                                    null_count=null_count,
+                                    non_null_count=non_null_count,
+                                    distinct_count=distinct_count,
+                                    cardinality_kind=cardinality_kind,
+                                    min_value=row.get("min"),
+                                    max_value=row.get("max"),
+                                    total_row_count=row_count,
+                                ),
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to collect stats for {schema_name}.{table_name}: {e}")
+                    continue
 
         return table_stats, column_stats
 

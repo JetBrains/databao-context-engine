@@ -8,7 +8,13 @@ from pymysql.constants import CLIENT
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
+from databao_context_engine.plugins.databases.databases_types import (
+    ColumnStats,
+    ColumnStatsEntry,
+    DatabaseSchema,
+    TableStats,
+    TableStatsEntry,
+)
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.mysql.config_file import MySQLConfigFile
 
@@ -357,7 +363,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         connection,
         catalog: str,
         schemas: list[DatabaseSchema],
-    ) -> tuple[list[dict], list[dict]]:
+    ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
         schema_names = [s.name for s in schemas]
         self._run_analyze(connection, schemas)
         table_stats = self._get_table_stats(connection, schema_names)
@@ -385,8 +391,8 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 except Exception as e:
                     logger.warning(f"Failed to analyze table {schema}.{table}: {e}")
 
-    def _get_table_stats(self, connection, schemas: list[str]) -> list[dict]:
-        return self._fetchall_dicts(
+    def _get_table_stats(self, connection, schemas: list[str]) -> list[TableStatsEntry]:
+        rows = self._fetchall_dicts(
             connection,
             """
             SELECT
@@ -401,8 +407,18 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             """.format(", ".join(self._quote_literal(s) for s in schemas)),
             None,
         )
+        return [
+            TableStatsEntry(
+                schema_name=r["schema_name"],
+                table_name=r["table_name"],
+                stats=TableStats(row_count=r.get("row_count"), approximate=bool(r.get("approximate", True))),
+            )
+            for r in rows
+        ]
 
-    def _get_column_stats(self, connection, schemas: list[str], table_stats: list[dict]) -> list[dict]:
+    def _get_column_stats(
+        self, connection, schemas: list[str], table_stats: list[TableStatsEntry]
+    ) -> list[ColumnStatsEntry]:
         raw_stats = self._fetchall_dicts(
             connection,
             """
@@ -418,9 +434,9 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             None,
         )
 
-        table_row_counts = {(ts["schema_name"], ts["table_name"]): ts["row_count"] for ts in table_stats}
+        table_row_counts = {(ts.schema_name, ts.table_name): ts.stats.row_count for ts in table_stats}
 
-        processed_stats = []
+        processed_stats: list[ColumnStatsEntry] = []
         for stat in raw_stats:
             if not stat.get("histogram_json"):
                 continue
@@ -430,28 +446,30 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
         return processed_stats
 
-    def _process_histogram(self, stat: dict, table_row_counts: dict[tuple[str, str], int]) -> dict | None:
+    def _process_histogram(
+        self, stat: dict, table_row_counts: dict[tuple[str, str], int | None]
+    ) -> ColumnStatsEntry | None:
         try:
             histogram_json = stat["histogram_json"]
             histogram = json.loads(histogram_json) if isinstance(histogram_json, str) else histogram_json
             histogram_type = histogram.get("histogram-type")
 
             table_key = (stat["schema_name"], stat["table_name"])
-            table_row_count = table_row_counts.get(table_key, 0)
+            table_row_count = table_row_counts.get(table_key) or 0
 
-            stat_dict = {
-                "schema_name": stat["schema_name"],
-                "table_name": stat["table_name"],
-                "column_name": stat["column_name"],
-                "total_row_count": table_row_count,
-            }
+            col_stats = ColumnStats(total_row_count=table_row_count)
 
             if histogram_type == "singleton":
-                self._process_singleton_histogram(histogram, stat_dict, table_row_count)
+                self._process_singleton_histogram(histogram, col_stats, table_row_count)
             elif histogram_type == "equi-height":
-                self._process_equiheight_histogram(histogram, stat_dict, table_row_count)
+                self._process_equiheight_histogram(histogram, col_stats, table_row_count)
 
-            return stat_dict
+            return ColumnStatsEntry(
+                schema_name=stat["schema_name"],
+                table_name=stat["table_name"],
+                column_name=stat["column_name"],
+                stats=col_stats,
+            )
 
         except Exception as e:
             logger.warning(
@@ -459,7 +477,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
             )
             return None
 
-    def _process_singleton_histogram(self, histogram: dict, stat_dict: dict, table_row_count: int) -> None:
+    def _process_singleton_histogram(self, histogram: dict, stats: ColumnStats, table_row_count: int) -> None:
         buckets = histogram.get("buckets", [])
         distinct_count = len(buckets)
 
@@ -468,14 +486,14 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
         cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_count)
 
-        stat_dict["cardinality_kind"] = cardinality_kind
-        stat_dict["distinct_count"] = low_cardinality_distinct_count
-        stat_dict["non_null_count"] = table_row_count - null_count
-        stat_dict["null_count"] = null_count
+        stats.cardinality_kind = cardinality_kind
+        stats.distinct_count = low_cardinality_distinct_count
+        stats.non_null_count = table_row_count - null_count
+        stats.null_count = null_count
 
         if buckets:
-            stat_dict["min_value"] = self._decode_histogram_value(buckets[0][0])
-            stat_dict["max_value"] = self._decode_histogram_value(buckets[-1][0])
+            stats.min_value = self._decode_histogram_value(buckets[0][0])
+            stats.max_value = self._decode_histogram_value(buckets[-1][0])
 
             top_values = []
             prev_cumulative = 0.0
@@ -487,14 +505,14 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 prev_cumulative = cumulative_freq
 
             top_values.sort(key=lambda x: x[1], reverse=True)
-            stat_dict["top_values"] = top_values[:5]
+            stats.top_values = top_values[:5]
 
-    def _process_equiheight_histogram(self, histogram: dict, stat_dict: dict, table_row_count: int) -> None:
+    def _process_equiheight_histogram(self, histogram: dict, stats: ColumnStats, table_row_count: int) -> None:
         buckets = histogram.get("buckets", [])
         null_frac = float(histogram.get("null-values") or 0.0)
         null_count = max(0, min(table_row_count, round(null_frac * table_row_count)))
-        stat_dict["null_count"] = null_count
-        stat_dict["non_null_count"] = table_row_count - null_count
+        stats.null_count = null_count
+        stats.non_null_count = table_row_count - null_count
 
         # distinct estimate: sum the 4th element of each bucket if present
         distinct_est = 0
@@ -503,14 +521,14 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                 distinct_est += int(b[3] or 0)
 
         cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_est)
-        stat_dict["cardinality_kind"] = cardinality_kind
-        stat_dict["distinct_count"] = low_cardinality_distinct_count
+        stats.cardinality_kind = cardinality_kind
+        stats.distinct_count = low_cardinality_distinct_count
 
         if buckets:
             first_bucket = buckets[0]
             last_bucket = buckets[-1]
-            stat_dict["min_value"] = self._decode_histogram_value(first_bucket[0])
-            stat_dict["max_value"] = self._decode_histogram_value(last_bucket[1])
+            stats.min_value = self._decode_histogram_value(first_bucket[0])
+            stats.max_value = self._decode_histogram_value(last_bucket[1])
 
     @staticmethod
     def _decode_histogram_value(value):
