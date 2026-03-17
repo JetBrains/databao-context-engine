@@ -35,3 +35,6 @@ class MockUserInputCallback(UserInputCallback):
         if isinstance(val, bool):
             return val
         raise AssertionError(f"Expected boolean val but {type(val)}:{repr(val)} is provided")
+
+    def on_validation_error(self, property_key: str, input_value: Any, error_message: str) -> None:
+        pass

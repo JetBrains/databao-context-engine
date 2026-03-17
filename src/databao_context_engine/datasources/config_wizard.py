@@ -1,7 +1,15 @@
+import logging
 from dataclasses import dataclass
 from typing import Any, Iterable, Protocol
 
-from databao_context_engine.pluginlib.config import ConfigPropertyDefinition, ConfigUnionPropertyDefinition
+from pydantic import TypeAdapter, ValidationError
+
+from databao_context_engine.pluginlib.config import (
+    ConfigPropertyDefinition,
+    ConfigUnionPropertyDefinition,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -22,6 +30,13 @@ class UserInputCallback(Protocol):
     ) -> Any: ...
 
     def confirm(self, text: str) -> bool: ...
+
+    def on_validation_error(self, property_key: str, input_value: Any, error_message: str) -> None:
+        """Called when a validation error occurs on a value inputed by the user.
+
+        It gives a chance to show that error to user in the UI if necessary.
+        """
+        pass
 
 
 def build_config_content_interactively(
@@ -88,19 +103,73 @@ def _build_config_content_from_properties(
             if len(nested_content.keys()) > 0:
                 config_content[config_file_property.property_key] = nested_content
         else:
-            property_value = user_input_callback.prompt(
-                property_key=f"{properties_prefix}{config_file_property.property_key}",
-                required=config_file_property.required,
-                type=config_file_property.property_type,
-                default_value=config_file_property.default_value,
-                is_secret=config_file_property.secret,
-            )
+            received_valid_user_input = False
+            while not received_valid_user_input:
+                full_property_key = f"{properties_prefix}{config_file_property.property_key}"
+                property_value = user_input_callback.prompt(
+                    property_key=full_property_key,
+                    required=config_file_property.required,
+                    type=config_file_property.property_type,
+                    default_value=config_file_property.default_value,
+                    is_secret=config_file_property.secret,
+                )
 
-            if property_value is not None:
-                if isinstance(property_value, str):
-                    if property_value.strip():
-                        config_content[config_file_property.property_key] = property_value
+                normalized_property_value = _normalize_value(property_value)
+
+                if normalized_property_value is None:
+                    if config_file_property.required:
+                        # No value provided even though it is mandatory, ask for prompt again
+                        user_input_callback.on_validation_error(
+                            property_key=full_property_key,
+                            input_value=property_value,
+                            error_message="Field is required",
+                        )
+                        continue
+                    # Empty value is valid for non-required fields
+                    received_valid_user_input = True
                 else:
-                    config_content[config_file_property.property_key] = property_value
+                    try:
+                        validated_property = _validate_property_value(
+                            config_file_property.property_type, normalized_property_value
+                        )
+
+                        config_content[config_file_property.property_key] = validated_property
+                        received_valid_user_input = True
+                    except ValidationError as e:
+                        # Validation error for the current input, ask for prompt again
+                        user_input_callback.on_validation_error(
+                            property_key=full_property_key,
+                            input_value=property_value,
+                            error_message=e.errors()[0].get("msg") if e.errors() else "",
+                        )
+                        continue
 
     return config_content
+
+
+def _normalize_value(property_value) -> str | None:
+    if isinstance(property_value, str):
+        stripped_str = property_value.strip()
+
+        if len(stripped_str) == 0:
+            # Ignore empty strings
+            return None
+
+        return stripped_str
+
+    return property_value
+
+
+def _validate_property_value(property_type: type | None, property_value: Any) -> Any:
+    if property_type is None:
+        return property_value
+
+    try:
+        return TypeAdapter(property_type).validate_python(property_value)
+    except ValidationError as e:
+        raise e
+    except Exception:
+        # Handling any error related to the type not being usable as a TypeAdapter:
+        #  In that case, we don't validate the value and simply return it as-is
+        logger.debug("Failed to validate property", exc_info=True)
+        return property_value
