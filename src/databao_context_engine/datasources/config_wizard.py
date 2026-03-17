@@ -117,6 +117,9 @@ def _build_config_content_from_properties(
                 normalized_property_value = _normalize_value(property_value)
 
                 if normalized_property_value is None:
+                    normalized_property_value = config_file_property.default_value
+
+                if normalized_property_value is None:
                     if config_file_property.required:
                         # No value provided even though it is mandatory, ask for prompt again
                         user_input_callback.on_validation_error(

@@ -22,9 +22,6 @@ class MockUserInputCallback(UserInputCallback):
         val = self.inputs[self.input_index]
         self.input_index += 1
 
-        if val == "" and default_value is not None:
-            return default_value
-
         return val
 
     def confirm(self, text: str) -> bool:
