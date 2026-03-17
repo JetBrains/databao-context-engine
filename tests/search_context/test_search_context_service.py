@@ -71,6 +71,7 @@ def test_retrieve_returns_results():
         dimension=768,
         limit=10,
         datasource_ids=None,
+        chunk_types=None,
     )
 
     assert result == expected
@@ -218,5 +219,6 @@ def test_retrieve_vector_mode_calls_vector_search():
         dimension=768,
         limit=3,
         datasource_ids=None,
+        chunk_types=None,
     )
     assert result == expected
