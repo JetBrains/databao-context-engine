@@ -129,8 +129,17 @@ class ChunkSearchRepository:
     ) -> list[VectorSearchCandidate]:
         """Read only vector candidates on a specific embedding shard table."""
         params: list[Any] = [list(search_vec), self._DEFAULT_DISTANCE_THRESHOLD, limit]
+        conditions = []
         if datasource_ids:
+            conditions.append(f"c.datasource_id IN $4")
             params.append([str(datasource_id) for datasource_id in datasource_ids])
+        if chunk_type:
+            conditions.append(f"vc.chunk_type = '$5'")
+            params.append(chunk_type)
+
+        vector_candidates_filter_condition = (
+            "WHERE " + " AND ".join(c for c in conditions if c) if any(conditions) else ""
+        )
 
         rows = self._conn.execute(
             f"""
@@ -146,7 +155,7 @@ class ChunkSearchRepository:
                 FROM
                     {table_name} e
                     JOIN chunk c ON e.chunk_id = c.chunk_id
-                {"WHERE c.datasource_id IN $4" if datasource_ids else ""}
+                    {vector_candidates_filter_condition}
             )
             SELECT
                 vc.chunk_id,
@@ -160,7 +169,6 @@ class ChunkSearchRepository:
                 vector_candidates vc
             WHERE
                 vc.cosine_distance < $2
-                {"AND vc.chunk_type = '{}'".format(chunk_type) if chunk_type else ''}
             ORDER BY
                 vc.cosine_distance ASC
             LIMIT $3
