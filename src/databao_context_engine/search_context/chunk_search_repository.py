@@ -160,7 +160,7 @@ class ChunkSearchRepository:
                 vector_candidates vc
             WHERE
                 vc.cosine_distance < $2
-                {"AND vc.chunk_type = '%s'"%chunk_type if chunk_type else ''}
+                {"AND vc.chunk_type = '{}'".format(chunk_type) if chunk_type else ''}
             ORDER BY
                 vc.cosine_distance ASC
             LIMIT $3
@@ -296,7 +296,7 @@ class ChunkSearchRepository:
                 bm25_candidates b
             WHERE
                 b.bm25_score IS NOT NULL
-                {"AND b.chunk_type = '%s'"%chunk_type if chunk_type else ''}
+                {"AND b.chunk_type = '{}'".format(chunk_type) if chunk_type else ''}
             ORDER BY
                 b.bm25_score DESC
             LIMIT ?
