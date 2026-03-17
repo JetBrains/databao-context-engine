@@ -146,7 +146,6 @@ class DatabaseColumn:
     name: str
     type: str
     nullable: bool
-    samples: list[Any]
     description: str | None = None
     default_expression: str | None = None
     generated: Literal["identity", "computed"] | None = None
