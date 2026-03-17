@@ -158,7 +158,9 @@ def test_retrieve_keyword_mode_calls_bm25_search(chunk_types: list[str] | None, 
     if raises:
         with pytest.raises(ValueError):
             retrieve_service.search(
-                search_text="q", limit=3, rag_mode=RAG_MODE.RAW_QUERY, context_search_mode=ContextSearchMode.KEYWORD_SEARCH
+                search_text="q", limit=3, rag_mode=RAG_MODE.RAW_QUERY,
+                context_search_mode=ContextSearchMode.KEYWORD_SEARCH,
+                chunk_types=chunk_types
             )
         return
 
