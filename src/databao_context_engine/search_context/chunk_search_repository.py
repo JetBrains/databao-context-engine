@@ -101,7 +101,7 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=limit,
             datasource_ids=datasource_ids,
-            chunk_type=chunk_type
+            chunk_types=chunk_type
         )
         return [
             SearchResult(
@@ -125,7 +125,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-        chunk_type: str | None = None,
+        chunk_types: list[str] | None = None,
     ) -> list[VectorSearchCandidate]:
         """Read only vector candidates on a specific embedding shard table."""
         params: list[Any] = [list(search_vec), self._DEFAULT_DISTANCE_THRESHOLD, limit]
@@ -133,9 +133,9 @@ class ChunkSearchRepository:
         if datasource_ids:
             conditions.append(f"c.datasource_id IN $4")
             params.append([str(datasource_id) for datasource_id in datasource_ids])
-        if chunk_type:
-            conditions.append(f"vc.chunk_type = '$5'")
-            params.append(chunk_type)
+        if chunk_types:
+            conditions.append(f"vc.chunk_type IN $5")
+            params.append(chunk_types)
 
         vector_candidates_filter_condition = (
             "WHERE " + " AND ".join(c for c in conditions if c) if any(conditions) else ""
@@ -213,7 +213,7 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=candidate_limit,
             datasource_ids=datasource_ids,
-            chunk_type=chunk_type
+            chunk_types=chunk_type
         )
 
         bm25_candidates = self._get_bm25_candidates(
