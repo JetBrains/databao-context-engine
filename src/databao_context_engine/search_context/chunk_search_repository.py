@@ -92,7 +92,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-            chunk_type: str | None = None
+        chunk_types: list[str] | None = None
     ) -> list[SearchResult]:
         """Read only similarity search on a specific embedding shard table."""
         vector_candidates = self._get_vector_candidates(
@@ -101,7 +101,7 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=limit,
             datasource_ids=datasource_ids,
-            chunk_types=chunk_type
+            chunk_types=chunk_types
         )
         return [
             SearchResult(
@@ -199,7 +199,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-            chunk_type: str | None = None
+        chunk_types: list[str] | None = None
     ) -> list[SearchResult]:
         """Hybrid retrieval combining vector similarity and BM25 with Reciprocal Rank Fusion (RRF).
 
@@ -213,14 +213,14 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=candidate_limit,
             datasource_ids=datasource_ids,
-            chunk_types=chunk_type
+            chunk_types=chunk_types
         )
 
         bm25_candidates = self._get_bm25_candidates(
             query_text=search_text,
             limit=candidate_limit,
             datasource_ids=datasource_ids,
-            chunk_type=chunk_type
+            chunk_types=chunk_types
         )
         return self._fuse_by_rrf(
             vector_candidates=vector_candidates,
@@ -235,14 +235,14 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-        chunk_type: str | None = None
+        chunk_types: list[str] | None = None
     ) -> list[SearchResult]:
         """Read only BM25 search over chunk text."""
         bm25_candidates = self._get_bm25_candidates(
             query_text=query_text,
             limit=limit,
             datasource_ids=datasource_ids,
-            chunk_type=chunk_type
+            chunk_types=chunk_types
         )
 
         return [
@@ -265,7 +265,7 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_ids: list[DatasourceId] | None = None,
-            chunk_type: str | None = None
+        chunk_types: list[str] | None = None
     ) -> list[Bm25SearchCandidate]:
         datasource_values = [str(datasource_id) for datasource_id in datasource_ids] if datasource_ids else None
         filter_sql = "WHERE c.datasource_id IN ?" if datasource_values else ""
@@ -304,7 +304,7 @@ class ChunkSearchRepository:
                 bm25_candidates b
             WHERE
                 b.bm25_score IS NOT NULL
-                {"AND b.chunk_type = '{}'".format(chunk_type) if chunk_type else ''}
+                {"AND b.chunk_type IN ".format(chunk_types) if chunk_types else ''}
             ORDER BY
                 b.bm25_score DESC
             LIMIT ?
