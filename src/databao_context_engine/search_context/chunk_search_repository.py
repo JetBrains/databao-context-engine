@@ -325,6 +325,12 @@ class ChunkSearchRepository:
             for row in rows
         ]
 
+    def get_available_chunk_types(self) -> set[str]:
+        rows = self._conn.execute(
+            "SELECT DISTINCT chunk_type FROM chunk WHERE chunk_type IS NOT NULL"
+        ).fetchall()
+        return {row[0] for row in rows}
+
     @perf.perf_span("chunk_search._fuse_by_rrf")
     def _fuse_by_rrf(
         self,
