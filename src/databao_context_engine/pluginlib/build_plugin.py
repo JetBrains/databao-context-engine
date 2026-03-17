@@ -16,7 +16,7 @@ class EmbeddableChunk:
         embeddable_text: The text to embed as a vector for search usage
         content: The content to return as a response when the embedding has been selected in a search
     """
-    type: str
+    type: str | None = None
     embeddable_text: str
     keyword_indexable_text: str | None = None
     content: Any
