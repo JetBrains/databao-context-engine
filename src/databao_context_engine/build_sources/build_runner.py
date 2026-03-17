@@ -31,22 +31,17 @@ logger = logging.getLogger(__name__)
 
 
 def _build_step_plan(*, should_index: bool, should_enrich_context: bool) -> tuple[ProgressStep, ...]:
-    steps: list[ProgressStep] = [ProgressStep.PLUGIN_EXECUTION]
+    steps: list[ProgressStep] = []
+
+    steps.extend(BuildService.build_context_step_plan())
 
     if should_enrich_context:
-        steps.append(ProgressStep.CONTEXT_ENRICHMENT)
+        steps.extend(BuildService.enrich_context_step_plan())
 
     if should_index:
-        steps.extend(_index_step_plan())
+        steps.extend(BuildService.index_step_plan())
 
     return tuple(steps)
-
-
-def _index_step_plan() -> tuple[ProgressStep, ...]:
-    return (
-        ProgressStep.EMBEDDING,
-        ProgressStep.PERSISTENCE,
-    )
 
 
 @perf.perf_run(
@@ -431,7 +426,7 @@ def _index_one_context(
 
     ProgressEmitter(progress).datasource_step_plan_set(
         datasource_id=str(context.datasource_id),
-        step_plan=_index_step_plan(),
+        step_plan=BuildService.index_step_plan(),
     )
 
     build_service.index_datasource_context(context=context, plugin=plugin, progress=progress)

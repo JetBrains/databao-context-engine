@@ -103,6 +103,13 @@ class BuildService:
     ) -> None:
         if not force_index and self._chunk_embedding_service.is_context_already_indexed(context_hash=context_hash):
             logger.info(f"Context for {str(context_hash.datasource_id)} has already been indexed, skipping indexing.")
+            # Make sure to emit all step completed events
+            emitter = ProgressEmitter(progress)
+            for step in self.index_step_plan():
+                emitter.datasource_step_completed(
+                    datasource_id=built_context.datasource_id,
+                    step=step,
+                )
             return
 
         chunks = plugin.divide_context_into_chunks(built_context.context)
@@ -188,3 +195,18 @@ class BuildService:
                     # Forcing the index prevents checking for the datasource context hash again since we just did
                     force_index=True,
                 )
+
+    @staticmethod
+    def build_context_step_plan() -> tuple[ProgressStep, ...]:
+        return (ProgressStep.PLUGIN_EXECUTION,)
+
+    @staticmethod
+    def enrich_context_step_plan() -> tuple[ProgressStep, ...]:
+        return (ProgressStep.CONTEXT_ENRICHMENT,)
+
+    @staticmethod
+    def index_step_plan() -> tuple[ProgressStep, ...]:
+        return (
+            ProgressStep.EMBEDDING,
+            ProgressStep.PERSISTENCE,
+        )
