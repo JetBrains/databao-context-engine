@@ -20,7 +20,7 @@ from databao_context_engine.datasources.datasource_context import (
     hash_context_file,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
-from databao_context_engine.datasources.types import PreparedConfig, PreparedDatasource
+from databao_context_engine.datasources.types import DatasourceId, PreparedConfig, PreparedDatasource
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.plugins.plugin_loader import NoPluginFoundForDatasource
 from databao_context_engine.progress.progress import ProgressCallback, ProgressEmitter, ProgressStep
@@ -41,6 +41,21 @@ def _build_step_plan(*, should_index: bool, should_enrich_context: bool) -> tupl
         steps.extend(BuildService.index_step_plan())
 
     return tuple(steps)
+
+
+def _emit_all_build_step_as_completed(
+    *,
+    progress: ProgressCallback | None,
+    datasource_id: str | DatasourceId,
+    should_index: bool,
+    should_enrich_context: bool,
+) -> None:
+    emitter = ProgressEmitter(progress)
+    for step in _build_step_plan(should_index=should_index, should_enrich_context=should_enrich_context):
+        emitter.datasource_step_completed(
+            datasource_id=str(datasource_id),
+            step=step,
+        )
 
 
 @perf.perf_run(
@@ -165,15 +180,15 @@ def _build_one_datasource(
         f'Found datasource of type "{prepared_source.datasource_type.full_type}" with name {prepared_source.datasource_id.datasource_path}'
     )
 
-    try:
-        ProgressEmitter(progress).datasource_step_plan_set(
-            datasource_id=str(datasource_id),
-            step_plan=_build_step_plan(
-                should_index=should_index,
-                should_enrich_context=should_enrich_context,
-            ),
-        )
+    ProgressEmitter(progress).datasource_step_plan_set(
+        datasource_id=str(datasource_id),
+        step_plan=_build_step_plan(
+            should_index=should_index,
+            should_enrich_context=should_enrich_context,
+        ),
+    )
 
+    try:
         result = build_service.build_context(
             prepared_source=prepared_source,
             progress=progress,
@@ -205,6 +220,14 @@ def _build_one_datasource(
             "No plugin for '%s' (datasource=%s) — skipping.",
             e.datasource_type.full_type,
             prepared_source.datasource_id.relative_path_to_config_file(),
+        )
+        # Since the plugin was not found, no build steps were emitted but the plan was set:
+        # we need to emit all steps as completed
+        _emit_all_build_step_as_completed(
+            progress=progress,
+            datasource_id=datasource_id,
+            should_index=should_index,
+            should_enrich_context=should_enrich_context,
         )
         return BuildDatasourceResult(datasource_id=datasource_id, status=DatasourceStatus.SKIPPED)
 
@@ -395,12 +418,11 @@ def _index_one_context(
 ) -> IndexDatasourceResult:
     perf.set_attribute("context_size_bytes", len(context.context.encode("utf-8")))
 
+    ProgressEmitter(progress).datasource_step_plan_set(
+        datasource_id=str(context.datasource_id),
+        step_plan=BuildService.index_step_plan(),
+    )
     try:
-        ProgressEmitter(progress).datasource_step_plan_set(
-            datasource_id=str(context.datasource_id),
-            step_plan=BuildService.index_step_plan(),
-        )
-
         build_service.index_datasource_context(context=context, progress=progress)
         return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK)
     except NoPluginFoundForDatasource as e:
@@ -409,4 +431,7 @@ def _index_one_context(
             e.datasource_type.full_type,
             context.datasource_id,
         )
+        # Since the plugin was not found, no index steps were emitted but the plan was set:
+        # we need to emit all steps as completed
+        BuildService.emit_all_index_step_as_completed(progress=progress, datasource_id=context.datasource_id)
         return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)

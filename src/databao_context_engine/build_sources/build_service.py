@@ -15,7 +15,7 @@ from databao_context_engine.datasources.datasource_context import (
     get_datasource_context,
     read_datasource_type_from_context,
 )
-from databao_context_engine.datasources.types import PreparedDatasource
+from databao_context_engine.datasources.types import DatasourceId, PreparedDatasource
 from databao_context_engine.llm.descriptions.provider import DescriptionProvider
 from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
@@ -126,12 +126,7 @@ class BuildService:
         if not force_index and self._chunk_embedding_service.is_context_already_indexed(context_hash=context_hash):
             logger.info(f"Context for {str(context_hash.datasource_id)} has already been indexed, skipping indexing.")
             # Make sure to emit all step completed events
-            emitter = ProgressEmitter(progress)
-            for step in self.index_step_plan():
-                emitter.datasource_step_completed(
-                    datasource_id=built_context.datasource_id,
-                    step=step,
-                )
+            BuildService.emit_all_index_step_as_completed(progress=progress, datasource_id=built_context.datasource_id)
             return
 
         perf.set_attribute("datasource_type", built_context.datasource_type)
@@ -252,3 +247,12 @@ class BuildService:
             ProgressStep.EMBEDDING,
             ProgressStep.PERSISTENCE,
         )
+
+    @staticmethod
+    def emit_all_index_step_as_completed(progress: ProgressCallback | None, datasource_id: str | DatasourceId) -> None:
+        emitter = ProgressEmitter(progress)
+        for step in BuildService.index_step_plan():
+            emitter.datasource_step_completed(
+                datasource_id=str(datasource_id),
+                step=step,
+            )
