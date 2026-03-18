@@ -75,14 +75,19 @@ def _create_migration(file: Path) -> _Migration:
     query = query_bytes.decode("utf-8")
     version = _extract_version_from_name(file.name)
     hook_file = file.with_suffix(".py")
-    hook_bytes = hook_file.read_bytes() if hook_file.exists() else b""
+
+    # We only add whether the Python file exists or not in the checksum, to prevent issues that could happen in the future
+    # due to Python refactoring
+    hook_bytes = bytes(hook_file.exists())
     checksum = hashlib.md5(query_bytes + hook_bytes, usedforsecurity=False).hexdigest()
+
     before_hook = None
     after_hook = None
     if hook_file.exists():
         hook_module = _load_hook_module(hook_file)
         before_hook = getattr(hook_module, "before_migration", None)
         after_hook = getattr(hook_module, "after_migration", None)
+
     return _Migration(
         name=file.name,
         version=version,
