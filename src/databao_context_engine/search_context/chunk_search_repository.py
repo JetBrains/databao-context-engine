@@ -26,7 +26,7 @@ class VectorSearchCandidate:
 @dataclass(kw_only=True, frozen=True)
 class Bm25SearchCandidate:
     chunk_id: int
-    chunk_type: str
+    chunk_type: str | None
     display_text: str
     embeddable_text: str
     bm25_score: float
