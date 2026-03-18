@@ -9,6 +9,7 @@ from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import (
+    CatalogScope,
     ColumnStats,
     ColumnStatsEntry,
     DatabaseSchema,
@@ -362,18 +363,22 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[DatabaseSchema],
+        scope: CatalogScope,
     ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
-        schema_names = [s.name for s in schemas]
-        self._run_analyze(connection, schemas)
+        schema_names = [schema_scope.schema_name for schema_scope in scope.schemas]
+        self._run_analyze(connection, scope)
         table_stats = self._get_table_stats(connection, schema_names)
         column_stats = self._get_column_stats(connection, schema_names, table_stats)
         return table_stats, column_stats
 
-    def _run_analyze(self, connection, schemas: list[DatabaseSchema]) -> None:
-        table_columns: dict[tuple[str, str], list[str]] = {
-            (s.name, t.name): [c.name for c in t.columns] for s in schemas for t in s.tables if t.kind.value == "table"
-        }
+    def _run_analyze(self, connection, scope: CatalogScope) -> None:
+        table_columns: dict[tuple[str, str], list[str]] = {}
+        for schema_scope in scope.schemas:
+            for table_ref in schema_scope.tables:
+                if table_ref.kind.value == "table" and table_ref.columns:
+                    table_columns[(schema_scope.schema_name, table_ref.table_name)] = [
+                        col.name for col in table_ref.columns
+                    ]
 
         n_buckets = 100  # postgres uses the same default
         with connection.cursor() as cur:

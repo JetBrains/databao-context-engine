@@ -180,6 +180,31 @@ class ColumnStatsEntry:
     stats: ColumnStats
 
 
+@dataclass(frozen=True, slots=True)
+class ColumnRef:
+    name: str
+    type: str
+
+
+@dataclass(frozen=True, slots=True)
+class TableRef:
+    table_name: str
+    kind: DatasetKind = DatasetKind.TABLE
+    columns: list[ColumnRef] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class SchemaScope:
+    schema_name: str
+    tables: list[TableRef]
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogScope:
+    catalog_name: str
+    schemas: list[SchemaScope]
+
+
 @dataclass
 class DatabaseTable:
     name: str

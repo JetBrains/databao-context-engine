@@ -11,9 +11,9 @@ from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import (
+    CatalogScope,
     ColumnStats,
     ColumnStatsEntry,
-    DatabaseSchema,
     TableStats,
     TableStatsEntry,
 )
@@ -202,9 +202,9 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[DatabaseSchema],
+        scope: CatalogScope,
     ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
-        schema_names = [s.name for s in schemas]
+        schema_names = [schema_scope.schema_name for schema_scope in scope.schemas]
         table_stats_query = SQLQuery(self._sql_table_stats(), (schema_names,))
         table_stat_rows = self._fetchall_dicts(connection, table_stats_query.sql, table_stats_query.params)
         table_stats = [

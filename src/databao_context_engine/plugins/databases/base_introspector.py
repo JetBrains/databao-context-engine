@@ -9,17 +9,20 @@ import databao_context_engine.perf.core as perf
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.databases.databases_types import (
     CardinalityBucket,
+    CatalogScope,
+    ColumnRef,
     ColumnStatsEntry,
     DatabaseCatalog,
     DatabaseIntrospectionResult,
     DatabaseSchema,
+    SchemaScope,
+    TableRef,
     TableStatsEntry,
 )
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
 from databao_context_engine.plugins.databases.introspection_scope_matcher import (
     IntrospectionScopeMatcher,
-    ScopeSelection,
 )
 from databao_context_engine.plugins.databases.profiling_config import ProfilingConfig
 from databao_context_engine.plugins.databases.sampling_scope import SamplingConfig
@@ -62,17 +65,25 @@ class BaseIntrospector(Generic[T], ABC):
 
     @perf.perf_span("db.introspect_database")
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
-        scope = self._resolve_scope(file_config)
         sampling_matcher = SamplingScopeMatcher(file_config.sampling, ignored_schemas=self._ignored_schemas())
         profiling_enabled = bool(file_config.profiling and file_config.profiling.enabled)
+        scope_matcher = IntrospectionScopeMatcher(
+            file_config.introspection_scope,
+            ignored_schemas=self._ignored_schemas(),
+        )
+
+        with self._connect(file_config) as root_connection:
+            catalogs = self._get_catalogs_adapted(root_connection, file_config)
 
         introspected_catalogs: list[DatabaseCatalog] = []
-        for catalog in scope.catalogs:
-            schemas_to_introspect = scope.schemas_per_catalog.get(catalog, [])
-            if not schemas_to_introspect:
-                continue
-
+        for catalog in catalogs:
             with self._connect(file_config, catalog=catalog) as conn:
+                all_schemas = self._list_schemas_for_catalog(conn, catalog)
+                schemas_to_introspect = scope_matcher.filter_schemas_for_catalog(catalog, all_schemas)
+
+                if not schemas_to_introspect:
+                    continue
+
                 schemas = self._collect_catalog_model_timed(
                     connection=conn, catalog=catalog, schemas=schemas_to_introspect
                 )
@@ -86,25 +97,9 @@ class BaseIntrospector(Generic[T], ABC):
                 if profiling_enabled:
                     self._collect_statistics_for_schemas(connection=conn, catalog=catalog, schemas=schemas)
 
-            introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=schemas))
+                introspected_catalogs.append(DatabaseCatalog(name=catalog, schemas=schemas))
 
         return DatabaseIntrospectionResult(catalogs=introspected_catalogs)
-
-    def _resolve_scope(self, file_config: T) -> ScopeSelection:
-        scope_matcher = IntrospectionScopeMatcher(
-            file_config.introspection_scope,
-            ignored_schemas=self._ignored_schemas(),
-        )
-
-        with self._connect(file_config) as root_connection:
-            catalogs = self._get_catalogs_adapted(root_connection, file_config)
-
-        discovered_schemas_per_catalog: dict[str, list[str]] = {}
-        for catalog in catalogs:
-            with self._connect(file_config, catalog=catalog) as conn:
-                discovered_schemas_per_catalog[catalog] = self._list_schemas_for_catalog(conn, catalog)
-
-        return scope_matcher.filter_scopes(catalogs, discovered_schemas_per_catalog)
 
     @perf.perf_span("db.collect_samples", attrs=lambda self, *, catalog, **_: {"catalog": catalog})
     def _collect_samples_for_schemas(
@@ -131,7 +126,8 @@ class BaseIntrospector(Generic[T], ABC):
 
     @perf.perf_span("db.collect_statistics", attrs=lambda self, *, catalog, **_: {"catalog": catalog})
     def _collect_statistics_for_schemas(self, *, connection: Any, catalog: str, schemas: list[DatabaseSchema]) -> None:
-        table_stats, column_stats = self.collect_stats(connection, catalog, schemas)
+        scope = self._build_catalog_scope(catalog, schemas)
+        table_stats, column_stats = self.collect_stats(connection, catalog, scope)
 
         if table_stats:
             table_stats_map = {(e.schema_name, e.table_name): e for e in table_stats}
@@ -152,6 +148,25 @@ class BaseIntrospector(Generic[T], ABC):
                             if entry.stats.total_row_count is None:
                                 entry.stats.total_row_count = table_row_count
                             column.stats = entry.stats
+
+    def _build_catalog_scope(self, catalog: str, schemas: list[DatabaseSchema]) -> CatalogScope:
+        return CatalogScope(
+            catalog_name=catalog,
+            schemas=[
+                SchemaScope(
+                    schema_name=schema.name,
+                    tables=[
+                        TableRef(
+                            table_name=table.name,
+                            kind=table.kind,
+                            columns=[ColumnRef(name=col.name, type=col.type) for col in table.columns],
+                        )
+                        for table in schema.tables
+                    ],
+                )
+                for schema in schemas
+            ],
+        )
 
     def _get_catalogs_adapted(self, connection, file_config: T) -> list[str]:
         if self.supports_catalogs:
@@ -304,7 +319,7 @@ class BaseIntrospector(Generic[T], ABC):
         self,
         connection,
         catalog: str,
-        schemas: list[DatabaseSchema],
+        scope: CatalogScope,
     ) -> tuple[list[TableStatsEntry] | None, list[ColumnStatsEntry] | None]:
         return None, None
 

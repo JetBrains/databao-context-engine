@@ -12,6 +12,7 @@ from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import (
+    CatalogScope,
     ColumnStats,
     ColumnStatsEntry,
     DatabaseSchema,
@@ -375,7 +376,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[DatabaseSchema],
+        scope: CatalogScope,
     ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
         """Collect table and column statistics using approximate queries with adaptive sampling.
 
@@ -390,18 +391,17 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         Returns:
             Tuple of (table_stats, column_stats) - both as lists of dicts
         """
-        schema_names = [s.name for s in schemas]
+        schema_names = [schema_scope.schema_name for schema_scope in scope.schemas]
         table_stats = self._get_table_stats(connection, catalog, schema_names)
         table_row_counts = {(ts.schema_name, ts.table_name): ts.stats.row_count for ts in table_stats}
 
         table_columns: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
-
-        for s in schemas:
-            for t in s.tables:
-                if t.kind.value == "table":
-                    key = (s.name, t.name)
-                    for c in t.columns:
-                        table_columns[key].append((c.name, c.type))
+        for schema_scope in scope.schemas:
+            for table_ref in schema_scope.tables:
+                if table_ref.kind.value == "table" and table_ref.columns:
+                    key = (schema_scope.schema_name, table_ref.table_name)
+                    for col in table_ref.columns:
+                        table_columns[key].append((col.name, col.type))
 
         column_stats = []
         for (schema, table), columns_list in table_columns.items():

@@ -8,9 +8,9 @@ from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
 from databao_context_engine.plugins.databases.databases_types import (
+    CatalogScope,
     ColumnStats,
     ColumnStatsEntry,
-    DatabaseSchema,
     TableStats,
     TableStatsEntry,
 )
@@ -327,18 +327,18 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[DatabaseSchema],
+        scope: CatalogScope,
     ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
         table_stats: list[TableStatsEntry] = []
         column_stats: list[ColumnStatsEntry] = []
 
-        for s in schemas:
-            for t in s.tables:
-                if t.kind.value != "table":
+        for schema_scope in scope.schemas:
+            for table_ref in schema_scope.tables:
+                if table_ref.kind.value != "table":
                     continue
 
-                schema_name = s.name
-                table_name = t.name
+                schema_name = schema_scope.schema_name
+                table_name = table_ref.table_name
 
                 try:
                     summary_query = f'SUMMARIZE "{schema_name}"."{table_name}"'
