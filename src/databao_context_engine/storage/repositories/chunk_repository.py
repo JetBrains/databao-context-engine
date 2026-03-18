@@ -153,7 +153,7 @@ class ChunkRepository:
         *,
         full_type: str,
         datasource_id: str,
-        chunk_contents: Sequence[Tuple[str, Optional[str], str, str]],
+        chunk_contents: Sequence[Tuple[str, Optional[str], str, Optional[str]]],
     ) -> Sequence[int]:
         values_sql = ", ".join(["(?, ?, ?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
