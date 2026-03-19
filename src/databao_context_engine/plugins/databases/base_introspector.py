@@ -15,7 +15,7 @@ from databao_context_engine.plugins.databases.databases_types import (
     DatabaseCatalog,
     DatabaseIntrospectionResult,
     DatabaseSchema,
-    SchemaScope,
+    SchemaRef,
     TableRef,
     TableStatsEntry,
 )
@@ -153,7 +153,7 @@ class BaseIntrospector(Generic[T], ABC):
         return CatalogScope(
             catalog_name=catalog,
             schemas=[
-                SchemaScope(
+                SchemaRef(
                     schema_name=schema.name,
                     tables=[
                         TableRef(

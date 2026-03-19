@@ -194,7 +194,7 @@ class TableRef:
 
 
 @dataclass(frozen=True, slots=True)
-class SchemaScope:
+class SchemaRef:
     schema_name: str
     tables: list[TableRef]
 
@@ -202,7 +202,7 @@ class SchemaScope:
 @dataclass(frozen=True, slots=True)
 class CatalogScope:
     catalog_name: str
-    schemas: list[SchemaScope]
+    schemas: list[SchemaRef]
 
 
 @dataclass
