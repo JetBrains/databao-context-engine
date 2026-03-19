@@ -1,0 +1,53 @@
+name: 'Build and Publish to PyPI'
+description: 'Sets up Python, installs uv, builds, and publishes to PyPI'
+
+inputs:
+  expected-version:
+    description: 'Expected project version to verify against'
+    required: true
+  python-version-file:
+    description: 'Path to Python version file'
+    required: false
+    default: '.python-version'
+  uv-version:
+    description: 'Version of uv to install'
+    required: false
+    default: '0.9.7'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: "Set up Python"
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: ${{ inputs.python-version-file }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        version: ${{ inputs.uv-version }}
+
+    - name: Verify version
+      shell: bash
+      run: |
+        PROJECT_VERSION="$(uv version --short)"
+        EXPECTED_VERSION="${{ inputs.expected-version }}"
+        if [ "$PROJECT_VERSION" != "$EXPECTED_VERSION" ]; then
+          echo "Error: Project version ($PROJECT_VERSION) does not match expected version ($EXPECTED_VERSION)"
+          exit 1
+        fi
+        echo "Version verified: $PROJECT_VERSION"
+
+    - name: Build
+      shell: bash
+      run: uv build --clear
+
+    # Check that basic features work and we didn't miss to include crucial files
+    # TODO add some smoe tests OR basic examples using DCE
+    #      - name: Smoke test (wheel)
+    #        run: uv run --isolated --no-project --with dist/*.whl tests/smoke_test.py
+    #      - name: Smoke test (source distribution)
+    #        run: uv run --isolated --no-project --with dist/*.tar.gz tests/smoke_test.py
+    - name: Publish
+      shell: bash
+      run: uv publish

@@ -1,0 +1,61 @@
+name: "Bump version to stable and publish"
+
+on:
+  workflow_dispatch
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: v${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.7"
+
+      - name: Bump to stable
+        run: uv version --bump stable
+
+      - name: Get version
+        id: version
+        run: echo "version=$(uv version --short)" >> $GITHUB_OUTPUT
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "Update version to ${{ steps.version.outputs.version }}"
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.version }}"
+          git push origin main --tags
+
+  publish:
+    needs: bump-version
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi-publish
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.bump-version.outputs.tag }}
+
+      - name: Build and publish
+        uses: ./.github/actions/build-and-publish
+        with:
+          expected-version: ${{ needs.bump-version.outputs.version }}
