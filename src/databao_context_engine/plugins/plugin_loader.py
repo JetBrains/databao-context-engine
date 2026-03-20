@@ -8,7 +8,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     BuildPlugin,
     DatasourceType,
 )
-from databao_context_engine.pluginlib.config import ConfigPropertyDefinition, CustomiseConfigProperties
+from databao_context_engine.pluginlib.config import ConfigPropertyDefinition, CustomizeConfigProperties
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class DatabaoContextPluginLoader:
         """
         plugin = self.get_plugin_for_datasource_type(datasource_type)
 
-        if isinstance(plugin, CustomiseConfigProperties):
+        if isinstance(plugin, CustomizeConfigProperties):
             return plugin.get_config_file_properties()
         if isinstance(plugin, BuildDatasourcePlugin):
             return get_property_list_from_type(plugin.config_file_type)

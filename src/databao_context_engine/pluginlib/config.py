@@ -46,5 +46,5 @@ class ConfigPropertyAnnotation:
 
 
 @runtime_checkable
-class CustomiseConfigProperties(Protocol):
+class CustomizeConfigProperties(Protocol):
     def get_config_file_properties(self) -> list[ConfigPropertyDefinition]: ...
