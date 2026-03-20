@@ -37,7 +37,15 @@ class ChunkRepository:
             RETURNING
                 *
             """,
-                params=[full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id],
+                params=[
+                    full_type,
+                    chunk_type,
+                    datasource_id,
+                    embeddable_text,
+                    display_text,
+                    keyword_index_text,
+                    datasource_context_hash_id,
+                ],
             ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
@@ -190,7 +198,17 @@ class ChunkRepository:
 
         params: list[Any] = []
         for embeddable_text, display_text, keyword_index_text, chunk_type in chunk_contents:
-            params.extend([full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id])
+            params.extend(
+                [
+                    full_type,
+                    chunk_type,
+                    datasource_id,
+                    embeddable_text,
+                    display_text,
+                    keyword_index_text,
+                    datasource_context_hash_id,
+                ]
+            )
 
         rows = self._conn.execute(sql, params).fetchall()
 

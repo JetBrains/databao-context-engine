@@ -236,7 +236,7 @@ class ChunkSearchRepository:
             query_text=search_text,
             limit=candidate_limit,
             datasource_context_hashes=datasource_context_hashes,
-            chunk_types=chunk_types
+            chunk_types=chunk_types,
         )
         return self._fuse_by_rrf(
             vector_candidates=vector_candidates,
@@ -258,7 +258,7 @@ class ChunkSearchRepository:
             query_text=query_text,
             limit=limit,
             datasource_context_hashes=datasource_context_hashes,
-            chunk_types=chunk_types
+            chunk_types=chunk_types,
         )
 
         return [

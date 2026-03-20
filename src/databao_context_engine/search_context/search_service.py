@@ -107,7 +107,7 @@ class SearchContextService:
                 query_text=query_text,
                 limit=limit,
                 datasource_context_hashes=datasource_context_hashes,
-                chunk_types=chunk_types
+                chunk_types=chunk_types,
             )
 
         table_name, dimension = self._shard_resolver.resolve(
