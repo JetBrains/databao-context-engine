@@ -287,7 +287,7 @@ def test_duckdb_table_and_column_statistics(duckdb_with_demo_schema: Path):
 
     with seed_rows(duckdb_with_demo_schema, "custom.users", rows):
         plugin = DuckDbPlugin()
-        config = _create_config_file_from_container(duckdb_with_demo_schema)
+        config = _create_config_file_from_container(duckdb_with_demo_schema, enable_profiling=True)
         result = execute_datasource_plugin(plugin, DatasourceType(full_type=config["type"]), config, "file_name")
         assert isinstance(result, DatabaseIntrospectionResult)
 
@@ -342,10 +342,13 @@ def test_duckdb_table_and_column_statistics(duckdb_with_demo_schema: Path):
 
 
 def _create_config_file_from_container(
-    duckdb_path: Path, datasource_name: str | None = "file_name"
+    duckdb_path: Path, datasource_name: str | None = "file_name", enable_profiling: bool = False
 ) -> Mapping[str, Any]:
-    return {
+    config: dict[str, Any] = {
         "type": "duckdb",
         "name": datasource_name,
         "connection": dict(database_path=str(duckdb_path)),
     }
+    if enable_profiling:
+        config["profiling"] = {"enabled": True}
+    return config

@@ -166,6 +166,46 @@ class TableStats:
 
 
 @dataclass
+class TableStatsEntry:
+    schema_name: str
+    table_name: str
+    stats: TableStats
+
+
+@dataclass
+class ColumnStatsEntry:
+    schema_name: str
+    table_name: str
+    column_name: str
+    stats: ColumnStats
+
+
+@dataclass(frozen=True, slots=True)
+class ColumnRef:
+    name: str
+    type: str
+
+
+@dataclass(frozen=True, slots=True)
+class TableRef:
+    table_name: str
+    kind: DatasetKind = DatasetKind.TABLE
+    columns: list[ColumnRef] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class SchemaRef:
+    schema_name: str
+    tables: list[TableRef]
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogScope:
+    catalog_name: str
+    schemas: list[SchemaRef]
+
+
+@dataclass
 class DatabaseTable:
     name: str
     columns: list[DatabaseColumn]
