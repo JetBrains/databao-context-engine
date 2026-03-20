@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass(kw_only=True, frozen=True)
 class VectorSearchCandidate:
     chunk_id: int
-    chunk_type: str
+    chunk_type: str | None
     display_text: str
     embeddable_text: str
     cosine_distance: float
@@ -66,7 +66,7 @@ class KeywordSearchScore:
 @dataclass(kw_only=True, frozen=True)
 class SearchResult:
     chunk_id: int
-    chunk_type: str | None = None
+    chunk_type: str | None
     display_text: str
     embeddable_text: str
     datasource_type: DatasourceType
