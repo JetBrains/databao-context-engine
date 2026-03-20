@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import Tuple
+from typing import Any
 
 from duckdb import ConstraintException, DuckDBPyConnection
 
+from databao_context_engine.plugins.duckdb_tools import fetchall_dicts, fetchone_dicts
 from databao_context_engine.storage.exceptions.exceptions import IntegrityError
 from databao_context_engine.storage.models import DatasourceContextHashDTO
 
@@ -15,8 +16,9 @@ class DatasourceContextHashRepository:
         self, *, datasource_id: str, hash_algorithm: str, hash_: str, hashed_at: datetime
     ) -> DatasourceContextHashDTO:
         try:
-            row = self._conn.execute(
-                """
+            row = fetchone_dicts(
+                cur=self._conn,
+                sql="""
             INSERT INTO
                 datasource_context_hash(datasource_id, hash_algorithm, hash, hashed_at)
             VALUES
@@ -24,8 +26,8 @@ class DatasourceContextHashRepository:
             RETURNING
                 *
             """,
-                [datasource_id, hash_algorithm, hash_, hashed_at],
-            ).fetchone()
+                params=[datasource_id, hash_algorithm, hash_, hashed_at],
+            )
             if row is None:
                 raise RuntimeError("datasource_context_hash creation returned no object")
 
@@ -34,23 +36,25 @@ class DatasourceContextHashRepository:
             raise IntegrityError from e
 
     def list(self) -> list[DatasourceContextHashDTO]:
-        rows = self._conn.execute(
-            """
+        rows = fetchall_dicts(
+            cur=self._conn,
+            sql="""
             SELECT
                 *
             FROM
                 datasource_context_hash
             ORDER BY
                 datasource_context_hash_id DESC
-            """
-        ).fetchall()
+            """,
+        )
         return [self._row_to_dto(r) for r in rows]
 
     def get_by_datasource_id_and_hash(
         self, *, datasource_id: str, hash_algorithm: str, hash_: str
     ) -> DatasourceContextHashDTO | None:
-        row = self._conn.execute(
-            """
+        row = fetchone_dicts(
+            cur=self._conn,
+            sql="""
             SELECT
                 *
             FROM
@@ -60,8 +64,8 @@ class DatasourceContextHashRepository:
                 AND hash_algorithm = ?
                 AND hash = ?
             """,
-            [datasource_id, hash_algorithm, hash_],
-        ).fetchone()
+            params=[datasource_id, hash_algorithm, hash_],
+        )
         return self._row_to_dto(row) if row else None
 
     def delete(self, *, datasource_context_hash_id: int) -> int:
@@ -97,12 +101,11 @@ class DatasourceContextHashRepository:
         return len(rows)
 
     @staticmethod
-    def _row_to_dto(row: Tuple) -> DatasourceContextHashDTO:
-        (datasource_context_hash_id, datasource_id, hash_algorithm, hash_, hashed_at) = row
+    def _row_to_dto(row: dict[str, Any]) -> DatasourceContextHashDTO:
         return DatasourceContextHashDTO(
-            datasource_context_hash_id=datasource_context_hash_id,
-            datasource_id=datasource_id,
-            hash_algorithm=hash_algorithm,
-            hash=hash_,
-            hashed_at=hashed_at,
+            datasource_context_hash_id=row["datasource_context_hash_id"],
+            datasource_id=row["datasource_id"],
+            hash_algorithm=row["hash_algorithm"],
+            hash=row["hash"],
+            hashed_at=row["hashed_at"],
         )

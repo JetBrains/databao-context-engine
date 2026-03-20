@@ -7,48 +7,65 @@ This document describes how to publish a new version of databao-context-engine t
 The project uses GitHub Actions to automatically publish releases to PyPI when a new version tag is pushed. The pipeline
 uses `uv` for building and publishing the package.
 
-## Trigger
+During development, the `main` branch stays on a dev release version (e.g., `0.7.0.dev0`). When ready to publish a
+stable release, the version is bumped to stable, committed, tagged, and automatically published via GitHub Actions.
 
-The publishing workflow is triggered by pushing a Git tag that starts with `v`:
+## Development Workflow
 
-```bash
-git tag v0.6.2
-git push origin v0.6.2
-```
+### During Development
 
-See `.github/workflows/publish.yml` for the trigger configuration.
+- The `main` branch should always have a dev version (e.g., `0.7.1.dev0`)
+- All development happens on this dev version
+- No manual actions needed during development
 
-## How to Publish a New Version
+### Publishing a New Stable Release
 
-1. Update the version in `pyproject.toml` (version attribute). This could be done either manually or by using `uv`:
+When ready to publish a new stable version:
 
-```bash
-uv version --bump patch 
-```
-
-See `uv version --help` for more details
-
-2. Commit and **push** the version change. Don't forget to include the updated `uv.lock` file:
+1. **Bump to stable version**:
    ```bash
-   git add .
-   git commit -m "Update version to X.Y.Z"
+   uv version --bump stable
+   ```
+   This converts `X.Y.Z.dev0` → `X.Y.Z`
+
+2. **Commit and push the version change**:
+   ```bash
+   git add pyproject.toml uv.lock
+   git commit -m "Update version to $(uv version --short)"
    git push origin main
    ```
 
-3. **Create a Git tag** matching the version (prefixed with `v`):
+3. **Create and push a Git tag**:
    ```bash
-   git tag -a vX.Y.Z -m vX.Y.Z 
+   git tag -a "v$(uv version --short)" -m "Release $(uv version --short)"
+   git push origin --tags
    ```
 
-4. **Push the commit and tag** to GitHub:
+4. **Monitor the publishing workflow** in
+   the [Actions tab](https://github.com/JetBrains/databao-context-engine/actions/workflows/publish_tag_triggered.yml)
+
+5. **After successful publish, start the next development cycle**:
    ```bash
-   git push origin vX.Y.Z
+   uv version --bump patch --bump dev
+   git add pyproject.toml uv.lock
+   git commit -m "Start development on $(uv version --short)"
+   git push origin main
    ```
+   This creates the next dev version (e.g., `0.7.0` → `0.7.1.dev0`)
 
-5. **Monitor the workflow** in
-   the [Actions tab](https://github.com/JetBrains/databao-context-engine/actions/workflows/publish.yml)
+### For Breaking Changes
 
-GitHub Actions will automatically build and publish the package to PyPI.
+If you've pushed breaking changes during the development cycle:
+
+```bash
+uv version --bump minor --bump dev
+git add pyproject.toml uv.lock
+# but it's obiviously better to commit this together with the breaking changes.
+git commit -m "Bump to $(uv version --short) for breaking changes"
+git push origin main
+```
+
+This ensures the next stable release will have the correct minor version bump.
 
 ## Versioning Guidelines
 

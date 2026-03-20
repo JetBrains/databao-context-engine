@@ -18,6 +18,7 @@ from databao_context_engine.plugins.databases.context_enricher import enrich_dat
 from databao_context_engine.plugins.databases.database_chunker import build_database_chunks
 from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 from databao_context_engine.plugins.databases.introspection_scope import IntrospectionScope
+from databao_context_engine.plugins.databases.profiling_config import ProfilingConfig
 from databao_context_engine.plugins.databases.sampling_scope import SamplingConfig
 
 
@@ -29,6 +30,9 @@ class BaseDatabaseConfigFile(BaseModel, AbstractConfigFile):
         IntrospectionScope | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)
     ] = Field(default=None, alias="introspection-scope")
     sampling: Annotated[SamplingConfig | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)] = Field(
+        default=None
+    )
+    profiling: Annotated[ProfilingConfig | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)] = Field(
         default=None
     )
 

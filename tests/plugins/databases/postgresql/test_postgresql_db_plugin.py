@@ -292,7 +292,7 @@ def test_postgres_partitioned_table_statistics(create_db_schema, postgres_contai
             _execute(postgres_container, f"ANALYZE {schema_name}.orders;")
 
             plugin = PostgresqlDbPlugin()
-            config_file = _create_config_file_from_container(postgres_container)
+            config_file = _create_config_file_from_container(postgres_container, enable_profiling=True)
             result = execute_datasource_plugin(
                 plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
             )
@@ -674,9 +674,11 @@ def test_postgres_introspection_contract(create_db_schema, postgres_container: P
 
 
 def _create_config_file_from_container(
-    postgres_container_with_columns: PostgresContainer, datasource_name: str | None = "file_name"
+    postgres_container_with_columns: PostgresContainer,
+    datasource_name: str | None = "file_name",
+    enable_profiling: bool = False,
 ) -> Mapping[str, Any]:
-    return {
+    config = {
         "type": "postgres",
         "name": datasource_name,
         "connection": {
@@ -687,6 +689,9 @@ def _create_config_file_from_container(
             "password": postgres_container_with_columns.password,
         },
     }
+    if enable_profiling:
+        config["profiling"] = {"enabled": True}
+    return config
 
 
 def test_postgres_run_sql_in_sync_env(postgres_container: PostgresContainer, tmp_path):
@@ -755,7 +760,7 @@ def test_postgres_statistics(create_db_schema, postgres_container: PostgresConta
             _execute(postgres_container, f"ANALYZE {schema_name}.test_stats;")
 
             plugin = PostgresqlDbPlugin()
-            config_file = _create_config_file_from_container(postgres_container)
+            config_file = _create_config_file_from_container(postgres_container, enable_profiling=True)
             result = execute_datasource_plugin(
                 plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
             )

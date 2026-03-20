@@ -16,6 +16,7 @@ on:
       - docs/
     branches: [ "main" ]
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   prepare-ollama-cache:

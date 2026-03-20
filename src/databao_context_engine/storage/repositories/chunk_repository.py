@@ -4,6 +4,7 @@ import duckdb
 from _duckdb import ConstraintException
 
 import databao_context_engine.perf.core as perf
+from databao_context_engine.plugins.duckdb_tools import fetchall_dicts, fetchone_dicts
 from databao_context_engine.storage.exceptions.exceptions import IntegrityError
 from databao_context_engine.storage.models import ChunkDTO
 
@@ -25,8 +26,9 @@ class ChunkRepository:
         datasource_context_hash_id: int,
     ) -> ChunkDTO:
         try:
-            row = self._conn.execute(
-                """
+            row = fetchone_dicts(
+                cur=self._conn,
+                sql="""
             INSERT INTO
                 chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
             VALUES
@@ -34,7 +36,7 @@ class ChunkRepository:
             RETURNING
                 *
             """,
-                [
+                params=[
                     full_type,
                     datasource_id,
                     embeddable_text,
@@ -42,7 +44,7 @@ class ChunkRepository:
                     keyword_index_text,
                     datasource_context_hash_id,
                 ],
-            ).fetchone()
+            )
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
 
@@ -52,8 +54,9 @@ class ChunkRepository:
             raise IntegrityError from e
 
     def get(self, chunk_id: int) -> Optional[ChunkDTO]:
-        row = self._conn.execute(
-            """
+        row = fetchone_dicts(
+            cur=self._conn,
+            sql="""
             SELECT
                 *
             FROM
@@ -61,8 +64,8 @@ class ChunkRepository:
             WHERE
                 chunk_id = ?
         """,
-            [chunk_id],
-        ).fetchone()
+            params=[chunk_id],
+        )
         return self._row_to_dto(row) if row else None
 
     def update(
@@ -160,16 +163,17 @@ class ChunkRepository:
         return int(deleted or 0)
 
     def list(self) -> list[ChunkDTO]:
-        rows = self._conn.execute(
-            """
+        rows = fetchall_dicts(
+            cur=self._conn,
+            sql="""
             SELECT
                 *
             FROM
                 chunk
             ORDER BY
                 chunk_id DESC
-            """
-        ).fetchall()
+            """,
+        )
         return [self._row_to_dto(r) for r in rows]
 
     def bulk_insert(
@@ -219,24 +223,14 @@ class ChunkRepository:
         self._conn.execute(f"PRAGMA create_fts_index('chunk', 'chunk_id', '{self._BM25_CHUNK_COLUMN}', overwrite=1);")
 
     @staticmethod
-    def _row_to_dto(row: Tuple) -> ChunkDTO:
-        (
-            chunk_id,
-            full_type,
-            datasource_id,
-            embeddable_text,
-            display_text,
-            created_at,
-            keyword_index_text,
-            datasource_context_hash_id,
-        ) = row
+    def _row_to_dto(row: dict[str, Any]) -> ChunkDTO:
         return ChunkDTO(
-            chunk_id=int(chunk_id),
-            full_type=full_type,
-            datasource_id=datasource_id,
-            embeddable_text=embeddable_text,
-            display_text=display_text,
-            created_at=created_at,
-            keyword_index_text=keyword_index_text,
-            datasource_context_hash_id=datasource_context_hash_id,
+            chunk_id=int(row["chunk_id"]),
+            full_type=row["full_type"],
+            datasource_id=row["datasource_id"],
+            embeddable_text=row["embeddable_text"],
+            display_text=row["display_text"],
+            created_at=row["created_at"],
+            keyword_index_text=row["keyword_index_text"],
+            datasource_context_hash_id=row["datasource_context_hash_id"],
         )
