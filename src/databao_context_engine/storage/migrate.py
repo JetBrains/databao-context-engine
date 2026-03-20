@@ -1,10 +1,12 @@
 import hashlib
+import importlib.util
 import logging
 import re
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
-from typing import LiteralString
+from types import ModuleType
+from typing import Callable, LiteralString
 
 import duckdb
 
@@ -64,14 +66,47 @@ class _Migration:
     version: int
     checksum: str
     query: str
+    before_hook: Callable[[duckdb.DuckDBPyConnection], None] | None
+    after_hook: Callable[[duckdb.DuckDBPyConnection], None] | None
 
 
 def _create_migration(file: Path) -> _Migration:
     query_bytes = file.read_bytes()
     query = query_bytes.decode("utf-8")
-    checksum = hashlib.md5(query_bytes, usedforsecurity=False).hexdigest()
     version = _extract_version_from_name(file.name)
-    return _Migration(name=file.name, version=version, checksum=checksum, query=query)
+    hook_file = file.with_suffix(".py")
+
+    # We only add whether the Python file exists or not in the checksum, to prevent issues that could happen in the future
+    # due to Python refactoring
+    hook_bytes = bytes(hook_file.exists())
+    checksum = hashlib.md5(query_bytes + hook_bytes, usedforsecurity=False).hexdigest()
+
+    before_hook = None
+    after_hook = None
+    if hook_file.exists():
+        hook_module = _load_hook_module(hook_file)
+        before_hook = getattr(hook_module, "before_migration", None)
+        after_hook = getattr(hook_module, "after_migration", None)
+
+    return _Migration(
+        name=file.name,
+        version=version,
+        checksum=checksum,
+        query=query,
+        before_hook=before_hook,
+        after_hook=after_hook,
+    )
+
+
+def _load_hook_module(file: Path) -> ModuleType:
+    module_name = f"databao_context_engine.storage.migrations._{file.stem}"
+    spec = importlib.util.spec_from_file_location(module_name, file)
+    if spec is None or spec.loader is None:
+        raise MigrationError(f"Failed to load migration hook from {file.name}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class _MigrationManager:
@@ -114,7 +149,11 @@ class _MigrationManager:
                 with conn.cursor() as cur:
                     cur.execute("START TRANSACTION;")
                     try:
+                        if migration.before_hook is not None:
+                            migration.before_hook(cur)
                         cur.execute(migration.query)
+                        if migration.after_hook is not None:
+                            migration.after_hook(cur)
                         cur.execute(self._insert_migration_sql, [migration.name, migration.version, migration.checksum])
                         cur.commit()
                     except Exception:

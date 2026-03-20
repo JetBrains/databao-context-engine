@@ -4,6 +4,7 @@ import duckdb
 from _duckdb import ConstraintException
 
 import databao_context_engine.perf.core as perf
+from databao_context_engine.plugins.duckdb_tools import fetchall_dicts, fetchone_dicts
 from databao_context_engine.storage.exceptions.exceptions import IntegrityError
 from databao_context_engine.storage.models import ChunkDTO
 
@@ -23,18 +24,20 @@ class ChunkRepository:
         embeddable_text: str,
         display_text: Optional[str],
         keyword_index_text: str,
+        datasource_context_hash_id: int,
     ) -> ChunkDTO:
         try:
-            row = self._conn.execute(
-                """
+            row = fetchone_dicts(
+                cur=self._conn,
+                sql="""
             INSERT INTO
-                chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text)
+                chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
             VALUES
-                (?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?)
             RETURNING
                 *
             """,
-                [full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text],
+                params=[full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id],
             ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
@@ -45,8 +48,9 @@ class ChunkRepository:
             raise IntegrityError from e
 
     def get(self, chunk_id: int) -> Optional[ChunkDTO]:
-        row = self._conn.execute(
-            """
+        row = fetchone_dicts(
+            cur=self._conn,
+            sql="""
             SELECT
                 *
             FROM
@@ -54,8 +58,8 @@ class ChunkRepository:
             WHERE
                 chunk_id = ?
         """,
-            [chunk_id],
-        ).fetchone()
+            params=[chunk_id],
+        )
         return self._row_to_dto(row) if row else None
 
     def update(
@@ -67,6 +71,7 @@ class ChunkRepository:
         embeddable_text: Optional[str] = None,
         display_text: Optional[str] = None,
         keyword_index_text: Optional[str] = None,
+        datasource_context_hash_id: Optional[int] = None,
     ) -> Optional[ChunkDTO]:
         sets: list[Any] = []
         params: list[Any] = []
@@ -86,6 +91,9 @@ class ChunkRepository:
         if keyword_index_text is not None:
             sets.append("keyword_index_text = ?")
             params.append(keyword_index_text)
+        if datasource_context_hash_id is not None:
+            sets.append("datasource_context_hash_id = ?")
+            params.append(datasource_context_hash_id)
 
         if not sets:
             return self.get(chunk_id)
@@ -135,17 +143,31 @@ class ChunkRepository:
         self._refresh_fts_index()
         return int(deleted or 0)
 
-    def list(self) -> list[ChunkDTO]:
-        rows = self._conn.execute(
+    def delete_by_datasource_context_hash_id(self, *, datasource_context_hash_id: int) -> int:
+        deleted = self._conn.execute(
             """
+            DELETE FROM
+                chunk
+            WHERE
+                datasource_context_hash_id = ?
+            """,
+            [datasource_context_hash_id],
+        ).rowcount
+        self._refresh_fts_index()
+        return int(deleted or 0)
+
+    def list(self) -> list[ChunkDTO]:
+        rows = fetchall_dicts(
+            cur=self._conn,
+            sql="""
             SELECT
                 *
             FROM
                 chunk
             ORDER BY
                 chunk_id DESC
-            """
-        ).fetchall()
+            """,
+        )
         return [self._row_to_dto(r) for r in rows]
 
     def bulk_insert(
@@ -154,11 +176,12 @@ class ChunkRepository:
         full_type: str,
         datasource_id: str,
         chunk_contents: Sequence[Tuple[str, Optional[str], str, Optional[str]]],
+        datasource_context_hash_id: int,
     ) -> Sequence[int]:
-        values_sql = ", ".join(["(?, ?, ?, ?, ?, ?)"] * len(chunk_contents))
+        values_sql = ", ".join(["(?, ?, ?, ?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
             INSERT INTO
-                chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text)
+                chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
             VALUES
                 {values_sql}
             RETURNING
@@ -167,7 +190,7 @@ class ChunkRepository:
 
         params: list[Any] = []
         for embeddable_text, display_text, keyword_index_text, chunk_type in chunk_contents:
-            params.extend([full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text])
+            params.extend([full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id])
 
         rows = self._conn.execute(sql, params).fetchall()
 
@@ -185,24 +208,15 @@ class ChunkRepository:
         self._conn.execute(f"PRAGMA create_fts_index('chunk', 'chunk_id', '{self._BM25_CHUNK_COLUMN}', overwrite=1);")
 
     @staticmethod
-    def _row_to_dto(row: Tuple) -> ChunkDTO:
-        (
-            chunk_id,
-            full_type,
-            datasource_id,
-            embeddable_text,
-            display_text,
-            created_at,
-            keyword_index_text,
-            chunk_type,
-        ) = row
+    def _row_to_dto(row: dict[str, Any]) -> ChunkDTO:
         return ChunkDTO(
-            chunk_id=int(chunk_id),
-            full_type=full_type,
-            chunk_type=chunk_type,
-            datasource_id=datasource_id,
-            embeddable_text=embeddable_text,
-            display_text=display_text,
-            created_at=created_at,
-            keyword_index_text=keyword_index_text,
+            chunk_id=int(row["chunk_id"]),
+            full_type=row["full_type"],
+            chunk_type=row["chunk_type"],
+            datasource_id=row["datasource_id"],
+            embeddable_text=row["embeddable_text"],
+            display_text=row["display_text"],
+            created_at=row["created_at"],
+            keyword_index_text=row["keyword_index_text"],
+            datasource_context_hash_id=row["datasource_context_hash_id"],
         )

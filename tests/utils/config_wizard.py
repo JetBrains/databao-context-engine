@@ -10,7 +10,8 @@ class MockUserInputCallback(UserInputCallback):
 
     def prompt(
         self,
-        text: str,
+        property_key: str,
+        required: bool,
         type: Choice | Any | None = None,
         default_value: Any | None = None,
         is_secret: bool = False,
@@ -20,9 +21,6 @@ class MockUserInputCallback(UserInputCallback):
 
         val = self.inputs[self.input_index]
         self.input_index += 1
-
-        if val == "" and default_value is not None:
-            return default_value
 
         return val
 
@@ -34,3 +32,6 @@ class MockUserInputCallback(UserInputCallback):
         if isinstance(val, bool):
             return val
         raise AssertionError(f"Expected boolean val but {type(val)}:{repr(val)} is provided")
+
+    def on_validation_error(self, property_key: str, input_value: Any, error_message: str) -> None:
+        pass

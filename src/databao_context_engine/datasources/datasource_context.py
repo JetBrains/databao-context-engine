@@ -1,15 +1,25 @@
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Collection, Iterable
 
+import xxhash
 import yaml
 
 from databao_context_engine.datasources.types import Datasource, DatasourceId, DatasourceType
 from databao_context_engine.project.layout import DEPRECATED_ALL_RESULTS_FILE_NAME, ProjectLayout
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(eq=True, frozen=True)
+class DatasourceContextHash:
+    datasource_id: DatasourceId
+    hash: str
+    hash_algorithm: str
+    hashed_at: datetime
 
 
 @dataclass(eq=True, frozen=True)
@@ -24,6 +34,7 @@ class DatasourceContext:
     datasource_id: DatasourceId
     # TODO: Read the context as a BuildExecutionResult instead of a Yaml string?
     context: str
+    context_hash: DatasourceContextHash
 
 
 def read_datasource_type_from_context_file(context_path: Path) -> DatasourceType:
@@ -96,22 +107,49 @@ def get_datasource_context(project_layout: ProjectLayout, datasource_id: Datasou
     if not context_path.is_file():
         raise ValueError(f"Context file not found for datasource {str(datasource_id)}")
 
+    context_hash = hash_context_file(datasource_id=datasource_id, context_path=context_path)
     context = context_path.read_text()
-    return DatasourceContext(datasource_id=datasource_id, context=context)
+
+    return DatasourceContext(
+        datasource_id=datasource_id,
+        context=context,
+        context_hash=context_hash,
+    )
 
 
 def get_all_contexts(project_layout: ProjectLayout) -> list[DatasourceContext]:
-    result = []
     all_introspected_datasource_ids = _get_datasources_with_context(project_layout)
-    for datasource_id in all_introspected_datasource_ids:
-        context_file = datasource_id.absolute_path_to_context_file(project_layout)
-        result.append(
-            DatasourceContext(
-                datasource_id=datasource_id,
-                context=context_file.read_text(),
-            )
-        )
-    return result
+    return [get_datasource_context(project_layout, datasource_id) for datasource_id in all_introspected_datasource_ids]
+
+
+def get_datasource_context_hashes(
+    project_layout: ProjectLayout, datasource_ids: Collection[DatasourceId]
+) -> list[DatasourceContextHash]:
+    return [
+        hash_context_file(datasource_id, datasource_id.absolute_path_to_context_file(project_layout))
+        for datasource_id in datasource_ids
+    ]
+
+
+def get_all_datasource_context_hashes(project_layout: ProjectLayout) -> list[DatasourceContextHash]:
+    all_introspected_datasource_ids = _get_datasources_with_context(project_layout)
+    return [
+        hash_context_file(datasource_id, datasource_id.absolute_path_to_context_file(project_layout))
+        for datasource_id in all_introspected_datasource_ids
+    ]
+
+
+def hash_context_file(datasource_id: DatasourceId, context_path: Path) -> DatasourceContextHash:
+    if not context_path.is_file():
+        raise ValueError(f"Context file not found for datasource {str(datasource_id)}")
+
+    h = xxhash.xxh3_128()
+    with open(context_path, "rb") as f:
+        while bytes := f.read(65536):
+            h.update(bytes)
+    return DatasourceContextHash(
+        datasource_id=datasource_id, hash=h.hexdigest(), hash_algorithm=h.name, hashed_at=datetime.now()
+    )
 
 
 def get_context_header_for_datasource(datasource_id: DatasourceId) -> str:

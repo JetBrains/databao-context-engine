@@ -1,8 +1,8 @@
-from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 import duckdb
 
+from databao_context_engine.plugins.duckdb_tools import fetchone_dicts
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 from databao_context_engine.storage.models import EmbeddingModelRegistryDTO
 
@@ -20,17 +20,18 @@ class EmbeddingModelRegistryRepository:
         table_name: str,
     ) -> EmbeddingModelRegistryDTO:
         TableNamePolicy.validate_table_name(table_name=table_name)
-        row = self._conn.execute(
-            """
-            INSERT INTO
-                embedding_model_registry(embedder, model_id, dim, table_name)
-            VALUES
-                (?, ?, ?, ?)
-            RETURNING
-                *
-            """,
-            [embedder, model_id, dim, table_name],
-        ).fetchone()
+        row = fetchone_dicts(
+            cur=self._conn,
+            sql="""
+        INSERT INTO
+            embedding_model_registry(embedder, model_id, dim, table_name)
+        VALUES
+            (?, ?, ?, ?)
+        RETURNING
+            *
+        """,
+            params=[embedder, model_id, dim, table_name],
+        )
         if row is None:
             raise RuntimeError("Embedding_model_registry creatuib returned no object")
         return self._row_to_dto(row)
@@ -41,18 +42,19 @@ class EmbeddingModelRegistryRepository:
         embedder: str,
         model_id: str,
     ) -> Optional[EmbeddingModelRegistryDTO]:
-        row = self._conn.execute(
-            """
-            SELECT
-                *
-            FROM
-                embedding_model_registry
-            WHERE
-                embedder = ?
-                AND model_id = ?
-            """,
-            [embedder, model_id],
-        ).fetchone()
+        row = fetchone_dicts(
+            cur=self._conn,
+            sql="""
+        SELECT
+            *
+        FROM
+            embedding_model_registry
+        WHERE
+            embedder = ?
+            AND model_id = ?
+        """,
+            params=[embedder, model_id],
+        )
         return self._row_to_dto(row) if row else None
 
     def delete(
@@ -76,12 +78,11 @@ class EmbeddingModelRegistryRepository:
         return 1 if row else 0
 
     @staticmethod
-    def _row_to_dto(row: tuple) -> EmbeddingModelRegistryDTO:
-        embedder, model_id, dim, table_name, created_at = row
+    def _row_to_dto(row: dict[str, Any]) -> EmbeddingModelRegistryDTO:
         return EmbeddingModelRegistryDTO(
-            embedder=str(embedder),
-            model_id=str(model_id),
-            dim=int(dim),
-            table_name=str(table_name),
-            created_at=created_at if isinstance(created_at, datetime) else created_at,
+            embedder=str(row["embedder"]),
+            model_id=str(row["model_id"]),
+            dim=int(row["dim"]),
+            table_name=str(row["table_name"]),
+            created_at=row["created_at"],
         )

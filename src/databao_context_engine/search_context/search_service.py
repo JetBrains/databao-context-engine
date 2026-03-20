@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from enum import Enum
 
 import databao_context_engine.perf.core as perf
-from databao_context_engine.datasources.types import DatasourceId
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.search_context.chunk_search_repository import (
@@ -52,8 +52,8 @@ class SearchContextService:
         self,
         *,
         search_text: str,
+        datasource_context_hashes: list[DatasourceContextHash],
         limit: int | None = None,
-        datasource_ids: list[DatasourceId] | None = None,
         rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
         chunk_types: list[str] | None = None,
@@ -68,8 +68,8 @@ class SearchContextService:
 
         search_results = self._do_search(
             text=search_text,
+            datasource_context_hashes=datasource_context_hashes,
             limit=limit,
-            datasource_ids=datasource_ids,
             rag_mode=rag_mode,
             context_search_mode=context_search_mode,
             chunk_types=chunk_types,
@@ -94,8 +94,8 @@ class SearchContextService:
         self,
         *,
         text: str,
+        datasource_context_hashes: list[DatasourceContextHash],
         limit: int,
-        datasource_ids: list[DatasourceId] | None = None,
         rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
         chunk_types: list[str] | None = None,
@@ -104,7 +104,10 @@ class SearchContextService:
             query_text = self._rewrite_search_query(text) if rag_mode == RAG_MODE.REWRITE_QUERY else text
 
             return self._chunk_search_repo.search_chunks_by_keyword_relevance(
-                query_text=query_text, limit=limit, datasource_ids=datasource_ids, chunk_types=chunk_types
+                query_text=query_text,
+                limit=limit,
+                datasource_context_hashes=datasource_context_hashes,
+                chunk_types=chunk_types
             )
 
         table_name, dimension = self._shard_resolver.resolve(
@@ -136,7 +139,7 @@ class SearchContextService:
                     search_vec=search_vec,
                     dimension=dimension,
                     limit=limit,
-                    datasource_ids=datasource_ids,
+                    datasource_context_hashes=datasource_context_hashes,
                     chunk_types=chunk_types,
                 )
             case ContextSearchMode.HYBRID_SEARCH:
@@ -146,7 +149,7 @@ class SearchContextService:
                     search_text=embeddable_query if rag_mode == RAG_MODE.REWRITE_QUERY else text,
                     dimension=dimension,
                     limit=limit,
-                    datasource_ids=datasource_ids,
+                    datasource_context_hashes=datasource_context_hashes,
                     chunk_types=chunk_types,
                 )
 

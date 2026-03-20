@@ -143,6 +143,7 @@ class DatabaoContextEngine:
 
         results = search_context_internal(
             project_layout=self._project_layout,
+            plugin_loader=self._plugin_loader,
             search_text=search_text,
             limit=limit,
             datasource_ids=datasource_ids,

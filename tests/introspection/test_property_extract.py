@@ -82,7 +82,10 @@ def test_get_property_list_from_type__with_dataclass():
         ),
         ConfigSinglePropertyDefinition(property_key="required", required=True, property_type=datetime),
         ConfigSinglePropertyDefinition(
-            property_key="with_default_value", required=False, default_value="2025-12-04", property_type=date
+            property_key="with_default_value",
+            required=False,
+            default_value=date(2025, 12, 4),
+            property_type=date,
         ),
         ConfigSinglePropertyDefinition(
             property_key="optional_subclass",
@@ -124,8 +127,8 @@ def test_get_property_list_from_type__with_dataclass():
                 ),
             ],
         ),
-        ConfigSinglePropertyDefinition(property_key="a", required=False, property_type=int, default_value="1"),
-        ConfigSinglePropertyDefinition(property_key="b", required=False, property_type=float, default_value="3.14"),
+        ConfigSinglePropertyDefinition(property_key="a", required=False, property_type=int, default_value=1),
+        ConfigSinglePropertyDefinition(property_key="b", required=False, property_type=float, default_value=3.14),
     )
 
 
@@ -161,13 +164,13 @@ def test_get_property_list__from_dataclass():
         [
             ConfigSinglePropertyDefinition(property_key="regular_property", required=True, property_type=int),
             ConfigSinglePropertyDefinition(
-                property_key="regular_property_with_default", required=False, property_type=bool, default_value="True"
+                property_key="regular_property_with_default", required=False, property_type=bool, default_value=True
             ),
             ConfigSinglePropertyDefinition(
-                property_key="property_with_field_default", required=False, property_type=bool, default_value="False"
+                property_key="property_with_field_default", required=False, property_type=bool, default_value=False
             ),
             ConfigSinglePropertyDefinition(
-                property_key="property_with_annotated_default", required=True, property_type=bool, default_value="True"
+                property_key="property_with_annotated_default", required=True, property_type=bool, default_value=True
             ),
             ConfigSinglePropertyDefinition(
                 property_key="property_with_string_type",
@@ -220,20 +223,20 @@ def test_get_property_list__from_pydantic_base_model():
         [
             ConfigSinglePropertyDefinition(property_key="regular_property", required=True, property_type=str),
             ConfigSinglePropertyDefinition(
-                property_key="regular_property_with_default", required=False, property_type=bool, default_value="False"
+                property_key="regular_property_with_default", required=False, property_type=bool, default_value=False
             ),
             ConfigSinglePropertyDefinition(property_key="property_with_field_info", required=True, property_type=int),
             ConfigSinglePropertyDefinition(
                 property_key="property_with_field_default",
                 required=False,
                 property_type=int,
-                default_value="1",
+                default_value=1,
             ),
             ConfigSinglePropertyDefinition(
                 property_key="property_with_annotated_default",
                 required=True,
                 property_type=int,
-                default_value="1",
+                default_value=1,
             ),
             ConfigSinglePropertyDefinition(
                 property_key="property_with_string_type",

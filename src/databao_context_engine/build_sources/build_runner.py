@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from pydantic import TypeAdapter
 
@@ -16,6 +17,7 @@ from databao_context_engine.build_sources.types import (
 )
 from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
+    hash_context_file,
     read_datasource_type_from_context,
 )
 from databao_context_engine.datasources.datasource_discovery import discover_datasources, prepare_source
@@ -29,22 +31,17 @@ logger = logging.getLogger(__name__)
 
 
 def _build_step_plan(*, should_index: bool, should_enrich_context: bool) -> tuple[ProgressStep, ...]:
-    steps: list[ProgressStep] = [ProgressStep.PLUGIN_EXECUTION]
+    steps: list[ProgressStep] = []
+
+    steps.extend(BuildService.build_context_step_plan())
 
     if should_enrich_context:
-        steps.append(ProgressStep.CONTEXT_ENRICHMENT)
+        steps.extend(BuildService.enrich_context_step_plan())
 
     if should_index:
-        steps.extend(_index_step_plan())
+        steps.extend(BuildService.index_step_plan())
 
     return tuple(steps)
-
-
-def _index_step_plan() -> tuple[ProgressStep, ...]:
-    return (
-        ProgressStep.EMBEDDING,
-        ProgressStep.PERSISTENCE,
-    )
 
 
 @perf.perf_run(
@@ -192,21 +189,28 @@ def _build_one_datasource(
     result = build_service.build_context(
         prepared_source=prepared_source,
         plugin=plugin,
-        should_index=should_index,
         progress=progress,
-        should_enrich_context=should_enrich_context,
     )
+
+    if should_enrich_context:
+        result = build_service.enrich_built_context(result, plugin, progress)
 
     output_dir = project_layout.output_dir
     context_file_path = export_build_result(output_dir, result)
 
     perf.set_attribute("context_size_bytes", context_file_path.stat().st_size)
 
+    if should_index:
+        context_hash = hash_context_file(datasource_id=prepared_source.datasource_id, context_path=context_file_path)
+        build_service.index_built_context(
+            built_context=result, plugin=plugin, context_hash=context_hash, progress=progress
+        )
+
     return BuildDatasourceResult(
         datasource_id=datasource_id,
         status=DatasourceStatus.OK,
         datasource_type=DatasourceType(full_type=result.datasource_type),
-        context_built_at=result.context_built_at,
+        context_built_at=datetime.now(),
         context_file_path=context_file_path,
     )
 
@@ -300,15 +304,18 @@ def _enrich_one_context(
         )
         return EnrichContextResult(datasource_id=context.datasource_id, status=DatasourceStatus.SKIPPED)
 
-    enriched_context = build_service.enrich_built_context(context=context, plugin=plugin, should_index=should_index)
+    enriched_context = build_service.enrich_datasource_context(context=context, plugin=plugin)
 
     output_dir = project_layout.output_dir
     context_file_path = export_build_result(output_dir, enriched_context)
 
+    if should_index:
+        context_hash = hash_context_file(datasource_id=context.datasource_id, context_path=context_file_path)
+        build_service.index_built_context(built_context=enriched_context, plugin=plugin, context_hash=context_hash)
+
     return EnrichContextResult(
         datasource_id=context.datasource_id,
         status=DatasourceStatus.OK,
-        context_built_at=enriched_context.context_built_at,
         context_file_path=context_file_path,
     )
 
@@ -419,8 +426,8 @@ def _index_one_context(
 
     ProgressEmitter(progress).datasource_step_plan_set(
         datasource_id=str(context.datasource_id),
-        step_plan=_index_step_plan(),
+        step_plan=BuildService.index_step_plan(),
     )
 
-    build_service.index_built_context(context=context, plugin=plugin, progress=progress)
+    build_service.index_datasource_context(context=context, plugin=plugin, progress=progress)
     return IndexDatasourceResult(datasource_id=context.datasource_id, status=DatasourceStatus.OK)

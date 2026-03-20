@@ -222,11 +222,8 @@ def _read_actual_property_type(property_type: type) -> tuple[type, ...]:
     return (property_type,)
 
 
-def compute_default_value(*, property_default: Any | None = None, has_nested_properties: bool) -> str | None:
+def compute_default_value(*, property_default: Any | None = None, has_nested_properties: bool) -> Any | None:
     if has_nested_properties:
         return None
 
-    if property_default is not None:
-        return str(property_default)
-
-    return None
+    return property_default

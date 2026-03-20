@@ -13,6 +13,10 @@ from databao_context_engine.pluginlib.config import ConfigPropertyDefinition, Cu
 logger = logging.getLogger(__name__)
 
 
+class NoPluginFoundForDatasource(RuntimeError):
+    pass
+
+
 class DatabaoContextPluginLoader:
     """Loader for plugins installed in the current environment."""
 

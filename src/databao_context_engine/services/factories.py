@@ -7,6 +7,7 @@ from databao_context_engine.services.persistence_service import PersistenceServi
 from databao_context_engine.services.table_name_policy import TableNamePolicy
 from databao_context_engine.storage.repositories.factories import (
     create_chunk_repository,
+    create_datasource_context_hash_repository,
     create_embedding_repository,
     create_registry_repository,
 )
@@ -21,6 +22,7 @@ def create_shard_resolver(conn: DuckDBPyConnection, policy: TableNamePolicy | No
 def create_persistence_service(conn: DuckDBPyConnection, *, model_dim: int) -> PersistenceService:
     return PersistenceService(
         conn=conn,
+        datasource_context_hash_repo=create_datasource_context_hash_repository(conn),
         chunk_repo=create_chunk_repository(conn),
         embedding_repo=create_embedding_repository(conn),
         dim=model_dim,

@@ -87,15 +87,17 @@ pip install databao-context-engine
 ### 1. Create a domain
 
 ```python
-# Initialize the domain in an existing directory
+# Initialize the domain in a temporary directory
 from databao_context_engine import init_dce_domain
+from pathlib import Path
+import tempfile
 
 domain_manager = init_dce_domain(Path(tempfile.mkdtemp()))
 
 # Or use an existing project
 from databao_context_engine import DatabaoContextDomainManager
 
-domain_manager = DatabaoContextDomainManager(domain_dir=Path("path/to/project"))
+domain_manager = DatabaoContextDomainManager(domain_dir=Path("domain_dir"))
 ```
 
 ### 2. Configure data sources
@@ -104,6 +106,8 @@ domain_manager = DatabaoContextDomainManager(domain_dir=Path("path/to/project"))
 from databao_context_engine import (
     DatasourceConnectionStatus,
     DatasourceType,
+    DatasourceId,
+    CheckDatasourceConnectionResult
 )
 
 # Create a new datasource
@@ -116,11 +120,10 @@ postgres_datasource_id = domain_manager.create_datasource_config(
 ).datasource.id
 
 # Check the connection to the datasource is valid
-check_result = domain_manager.check_datasource_connection()
+check_result: dict[DatasourceId, CheckDatasourceConnectionResult] = domain_manager.check_datasource_connection()
 
 assert len(check_result) == 1
-assert check_result[0].datasource_id == postgres_datasource_id
-assert check_result[0].connection_status == DatasourceConnectionStatus.VALID
+assert check_result[postgres_datasource_id].connection_status == DatasourceConnectionStatus.VALID
 ```
 
 ### 3. Build context

@@ -8,11 +8,13 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from databao_context_engine.datasources.datasource_context import DatasourceContextHash
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
 from databao_context_engine.services.models import ChunkEmbedding
 
 
-def test_write_chunks_and_embeddings(persistence, chunk_repo, embedding_repo, table_name):
+def test_write_chunks_and_embeddings(persistence, datasource_context_hash_repo, chunk_repo, embedding_repo, table_name):
     chunks = [
         EmbeddableChunk(embeddable_text="A", content="a"),
         EmbeddableChunk(embeddable_text="B", content="b"),
@@ -39,9 +41,24 @@ def test_write_chunks_and_embeddings(persistence, chunk_repo, embedding_repo, ta
         ),
     ]
 
+    datasource_id = DatasourceId.from_string_repr("123.yaml")
+    hashed_at = datetime.now()
     persistence.write_chunks_and_embeddings(
-        chunk_embeddings=chunk_embeddings, table_name=table_name, full_type="files/md", datasource_id="123"
+        chunk_embeddings=chunk_embeddings,
+        table_name=table_name,
+        full_type="files/md",
+        datasource_id=str(datasource_id),
+        context_hash=DatasourceContextHash(
+            datasource_id=datasource_id, hash="hash", hash_algorithm="test-algorithm", hashed_at=hashed_at
+        ),
     )
+
+    saved_hash = datasource_context_hash_repo.list()
+    assert len(saved_hash) == 1
+    assert saved_hash[0].datasource_id == "123.yaml"
+    assert saved_hash[0].hash == "hash"
+    assert saved_hash[0].hash_algorithm == "test-algorithm"
+    assert saved_hash[0].hashed_at == hashed_at
 
     saved = chunk_repo.list()
     assert [c.display_text for c in saved] == ["c", "b", "a"]
@@ -54,12 +71,21 @@ def test_write_chunks_and_embeddings(persistence, chunk_repo, embedding_repo, ta
 
 def test_empty_pairs_raises_value_error(persistence, table_name):
     with pytest.raises(ValueError):
+        datasource_id = DatasourceId.from_string_repr("123.yaml")
         persistence.write_chunks_and_embeddings(
-            chunk_embeddings=[], table_name=table_name, full_type="files/md", datasource_id="123"
+            chunk_embeddings=[],
+            table_name=table_name,
+            full_type="files/md",
+            datasource_id=str(datasource_id),
+            context_hash=DatasourceContextHash(
+                datasource_id=datasource_id, hash="hash", hash_algorithm="test-algorithm", hashed_at=datetime.now()
+            ),
         )
 
 
-def test_mid_batch_failure_rolls_back(persistence, chunk_repo, embedding_repo, monkeypatch, table_name):
+def test_mid_batch_failure_rolls_back(
+    persistence, datasource_context_hash_repo, chunk_repo, embedding_repo, monkeypatch, table_name
+):
     pairs = [
         ChunkEmbedding(
             EmbeddableChunk(embeddable_text="A", content="a"),
@@ -87,15 +113,25 @@ def test_mid_batch_failure_rolls_back(persistence, chunk_repo, embedding_repo, m
     monkeypatch.setattr(embedding_repo, "bulk_insert", boom_bulk_insert)
 
     with pytest.raises(RuntimeError):
+        datasource_id = DatasourceId.from_string_repr("123.yaml")
         persistence.write_chunks_and_embeddings(
-            chunk_embeddings=pairs, table_name=table_name, full_type="files/md", datasource_id="123"
+            chunk_embeddings=pairs,
+            table_name=table_name,
+            full_type="files/md",
+            datasource_id=str(datasource_id),
+            context_hash=DatasourceContextHash(
+                datasource_id=datasource_id, hash="hash", hash_algorithm="test-algorithm", hashed_at=datetime.now()
+            ),
         )
 
+    assert datasource_context_hash_repo.list() == []
     assert chunk_repo.list() == []
     assert embedding_repo.list(table_name=table_name) == []
 
 
-def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_repo, embedding_repo, table_name):
+def test_write_chunks_and_embeddings_with_complex_content(
+    persistence, datasource_context_hash_repo, chunk_repo, embedding_repo, table_name
+):
     class Status(Enum):
         ACTIVE = "active"
         DISABLED = "disabled"
@@ -162,9 +198,24 @@ def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_rep
         for i, (et, obj) in enumerate(complex_items)
     ]
 
+    datasource_id = DatasourceId.from_string_repr("123.yaml")
+    hashed_at = datetime.now()
     persistence.write_chunks_and_embeddings(
-        chunk_embeddings=pairs, table_name=table_name, full_type="files/md", datasource_id="123"
+        chunk_embeddings=pairs,
+        table_name=table_name,
+        full_type="files/md",
+        datasource_id=str(datasource_id),
+        context_hash=DatasourceContextHash(
+            datasource_id=datasource_id, hash="hash", hash_algorithm="test-algorithm", hashed_at=hashed_at
+        ),
     )
+
+    saved_hash = datasource_context_hash_repo.list()
+    assert len(saved_hash) == 1
+    assert saved_hash[0].datasource_id == "123.yaml"
+    assert saved_hash[0].hash == "hash"
+    assert saved_hash[0].hash_algorithm == "test-algorithm"
+    assert saved_hash[0].hashed_at == hashed_at
 
     saved = chunk_repo.list()
     assert len(saved) == len(complex_items)
@@ -177,7 +228,7 @@ def test_write_chunks_and_embeddings_with_complex_content(persistence, chunk_rep
 
 
 def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
-    persistence, chunk_repo, embedding_repo, table_name
+    persistence, datasource_context_hash_repo, chunk_repo, embedding_repo, table_name
 ):
     ds1_pairs = [
         ChunkEmbedding(
@@ -202,15 +253,36 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
         ),
     ]
 
+    ds1_id = DatasourceId.from_string_repr("ds1.yaml")
     persistence.write_chunks_and_embeddings(
-        chunk_embeddings=ds1_pairs, table_name=table_name, full_type="files/md", datasource_id="ds1"
+        chunk_embeddings=ds1_pairs,
+        table_name=table_name,
+        full_type="files/md",
+        datasource_id=str(ds1_id),
+        context_hash=DatasourceContextHash(
+            datasource_id=ds1_id, hash="hash-1", hash_algorithm="test-algorithm", hashed_at=datetime.now()
+        ),
     )
+    ds2_id = DatasourceId.from_string_repr("ds2.yaml")
     persistence.write_chunks_and_embeddings(
-        chunk_embeddings=ds2_pairs, table_name=table_name, full_type="files/md", datasource_id="ds2"
+        chunk_embeddings=ds2_pairs,
+        table_name=table_name,
+        full_type="files/md",
+        datasource_id=str(ds2_id),
+        context_hash=DatasourceContextHash(
+            datasource_id=ds2_id, hash="hash-2", hash_algorithm="test-algorithm", hashed_at=datetime.now()
+        ),
     )
 
+    saved_before_hash = datasource_context_hash_repo.list()
+    assert len(saved_before_hash) == 2
+    assert {
+        (datasource_context_hash.datasource_id, datasource_context_hash.hash)
+        for datasource_context_hash in saved_before_hash
+    } == {("ds2.yaml", "hash-2"), ("ds1.yaml", "hash-1")}
+
     saved_before = chunk_repo.list()
-    old_ds1_chunk_ids = {c.chunk_id for c in saved_before if c.datasource_id == "ds1"}
+    old_ds1_chunk_ids = {c.chunk_id for c in saved_before if c.datasource_id == str(ds1_id)}
     assert len(old_ds1_chunk_ids) == 2
 
     new_ds1_pairs = [
@@ -225,17 +297,27 @@ def test_write_chunks_and_embeddings_override_replaces_datasource_rows(
         chunk_embeddings=new_ds1_pairs,
         table_name=table_name,
         full_type="files/md",
-        datasource_id="ds1",
+        datasource_id=str(ds1_id),
+        context_hash=DatasourceContextHash(
+            datasource_id=ds1_id, hash="hash-1", hash_algorithm="test-algorithm", hashed_at=datetime.now()
+        ),
         override=True,
     )
 
+    saved_after_hash = datasource_context_hash_repo.list()
+    assert len(saved_after_hash) == 2
+    assert {
+        (datasource_context_hash.datasource_id, datasource_context_hash.hash)
+        for datasource_context_hash in saved_after_hash
+    } == {("ds2.yaml", "hash-2"), ("ds1.yaml", "hash-1")}
+
     saved_after = chunk_repo.list()
 
-    ds1_rows = [c for c in saved_after if c.datasource_id == "ds1"]
+    ds1_rows = [c for c in saved_after if c.datasource_id == str(ds1_id)]
     assert [c.embeddable_text for c in ds1_rows] == ["C"]
     assert {c.chunk_id for c in ds1_rows}.isdisjoint(old_ds1_chunk_ids)
 
-    ds2_rows = [c for c in saved_after if c.datasource_id == "ds2"]
+    ds2_rows = [c for c in saved_after if c.datasource_id == str(ds2_id)]
     assert [c.embeddable_text for c in ds2_rows] == ["X"]
 
     embedding_rows = embedding_repo.list(table_name=table_name)
