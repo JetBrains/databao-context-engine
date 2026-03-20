@@ -7,30 +7,35 @@ from pydantic import BaseModel
 from yaml import Node, SafeDumper
 
 
+def non_null_mapping_representer(dumper: SafeDumper, data: Mapping) -> Node:
+    non_null_filtered_mapping = {key: value for key, value in data.items() if value is not None}
+    return dumper.represent_dict(non_null_filtered_mapping)
+
+
 def default_representer(dumper: SafeDumper, data: object) -> Node:
     if isinstance(data, Enum):
         return dumper.represent_str(data.value)
     if isinstance(data, Mapping):
-        return dumper.represent_dict(data)
+        return non_null_mapping_representer(dumper, data)
 
     if is_dataclass(data) and not isinstance(data, type):
         ordered_dc: dict[str, Any] = {}
         for field in fields(data):
             ordered_dc[field.name] = getattr(data, field.name)
-        return dumper.represent_dict(ordered_dc)
+        return non_null_mapping_representer(dumper, ordered_dc)
 
     if BaseModel is not None and isinstance(data, BaseModel):
         ordered_pyd: dict[str, Any] = {}
         for name in data.model_fields.keys():
             ordered_pyd[name] = getattr(data, name)
-        return dumper.represent_dict(ordered_pyd)
+        return non_null_mapping_representer(dumper, ordered_pyd)
 
     if hasattr(data, "__dict__"):
         # Doesn't serialize "private" attributes (that starts with an _)
         data_public_attributes = {key: value for key, value in data.__dict__.items() if not key.startswith("_")}
         if data_public_attributes:
             ordered_dict = {key: data_public_attributes[key] for key in sorted(data_public_attributes)}
-            return dumper.represent_dict(ordered_dict)
+            return non_null_mapping_representer(dumper, ordered_dict)
 
         # If there is no public attributes, we default to the string representation
         return dumper.represent_str(str(data))
@@ -51,4 +56,4 @@ def to_yaml_string(data: Any) -> str:
 
 
 def _to_yaml(data: Any, stream: TextIO | None) -> str | None:
-    return yaml.safe_dump(data, stream, sort_keys=False, default_flow_style=False)
+    return yaml.safe_dump(data, stream, sort_keys=False, default_flow_style=False, allow_unicode=True)
