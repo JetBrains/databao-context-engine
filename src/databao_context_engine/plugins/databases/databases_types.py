@@ -149,7 +149,7 @@ class DatabaseColumn:
     description: str | None = None
     default_expression: str | None = None
     generated: Literal["identity", "computed"] | None = None
-    checks: list[CheckConstraint] = field(default_factory=list)
+    checks: list[CheckConstraint] | None = None
     stats: ColumnStats | None = None
 
 
@@ -214,10 +214,10 @@ class DatabaseTable:
     description: str | None = None
     kind: DatasetKind = DatasetKind.TABLE
     primary_key: KeyConstraint | None = None
-    unique_constraints: list[KeyConstraint] = field(default_factory=list)
-    checks: list[CheckConstraint] = field(default_factory=list)
-    indexes: list[Index] = field(default_factory=list)
-    foreign_keys: list[ForeignKey] = field(default_factory=list)
+    unique_constraints: list[KeyConstraint] | None = None
+    checks: list[CheckConstraint] | None = None
+    indexes: list[Index] | None = None
+    foreign_keys: list[ForeignKey] | None = None
     stats: TableStats | None = None
 
 
