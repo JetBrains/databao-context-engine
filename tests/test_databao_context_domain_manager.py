@@ -15,6 +15,7 @@ from databao_context_engine import (
     DatasourceConnectionStatus,
     DatasourceContext,
     DatasourceId,
+    DatasourceStatus,
     DatasourceType,
 )
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
@@ -141,6 +142,44 @@ def test_databao_context_domain_manager__build_with_multiple_datasource(domain_m
         datasource_id=DatasourceId.from_string_repr("files/my_dummy_file.dummy_txt"),
         datasource_type=DatasourceType(full_type="dummy_txt"),
         context_file_relative_path="files/my_dummy_file.dummy_txt.yaml",
+    )
+
+
+def test_databao_context_domain_manager__build_with_datasource_filter(domain_manager, create_db):
+    given_datasource_config_file(
+        domain_manager._project_layout,
+        datasource_name="dummy/my_dummy_data",
+        config_content={"type": "dummy_default", "name": "my_dummy_data"},
+    )
+    given_raw_source_file(
+        project_dir=domain_manager.domain_dir,
+        file_name="files/my_dummy_file.dummy_txt",
+        file_content="Content of my dummy file",
+    )
+
+    result = domain_manager.build_context(
+        datasource_ids=[
+            DatasourceId.from_string_repr("files/my_dummy_file.dummy_txt"),
+            DatasourceId.from_string_repr("unknown_datasource.yaml"),
+        ],
+    )
+
+    assert len(result) == 2, str(result)
+    assert_build_context_result(
+        result[0],
+        domain_manager.domain_dir,
+        datasource_id=DatasourceId.from_string_repr("files/my_dummy_file.dummy_txt"),
+        datasource_type=DatasourceType(full_type="dummy_txt"),
+        context_file_relative_path="files/my_dummy_file.dummy_txt.yaml",
+    )
+
+    assert_build_context_result(
+        result[1],
+        domain_manager.domain_dir,
+        status=DatasourceStatus.FAILED,
+        datasource_id=DatasourceId.from_string_repr("unknown_datasource.yaml"),
+        datasource_type=None,
+        context_file_relative_path="",
     )
 
 
@@ -435,13 +474,17 @@ def assert_build_context_result(
     domain_dir: Path,
     *,
     datasource_id: DatasourceId,
-    datasource_type: DatasourceType,
+    datasource_type: DatasourceType | None,
     context_file_relative_path: str,
+    status: DatasourceStatus = DatasourceStatus.OK,
 ):
+    assert context_result.status == status
     assert context_result.datasource_id == datasource_id
     assert context_result.datasource_type == datasource_type
-    assert context_result.context_built_at is not None
-    assert context_result.context_built_at < datetime.now()
-    assert context_result.context_file_path is not None
-    assert str(context_result.context_file_path).endswith(context_file_relative_path)
-    assert context_result.context_file_path.is_relative_to(get_output_dir(domain_dir))
+
+    if status == DatasourceStatus.OK:
+        assert context_result.context_built_at is not None
+        assert context_result.context_built_at < datetime.now()
+        assert context_result.context_file_path is not None
+        assert str(context_result.context_file_path).endswith(context_file_relative_path)
+        assert context_result.context_file_path.is_relative_to(get_output_dir(domain_dir))

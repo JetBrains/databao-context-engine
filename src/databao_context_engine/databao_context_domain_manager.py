@@ -96,10 +96,10 @@ class DatabaoContextDomainManager:
         Returns:
             The list of all built results.
         """
-        # TODO: Filter which datasources to build by datasource_ids
         return build_all_datasources(
             project_layout=self._project_layout,
             plugin_loader=self._plugin_loader,
+            datasource_ids=datasource_ids,
             should_index=should_index,
             should_enrich_context=should_enrich_context,
             progress=progress,

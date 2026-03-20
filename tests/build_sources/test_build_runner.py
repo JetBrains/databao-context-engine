@@ -62,6 +62,7 @@ def test_build_returns_empty_when_no_sources(stub_sources, mock_build_service, p
     results = build_runner.build(
         project_layout=project_layout,
         build_service=mock_build_service,
+        datasource_ids=None,
         should_index=True,
         should_enrich_context=False,
     )
@@ -86,6 +87,7 @@ def test_build_skips_source_without_plugin(stub_sources, stub_prepare, mock_buil
     results = build_runner.build(
         project_layout=project_layout,
         build_service=mock_build_service,
+        datasource_ids=None,
         should_index=True,
         should_enrich_context=False,
     )
@@ -118,6 +120,7 @@ def test_build_processes_file_source_and_exports_and_indexes(
     results = build_runner.build(
         project_layout=project_layout,
         build_service=mock_build_service,
+        datasource_ids=None,
         should_index=True,
         should_enrich_context=False,
     )
@@ -158,6 +161,7 @@ def test_build_skips_indexing_when_disabled(stub_sources, stub_prepare, mock_bui
     results = build_runner.build(
         project_layout=project_layout,
         build_service=mock_build_service,
+        datasource_ids=None,
         should_index=False,
         should_enrich_context=False,
     )
@@ -185,6 +189,7 @@ def test_build_enriches_before_export_and_index(stub_sources, stub_prepare, mock
     results = build_runner.build(
         project_layout=project_layout,
         build_service=mock_build_service,
+        datasource_ids=None,
         should_index=True,
         should_enrich_context=True,
     )
@@ -225,6 +230,7 @@ def test_build_returns_failed_result_and_continues_on_service_exception(
     results = build_runner.build(
         project_layout=project_layout,
         build_service=mock_build_service,
+        datasource_ids=None,
         should_index=True,
         should_enrich_context=False,
     )
@@ -335,6 +341,7 @@ def test_build_skips_disabled_config_source(stub_sources, stub_prepare, mock_bui
     results = build_runner.build(
         project_layout=project_layout,
         build_service=mock_build_service,
+        datasource_ids=None,
         should_index=True,
         should_enrich_context=False,
     )

@@ -10,6 +10,7 @@ from databao_context_engine.build_sources.build_runner import (
 from databao_context_engine.build_sources.build_service import BuildService
 from databao_context_engine.build_sources.types import BuildDatasourceResult, EnrichContextResult, IndexDatasourceResult
 from databao_context_engine.datasources.datasource_context import DatasourceContext
+from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.llm.factory import (
     create_ollama_description_provider,
     create_ollama_embedding_provider,
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 def build_all_datasources(
     project_layout: ProjectLayout,
     plugin_loader: DatabaoContextPluginLoader,
+    datasource_ids: list[DatasourceId] | None,
     should_index: bool,
     should_enrich_context: bool,
     progress: ProgressCallback | None = None,
@@ -59,6 +61,7 @@ def build_all_datasources(
         return build(
             project_layout=project_layout,
             build_service=build_service,
+            datasource_ids=datasource_ids,
             should_index=should_index,
             should_enrich_context=should_enrich_context,
             progress=progress,
