@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class NoPluginFoundForDatasource(RuntimeError):
-    pass
+    datasource_type: DatasourceType
+
+    def __init__(self, message: str, datasource_type: DatasourceType):
+        super().__init__(message)
+        self.datasource_type = datasource_type
 
 
 class DatabaoContextPluginLoader:
