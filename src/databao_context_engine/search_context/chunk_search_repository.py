@@ -138,7 +138,7 @@ class ChunkSearchRepository:
             params.append(chunk_types)
 
         vector_candidates_filter_condition = (
-            "WHERE " + " AND ".join(c for c in conditions if c) if any(conditions) else ""
+            ("WHERE " + " AND ".join(c for c in conditions if c)) if any(conditions) else ""
         )
 
         rows = self._conn.execute(
