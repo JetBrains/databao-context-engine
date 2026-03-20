@@ -1,0 +1,1 @@
+ALTER TABLE chunk ADD COLUMN IF NOT EXISTS chunk_type TEXT;

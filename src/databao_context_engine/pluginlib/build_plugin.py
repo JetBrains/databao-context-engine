@@ -12,10 +12,12 @@ class EmbeddableChunk:
     """A chunk that will be embedded as a vector and used when searching context from a given AI prompt.
 
     Attributes:
+        type: The type of the chunk, e.g. "table", "column" to allow for search by chunk type.
         embeddable_text: The text to embed as a vector for search usage
         content: The content to return as a response when the embedding has been selected in a search
     """
 
+    type: str | None = None
     embeddable_text: str
     keyword_indexable_text: str | None = None
     content: Any

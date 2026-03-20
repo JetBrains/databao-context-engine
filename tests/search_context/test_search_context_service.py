@@ -1,6 +1,8 @@
 from datetime import datetime
 from unittest.mock import Mock
 
+import pytest
+
 from databao_context_engine import DatasourceId
 from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.llm.config import EmbeddingModelDetails
@@ -73,6 +75,7 @@ def test_retrieve_returns_results():
         dimension=768,
         limit=10,
         datasource_context_hashes=datasource_context_hashes,
+        chunk_types=None,
     )
 
     assert result == expected
@@ -122,7 +125,15 @@ def test_retrieve_honors_limit():
     assert result == expected
 
 
-def test_retrieve_keyword_mode_calls_bm25_search():
+@pytest.mark.parametrize(
+    "chunk_types, valid_types, raises",
+    [
+        (None, ["table", "column"], False),
+        (["table"], ["table", "column"], False),
+        (["table", "invalid_type"], ["table", "column"], True),
+    ],
+)
+def test_retrieve_keyword_mode_calls_bm25_search(chunk_types: list[str] | None, valid_types, raises):
     chunk_search_repo = Mock()
     shard_resolver = Mock()
     provider = Mock()
@@ -143,6 +154,7 @@ def test_retrieve_keyword_mode_calls_bm25_search():
         ),
     ]
     chunk_search_repo.search_chunks_by_keyword_relevance.return_value = expected
+    chunk_search_repo.get_available_chunk_types.return_value = valid_types
 
     retrieve_service = SearchContextService(
         chunk_search_repo=chunk_search_repo,
@@ -151,6 +163,17 @@ def test_retrieve_keyword_mode_calls_bm25_search():
         prompt_provider=None,
     )
     datasource_context_hashes = [_make_datasource_context_hash("full/kw.yaml")]
+
+    if raises:
+        with pytest.raises(ValueError):
+            retrieve_service.search(
+                search_text="q",
+                limit=3,
+                rag_mode=RAG_MODE.RAW_QUERY,
+                context_search_mode=ContextSearchMode.KEYWORD_SEARCH,
+                chunk_types=chunk_types,
+            )
+        return
 
     result = retrieve_service.search(
         search_text="q",
@@ -166,6 +189,7 @@ def test_retrieve_keyword_mode_calls_bm25_search():
         query_text="q",
         limit=3,
         datasource_context_hashes=datasource_context_hashes,
+        chunk_types=None,
     )
     assert result == expected
 
@@ -214,6 +238,7 @@ def test_retrieve_vector_mode_calls_vector_search():
         dimension=768,
         limit=3,
         datasource_context_hashes=datasource_context_hashes,
+        chunk_types=None,
     )
     assert result == expected
 

@@ -49,12 +49,14 @@ def make_chunk(
     datasource_context_hash_id: int,
     full_type: str = "sample embeddable",
     datasource_id: str = "some-datasource-id",
+    chunk_type: str = "some type",
     embeddable_text: str = "sample embeddable",
     display_text: str = "display text",
     keyword_index_text: str = "keyword index",
 ) -> ChunkDTO:
     return chunk_repo.create(
         full_type=full_type,
+        chunk_type=chunk_type,
         datasource_id=datasource_id,
         embeddable_text=embeddable_text,
         display_text=display_text,

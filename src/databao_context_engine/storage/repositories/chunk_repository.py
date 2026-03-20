@@ -19,6 +19,7 @@ class ChunkRepository:
         self,
         *,
         full_type: str,
+        chunk_type: str | None = None,
         datasource_id: str,
         embeddable_text: str,
         display_text: Optional[str],
@@ -30,21 +31,22 @@ class ChunkRepository:
                 cur=self._conn,
                 sql="""
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
+                chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
             VALUES
-                (?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?)
             RETURNING
                 *
             """,
                 params=[
                     full_type,
+                    chunk_type,
                     datasource_id,
                     embeddable_text,
                     display_text,
                     keyword_index_text,
                     datasource_context_hash_id,
                 ],
-            )
+            ).fetchone()
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
 
@@ -181,13 +183,13 @@ class ChunkRepository:
         *,
         full_type: str,
         datasource_id: str,
+        chunk_contents: Sequence[Tuple[str, Optional[str], str, Optional[str]]],
         datasource_context_hash_id: int,
-        chunk_contents: Sequence[Tuple[str, Optional[str], str]],
     ) -> Sequence[int]:
-        values_sql = ", ".join(["(?, ?, ?, ?, ?, ?)"] * len(chunk_contents))
+        values_sql = ", ".join(["(?, ?, ?, ?, ?, ?, ?)"] * len(chunk_contents))
         sql = f"""
             INSERT INTO
-                chunk(full_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
+                chunk(full_type, chunk_type, datasource_id, embeddable_text, display_text, keyword_index_text, datasource_context_hash_id)
             VALUES
                 {values_sql}
             RETURNING
@@ -195,10 +197,11 @@ class ChunkRepository:
         """
 
         params: list[Any] = []
-        for embeddable_text, display_text, keyword_index_text in chunk_contents:
+        for embeddable_text, display_text, keyword_index_text, chunk_type in chunk_contents:
             params.extend(
                 [
                     full_type,
+                    chunk_type,
                     datasource_id,
                     embeddable_text,
                     display_text,
@@ -227,6 +230,7 @@ class ChunkRepository:
         return ChunkDTO(
             chunk_id=int(row["chunk_id"]),
             full_type=row["full_type"],
+            chunk_type=row["chunk_type"],
             datasource_id=row["datasource_id"],
             embeddable_text=row["embeddable_text"],
             display_text=row["display_text"],
