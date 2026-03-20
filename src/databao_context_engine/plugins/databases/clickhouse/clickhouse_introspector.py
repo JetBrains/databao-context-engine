@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import clickhouse_connect
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
@@ -11,11 +10,6 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "system", "INFORMATION_SCHEMA"}
 
     supports_catalogs = True
-
-    def _connect(self, file_config: ClickhouseConfigFile, *, catalog: str | None = None):
-        return clickhouse_connect.get_client(
-            **file_config.connection.to_clickhouse_kwargs(),
-        )
 
     def _get_catalogs(self, connection, file_config: ClickhouseConfigFile) -> list[str]:
         return ["clickhouse"]
@@ -139,8 +133,3 @@ class ClickhouseIntrospector(BaseIntrospector[ClickhouseConfigFile]):
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT %s'
         return SQLQuery(sql, (limit,))
-
-    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        res = connection.query(sql, parameters=params) if params else connection.query(sql)
-        cols = [c.lower() for c in res.column_names]
-        return [dict(zip(cols, row)) for row in res.result_rows]

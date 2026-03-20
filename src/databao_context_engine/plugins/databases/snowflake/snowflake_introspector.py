@@ -3,10 +3,8 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime
 from typing import Any, ClassVar, Dict, List
 
-import snowflake.connector
 from snowflake.connector import DictCursor
 from typing_extensions import override
 
@@ -46,23 +44,12 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
     supports_catalogs = True
     _USE_BATCH: ClassVar[bool] = False
 
-    def _connect(self, file_config: SnowflakeConfigFile, *, catalog: str | None = None):
-        connection = file_config.connection
-        snowflake.connector.paramstyle = "qmark"
-        connection_kwargs = connection.to_snowflake_kwargs()
-        if catalog:
-            connection_kwargs["database"] = catalog
-
-        return snowflake.connector.connect(
-            **connection_kwargs,
-        )
-
     def _get_catalogs(self, connection, file_config: SnowflakeConfigFile) -> list[str]:
         database = file_config.connection.database
         if database:
             return [database]
 
-        rows = self._fetchall_dicts(connection, "SHOW DATABASES", None)
+        rows = self._connector.execute(connection, "SHOW DATABASES", None)
         return [r["name"] for r in rows if r["name"] and r["name"].upper() not in self._IGNORED_CATALOGS]
 
     def _sql_list_schemas(self, catalogs: list[str] | None) -> SQLQuery:
@@ -347,17 +334,6 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT ?'
         return SQLQuery(sql, (limit,))
 
-    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        def normalize_value(v):
-            if isinstance(v, datetime):
-                return v.isoformat()
-            return v
-
-        with connection.cursor(snowflake.connector.DictCursor) as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
-            return [{k.lower(): normalize_value(v) for k, v in row.items()} for row in rows]
-
     def _quote_literal(self, value: str) -> str:
         return "'" + str(value).replace("'", "''") + "'"
 
@@ -437,7 +413,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                 TABLE_NAME
         """
 
-        rows = self._fetchall_dicts(connection, sql, None)
+        rows = self._connector.execute(connection, sql, None)
         return [
             TableStatsEntry(
                 schema_name=r["schema_name"],
@@ -492,7 +468,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         """
 
         try:
-            stats_rows = self._fetchall_dicts(connection, stats_sql, None)
+            stats_rows = self._connector.execute(connection, stats_sql, None)
             if not stats_rows or stats_rows[0]["sampled_count"] == 0:
                 return []
 

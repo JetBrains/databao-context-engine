@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Generic, Mapping, Protocol, Sequence, TypeVar, Union
 
 import databao_context_engine.perf.core as perf
-from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
+from databao_context_engine.plugins.databases.base_connector import BaseConnector
 from databao_context_engine.plugins.databases.databases_types import (
     CardinalityBucket,
     CatalogScope,
@@ -56,12 +56,8 @@ class BaseIntrospector(Generic[T], ABC):
     _SAMPLE_LIMIT: int = 5
     _LOW_CARDINALITY_THRESHOLD = 20
 
-    def check_connection(self, file_config: T) -> None:
-        with self._connect(file_config) as connection:
-            self._fetchall_dicts(connection, self._connection_check_sql_query(), None)
-
-    def _connection_check_sql_query(self) -> str:
-        return "SELECT 1 as test"
+    def __init__(self, connector: BaseConnector[T]) -> None:
+        self._connector = connector
 
     @perf.perf_span("db.introspect_database")
     def introspect_database(self, file_config: T) -> DatabaseIntrospectionResult:
@@ -72,12 +68,12 @@ class BaseIntrospector(Generic[T], ABC):
             ignored_schemas=self._ignored_schemas(),
         )
 
-        with self._connect(file_config) as root_connection:
+        with self._connector.connect(file_config) as root_connection:
             catalogs = self._get_catalogs_adapted(root_connection, file_config)
 
         introspected_catalogs: list[DatabaseCatalog] = []
         for catalog in catalogs:
-            with self._connect(file_config, catalog=catalog) as conn:
+            with self._connector.connect(file_config, catalog=catalog) as conn:
                 all_schemas = self._list_schemas_for_catalog(conn, catalog)
                 schemas_to_introspect = scope_matcher.filter_schemas_for_catalog(catalog, all_schemas)
 
@@ -183,7 +179,7 @@ class BaseIntrospector(Generic[T], ABC):
 
     def _list_schemas_for_catalog(self, connection: Any, catalog: str) -> list[str]:
         sql_query = self._sql_list_schemas([catalog] if self.supports_catalogs else None)
-        rows = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+        rows = self._connector.execute(connection, sql_query.sql, sql_query.params)
 
         schemas: list[str] = []
         for row in rows:
@@ -224,7 +220,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_relations(self, connection, catalog: str, schemas: list[str]) -> list[dict]:
         sql_query = self.get_relations_sql_query(catalog, schemas)
 
-        return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+        return self._connector.execute(connection, sql_query.sql, sql_query.params)
 
     @abstractmethod
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
@@ -233,7 +229,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_table_columns(self, connection, catalog: str, schemas: list[str]) -> list[dict]:
         sql_query = self.get_table_columns_sql_query(catalog, schemas)
 
-        return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+        return self._connector.execute(connection, sql_query.sql, sql_query.params)
 
     @abstractmethod
     def get_table_columns_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:
@@ -244,7 +240,7 @@ class BaseIntrospector(Generic[T], ABC):
 
         if sql_query is not None:
             try:
-                return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+                return self._connector.execute(connection, sql_query.sql, sql_query.params)
             except Exception:
                 # FIXME: We need a way for plugins to report non-critical errors happening during the build
                 logger.debug("Error while fetching view columns", exc_info=True, stack_info=True)
@@ -258,7 +254,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_primary_keys(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
         sql_query = self.get_primary_keys_sql_query(catalog, schemas)
         if sql_query is not None:
-            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            return self._connector.execute(connection, sql_query.sql, sql_query.params)
 
         return None
 
@@ -268,7 +264,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_unique_constraints(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
         sql_query = self.get_unique_constraints_sql_query(catalog, schemas)
         if sql_query is not None:
-            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            return self._connector.execute(connection, sql_query.sql, sql_query.params)
 
         return None
 
@@ -278,7 +274,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_checks(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
         sql_query = self.get_checks_sql_query(catalog, schemas)
         if sql_query is not None:
-            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            return self._connector.execute(connection, sql_query.sql, sql_query.params)
 
         return None
 
@@ -288,7 +284,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_foreign_keys(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
         sql_query = self.get_foreign_keys_sql_query(catalog, schemas)
         if sql_query is not None:
-            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            return self._connector.execute(connection, sql_query.sql, sql_query.params)
 
         return None
 
@@ -298,7 +294,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_indexes(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
         sql_query = self.get_indexes_sql_query(catalog, schemas)
         if sql_query is not None:
-            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            return self._connector.execute(connection, sql_query.sql, sql_query.params)
 
         return None
 
@@ -308,7 +304,7 @@ class BaseIntrospector(Generic[T], ABC):
     def collect_partitions(self, connection, catalog: str, schemas: list[str]) -> list[dict] | None:
         sql_query = self.get_partitions_sql_query(catalog, schemas)
         if sql_query is not None:
-            return self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+            return self._connector.execute(connection, sql_query.sql, sql_query.params)
 
         return None
 
@@ -328,7 +324,7 @@ class BaseIntrospector(Generic[T], ABC):
         if self._SAMPLE_LIMIT > 0:
             try:
                 sql_query = self._sql_sample_rows(catalog, schema, table, self._SAMPLE_LIMIT)
-                samples = self._fetchall_dicts(connection, sql_query.sql, sql_query.params)
+                samples = self._connector.execute(connection, sql_query.sql, sql_query.params)
             except NotImplementedError:
                 samples = []
             except Exception as e:
@@ -349,19 +345,6 @@ class BaseIntrospector(Generic[T], ABC):
         return cardinality_kind, low_cardinality_distinct_count
 
     @abstractmethod
-    def _connect(self, file_config: T, *, catalog: str | None = None) -> Any:
-        """Connect to the database.
-
-        If the `catalog` argument is provided, the connection is "scoped" to that catalog. For engines that don’t need a new connection,
-        return a connection with the session set/USE’d to that catalog.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        raise NotImplementedError
-
-    @abstractmethod
     def _get_catalogs(self, connection, file_config: T) -> list[str]:
         raise NotImplementedError
 
@@ -373,24 +356,6 @@ class BaseIntrospector(Generic[T], ABC):
 
     def _ignored_schemas(self) -> set[str]:
         return self._IGNORED_SCHEMAS
-
-    def run_sql(
-        self,
-        file_config: T,
-        sql: str,
-        params: list[Any] | None,
-        read_only: bool,
-    ) -> SqlExecutionResult:
-        # for now, we don't have any read-only related logic implemented on the database side
-        with self._connect(file_config) as connection:
-            rows_dicts: list[dict] = self._fetchall_dicts(connection, sql, params)
-
-        if not rows_dicts:
-            return SqlExecutionResult(columns=[], rows=[])
-
-        columns: list[str] = list(rows_dicts[0].keys())
-        rows: list[tuple[Any, ...]] = [tuple(row.get(col) for col in columns) for row in rows_dicts]
-        return SqlExecutionResult(columns=columns, rows=rows)
 
 
 @dataclass
