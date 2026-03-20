@@ -266,6 +266,11 @@ class ChunkSearchRepository:
         params: list[Any] = [query_text]
         if datasource_values:
             params.append(datasource_values)
+
+        chunk_type_condition = ""
+        if chunk_types:
+            chunk_type_condition = "AND b.chunk_type IN ?"
+            params.append(chunk_types)
         params.append(limit)
 
         rows = self._conn.execute(
@@ -298,7 +303,7 @@ class ChunkSearchRepository:
                 bm25_candidates b
             WHERE
                 b.bm25_score IS NOT NULL
-                {"AND b.chunk_type IN " if chunk_types else ""}
+                {chunk_type_condition}
             ORDER BY
                 b.bm25_score DESC
             LIMIT ?
