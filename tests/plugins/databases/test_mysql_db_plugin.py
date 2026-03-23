@@ -545,7 +545,7 @@ def test_mysql_table_and_column_statistics(mysql_container_with_demo_schema, cre
 
     with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
         plugin = MySQLDbPlugin()
-        config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+        config_file = _create_config_file_from_container(mysql_container_with_demo_schema, enable_profiling=True)
         result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
@@ -602,7 +602,7 @@ def test_mysql_column_statistics_with_nulls(mysql_container_with_demo_schema, cr
 
     with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
         plugin = MySQLDbPlugin()
-        config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+        config_file = _create_config_file_from_container(mysql_container_with_demo_schema, enable_profiling=True)
         result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
@@ -648,7 +648,7 @@ def test_mysql_high_cardinality_statistics(mysql_container_with_demo_schema, cre
 
     with seed_rows(create_mysql_conn, "catalog_main", "table_products", rows, cleanup_sql=cleanup):
         plugin = MySQLDbPlugin()
-        config_file = _create_config_file_from_container(mysql_container_with_demo_schema)
+        config_file = _create_config_file_from_container(mysql_container_with_demo_schema, enable_profiling=True)
         result = execute_datasource_plugin(
             plugin, DatasourceType(full_type=config_file["type"]), config_file, "file_name"
         )
@@ -677,9 +677,9 @@ def test_mysql_high_cardinality_statistics(mysql_container_with_demo_schema, cre
 
 
 def _create_config_file_from_container(
-    mysql: MySqlContainer, datasource_name: str | None = "file_name"
+    mysql: MySqlContainer, datasource_name: str | None = "file_name", enable_profiling: bool = False
 ) -> Mapping[str, Any]:
-    return {
+    config: dict[str, Any] = {
         "type": "mysql",
         "name": datasource_name,
         "connection": {
@@ -691,3 +691,6 @@ def _create_config_file_from_container(
             "password": mysql.password,
         },
     }
+    if enable_profiling:
+        config["profiling"] = {"enabled": True}
+    return config

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @contextlib.contextmanager
 def _create_secret(conn: DuckDBPyConnection, duckdb_secret: DuckDBSecret):
-    secret_name = duckdb_secret.name or "gen_secret_" + str(uuid.uuid4()).replace("-", "_")
+    secret_name = "gen_secret_" + str(uuid.uuid4()).replace("-", "_")
     create_secret_sql = generate_create_secret_sql(secret_name, duckdb_secret)
     try:
         logger.debug(f"About to create duckdb secret '{secret_name}' with type {duckdb_secret.type}")

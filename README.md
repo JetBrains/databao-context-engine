@@ -104,10 +104,10 @@ domain_manager = DatabaoContextDomainManager(domain_dir=Path("domain_dir"))
 
 ```python
 from databao_context_engine import (
+    CheckDatasourceConnectionResult,
     DatasourceConnectionStatus,
-    DatasourceType,
     DatasourceId,
-    CheckDatasourceConnectionResult
+    DatasourceType,
 )
 
 # Create a new datasource

@@ -40,31 +40,35 @@ class IntrospectionScopeMatcher:
         catalogs: list[str],
         schemas_per_catalog: dict[str, list[str]],
     ) -> ScopeSelection:
+        filtered: dict[str, list[str]] = {}
+        for catalog in catalogs:
+            kept = self.filter_schemas_for_catalog(catalog, schemas_per_catalog.get(catalog, []))
+            if kept:
+                filtered[catalog] = kept
+        return ScopeSelection(
+            catalogs=[c for c in catalogs if c in filtered],
+            schemas_per_catalog=filtered,
+        )
+
+    def filter_schemas_for_catalog(self, catalog: str, schemas: list[str]) -> list[str]:
         include_rules = self._scope.include
         exclude_rules = self._scope.exclude
         has_includes = len(include_rules) > 0
 
-        filtered: dict[str, list[str]] = {}
+        kept_schemas: list[str] = []
+        for schema in schemas:
+            if schema.lower() in self._ignored_schemas:
+                continue
 
-        for catalog in catalogs:
-            kept_schemas: list[str] = []
-            for schema in schemas_per_catalog.get(catalog, []):
-                if schema.lower() in self._ignored_schemas:
-                    continue
+            if has_includes and not self._is_included(include_rules, catalog, schema):
+                continue
 
-                if has_includes and not self._is_included(include_rules, catalog, schema):
-                    continue
+            if self._is_excluded(exclude_rules, catalog, schema):
+                continue
 
-                if self._is_excluded(exclude_rules, catalog, schema):
-                    continue
+            kept_schemas.append(schema)
 
-                kept_schemas.append(schema)
-
-            if kept_schemas:
-                filtered[catalog] = kept_schemas
-
-        filtered_catalogs = [c for c in catalogs if c in filtered]
-        return ScopeSelection(catalogs=filtered_catalogs, schemas_per_catalog=filtered)
+        return kept_schemas
 
     @staticmethod
     def _glob_match(pattern: str, value: str) -> bool:

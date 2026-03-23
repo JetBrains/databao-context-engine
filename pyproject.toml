@@ -1,13 +1,12 @@
 [project]
 name = "databao-context-engine"
-version = "0.7.0"
+version = "0.7.1.dev1"
 description = "Semantic context for your LLMs — generated automatically"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0 AND LicenseRef-Additional-Terms"
 license-files = ["LICENSE.md"]
 dependencies = [
-    "click>=8.3.0",
     "duckdb>=1.4.3",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
@@ -59,6 +58,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "click>=8.3.0",
     "mypy>=1.18.2",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
