@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import copy
 from typing import Any, Mapping, Sequence
 
 import asyncpg
@@ -134,7 +135,12 @@ def test_postgres_exact_samples(create_db_schema, postgres_container: PostgresCo
         _init_with_demo_schema(postgres_container, schema_name)
 
         rows = [
-            {"product_id": 1, "sku": "SKU-1", "price": 10.50, "description": "foo"},
+            {
+                "product_id": 1,
+                "sku": "SKU-1",
+                "price": 10.50,
+                "description": "foo will get truncated in the samples because it is a string that is way too long. foo will get truncated in the samples because it is a string that is way too long. foo will get truncated in the samples because it is a string that is way too long. foo will get truncated in the samples because it is a string that is way too long",
+            },
             {"product_id": 2, "sku": "SKU-2", "price": 20.00, "description": None},
         ]
 
@@ -154,11 +160,17 @@ def test_postgres_exact_samples(create_db_schema, postgres_container: PostgresCo
             )
             assert isinstance(result, DatabaseIntrospectionResult)
 
+            expected_samples = copy.deepcopy(rows)
+            expected_samples[0].update(
+                {
+                    "description": "foo will get truncated in the samples because it is a string that is way too long. foo will get truncated in the samples because it is a string that is way too long. foo will get truncated in the samples because it is a string that is way too long. foo wil…[truncated, 256/330]",
+                }
+            )
             assert_contract(
                 result,
                 [
                     TableExists("test", schema_name, "products"),
-                    SamplesEqual("test", schema_name, "products", rows=rows),
+                    SamplesEqual("test", schema_name, "products", rows=expected_samples),
                 ],
             )
 

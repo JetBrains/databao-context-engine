@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Generic, Mapping, Protocol, Sequence, TypeVar, Union
+from typing import Any, Generic, Iterable, Mapping, Protocol, Sequence, TypeVar, Union
 
 import databao_context_engine.perf.core as perf
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
@@ -113,7 +114,19 @@ class BaseIntrospector(Generic[T], ABC):
         for schema in schemas:
             for table in schema.tables:
                 if sampling_matcher.should_sample(catalog, schema.name, table.name):
-                    table.samples = self._collect_samples_for_table(connection, catalog, schema.name, table.name)
+                    collected_table_samples = self._collect_samples_for_table(
+                        connection, catalog, schema.name, table.name
+                    )
+
+                    normalized_samples = []
+                    for sample in collected_table_samples:
+                        normalized_samples.append(
+                            {
+                                column_key: self._normalize_sample_value(sample_value)
+                                for column_key, sample_value in sample.items()
+                            }
+                        )
+                    table.samples = normalized_samples
 
     @perf.perf_span(
         "db.collect_catalog_model",
@@ -391,6 +404,33 @@ class BaseIntrospector(Generic[T], ABC):
         columns: list[str] = list(rows_dicts[0].keys())
         rows: list[tuple[Any, ...]] = [tuple(row.get(col) for col in columns) for row in rows_dicts]
         return SqlExecutionResult(columns=columns, rows=rows)
+
+    def _normalize_sample_value(self, sample_value: Any) -> Any:
+        """Normalize complex sample values to a string.
+
+        It also truncates string that are too long to prevent bloating the samples with unnecessary long values.
+
+        Returns:
+            The normalized (and truncated if necessary) sample value
+        """
+        if isinstance(sample_value, bytes | bytearray):
+            return f"<bytes, {len(sample_value)} bytes>"
+
+        if isinstance(sample_value, str):
+            return self._truncate_sample_string(sample_value)
+
+        if isinstance(sample_value, Iterable | Mapping):
+            return self._normalize_sample_value(json.dumps(sample_value, default=str))
+
+        return sample_value
+
+    _SAMPLE_VALUE_SIZE_LIMIT = 256
+
+    def _truncate_sample_string(self, sample_value: str) -> str:
+        if len(sample_value) > self._SAMPLE_VALUE_SIZE_LIMIT:
+            return f"{sample_value[: self._SAMPLE_VALUE_SIZE_LIMIT]}…[truncated, {self._SAMPLE_VALUE_SIZE_LIMIT}/{len(sample_value)}]"
+
+        return sample_value
 
 
 @dataclass
