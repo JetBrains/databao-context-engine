@@ -15,7 +15,7 @@ class AwsProfileAuth(BaseModel):
 class AwsIamAuth(BaseModel):
     aws_access_key_id: Annotated[str, ConfigPropertyAnnotation(secret=True)]
     aws_secret_access_key: Annotated[str, ConfigPropertyAnnotation(secret=True)]
-    session_token: str | None = None
+    session_token: Annotated[str | None, ConfigPropertyAnnotation(secret=True)] = None
 
 
 class AwsAssumeRoleAuth(BaseModel):

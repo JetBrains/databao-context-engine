@@ -16,6 +16,7 @@ from databao_context_engine.datasources.types import (
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import ProjectLayout
+from databao_context_engine.project.project_secrets import resolve_project_secret_references
 from databao_context_engine.templating.renderer import render_template
 
 logger = logging.getLogger(__name__)
@@ -113,7 +114,7 @@ def prepare_source(project_layout: ProjectLayout, datasource_id: DatasourceId) -
         )
 
     absolute_datasource_path = datasource_id.absolute_path_to_config_file(project_layout)
-    config = _parse_config_file(absolute_datasource_path)
+    config = _parse_config_file(absolute_datasource_path, project_layout)
 
     datasource_path = datasource_id.relative_path_to_config_file()
     ds_type = config.get("type")
@@ -128,7 +129,8 @@ def prepare_source(project_layout: ProjectLayout, datasource_id: DatasourceId) -
     )
 
 
-def _parse_config_file(file_path: Path) -> dict[str, Any]:
+def _parse_config_file(file_path: Path, project_layout: ProjectLayout) -> dict[str, Any]:
     rendered_file = render_template(file_path.read_text())
 
-    return yaml.safe_load(rendered_file) or {}
+    parsed_content = yaml.safe_load(rendered_file) or {}
+    return resolve_project_secret_references(project_layout, parsed_content)
