@@ -19,7 +19,7 @@ from databao_context_engine.pluginlib.config import (
     ConfigPropertyAnnotation,
     ConfigPropertyDefinition,
     ConfigSinglePropertyDefinition,
-    CustomiseConfigProperties,
+    CustomizeConfigProperties,
 )
 
 
@@ -172,7 +172,7 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
         return []
 
 
-class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomiseConfigProperties):
+class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomizeConfigProperties):
     id = "dummy/no_config_type"
     name = "Dummy Plugin With No Config Type"
     context_type = dict

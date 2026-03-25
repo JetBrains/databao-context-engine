@@ -149,7 +149,7 @@ class DatabaseColumn:
     description: str | None = None
     default_expression: str | None = None
     generated: Literal["identity", "computed"] | None = None
-    checks: list[CheckConstraint] = field(default_factory=list)
+    checks: list[CheckConstraint] | None = None
     stats: ColumnStats | None = None
 
 
@@ -166,6 +166,46 @@ class TableStats:
 
 
 @dataclass
+class TableStatsEntry:
+    schema_name: str
+    table_name: str
+    stats: TableStats
+
+
+@dataclass
+class ColumnStatsEntry:
+    schema_name: str
+    table_name: str
+    column_name: str
+    stats: ColumnStats
+
+
+@dataclass(frozen=True, slots=True)
+class ColumnRef:
+    name: str
+    type: str
+
+
+@dataclass(frozen=True, slots=True)
+class TableRef:
+    table_name: str
+    kind: DatasetKind = DatasetKind.TABLE
+    columns: list[ColumnRef] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class SchemaRef:
+    schema_name: str
+    tables: list[TableRef]
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogScope:
+    catalog_name: str
+    schemas: list[SchemaRef]
+
+
+@dataclass
 class DatabaseTable:
     name: str
     columns: list[DatabaseColumn]
@@ -174,10 +214,10 @@ class DatabaseTable:
     description: str | None = None
     kind: DatasetKind = DatasetKind.TABLE
     primary_key: KeyConstraint | None = None
-    unique_constraints: list[KeyConstraint] = field(default_factory=list)
-    checks: list[CheckConstraint] = field(default_factory=list)
-    indexes: list[Index] = field(default_factory=list)
-    foreign_keys: list[ForeignKey] = field(default_factory=list)
+    unique_constraints: list[KeyConstraint] | None = None
+    checks: list[CheckConstraint] | None = None
+    indexes: list[Index] | None = None
+    foreign_keys: list[ForeignKey] | None = None
     stats: TableStats | None = None
 
 

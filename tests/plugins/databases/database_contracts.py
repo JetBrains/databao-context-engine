@@ -571,10 +571,10 @@ def log_introspection_result(result: DatabaseIntrospectionResult) -> None:
                         extras.append(f"desc={col.description!r}")
                     suffix = f"  [{', '.join(extras)}]" if extras else ""
                     logger.info("      %s %s%s", col.name, col.type, suffix)
-                for fk in table.foreign_keys:
+                for fk in table.foreign_keys or []:
                     mapping = ", ".join(f"{m.from_column}->{m.to_column}" for m in fk.mapping)
                     logger.info("      FK %s: (%s) -> %s", fk.name, mapping, fk.referenced_table)
-                for idx in table.indexes:
+                for idx in table.indexes or []:
                     logger.info(
                         "      IDX %s: %s (unique=%s, method=%s)", idx.name, idx.columns, idx.unique, idx.method
                     )

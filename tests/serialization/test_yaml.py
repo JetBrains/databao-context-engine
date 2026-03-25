@@ -20,6 +20,7 @@ class PydanticClass(BaseModel):
     my_str: str = "123"
     my_date: date
     my_path: Path
+    nullable_pydantic: int | None
 
 
 class CustomClass:
@@ -27,6 +28,7 @@ class CustomClass:
         self._hidden_var = "_hidden_var"
         self.exposed_var = "exposed_var"
         self.my_list = ["1", "2", "3"]
+        self.nullable_custom = None
 
 
 class CustomClassNoPublicFields:
@@ -51,6 +53,7 @@ class Dataclass:
     my_int: int = 12
     my_uuid: uuid.UUID = uuid.uuid4()
     my_date: datetime = datetime.now()
+    nullable_dataclass: float | None = None
 
 
 class TypedDictionary(TypedDict):
@@ -62,7 +65,7 @@ def get_input(my_uuid: uuid.UUID, my_date: datetime) -> Any:
         "dataclass": Dataclass(
             "hello", my_uuid=my_uuid, my_date=my_date, my_nested_class=SimpleNestedClass("nested", MyEnum.KEY_2)
         ),
-        "pydantic": PydanticClass(my_date=date(2025, 1, 1), my_path=Path("/tmp/test.txt")),
+        "pydantic": PydanticClass(my_date=date(2025, 1, 1), my_path=Path("/tmp/test.txt"), nullable_pydantic=None),
         "custom": CustomClass(),
         "tuple": (1, "text"),
         "list": [TypedDictionary(my_var=1.0), TypedDictionary(my_var=2.0), TypedDictionary(my_var=3.0)],

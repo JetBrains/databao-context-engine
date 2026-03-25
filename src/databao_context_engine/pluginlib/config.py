@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 
 
 class DuckDBSecret(BaseModel):
-    name: str | None = Field(default=None)
     type: str = Field(
         description="DuckDB secret type. Examples: s3, postgres, iceberg, etc. See https://duckdb.org/docs/stable/configuration/secrets_manager#types-of-secrets"
     )
@@ -47,5 +46,5 @@ class ConfigPropertyAnnotation:
 
 
 @runtime_checkable
-class CustomiseConfigProperties(Protocol):
+class CustomizeConfigProperties(Protocol):
     def get_config_file_properties(self) -> list[ConfigPropertyDefinition]: ...

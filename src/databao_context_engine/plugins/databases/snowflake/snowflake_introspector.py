@@ -11,7 +11,14 @@ from snowflake.connector import DictCursor
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
-from databao_context_engine.plugins.databases.databases_types import DatabaseSchema
+from databao_context_engine.plugins.databases.databases_types import (
+    CatalogScope,
+    ColumnStats,
+    ColumnStatsEntry,
+    DatabaseSchema,
+    TableStats,
+    TableStatsEntry,
+)
 from databao_context_engine.plugins.databases.introspection_model_builder import IntrospectionModelBuilder
 from databao_context_engine.plugins.databases.snowflake.config_file import SnowflakeConfigFile
 
@@ -109,14 +116,6 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                             f"Snowflake multi-statement batch ended early after component #{ix} '{name}'"
                         )
 
-        table_stats, column_stats = self.collect_stats(
-            connection,
-            catalog=catalog,
-            schemas=schemas,
-            relations=results.get("relations", []),
-            columns=results.get("table_columns", []),
-        )
-
         return IntrospectionModelBuilder.build_schemas_from_components(
             schemas=schemas,
             rels=results["relations"],
@@ -126,8 +125,6 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             checks=[],
             fk_cols=results["fks"],
             idx_cols=[],
-            table_stats=table_stats,
-            column_stats=column_stats,
         )
 
     def _get_catalog_introspection_queries_for_batched_mode(self, catalog: str, schemas: list[str]) -> list[dict]:
@@ -379,10 +376,8 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[str],
-        relations: list[dict],
-        columns: list[dict],
-    ) -> tuple[list[dict], list[dict]]:
+        scope: CatalogScope,
+    ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
         """Collect table and column statistics using approximate queries with adaptive sampling.
 
         Strategy:
@@ -396,16 +391,17 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         Returns:
             Tuple of (table_stats, column_stats) - both as lists of dicts
         """
-        table_stats = self._get_table_stats(connection, catalog, schemas)
-        table_row_counts = {(ts["schema_name"], ts["table_name"]): ts["row_count"] for ts in table_stats}
+        schema_names = [schema_scope.schema_name for schema_scope in scope.schemas]
+        table_stats = self._get_table_stats(connection, catalog, schema_names)
+        table_row_counts = {(ts.schema_name, ts.table_name): ts.stats.row_count for ts in table_stats}
 
         table_columns: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
-        base_tables = {(r["schema_name"], r["table_name"]) for r in relations if r.get("kind") == "table"}
-
-        for column in columns:
-            key = (column["schema_name"], column["table_name"])
-            if key in base_tables:
-                table_columns[key].append((column["column_name"], column["data_type"]))
+        for schema_scope in scope.schemas:
+            for table_ref in schema_scope.tables:
+                if table_ref.kind.value == "table" and table_ref.columns:
+                    key = (schema_scope.schema_name, table_ref.table_name)
+                    for col in table_ref.columns:
+                        table_columns[key].append((col.name, col.type))
 
         column_stats = []
         for (schema, table), columns_list in table_columns.items():
@@ -421,7 +417,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
 
         return table_stats, column_stats
 
-    def _get_table_stats(self, connection, catalog: str, schemas: list[str]) -> list[dict]:
+    def _get_table_stats(self, connection, catalog: str, schemas: list[str]) -> list[TableStatsEntry]:
         schemas_in = ", ".join(self._quote_literal(s) for s in schemas)
         information_schema = self._qual_is(catalog)
 
@@ -441,7 +437,15 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                 TABLE_NAME
         """
 
-        return self._fetchall_dicts(connection, sql, None)
+        rows = self._fetchall_dicts(connection, sql, None)
+        return [
+            TableStatsEntry(
+                schema_name=r["schema_name"],
+                table_name=r["table_name"],
+                stats=TableStats(row_count=r.get("row_count"), approximate=bool(r.get("approximate", True))),
+            )
+            for r in rows
+        ]
 
     def _collect_column_stats_for_table(
         self,
@@ -450,7 +454,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
         table: str,
         columns_list: list[tuple[str, str]],
         estimated_row_count: int | None,
-    ) -> list[dict]:
+    ) -> list[ColumnStatsEntry]:
         if not columns_list:
             return []
 
@@ -495,7 +499,7 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
             stats_row = stats_rows[0]
             sampled_count = stats_row["sampled_count"]
 
-            column_stats = []
+            column_stats: list[ColumnStatsEntry] = []
             for column, _ in columns_list:
                 safe_column = self._sanitize_column_name(column)
                 safe_col_lower = safe_column.lower()
@@ -520,19 +524,21 @@ class SnowflakeIntrospector(BaseIntrospector[SnowflakeConfigFile]):
                 cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(sampled_distinct)
 
                 column_stats.append(
-                    {
-                        "schema_name": schema,
-                        "table_name": table,
-                        "column_name": column,
-                        "null_count": null_count,
-                        "non_null_count": non_null_count,
-                        "cardinality_kind": cardinality_kind,
-                        "distinct_count": low_cardinality_distinct_count,
-                        "min_value": min_value,
-                        "max_value": max_value,
-                        "top_values": top_values,
-                        "total_row_count": total_count,
-                    }
+                    ColumnStatsEntry(
+                        schema_name=schema,
+                        table_name=table,
+                        column_name=column,
+                        stats=ColumnStats(
+                            null_count=null_count,
+                            non_null_count=non_null_count,
+                            cardinality_kind=cardinality_kind,
+                            distinct_count=low_cardinality_distinct_count,
+                            min_value=min_value,
+                            max_value=max_value,
+                            top_values=top_values,
+                            total_row_count=total_count,
+                        ),
+                    )
                 )
 
             return column_stats

@@ -10,6 +10,13 @@ import asyncpg
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
+from databao_context_engine.plugins.databases.databases_types import (
+    CatalogScope,
+    ColumnStats,
+    ColumnStatsEntry,
+    TableStats,
+    TableStatsEntry,
+)
 from databao_context_engine.plugins.databases.postgresql.config_file import (
     PostgresConfigFile,
     PostgresConnectionProperties,
@@ -195,25 +202,29 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         self,
         connection,
         catalog: str,
-        schemas: list[str],
-        relations: list[dict],
-        columns: list[dict],
-    ) -> tuple[list[dict], list[dict]]:
-        table_stats_query = SQLQuery(self._sql_table_stats(), (schemas,))
-        table_stats = self._fetchall_dicts(connection, table_stats_query.sql, table_stats_query.params)
+        scope: CatalogScope,
+    ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
+        schema_names = [schema_scope.schema_name for schema_scope in scope.schemas]
+        table_stats_query = SQLQuery(self._sql_table_stats(), (schema_names,))
+        table_stat_rows = self._fetchall_dicts(connection, table_stats_query.sql, table_stats_query.params)
+        table_stats = [
+            TableStatsEntry(
+                schema_name=r["schema_name"],
+                table_name=r["table_name"],
+                stats=TableStats(row_count=r.get("row_count"), approximate=bool(r.get("approximate", True))),
+            )
+            for r in table_stat_rows
+        ]
 
-        column_stats_query = SQLQuery(self._sql_column_stats(), (schemas,))
-        column_stats = self._fetchall_dicts(connection, column_stats_query.sql, column_stats_query.params)
+        column_stats_query = SQLQuery(self._sql_column_stats(), (schema_names,))
+        column_stat_rows = self._fetchall_dicts(connection, column_stats_query.sql, column_stats_query.params)
+        column_stats = self._enrich_column_stats(column_stat_rows, table_stats)
 
-        enriched_column_stats = self._enrich_column_stats(
-            column_stats or [],
-            table_stats or [],
-        )
+        return table_stats, column_stats
 
-        return table_stats, enriched_column_stats
-
-    def _enrich_column_stats(self, column_stats: list[dict], table_stats: list[dict]) -> list[dict]:
-
+    def _enrich_column_stats(
+        self, column_stat_rows: list[dict], table_stats: list[TableStatsEntry]
+    ) -> list[ColumnStatsEntry]:
         def parse_pg_array(arr_str: str | None) -> list[str] | None:
             """Simple parser that doesn't handle quoted strings with commas or escapes."""
             if not arr_str or not isinstance(arr_str, str):
@@ -225,29 +236,27 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 return []
             return [v.strip() for v in content.split(",") if v.strip()]
 
-        table_row_counts = {}
-        for ts in table_stats:
-            schema = ts.get("schema_name")
-            table = ts.get("table_name")
-            row_count = ts.get("row_count")
-            if schema and table and row_count is not None:
-                table_row_counts[(schema, table)] = row_count
+        table_row_counts = {(ts.schema_name, ts.table_name): ts.stats.row_count for ts in table_stats}
 
-        for row in column_stats:
-            schema_name = row.get("schema_name")
-            table_name = row.get("table_name")
+        result: list[ColumnStatsEntry] = []
+        for row in column_stat_rows:
+            schema_name = row["schema_name"]
+            table_name = row["table_name"]
             row_count = table_row_counts.get((schema_name, table_name))
 
-            if "histogram_bounds" in row:
-                bounds = parse_pg_array(row["histogram_bounds"])
-                if bounds and len(bounds) > 0:
-                    row["min_value"] = bounds[0]
-                    row["max_value"] = bounds[-1]
+            min_value = None
+            max_value = None
+            bounds = parse_pg_array(row.get("histogram_bounds"))
+            if bounds:
+                min_value = bounds[0]
+                max_value = bounds[-1]
 
+            null_count = None
+            non_null_count = None
             null_frac = row.get("null_frac")
             if null_frac is not None and row_count is not None:
-                row["null_count"] = round(row_count * null_frac)
-                row["non_null_count"] = row_count - row["null_count"]
+                null_count = round(row_count * null_frac)
+                non_null_count = row_count - null_count
 
             n_distinct = row.get("n_distinct")
             distinct_count = None
@@ -258,9 +267,8 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                     distinct_count = round(n_distinct)
 
             cardinality_kind, low_cardinality_distinct_count = self._compute_cardinality_stats(distinct_count)
-            row["cardinality_kind"] = cardinality_kind
-            row["distinct_count"] = low_cardinality_distinct_count
 
+            top_values = None
             vals_str = row.get("most_common_vals")
             freqs_str = row.get("most_common_freqs")
             top_n = 5
@@ -269,13 +277,31 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
                 freqs = parse_pg_array(freqs_str)
                 if vals and freqs and len(vals) == len(freqs):
                     try:
-                        row["top_values"] = [(str(v), round(float(f) * row_count)) for v, f in zip(vals, freqs)][:top_n]
+                        top_values = [(str(v), round(float(f) * row_count)) for v, f in zip(vals, freqs)][:top_n]
                     except (ValueError, TypeError):
                         logger.warning(
                             f"Failed to parse column stats for {schema_name}.{table_name}.{row['column_name']}"
                         )
 
-        return column_stats
+            result.append(
+                ColumnStatsEntry(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=row["column_name"],
+                    stats=ColumnStats(
+                        null_count=null_count,
+                        non_null_count=non_null_count,
+                        distinct_count=low_cardinality_distinct_count,
+                        cardinality_kind=cardinality_kind,
+                        min_value=min_value,
+                        max_value=max_value,
+                        top_values=top_values,
+                        total_row_count=row_count,
+                    ),
+                )
+            )
+
+        return result
 
     @override
     def get_relations_sql_query(self, catalog: str, schemas: list[str]) -> SQLQuery:

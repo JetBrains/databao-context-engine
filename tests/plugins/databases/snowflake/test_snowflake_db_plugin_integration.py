@@ -73,6 +73,7 @@ def _create_config(
     warehouse: str | None = SNOWFLAKE_WAREHOUSE,
     role: str | None = SNOWFLAKE_ROLE,
     datasource_name: str = "test_snowflake",
+    enable_profiling: bool = False,
 ) -> Mapping[str, Any]:
     config: dict[str, Any] = {
         "type": "snowflake",
@@ -102,6 +103,9 @@ def _create_config(
         pytest.skip(
             "No authentication method configured (SNOWFLAKE_PASSWORD, SNOWFLAKE_PRIVATE_KEY_FILE, or SNOWFLAKE_AUTHENTICATOR)"
         )
+
+    if enable_profiling:
+        config["profiling"] = {"enabled": True}
 
     return config
 
@@ -506,7 +510,7 @@ def test_snowflake_table_and_column_statistics(sf_demo_schema: snowflake.connect
 
     with _seed_rows(sf_demo_schema, "products", rows, cleanup_tables=["order_items", "products"]):
         plugin = SnowflakeDbPlugin()
-        config_file = _create_config()
+        config_file = _create_config(enable_profiling=True)
         result = execute_datasource_plugin(plugin, DatasourceType(full_type="snowflake"), config_file, "file_name")
         assert isinstance(result, DatabaseIntrospectionResult)
 
@@ -554,7 +558,7 @@ def test_snowflake_high_cardinality_statistics(sf_demo_schema: snowflake.connect
 
     with _seed_rows(sf_demo_schema, "products", rows, cleanup_tables=["order_items", "products"]):
         plugin = SnowflakeDbPlugin()
-        config_file = _create_config()
+        config_file = _create_config(enable_profiling=True)
         result = execute_datasource_plugin(plugin, DatasourceType(full_type="snowflake"), config_file, "file_name")
         assert isinstance(result, DatabaseIntrospectionResult)
 

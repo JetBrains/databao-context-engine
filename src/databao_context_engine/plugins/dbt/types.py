@@ -106,7 +106,7 @@ class DbtSemanticDimension:
 class DbtSemanticModel:
     id: str
     name: str
-    model: str | None
+    model: str | None = None
     description: str | None = None
     entities: list[DbtSemanticEntity]
     measures: list[DbtSemanticMeasure]
