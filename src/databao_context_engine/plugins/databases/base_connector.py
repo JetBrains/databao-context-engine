@@ -14,11 +14,10 @@ class BaseConnector(Generic[T], ABC):
 
         If the `catalog` argument is provided, the connection is "scoped" to that catalog.
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
-    def execute(self, connection, sql: str, params) -> list[dict]:
-        raise NotImplementedError
+    def execute(self, connection, sql: str, params) -> list[dict]: ...
 
     def check_connection(self, file_config: T) -> None:
         with self.connect(file_config) as connection:
