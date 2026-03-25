@@ -194,6 +194,9 @@ class DatasourceType:
 
     full_type: str
 
+    def __str__(self):
+        return self.full_type
+
 
 class AbstractConfigFile(ABC):
     type: str
