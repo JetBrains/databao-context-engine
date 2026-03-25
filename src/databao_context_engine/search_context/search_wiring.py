@@ -14,7 +14,7 @@ from databao_context_engine.llm.factory import (
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout
-from databao_context_engine.search_context.chunk_search_repository import ChunkSearchRepository, SearchResult
+from databao_context_engine.search_context.chunk_search_repository import ChunkSearchRepository, ChunkType, SearchResult
 from databao_context_engine.search_context.search_runner import run_context_search
 from databao_context_engine.search_context.search_service import RAG_MODE, ContextSearchMode, SearchContextService
 from databao_context_engine.services.factories import create_shard_resolver
@@ -38,7 +38,7 @@ def search_context(
     limit: int | None,
     datasource_ids: list[DatasourceId] | None,
     context_search_mode: ContextSearchMode,
-    chunk_types: list[str] | None = None,
+    chunk_types: list[ChunkType] | None = None,
 ) -> list[SearchResult]:
     with open_duckdb_connection(project_layout.db_path) as conn:
         ollama_service = create_ollama_service()

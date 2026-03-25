@@ -8,6 +8,7 @@ from databao_context_engine.datasources.datasource_context import DatasourceCont
 from databao_context_engine.llm.config import EmbeddingModelDetails
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.search_context.chunk_search_repository import (
+    ChunkType,
     KeywordSearchScore,
     RrfScore,
     SearchResult,
@@ -128,12 +129,12 @@ def test_retrieve_honors_limit():
 @pytest.mark.parametrize(
     "chunk_types, valid_types, raises",
     [
-        (None, ["table", "column"], False),
-        (["table"], ["table", "column"], False),
-        (["table", "invalid_type"], ["table", "column"], True),
+        (None, {ChunkType.TABLE, ChunkType.COLUMN}, False),
+        ([ChunkType.TABLE], {ChunkType.TABLE, ChunkType.COLUMN}, False),
+        ([ChunkType.TABLE, ChunkType.COLUMN], {ChunkType.TABLE}, True),
     ],
 )
-def test_retrieve_keyword_mode_calls_bm25_search(chunk_types: list[str] | None, valid_types, raises):
+def test_retrieve_keyword_mode_calls_bm25_search(chunk_types: list[ChunkType] | None, valid_types, raises):
     chunk_search_repo = Mock()
     shard_resolver = Mock()
     provider = Mock()

@@ -8,6 +8,7 @@ from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.search_context.chunk_search_repository import (
     ChunkSearchRepository,
+    ChunkType,
     SearchResult,
 )
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
@@ -25,16 +26,6 @@ class ContextSearchMode(Enum):
     HYBRID_SEARCH = "HYBRID_SEARCH"
     KEYWORD_SEARCH = "KEYWORD_SEARCH"
     VECTOR_SEARCH = "VECTOR_SEARCH"
-
-class IllegalChunkType(Exception):
-    """
-    Raised when a chunk type is selected that is not supported by the search engine.
-    """
-
-class ChunkTypeNotInIndex(Exception):
-    """
-    Raised when a chunk type is not found in the index.
-    """
 
 
 class SearchContextService:
@@ -66,13 +57,8 @@ class SearchContextService:
         limit: int | None = None,
         rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
-        chunk_types: list[str] | None = None,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
-        if chunk_types is not None and (unavailable_types := set(chunk_types).difference(self._available_chunk_types)):
-            raise ValueError(
-                f"Chunk types {unavailable_types} are currently not supported for filtering."
-                f" Supported types: {self._available_chunk_types}. "
-            )
         if limit is None:
             limit = 10
 
@@ -108,7 +94,7 @@ class SearchContextService:
         limit: int,
         rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
-        chunk_types: list[str] | None = None,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         if context_search_mode == ContextSearchMode.KEYWORD_SEARCH:
             query_text = self._rewrite_search_query(text) if rag_mode == RAG_MODE.REWRITE_QUERY else text

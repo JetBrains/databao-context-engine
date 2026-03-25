@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 import duckdb
@@ -12,11 +13,17 @@ from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
 logger = logging.getLogger(__name__)
 
+class ChunkType(str, Enum):
+    """
+    Enum of the supported chunk types to search.
+    """
+    TABLE = "table"
+    COLUMN = "column"
 
 @dataclass(kw_only=True, frozen=True)
 class VectorSearchCandidate:
     chunk_id: int
-    chunk_type: str | None
+    chunk_type: ChunkType | None
     display_text: str
     embeddable_text: str
     cosine_distance: float
@@ -27,7 +34,7 @@ class VectorSearchCandidate:
 @dataclass(kw_only=True, frozen=True)
 class Bm25SearchCandidate:
     chunk_id: int
-    chunk_type: str | None
+    chunk_type: ChunkType | None
     display_text: str
     embeddable_text: str
     bm25_score: float
@@ -67,7 +74,7 @@ class KeywordSearchScore:
 @dataclass(kw_only=True, frozen=True)
 class SearchResult:
     chunk_id: int
-    chunk_type: str | None
+    chunk_type: ChunkType | None
     display_text: str
     embeddable_text: str
     datasource_type: DatasourceType
@@ -93,7 +100,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
-        chunk_types: list[str] | None = None,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         """Read only similarity search on a specific embedding shard table."""
         vector_candidates = self._get_vector_candidates(
@@ -126,7 +133,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
-        chunk_types: list[str] | None = None,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[VectorSearchCandidate]:
         """Read only vector candidates on a specific embedding shard table."""
         if not datasource_context_hashes:
@@ -195,7 +202,7 @@ class ChunkSearchRepository:
         return [
             VectorSearchCandidate(
                 chunk_id=row[0],
-                chunk_type=row[1],
+                chunk_type=ChunkType(row[1]) if row[1] else None,
                 display_text=row[2],
                 embeddable_text=row[3],
                 cosine_distance=row[4],
@@ -215,7 +222,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
-        chunk_types: list[str] | None = None,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         """Hybrid retrieval combining vector similarity and BM25 with Reciprocal Rank Fusion (RRF).
 
@@ -251,7 +258,7 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
-        chunk_types: list[str] | None = None,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         """Read only BM25 search over chunk text."""
         bm25_candidates = self._get_bm25_candidates(
@@ -281,7 +288,7 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
-        chunk_types: list[str] | None = None,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[Bm25SearchCandidate]:
         if not datasource_context_hashes:
             return []
@@ -344,7 +351,7 @@ class ChunkSearchRepository:
         return [
             Bm25SearchCandidate(
                 chunk_id=row[0],
-                chunk_type=row[1],
+                chunk_type=ChunkType(row[1]) if row[1] else None,
                 display_text=row[2],
                 embeddable_text=row[3],
                 bm25_score=row[4],
@@ -368,9 +375,9 @@ class ChunkSearchRepository:
             )
         return allowed_hashes_sql, params
 
-    def get_available_chunk_types(self) -> set[str]:
+    def get_available_chunk_types(self) -> set[ChunkType]:
         rows = self._conn.execute("SELECT DISTINCT chunk_type FROM chunk WHERE chunk_type IS NOT NULL").fetchall()
-        return {row[0] for row in rows}
+        return {ChunkType(row[0]) for row in rows}
 
     @perf.perf_span("chunk_search._fuse_by_rrf")
     def _fuse_by_rrf(

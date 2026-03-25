@@ -18,6 +18,7 @@ from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
 from databao_context_engine.search_context import search_context as search_context_internal
+from databao_context_engine.search_context.chunk_search_repository import ChunkType
 from databao_context_engine.search_context.search_service import ContextSearchMode
 
 
@@ -124,7 +125,7 @@ class DatabaoContextEngine:
         limit: int | None = None,
         datasource_ids: list[DatasourceId] | None = None,
         context_search_mode: ContextSearchMode | None = None,
-        chunk_types: list[str] | None = None,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[ContextSearchResult]:
         """Search in the available context for the closest matches to the given text.
 
