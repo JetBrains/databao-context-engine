@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Collection
 
+from databao_context_engine.build_sources.context_loader import load_database_built_context
 from databao_context_engine.datasources.datasource_context import (
     DatasourceContext,
     get_all_contexts,
@@ -15,6 +16,12 @@ from databao_context_engine.datasources.execute_sql_query import run_sql
 from databao_context_engine.datasources.types import Datasource, DatasourceId
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
+from databao_context_engine.plugins.databases.database_context_explorer import (
+    DatabaseTableDetails,
+    SchemaLite,
+    get_database_table_details,
+    list_database_schemas_and_tables,
+)
 from databao_context_engine.plugins.plugin_loader import DatabaoContextPluginLoader
 from databao_context_engine.project.layout import ProjectLayout, ensure_project_dir
 from databao_context_engine.search_context import search_context as search_context_internal
@@ -174,3 +181,37 @@ class DatabaoContextEngine:
             Sql execution result containing columns and rows.
         """
         return run_sql(self._project_layout, self._plugin_loader, datasource_id, sql, params, read_only)
+
+    def list_database_datasources(self) -> list[Datasource]:
+        database_types = self._plugin_loader.list_database_capable_datasource_types()
+        return [
+            introspected_datasource
+            for introspected_datasource in self.get_introspected_datasource_list()
+            if introspected_datasource.type in database_types
+        ]
+
+    def list_database_schemas_and_tables(self, datasource_id: DatasourceId) -> list[SchemaLite]:
+        built_context = load_database_built_context(
+            project_layout=self._project_layout,
+            plugin_loader=self._plugin_loader,
+            datasource_id=datasource_id,
+        )
+
+        return list_database_schemas_and_tables(context=built_context)
+
+    def get_database_table_details(
+        self,
+        datasource_id: DatasourceId,
+        catalog_name: str,
+        schema_name: str,
+        table_name: str,
+    ) -> DatabaseTableDetails:
+        built_context = load_database_built_context(
+            project_layout=self._project_layout,
+            plugin_loader=self._plugin_loader,
+            datasource_id=datasource_id,
+        )
+
+        return get_database_table_details(
+            context=built_context, catalog_name=catalog_name, schema_name=schema_name, table_name=table_name
+        )
