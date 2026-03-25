@@ -26,6 +26,16 @@ class ContextSearchMode(Enum):
     KEYWORD_SEARCH = "KEYWORD_SEARCH"
     VECTOR_SEARCH = "VECTOR_SEARCH"
 
+class IllegalChunkType(Exception):
+    """
+    Raised when a chunk type is selected that is not supported by the search engine.
+    """
+
+class ChunkTypeNotInIndex(Exception):
+    """
+    Raised when a chunk type is not found in the index.
+    """
+
 
 class SearchContextService:
     def __init__(
