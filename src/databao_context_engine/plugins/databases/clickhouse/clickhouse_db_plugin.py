@@ -1,4 +1,5 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
+from databao_context_engine.plugins.databases.clickhouse.clickhouse_connector import ClickhouseConnector
 from databao_context_engine.plugins.databases.clickhouse.clickhouse_introspector import (
     ClickhouseIntrospector,
 )
@@ -12,4 +13,5 @@ class ClickhouseDbPlugin(BaseDatabasePlugin[ClickhouseConfigFile]):
     config_file_type = ClickhouseConfigFile
 
     def __init__(self):
-        super().__init__(ClickhouseIntrospector())
+        connector = ClickhouseConnector()
+        super().__init__(connector=connector, introspector=ClickhouseIntrospector(connector))

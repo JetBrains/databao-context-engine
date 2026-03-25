@@ -102,9 +102,10 @@ def test_bigquery_quote_ident_with_backtick():
 
 
 def test_bigquery_sql_unique_constraints_structure():
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
-    introspector = BigQueryIntrospector()
+    introspector = BigQueryIntrospector(BigQueryConnector())
     sql = introspector.get_unique_constraints_sql_query("proj", ["ds1", "ds2"]).sql
 
     assert "UNION ALL" in sql
@@ -114,9 +115,10 @@ def test_bigquery_sql_unique_constraints_structure():
 
 
 def test_bigquery_sql_foreign_keys_structure():
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
-    introspector = BigQueryIntrospector()
+    introspector = BigQueryIntrospector(BigQueryConnector())
     sql = introspector.get_foreign_keys_sql_query("proj", ["ds1"]).sql
 
     assert "FOREIGN KEY" in sql
@@ -137,9 +139,10 @@ def test_bigquery_sql_foreign_keys_structure():
 
 
 def test_bigquery_sql_foreign_keys_multi_schema():
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
-    introspector = BigQueryIntrospector()
+    introspector = BigQueryIntrospector(BigQueryConnector())
     sql = introspector.get_foreign_keys_sql_query("proj", ["ds1", "ds2", "ds3"]).sql
 
     assert sql.count("UNION ALL") == 2
@@ -335,9 +338,10 @@ def test_bigquery_list_schemas_with_dataset_configured():
 
     from google.cloud import bigquery as bq
 
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
-    introspector = BigQueryIntrospector()
+    introspector = BigQueryIntrospector(BigQueryConnector())
     connection = MagicMock()
     connection.default_query_job_config = bq.QueryJobConfig(
         default_dataset=bq.DatasetReference("my-project", "my_dataset"),
@@ -351,9 +355,10 @@ def test_bigquery_list_schemas_with_dataset_configured():
 def test_bigquery_list_schemas_discovers_all_datasets():
     from unittest.mock import MagicMock
 
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
     from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
 
-    introspector = BigQueryIntrospector()
+    introspector = BigQueryIntrospector(BigQueryConnector())
     mock_ds1 = MagicMock()
     mock_ds1.dataset_id = "dataset_a"
     mock_ds2 = MagicMock()
@@ -370,21 +375,21 @@ def test_bigquery_list_schemas_discovers_all_datasets():
 def test_bigquery_to_query_param_scalar_types():
     from google.cloud import bigquery as bq
 
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
 
-    param = BigQueryIntrospector._to_query_param("hello")
+    param = BigQueryConnector._to_query_param("hello")
     assert isinstance(param, bq.ScalarQueryParameter)
     assert param.type_ == "STRING"
 
-    param = BigQueryIntrospector._to_query_param(42)
+    param = BigQueryConnector._to_query_param(42)
     assert isinstance(param, bq.ScalarQueryParameter)
     assert param.type_ == "INT64"
 
-    param = BigQueryIntrospector._to_query_param(3.14)
+    param = BigQueryConnector._to_query_param(3.14)
     assert isinstance(param, bq.ScalarQueryParameter)
     assert param.type_ == "FLOAT64"
 
-    param = BigQueryIntrospector._to_query_param(True)
+    param = BigQueryConnector._to_query_param(True)
     assert isinstance(param, bq.ScalarQueryParameter)
     assert param.type_ == "BOOL"
 
@@ -392,9 +397,9 @@ def test_bigquery_to_query_param_scalar_types():
 def test_bigquery_to_query_param_string_array():
     from google.cloud import bigquery as bq
 
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
 
-    param = BigQueryIntrospector._to_query_param(["a", "b", "c"])
+    param = BigQueryConnector._to_query_param(["a", "b", "c"])
     assert isinstance(param, bq.ArrayQueryParameter)
     assert param.array_type == "STRING"
 
@@ -402,9 +407,9 @@ def test_bigquery_to_query_param_string_array():
 def test_bigquery_to_query_param_int_array():
     from google.cloud import bigquery as bq
 
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
 
-    param = BigQueryIntrospector._to_query_param([1, 2, 3])
+    param = BigQueryConnector._to_query_param([1, 2, 3])
     assert isinstance(param, bq.ArrayQueryParameter)
     assert param.array_type == "INT64"
     assert param.values == [1, 2, 3]
@@ -413,9 +418,9 @@ def test_bigquery_to_query_param_int_array():
 def test_bigquery_to_query_param_float_array():
     from google.cloud import bigquery as bq
 
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
 
-    param = BigQueryIntrospector._to_query_param([1.1, 2.2])
+    param = BigQueryConnector._to_query_param([1.1, 2.2])
     assert isinstance(param, bq.ArrayQueryParameter)
     assert param.array_type == "FLOAT64"
     assert param.values == [1.1, 2.2]
@@ -424,9 +429,9 @@ def test_bigquery_to_query_param_float_array():
 def test_bigquery_to_query_param_bool_array():
     from google.cloud import bigquery as bq
 
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
 
-    param = BigQueryIntrospector._to_query_param([True, False])
+    param = BigQueryConnector._to_query_param([True, False])
     assert isinstance(param, bq.ArrayQueryParameter)
     assert param.array_type == "BOOL"
     assert param.values == [True, False]
@@ -435,9 +440,9 @@ def test_bigquery_to_query_param_bool_array():
 def test_bigquery_to_query_param_array_skips_leading_nones():
     from google.cloud import bigquery as bq
 
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
 
-    param = BigQueryIntrospector._to_query_param([None, None, 42])
+    param = BigQueryConnector._to_query_param([None, None, 42])
     assert isinstance(param, bq.ArrayQueryParameter)
     assert param.array_type == "INT64"
 
@@ -445,9 +450,9 @@ def test_bigquery_to_query_param_array_skips_leading_nones():
 def test_bigquery_to_query_param_tuple_treated_as_array():
     from google.cloud import bigquery as bq
 
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
 
-    param = BigQueryIntrospector._to_query_param(("x", "y"))
+    param = BigQueryConnector._to_query_param(("x", "y"))
     assert isinstance(param, bq.ArrayQueryParameter)
     assert param.array_type == "STRING"
 
@@ -455,15 +460,15 @@ def test_bigquery_to_query_param_tuple_treated_as_array():
 def test_bigquery_to_query_param_empty_array_defaults_to_string():
     from google.cloud import bigquery as bq
 
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
 
-    param = BigQueryIntrospector._to_query_param([])
+    param = BigQueryConnector._to_query_param([])
     assert isinstance(param, bq.ArrayQueryParameter)
     assert param.array_type == "STRING"
 
 
 def test_bigquery_credentials_invalid_file():
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
     from databao_context_engine.plugins.databases.bigquery.config_file import (
         BigQueryConnectionProperties,
         BigQueryServiceAccountKeyFileAuth,
@@ -474,11 +479,11 @@ def test_bigquery_credentials_invalid_file():
         auth=BigQueryServiceAccountKeyFileAuth(credentials_file="/nonexistent/key.json"),
     )
     with pytest.raises(FileNotFoundError, match="credentials file not found"):
-        BigQueryIntrospector._build_credentials(conn)
+        BigQueryConnector._build_credentials(conn)
 
 
 def test_bigquery_credentials_invalid_json():
-    from databao_context_engine.plugins.databases.bigquery.bigquery_introspector import BigQueryIntrospector
+    from databao_context_engine.plugins.databases.bigquery.bigquery_connector import BigQueryConnector
     from databao_context_engine.plugins.databases.bigquery.config_file import (
         BigQueryConnectionProperties,
         BigQueryServiceAccountJsonAuth,
@@ -486,4 +491,4 @@ def test_bigquery_credentials_invalid_json():
 
     conn = BigQueryConnectionProperties(project="p", auth=BigQueryServiceAccountJsonAuth(credentials_json="not-json"))
     with pytest.raises(ValueError, match="not valid JSON"):
-        BigQueryIntrospector._build_credentials(conn)
+        BigQueryConnector._build_credentials(conn)

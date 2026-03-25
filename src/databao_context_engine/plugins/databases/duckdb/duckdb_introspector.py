@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
-import duckdb
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
@@ -15,7 +13,6 @@ from databao_context_engine.plugins.databases.databases_types import (
     TableStatsEntry,
 )
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
-from databao_context_engine.plugins.duckdb_tools import fetchall_dicts
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +22,8 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
     _IGNORED_SCHEMAS = {"information_schema", "pg_catalog"}
     supports_catalogs = True
 
-    def _connect(self, file_config: DuckDBConfigFile, *, catalog: str | None = None):
-        duckdb_path = Path(file_config.connection.database_path)
-        if not duckdb_path.is_file():
-            raise ConnectionError(f"No DuckDB database was found at path {duckdb_path.resolve()}")
-
-        database_path = str(duckdb_path.resolve())
-        return duckdb.connect(database=database_path, read_only=True)
-
     def _get_catalogs(self, connection, file_config: DuckDBConfigFile) -> list[str]:
-        rows = self._fetchall_dicts(connection, "SELECT database_name FROM duckdb_databases();", None)
+        rows = self._connector.execute(connection, "SELECT database_name FROM duckdb_databases();", None)
         catalogs = [r["database_name"] for r in rows if r.get("database_name")]
         catalogs_filtered = [c for c in catalogs if c.lower() not in self._IGNORED_CATALOGS]
         return catalogs_filtered or [self._resolve_pseudo_catalog_name(file_config)]
@@ -342,7 +331,7 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
 
                 try:
                     summary_query = f'SUMMARIZE "{schema_name}"."{table_name}"'
-                    summary_rows = self._fetchall_dicts(connection, summary_query, None)
+                    summary_rows = self._connector.execute(connection, summary_query, None)
 
                     if not summary_rows:
                         continue
@@ -403,7 +392,3 @@ class DuckDBIntrospector(BaseIntrospector[DuckDBConfigFile]):
 
     def _quote_literal(self, value: str) -> str:
         return "'" + str(value).replace("'", "''") + "'"
-
-    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        cur = connection.cursor()
-        return fetchall_dicts(cur, sql, params)

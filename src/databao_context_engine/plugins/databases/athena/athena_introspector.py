@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
-from pyathena import connect
-from pyathena.cursor import DictCursor
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.athena.config_file import AthenaConfigFile
@@ -15,14 +11,6 @@ class AthenaIntrospector(BaseIntrospector[AthenaConfigFile]):
         "information_schema",
     }
     supports_catalogs = True
-
-    def _connect(self, file_config: AthenaConfigFile, *, catalog: str | None = None) -> Any:
-        return connect(**file_config.connection.to_athena_kwargs(), cursor_class=DictCursor)
-
-    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        with connection.cursor() as cur:
-            cur.execute(sql, params or {})
-            return cur.fetchall()
 
     def _get_catalogs(self, connection, file_config: AthenaConfigFile) -> list[str]:
         catalog = file_config.connection.catalog or self._resolve_pseudo_catalog_name(file_config)

@@ -1,8 +1,7 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
 from databao_context_engine.plugins.databases.postgresql.config_file import PostgresConfigFile
-from databao_context_engine.plugins.databases.postgresql.postgresql_introspector import (
-    PostgresqlIntrospector,
-)
+from databao_context_engine.plugins.databases.postgresql.postgresql_connector import PostgresqlConnector
+from databao_context_engine.plugins.databases.postgresql.postgresql_introspector import PostgresqlIntrospector
 
 
 class PostgresqlDbPlugin(BaseDatabasePlugin[PostgresConfigFile]):
@@ -12,4 +11,5 @@ class PostgresqlDbPlugin(BaseDatabasePlugin[PostgresConfigFile]):
     config_file_type = PostgresConfigFile
 
     def __init__(self):
-        super().__init__(PostgresqlIntrospector())
+        connector = PostgresqlConnector()
+        super().__init__(connector=connector, introspector=PostgresqlIntrospector(connector))

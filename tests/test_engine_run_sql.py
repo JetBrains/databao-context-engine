@@ -13,7 +13,7 @@ from tests.utils.project_creation import given_datasource_config_file
 
 
 class DummySqlPlugin(DefaultBuildDatasourcePlugin):
-    id = "dummy/dumme_sql"
+    id = "dummy/dummy_sql"
     name = "Dummy SQL Plugin"
 
     def supported_types(self) -> set[str]:

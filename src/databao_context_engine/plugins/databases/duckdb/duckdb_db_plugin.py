@@ -1,5 +1,6 @@
 from databao_context_engine.plugins.databases.base_db_plugin import BaseDatabasePlugin
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile
+from databao_context_engine.plugins.databases.duckdb.duckdb_connector import DuckDBConnector
 from databao_context_engine.plugins.databases.duckdb.duckdb_introspector import DuckDBIntrospector
 
 
@@ -10,4 +11,5 @@ class DuckDbPlugin(BaseDatabasePlugin[DuckDBConfigFile]):
     config_file_type = DuckDBConfigFile
 
     def __init__(self):
-        super().__init__(DuckDBIntrospector())
+        connector = DuckDBConnector()
+        super().__init__(connector=connector, introspector=DuckDBIntrospector(connector))

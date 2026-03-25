@@ -4,7 +4,6 @@ import logging
 from typing import ClassVar
 
 import pymysql
-from pymysql.constants import CLIENT
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
@@ -27,18 +26,6 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
 
     supports_catalogs = True
     _USE_BATCH: ClassVar[bool] = False
-
-    def _connect(self, file_config: MySQLConfigFile, *, catalog: str | None = None):
-        connection_kwargs = file_config.connection.to_pymysql_kwargs()
-
-        if catalog:
-            connection_kwargs["database"] = catalog
-
-        return pymysql.connect(
-            **connection_kwargs,
-            cursorclass=pymysql.cursors.DictCursor,
-            client_flag=CLIENT.MULTI_STATEMENTS | CLIENT.MULTI_RESULTS,
-        )
 
     def _get_catalogs(self, connection, file_config: MySQLConfigFile) -> list[str]:
         with connection.cursor() as cur:
@@ -346,12 +333,6 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
         sql = f"SELECT * FROM `{schema}`.`{table}` LIMIT %s"
         return SQLQuery(sql, (limit,))
 
-    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        with connection.cursor(pymysql.cursors.DictCursor) as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
-            return [{k.lower(): v for k, v in row.items()} for row in rows]
-
     def _quote_literal(self, value: str) -> str:
         return "'" + str(value).replace("\\", "\\\\").replace("'", "\\'") + "'"
 
@@ -397,7 +378,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
                     logger.warning(f"Failed to analyze table {schema}.{table}: {e}")
 
     def _get_table_stats(self, connection, schemas: list[str]) -> list[TableStatsEntry]:
-        rows = self._fetchall_dicts(
+        rows = self._connector.execute(
             connection,
             """
             SELECT
@@ -424,7 +405,7 @@ class MySQLIntrospector(BaseIntrospector[MySQLConfigFile]):
     def _get_column_stats(
         self, connection, schemas: list[str], table_stats: list[TableStatsEntry]
     ) -> list[ColumnStatsEntry]:
-        raw_stats = self._fetchall_dicts(
+        raw_stats = self._connector.execute(
             connection,
             """
             SELECT
