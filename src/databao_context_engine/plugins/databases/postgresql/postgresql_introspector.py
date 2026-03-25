@@ -13,7 +13,7 @@ from databao_context_engine.plugins.databases.databases_types import (
 from databao_context_engine.plugins.databases.postgresql.config_file import (
     PostgresConfigFile,
 )
-from databao_context_engine.plugins.databases.postgresql.postgresql_connector import _SyncAsyncpgConnection
+from databao_context_engine.plugins.databases.postgresql.sync_asyncpg_connection import SyncAsyncpgConnection
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         sql = "SELECT schema_name FROM information_schema.schemata"
         return SQLQuery(sql, None)
 
-    def _get_catalogs(self, connection: _SyncAsyncpgConnection, file_config: PostgresConfigFile) -> list[str]:
+    def _get_catalogs(self, connection: SyncAsyncpgConnection, file_config: PostgresConfigFile) -> list[str]:
         database = file_config.connection.database
         if database is not None:
             return [database]
