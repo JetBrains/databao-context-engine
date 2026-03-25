@@ -43,7 +43,11 @@ def test_init_project_dir(tmp_path: Path):
 
     gitignore_file = project_dir.joinpath(GITIGNORE_FILE_NAME)
     assert gitignore_file.is_file()
-    assert gitignore_file.read_text().splitlines() == ["output/dce.duckdb", f"{LOGS_FOLDER_NAME}/"]
+    assert gitignore_file.read_text().splitlines() == [
+        "output/dce.duckdb",
+        f"{LOGS_FOLDER_NAME}/",
+        f"{EXAMPLES_FOLDER_NAME}/",
+    ]
 
 
 def test_init_project_dir_fails_when_dir_doesnt_exist(tmp_path: Path):

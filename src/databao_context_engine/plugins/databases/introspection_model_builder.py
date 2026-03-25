@@ -132,7 +132,6 @@ class IntrospectionModelBuilder:
                         description=c.get("description"),
                         default_expression=c.get("default_expression"),
                         generated=c.get("generated"),
-                        checks=[],
                     )
                 )
 
@@ -165,7 +164,10 @@ class IntrospectionModelBuilder:
 
     def apply_checks(self, checks: list[dict] | None) -> None:
         for r in checks or []:
-            self.get_or_create_table(r["table_name"]).checks.append(
+            table = self.get_or_create_table(r["table_name"])
+            if table.checks is None:
+                table.checks = []
+            table.checks.append(
                 CheckConstraint(
                     name=r["constraint_name"],
                     expression=cast(str, r.get("expression")),

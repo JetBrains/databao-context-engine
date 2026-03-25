@@ -70,6 +70,7 @@ def build(
     *,
     project_layout: ProjectLayout,
     build_service: BuildService,
+    datasource_ids: list[DatasourceId] | None,
     should_index: bool,
     should_enrich_context: bool,
     progress: ProgressCallback | None = None,
@@ -86,7 +87,8 @@ def build(
     Returns:
         A list of per-datasource build results.
     """
-    datasource_ids = discover_datasources(project_layout)
+    if not datasource_ids:
+        datasource_ids = discover_datasources(project_layout)
 
     emitter = ProgressEmitter(progress)
 
