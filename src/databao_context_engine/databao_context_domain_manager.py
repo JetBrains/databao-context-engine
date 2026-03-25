@@ -39,7 +39,7 @@ from databao_context_engine.project.layout import (
 )
 from databao_context_engine.project.project_secrets import (
     merge_and_store_project_secrets,
-    resolve_project_secret_references,
+    resolve_project_references,
 )
 from databao_context_engine.serialization.yaml import to_yaml_string
 
@@ -201,7 +201,7 @@ class DatabaoContextDomainManager:
         datasource_name_without_folders = datasource_name.split("/")[-1]
 
         resolved_config_content = (
-            resolve_project_secret_references(self._project_layout, config_content)
+            resolve_project_references(self._project_layout, config_content)
             if isinstance(config_content, Mapping)
             else config_content
         )

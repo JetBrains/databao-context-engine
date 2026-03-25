@@ -134,10 +134,10 @@ def test_extract_secrets_from_config_keeps_existing_secret_reference() -> None:
     assert result.secrets == {}
 
 
-def test_extract_secrets_from_config_keeps_existing_env_var_reference() -> None:
+def test_extract_secrets_from_config_keeps_existing_env_reference() -> None:
     config = {
         "connection": {
-            "password": "{{ env_var('PG_PASSWORD') }}",
+            "password": "${env:PG_PASSWORD}",
         }
     }
     properties = as_properties(
@@ -266,3 +266,21 @@ def test_extract_secrets_from_config_uses_default_union_branch_when_type_is_miss
     assert result.secrets == {
         "warehouse.prod.auth.password": "secret123",
     }
+
+
+def test_extract_secrets_from_config_keeps_top_level_env_reference() -> None:
+    config = {
+        "password": "${env:PG_PASSWORD}",
+    }
+    properties = as_properties(
+        FakeConfigPropertyDefinition("password", secret=True),
+    )
+
+    result = extract_secrets_from_config(
+        config_content=config,
+        properties=properties,
+        datasource_relative_path="databases/my_pg.yaml",
+    )
+
+    assert result.config_with_secret_refs == config
+    assert result.secrets == {}

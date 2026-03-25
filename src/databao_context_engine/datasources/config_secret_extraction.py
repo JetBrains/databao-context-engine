@@ -11,10 +11,9 @@ from databao_context_engine.pluginlib.config import (
     ConfigPropertyDefinition,
     ConfigUnionPropertyDefinition,
 )
-from databao_context_engine.project.project_secrets import make_secret_ref, parse_secret_ref
+from databao_context_engine.project.project_secrets import make_secret_ref, parse_env_ref, parse_secret_ref
 
 _SECRET_KEY_PART_PATTERN = re.compile(r"[^A-Za-z0-9_-]+")
-_ENV_VAR_TEMPLATE_PATTERN = re.compile(r"^\s*\{\{\s*env_var\(.+\)\s*\}\}\s*$")
 
 
 @dataclass(frozen=True)
@@ -148,4 +147,4 @@ def _is_reference_value(value: Any) -> bool:
     if not isinstance(value, str):
         return False
 
-    return parse_secret_ref(value) is not None or _ENV_VAR_TEMPLATE_PATTERN.fullmatch(value) is not None
+    return parse_secret_ref(value) is not None or parse_env_ref(value) is not None

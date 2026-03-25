@@ -12,7 +12,7 @@ from databao_context_engine.project.project_secrets import (
     make_secret_ref,
     merge_and_store_project_secrets,
     parse_secret_ref,
-    resolve_secret_references,
+    resolve_references,
 )
 
 
@@ -134,7 +134,7 @@ def test_resolve_secret_references_replaces_secret_refs_in_nested_data() -> None
         "api.token": "abc",
     }
 
-    resolved = resolve_secret_references(value, secrets)
+    resolved = resolve_references(value, secrets)
 
     assert resolved == {
         "connection": {
@@ -152,7 +152,7 @@ def test_resolve_secret_references_leaves_plain_strings_unchanged() -> None:
         }
     }
 
-    resolved = resolve_secret_references(value, {"unused": "value"})
+    resolved = resolve_references(value, {"unused": "value"})
 
     assert resolved == value
 
@@ -165,4 +165,4 @@ def test_resolve_secret_references_raises_for_missing_secret() -> None:
     }
 
     with pytest.raises(ValueError, match="db.password"):
-        resolve_secret_references(value, {})
+        resolve_references(value, {})

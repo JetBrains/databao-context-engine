@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Mapping
 from pathlib import Path
@@ -14,14 +15,24 @@ from databao_context_engine.project.layout import (
 from databao_context_engine.serialization.yaml import to_yaml_string
 
 _SECRET_REF_PATTERN = re.compile(r"^\$\{secret:([A-Za-z0-9._-]+)\}$")
+_ENV_REF_PATTERN = re.compile(r"^\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}$")
 
 
 def make_secret_ref(secret_key: str) -> str:
     return f"${{secret:{secret_key}}}"
 
 
+def make_env_ref(env_var_name: str) -> str:
+    return f"${{env:{env_var_name}}}"
+
+
 def parse_secret_ref(value: str) -> str | None:
     match = _SECRET_REF_PATTERN.fullmatch(value.strip())
+    return match.group(1) if match is not None else None
+
+
+def parse_env_ref(value: str) -> str | None:
+    match = _ENV_REF_PATTERN.fullmatch(value.strip())
     return match.group(1) if match is not None else None
 
 
@@ -64,19 +75,26 @@ def merge_and_store_project_secrets(project_layout: ProjectLayout, secrets: Mapp
     project_layout.secrets_file.write_text(to_yaml_string(merged_secrets))
 
 
-def resolve_project_secret_references(project_layout: ProjectLayout, value: Any) -> Any:
-    return resolve_secret_references(value=value, secrets=load_project_secrets(project_layout))
+def resolve_project_references(project_layout: ProjectLayout, value: Any) -> Any:
+    return resolve_references(value=value, secrets=load_project_secrets(project_layout))
 
 
-def resolve_secret_references(value: Any, secrets: Mapping[str, Any]) -> Any:
-    """Recursively replace `${secret:...}` references with values from the secrets mapping."""
+def resolve_references(value: Any, secrets: Mapping[str, Any]) -> Any:
+    """Recursively replace `${secret:...}` and `${env:...}` references with their resolved values."""
     if isinstance(value, Mapping):
-        return {k: resolve_secret_references(v, secrets) for k, v in value.items()}
+        return {k: resolve_references(v, secrets) for k, v in value.items()}
 
     if isinstance(value, list):
-        return [resolve_secret_references(v, secrets) for v in value]
+        return [resolve_references(v, secrets) for v in value]
 
     if isinstance(value, str):
+        env_var_name = parse_env_ref(value)
+        if env_var_name is not None:
+            env_var_value = os.getenv(env_var_name)
+            if env_var_value is None:
+                raise ValueError(f"Error in config. The environment variable '{env_var_name}' is not set")
+            return env_var_value
+
         secret_key = parse_secret_ref(value)
         if secret_key is None:
             return value
@@ -84,6 +102,6 @@ def resolve_secret_references(value: Any, secrets: Mapping[str, Any]) -> Any:
         if secret_key not in secrets:
             raise ValueError(f"Error in config. The secret '{secret_key}' is missing from {SECRETS_FILE_NAME}")
 
-        return secrets[secret_key]
+        return resolve_references(secrets[secret_key], secrets)
 
     return value

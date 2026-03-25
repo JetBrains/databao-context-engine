@@ -16,8 +16,7 @@ from databao_context_engine.datasources.types import (
 )
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
 from databao_context_engine.project.layout import ProjectLayout
-from databao_context_engine.project.project_secrets import resolve_project_secret_references
-from databao_context_engine.templating.renderer import render_template
+from databao_context_engine.project.project_secrets import resolve_project_references
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +129,5 @@ def prepare_source(project_layout: ProjectLayout, datasource_id: DatasourceId) -
 
 
 def _parse_config_file(file_path: Path, project_layout: ProjectLayout) -> dict[str, Any]:
-    rendered_file = render_template(file_path.read_text())
-
-    parsed_content = yaml.safe_load(rendered_file) or {}
-    return resolve_project_secret_references(project_layout, parsed_content)
+    parsed_content = yaml.safe_load(file_path.read_text()) or {}
+    return resolve_project_references(project_layout, parsed_content)
