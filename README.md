@@ -11,10 +11,10 @@
  No more copying schemas. No manual documentation. Just accurate answers.
 </p>
 <p align="center"> 
-  <a href="https://databao.app">Website</a> •
+  <a href="https://jetbrains.com/databao">Website</a> •
   <a href="#quickstart">Quickstart</a> •
-  <a href="#supported-data-sources">Data Sources</a> •
-  <a href="#contributing">Contributing</a>
+ <a href="https://docs.databao.app">Docs</a> •
+ <a href="https://discord.gg/hEUqCcWdVh">Discord</a>
 </p>
 
 ---
@@ -202,6 +202,7 @@ Apache 2.0 — use it however you want. See the [LICENSE](LICENSE.md) file for d
 </p>
 
 <p align="center">
- <a href="https://databao.app">Website</a> •
+ <a href="https://jetbrains.com/databao">Website</a> •
+ <a href="https://docs.databao.app">Docs</a> •
  <a href="https://discord.gg/hEUqCcWdVh">Discord</a>
 </p>
