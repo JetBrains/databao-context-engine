@@ -46,7 +46,7 @@ class SimpleNestedClass:
     enum_value: MyEnum
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Dataclass:
     my_str: str
     my_nested_class: SimpleNestedClass
@@ -54,6 +54,7 @@ class Dataclass:
     my_uuid: uuid.UUID = uuid.uuid4()
     my_date: datetime = datetime.now()
     nullable_dataclass: float | None = None
+    my_set: set[int]
 
 
 class TypedDictionary(TypedDict):
@@ -63,7 +64,11 @@ class TypedDictionary(TypedDict):
 def get_input(my_uuid: uuid.UUID, my_date: datetime) -> Any:
     return {
         "dataclass": Dataclass(
-            "hello", my_uuid=my_uuid, my_date=my_date, my_nested_class=SimpleNestedClass("nested", MyEnum.KEY_2)
+            my_str="hello",
+            my_uuid=my_uuid,
+            my_date=my_date,
+            my_nested_class=SimpleNestedClass("nested", MyEnum.KEY_2),
+            my_set={0, 1},
         ),
         "pydantic": PydanticClass(my_date=date(2025, 1, 1), my_path=Path("/tmp/test.txt"), nullable_pydantic=None),
         "custom": CustomClass(),
@@ -82,6 +87,9 @@ dataclass:
   my_int: 12
   my_uuid: {str(my_uuid)}
   my_date: {now.isoformat(" ")}
+  my_set:
+  - 0
+  - 1
 pydantic:
   my_str: '123'
   my_date: 2025-01-01
