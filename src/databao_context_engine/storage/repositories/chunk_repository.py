@@ -46,7 +46,7 @@ class ChunkRepository:
                     keyword_index_text,
                     datasource_context_hash_id,
                 ],
-            ).fetchone()
+            )
             if row is None:
                 raise RuntimeError("chunk creation returned no object")
 
