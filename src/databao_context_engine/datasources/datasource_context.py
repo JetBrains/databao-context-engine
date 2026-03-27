@@ -37,7 +37,14 @@ class DatasourceContext:
     context_hash: DatasourceContextHash
 
 
-def read_datasource_type_from_context_file(context_path: Path) -> DatasourceType:
+def read_datasource_type_from_context_file(
+    project_layout: ProjectLayout, datasource_id: DatasourceId
+) -> DatasourceType:
+    context_path = datasource_id.absolute_path_to_context_file(project_layout)
+
+    if not context_path.is_file():
+        raise ValueError(f"Context file was not built for datasource {str(datasource_id)}")
+
     with context_path.open("r") as context_file:
         return _read_datasource_type_from_lines(context_file, source_label=str(context_path))
 
@@ -79,18 +86,19 @@ def get_introspected_datasource_list(project_layout: ProjectLayout) -> list[Data
     result = []
     all_introspected_datasource_ids = _get_datasources_with_context(project_layout)
     for datasource_id in all_introspected_datasource_ids:
-        context_file = datasource_id.absolute_path_to_context_file(project_layout)
         try:
             result.append(
                 Datasource(
                     id=datasource_id,
-                    type=read_datasource_type_from_context_file(context_file),
+                    type=read_datasource_type_from_context_file(
+                        project_layout=project_layout, datasource_id=datasource_id
+                    ),
                 )
             )
         except ValueError as e:
             logger.debug(str(e), exc_info=True, stack_info=True)
             logger.warning(
-                f"Ignoring introspected datasource: Failed to read datasource_type from context file at {context_file.resolve()}"
+                f"Ignoring introspected datasource: Failed to read datasource_type for datasource {str(datasource_id)}"
             )
 
     return result

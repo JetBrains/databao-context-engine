@@ -9,6 +9,7 @@ from databao_context_engine.pluginlib.build_plugin import (
     DatasourceType,
 )
 from databao_context_engine.pluginlib.config import ConfigPropertyDefinition, CustomizeConfigProperties
+from databao_context_engine.plugins.databases.databases_types import DatabaseIntrospectionResult
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,13 @@ class DatabaoContextPluginLoader:
             The plugin able to build a context for the given datasource type.
         """
         return self._all_plugins_by_type.get(datasource_type, None)
+
+    def list_database_capable_datasource_types(self) -> set[DatasourceType]:
+        return {
+            datasource_type
+            for datasource_type, plugin in self._all_plugins_by_type.items()
+            if _is_database_capable_plugin(plugin)
+        }
 
     def get_config_file_type_for_datasource_type(self, datasource_type: DatasourceType) -> type:
         """Return the type of the config file for the given datasource type.
@@ -234,3 +242,7 @@ def _merge_plugins(*plugin_lists: list[BuildPlugin]) -> dict[DatasourceType, Bui
                     )
                 registry[datasource_type] = plugin
     return registry
+
+
+def _is_database_capable_plugin(plugin: BuildPlugin) -> bool:
+    return issubclass(plugin.context_type, DatabaseIntrospectionResult)

@@ -3,8 +3,10 @@ from pathlib import Path
 
 import pytest
 
+from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.datasources.types import DatasourceId
 from databao_context_engine.project.layout import ProjectLayout, get_output_dir
+from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.project_creation import given_output_dir_with_built_contexts
 
 
@@ -28,11 +30,23 @@ def project(create_db, project_layout: ProjectLayout, db_path: Path) -> Project:
     datasource_contexts = [
         (
             DatasourceId.from_string_repr("main_type/datasource_name.yaml"),
-            "Context for datasource name",
+            to_yaml_string(
+                BuiltDatasourceContext(
+                    datasource_type="postgres",
+                    datasource_id="main_type/datasource_name.yaml",
+                    context="Context for datasource name",
+                )
+            ),
         ),
         (
             DatasourceId.from_string_repr("dummy/my_datasource.yaml"),
-            "Context for dummy/my_datasource",
+            to_yaml_string(
+                BuiltDatasourceContext(
+                    datasource_type="dummy",
+                    datasource_id="dummy/my_datasource.yaml",
+                    context="Context for dummy/my_datasource",
+                )
+            ),
         ),
     ]
 
