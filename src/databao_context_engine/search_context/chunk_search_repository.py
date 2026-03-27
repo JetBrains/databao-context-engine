@@ -13,11 +13,13 @@ from databao_context_engine.pluginlib.build_plugin import DatasourceType
 
 logger = logging.getLogger(__name__)
 
+
 class ChunkType(str, Enum):
-    """Enum of the supported chunk types to search.
-    """
+    """Enum of the supported chunk types to search."""
+
     TABLE = "table"
     COLUMN = "column"
+
 
 @dataclass(kw_only=True, frozen=True)
 class VectorSearchCandidate:
@@ -374,7 +376,6 @@ class ChunkSearchRepository:
                 ]
             )
         return allowed_hashes_sql, params
-
 
     @perf.perf_span("chunk_search._fuse_by_rrf")
     def _fuse_by_rrf(

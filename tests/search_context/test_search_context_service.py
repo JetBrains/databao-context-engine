@@ -1,8 +1,6 @@
 from datetime import datetime
 from unittest.mock import Mock
 
-import pytest
-
 from databao_context_engine import DatasourceId
 from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.llm.config import EmbeddingModelDetails
