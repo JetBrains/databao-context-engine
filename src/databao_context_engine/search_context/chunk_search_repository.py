@@ -141,17 +141,18 @@ class ChunkSearchRepository:
 
         allowed_hashes_sql, hash_params = self._build_allowed_hashes_values(datasource_context_hashes)
 
+        chunk_types_param: list[list[str]]
         if chunk_types:
             search_candidates_chunk_type_filter = "WHERE c.chunk_type IN ?"
-            chunk_types = [chunk_types]
+            chunk_types_param = [chunk_types]
         else:
-            chunk_types = []
+            chunk_types_param = []
             search_candidates_chunk_type_filter = ""
 
         params: list[Any] = [
             *hash_params,
             list(search_vec),
-            *chunk_types,
+            *chunk_types_param,
             self._DEFAULT_DISTANCE_THRESHOLD,
             limit,
         ]
