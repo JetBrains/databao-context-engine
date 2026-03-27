@@ -49,7 +49,7 @@ def make_chunk(
     datasource_context_hash_id: int,
     full_type: str = "sample embeddable",
     datasource_id: str = "some-datasource-id",
-    chunk_type: str = "some type",
+    chunk_type: str | None = None,
     embeddable_text: str = "sample embeddable",
     display_text: str = "display text",
     keyword_index_text: str = "keyword index",
