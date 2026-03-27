@@ -14,8 +14,7 @@ from databao_context_engine.pluginlib.build_plugin import DatasourceType
 logger = logging.getLogger(__name__)
 
 class ChunkType(str, Enum):
-    """
-    Enum of the supported chunk types to search.
+    """Enum of the supported chunk types to search.
     """
     TABLE = "table"
     COLUMN = "column"
