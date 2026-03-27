@@ -30,6 +30,7 @@ def test_retrieve_returns_results():
     expected = [
         SearchResult(
             chunk_id=1,
+            chunk_type=None,
             display_text="a",
             embeddable_text="a",
             datasource_type=DatasourceType(full_type="full/type"),
@@ -38,6 +39,7 @@ def test_retrieve_returns_results():
         ),
         SearchResult(
             chunk_id=2,
+            chunk_type=None,
             display_text="b",
             embeddable_text="b",
             datasource_type=DatasourceType(full_type="full/type"),
@@ -95,6 +97,7 @@ def test_retrieve_honors_limit():
     expected = [
         SearchResult(
             chunk_id=1,
+            chunk_type=None,
             display_text="x",
             embeddable_text="x",
             datasource_type=DatasourceType(full_type="full/type"),
@@ -147,6 +150,7 @@ def test_retrieve_keyword_mode_calls_bm25_search(chunk_types: list[ChunkType] | 
     expected = [
         SearchResult(
             chunk_id=1,
+            chunk_type=None,
             display_text="kw",
             embeddable_text="kw",
             datasource_type=DatasourceType(full_type="full/type"),
