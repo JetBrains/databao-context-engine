@@ -41,7 +41,6 @@ class SearchContextService:
         self._provider = embedding_provider
         self._chunk_search_repo = chunk_search_repo
         self._prompt_provider = prompt_provider
-        self._available_chunk_types = self._chunk_search_repo.get_available_chunk_types()
 
     @perf.perf_span(
         "search_context.do_search",
