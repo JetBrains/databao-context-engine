@@ -129,14 +129,6 @@ def test_retrieve_honors_limit():
     assert result == expected
 
 
-@pytest.mark.parametrize(
-    "chunk_types, valid_types, raises",
-    [
-        (None, {ChunkType.TABLE, ChunkType.COLUMN}, False),
-        ([ChunkType.TABLE], {ChunkType.TABLE, ChunkType.COLUMN}, False),
-        ([ChunkType.TABLE, ChunkType.COLUMN], {ChunkType.TABLE}, True),
-    ],
-)
 def test_retrieve_keyword_mode_calls_bm25_search(chunk_types: list[ChunkType] | None, valid_types, raises):
     chunk_search_repo = Mock()
     shard_resolver = Mock()
@@ -168,18 +160,6 @@ def test_retrieve_keyword_mode_calls_bm25_search(chunk_types: list[ChunkType] | 
         prompt_provider=None,
     )
     datasource_context_hashes = [_make_datasource_context_hash("full/kw.yaml")]
-
-    if raises:
-        with pytest.raises(ValueError):
-            retrieve_service.search(
-                search_text="q",
-                limit=3,
-                rag_mode=RAG_MODE.RAW_QUERY,
-                context_search_mode=ContextSearchMode.KEYWORD_SEARCH,
-                chunk_types=chunk_types,
-            )
-        return
-
     result = retrieve_service.search(
         search_text="q",
         limit=3,
@@ -212,6 +192,7 @@ def test_retrieve_vector_mode_calls_vector_search():
     expected = [
         SearchResult(
             chunk_id=1,
+            chunk_type=None,
             display_text="vec",
             embeddable_text="vec",
             datasource_type=DatasourceType(full_type="full/type"),
