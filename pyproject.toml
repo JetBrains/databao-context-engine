@@ -1,6 +1,6 @@
 [project]
 name = "databao-context-engine"
-version = "0.7.1.dev1"
+version = "0.7.1.dev2"
 description = "Semantic context for your LLMs — generated automatically"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,7 +23,7 @@ default-optional-dependency-keys = [
 ]
 
 [project.urls]
-Homepage = "https://databao.app/"
+Homepage = "https://jetbrains.com/databao/"
 Source = "https://github.com/JetBrains/databao-context-engine"
 
 [project.optional-dependencies]

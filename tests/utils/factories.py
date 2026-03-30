@@ -72,7 +72,7 @@ def make_embedding(
     datasource_context_hash_id: int,
     table_name: str,
     chunk_id: int | None = None,
-    dim: int = 768,
+    dim: int,
     vec: list[float] | None = None,
 ) -> EmbeddingDTO:
     vec = vec or [0.0] * dim

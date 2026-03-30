@@ -41,6 +41,11 @@ from databao_context_engine.plugins.databases.clickhouse.config_file import (
     ClickhouseConfigFile,
     ClickhouseConnectionProperties,
 )
+from databao_context_engine.plugins.databases.database_context_explorer import (
+    DatabaseSchemaLite,
+    DatabaseTableDetails,
+    DatabaseTableLite,
+)
 from databao_context_engine.plugins.databases.duckdb.config_file import DuckDBConfigFile, DuckDBConnectionConfig
 from databao_context_engine.plugins.databases.mssql.config_file import MSSQLConfigFile, MSSQLConnectionProperties
 from databao_context_engine.plugins.databases.mysql.config_file import MySQLConfigFile, MySQLConnectionProperties
@@ -138,4 +143,7 @@ __all__ = [
     "DbtContextFilterStructuredRule",
     "DbtContextFilterRule",
     "ParquetConfigFile",
+    "DatabaseSchemaLite",
+    "DatabaseTableLite",
+    "DatabaseTableDetails",
 ]

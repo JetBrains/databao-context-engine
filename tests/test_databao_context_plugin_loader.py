@@ -88,3 +88,12 @@ def test_databao_context_plugin_loader__get_config_file_type_for_datasource_type
         plugin_loader_under_test.get_config_file_type_for_datasource_type(
             datasource_type=DatasourceType(full_type="files/dummy")
         )
+
+
+def test_list_database_capable_datasource_types_excludes_non_database_plugins():
+    loader = DatabaoContextPluginLoader()
+
+    database_types = {datasource_type.full_type for datasource_type in loader.list_database_capable_datasource_types()}
+
+    assert "postgres" in database_types
+    assert "dbt" not in database_types

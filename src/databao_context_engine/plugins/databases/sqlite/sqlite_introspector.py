@@ -1,6 +1,3 @@
-import sqlite3
-from pathlib import Path
-
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
@@ -12,40 +9,8 @@ class SQLiteIntrospector(BaseIntrospector[SQLiteConfigFile]):
     _PSEUDO_SCHEMA = "main"
     supports_catalogs = False
 
-    def _connect(self, file_config: SQLiteConfigFile, *, catalog: str | None = None):
-        database_path = Path(file_config.connection.database_path)
-        if not database_path.is_file():
-            raise ConnectionError(f"No SQLite database was found at path {database_path.resolve()}")
-
-        conn = sqlite3.connect(database_path)
-        conn.text_factory = str
-        return conn
-
-    def _connection_check_sql_query(self) -> str:
-        return "SELECT name FROM sqlite_master LIMIT 1"
-
     def _get_catalogs(self, connection, file_config: SQLiteConfigFile) -> list[str]:
         return [self._resolve_pseudo_catalog_name(file_config)]
-
-    def _fetchall_dicts(self, connection, sql: str, params) -> list[dict]:
-        cur = connection.cursor()
-        if params is None:
-            cur.execute(sql)
-        else:
-            cur.execute(sql, params)
-
-        if cur.description is None:
-            return []
-
-        rows = cur.fetchall()
-        out: list[dict] = []
-        for r in rows:
-            if isinstance(r, sqlite3.Row):
-                out.append({k.lower(): r[k] for k in r.keys()})
-            else:
-                cols = [d[0].lower() for d in cur.description]
-                out.append(dict(zip(cols, r)))
-        return out
 
     def _list_schemas_for_catalog(self, connection, catalog: str) -> list[str]:
         return [self._PSEUDO_SCHEMA]

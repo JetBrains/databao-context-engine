@@ -1,6 +1,6 @@
 import pytest
 
-from databao_context_engine.plugins.databases.mssql.mssql_introspector import MSSQLIntrospector
+from databao_context_engine.plugins.databases.mssql.mssql_connector import MSSQLConnector
 
 
 @pytest.mark.parametrize(
@@ -85,6 +85,6 @@ from databao_context_engine.plugins.databases.mssql.mssql_introspector import MS
     ],
 )
 def test_create_mssql_connection_string_exact(connection_config, expected_str):
-    inspector = MSSQLIntrospector()
-    conn_str = inspector._create_connection_string_for_config(connection_config)
+    connector = MSSQLConnector()
+    conn_str = connector._create_connection_string_for_config(connection_config)
     assert conn_str == expected_str

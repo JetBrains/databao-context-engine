@@ -13,6 +13,7 @@ from databao_context_engine.pluginlib.build_plugin import (
 )
 from databao_context_engine.pluginlib.config import ConfigPropertyAnnotation
 from databao_context_engine.pluginlib.sql.sql_types import SqlExecutionResult
+from databao_context_engine.plugins.databases.base_connector import BaseConnector
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector
 from databao_context_engine.plugins.databases.context_enricher import enrich_database_context
 from databao_context_engine.plugins.databases.database_chunker import build_database_chunks
@@ -45,7 +46,8 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
     supported: set[str]
     context_type = DatabaseIntrospectionResult
 
-    def __init__(self, introspector: BaseIntrospector):
+    def __init__(self, connector: BaseConnector[T], introspector: BaseIntrospector[T]):
+        self._connector = connector
         self._introspector = introspector
 
     def supported_types(self) -> set[str]:
@@ -58,7 +60,7 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
         return enrich_database_context(context, description_provider)
 
     def check_connection(self, full_type: str, file_config: T) -> None:
-        self._introspector.check_connection(file_config)
+        self._connector.check_connection(file_config)
 
     def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
         return build_database_chunks(context)
@@ -66,9 +68,13 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
     def run_sql(
         self, file_config: T, sql: str, params: list[Any] | None = None, read_only: bool = True
     ) -> SqlExecutionResult:
-        return self._introspector.run_sql(
-            file_config=file_config,
-            sql=sql,
-            params=params,
-            read_only=read_only,
-        )
+        # for now, we don't have any read-only related logic implemented on the database side
+        with self._connector.connect(file_config) as connection:
+            rows_dicts: list[dict] = self._connector.execute(connection, sql, params)
+
+        if not rows_dicts:
+            return SqlExecutionResult(columns=[], rows=[])
+
+        columns: list[str] = list(rows_dicts[0].keys())
+        rows: list[tuple[Any, ...]] = [tuple(row.get(col) for col in columns) for row in rows_dicts]
+        return SqlExecutionResult(columns=columns, rows=rows)

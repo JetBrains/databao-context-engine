@@ -1,12 +1,5 @@
-import asyncio
-import concurrent.futures
 import logging
-import queue
-import threading
-from collections.abc import Coroutine
-from typing import Any, Sequence
 
-import asyncpg
 from typing_extensions import override
 
 from databao_context_engine.plugins.databases.base_introspector import BaseIntrospector, SQLQuery
@@ -19,153 +12,10 @@ from databao_context_engine.plugins.databases.databases_types import (
 )
 from databao_context_engine.plugins.databases.postgresql.config_file import (
     PostgresConfigFile,
-    PostgresConnectionProperties,
 )
+from databao_context_engine.plugins.databases.postgresql.sync_asyncpg_connection import SyncAsyncpgConnection
 
 logger = logging.getLogger(__name__)
-
-
-class _SyncAsyncpgConnection:
-    """A synchronous wrapper around asyncpg that works correctly in both sync and async contexts.
-
-    When called from an async context (e.g., MCP server), operations run in a separate thread
-    with its own event loop to avoid blocking the calling event loop.
-
-    Note: Uses class-level thread-local storage for event loops in sync contexts. Multiple
-    connection instances in the same thread will share the same event loop.
-    """
-
-    # Thread-local storage for event loops in sync contexts
-    # Shared across all instances to avoid creating multiple loops per thread
-    _thread_local = threading.local()
-
-    # Worker loop initialization timeout in seconds
-    _WORKER_LOOP_INIT_TIMEOUT = 1.0
-
-    def __init__(self, connect_kwargs: dict[str, Any]):
-        self._connect_kwargs = connect_kwargs
-        self._conn: asyncpg.Connection | None = None
-        self._in_async_context = False
-        self._executor: concurrent.futures.ThreadPoolExecutor | None = None
-        self._worker_loop: asyncio.AbstractEventLoop | None = None
-
-    async def _async_connect(self) -> None:
-        """Establish the async database connection."""
-        self._conn = await asyncpg.connect(**self._connect_kwargs)
-
-    async def _async_close(self) -> None:
-        """Close the async database connection if it exists."""
-        if self._conn is not None:
-            await self._conn.close()
-            self._conn = None
-
-    async def _async_fetch_rows(self, sql: str, params: Sequence[Any] | None) -> list[dict]:
-        """Fetch rows from the database and return as list of dicts."""
-        if self._conn is None:
-            raise RuntimeError("Connection is not open")
-        query_params = [] if params is None else list(params)
-        records = await self._conn.fetch(sql, *query_params)
-        return [dict(r) for r in records]
-
-    async def _async_fetch_scalar_values(self, sql: str) -> list[Any]:
-        """Fetch scalar values (first column) from the database."""
-        if self._conn is None:
-            raise RuntimeError("Connection is not open")
-        records = await self._conn.fetch(sql)
-        return [r[0] for r in records]
-
-    def _get_or_create_loop(self) -> asyncio.AbstractEventLoop:
-        """Get or create a persistent event loop for this thread."""
-        if not hasattr(self._thread_local, "loop") or self._thread_local.loop is None:
-            self._thread_local.loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._thread_local.loop)
-        return self._thread_local.loop
-
-    def _setup_worker_loop(self) -> None:
-        """Initialize a persistent worker loop for async context.
-
-        Creates a dedicated thread with its own event loop that runs for the
-        lifetime of this connection. This ensures all asyncpg operations run
-        in the same loop, which is required by asyncpg.
-        """
-        result_queue: queue.Queue[asyncio.AbstractEventLoop] = queue.Queue()
-
-        def init_loop():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result_queue.put(loop)
-            loop.run_forever()
-            loop.close()
-
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        self._executor.submit(init_loop)
-        self._worker_loop = result_queue.get(timeout=self._WORKER_LOOP_INIT_TIMEOUT)
-
-    def _run_sync(self, coro: Coroutine[Any, Any, Any]) -> Any:
-        """Run a coroutine synchronously, handling both sync and async contexts.
-
-        - In sync context: uses a persistent thread-local event loop
-        - In async context: uses a persistent worker thread with its own event loop
-
-        Args:
-            coro: The coroutine to execute synchronously
-
-        Returns:
-            The result of the coroutine execution
-
-        Raises:
-            RuntimeError: If worker loop is not initialized in async context
-        """
-        if self._in_async_context:
-            # We're in an async context - use the persistent worker loop
-            if self._worker_loop is None:
-                raise RuntimeError("Worker loop not initialized")
-            future = asyncio.run_coroutine_threadsafe(coro, self._worker_loop)
-            return future.result()
-        # No async context - use our thread-local loop
-        loop = self._get_or_create_loop()
-        return loop.run_until_complete(coro)
-
-    def __enter__(self):
-        # Check if we're in an async context and remember it
-        try:
-            # This raises RuntimeError if no event loop is running
-            asyncio.get_running_loop()
-            self._in_async_context = True
-            self._setup_worker_loop()
-        except RuntimeError:
-            # No event loop running - we're in sync context
-            self._in_async_context = False
-
-        self._run_sync(self._async_connect())
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        try:
-            self._run_sync(self._async_close())
-        finally:
-            # Always cleanup resources, even if close fails
-            if self._in_async_context:
-                # Stop the worker loop and shutdown executor
-                if self._worker_loop is not None:
-                    self._worker_loop.call_soon_threadsafe(self._worker_loop.stop)
-                    self._worker_loop = None
-                if self._executor is not None:
-                    self._executor.shutdown(wait=True)
-                    self._executor = None
-            else:
-                # Only close the loop if we're in sync context
-                loop = getattr(self._thread_local, "loop", None)
-                if loop and not loop.is_closed():
-                    loop.close()
-                self._thread_local.loop = None
-                asyncio.set_event_loop(None)
-
-    def fetch_rows(self, sql: str, params: Sequence[Any] | None = None) -> list[dict]:
-        return self._run_sync(self._async_fetch_rows(sql, params))
-
-    def fetch_scalar_values(self, sql: str) -> list[Any]:
-        return self._run_sync(self._async_fetch_scalar_values(sql))
 
 
 class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
@@ -181,16 +31,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         sql = "SELECT schema_name FROM information_schema.schemata"
         return SQLQuery(sql, None)
 
-    def _connect(self, file_config: PostgresConfigFile, *, catalog: str | None = None):
-        kwargs = self._create_connection_kwargs(file_config.connection)
-        if catalog:
-            kwargs["database"] = catalog
-        return _SyncAsyncpgConnection(kwargs)
-
-    def _fetchall_dicts(self, connection: _SyncAsyncpgConnection, sql: str, params) -> list[dict]:
-        return connection.fetch_rows(sql, params)
-
-    def _get_catalogs(self, connection: _SyncAsyncpgConnection, file_config: PostgresConfigFile) -> list[str]:
+    def _get_catalogs(self, connection: SyncAsyncpgConnection, file_config: PostgresConfigFile) -> list[str]:
         database = file_config.connection.database
         if database is not None:
             return [database]
@@ -206,7 +47,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     ) -> tuple[list[TableStatsEntry], list[ColumnStatsEntry]]:
         schema_names = [schema_scope.schema_name for schema_scope in scope.schemas]
         table_stats_query = SQLQuery(self._sql_table_stats(), (schema_names,))
-        table_stat_rows = self._fetchall_dicts(connection, table_stats_query.sql, table_stats_query.params)
+        table_stat_rows = self._connector.execute(connection, table_stats_query.sql, table_stats_query.params)
         table_stats = [
             TableStatsEntry(
                 schema_name=r["schema_name"],
@@ -217,7 +58,7 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
         ]
 
         column_stats_query = SQLQuery(self._sql_column_stats(), (schema_names,))
-        column_stat_rows = self._fetchall_dicts(connection, column_stats_query.sql, column_stats_query.params)
+        column_stat_rows = self._connector.execute(connection, column_stats_query.sql, column_stats_query.params)
         column_stats = self._enrich_column_stats(column_stat_rows, table_stats)
 
         return table_stats, column_stats
@@ -643,37 +484,3 @@ class PostgresqlIntrospector(BaseIntrospector[PostgresConfigFile]):
     def _sql_sample_rows(self, catalog: str, schema: str, table: str, limit: int) -> SQLQuery:
         sql = f'SELECT * FROM "{schema}"."{table}" LIMIT $1'
         return SQLQuery(sql, (limit,))
-
-    def _create_connection_string_for_config(self, connection_config: PostgresConnectionProperties) -> str:
-        def _escape_pg_value(value: str) -> str:
-            escaped = value.replace("\\", "\\\\").replace("'", "\\'")
-            return f"'{escaped}'"
-
-        host = connection_config.host
-        if host is None:
-            raise ValueError("A host must be provided to connect to the PostgreSQL database.")
-
-        connection_parts = {
-            "host": host,
-            "port": connection_config.port or 5432,
-            "dbname": connection_config.database,
-            "user": connection_config.user,
-            "password": connection_config.password,
-        }
-        connection_parts.update(connection_config.additional_properties)
-
-        return " ".join(f"{k}={_escape_pg_value(str(v))}" for k, v in connection_parts.items() if v is not None)
-
-    def _create_connection_kwargs(self, connection_config: PostgresConnectionProperties) -> dict[str, Any]:
-        kwargs: dict[str, Any] = {
-            "host": connection_config.host,
-            "port": connection_config.port or 5432,
-            "database": connection_config.database or "postgres",
-        }
-
-        if connection_config.user:
-            kwargs["user"] = connection_config.user
-        if connection_config.password:
-            kwargs["password"] = connection_config.password
-        kwargs.update(connection_config.additional_properties or {})
-        return kwargs
