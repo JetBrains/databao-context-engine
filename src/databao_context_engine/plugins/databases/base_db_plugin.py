@@ -41,7 +41,7 @@ class BaseDatabaseConfigFile(BaseModel, AbstractConfigFile):
 T = TypeVar("T", bound="BaseDatabaseConfigFile")
 
 
-class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
+class BaseDatabasePlugin(BuildDatasourcePlugin[DatabaseIntrospectionResult, T], ABC):
     name: str
     supported: set[str]
     context_type = DatabaseIntrospectionResult
@@ -53,16 +53,18 @@ class BaseDatabasePlugin(BuildDatasourcePlugin[T], ABC):
     def supported_types(self) -> set[str]:
         return self.supported
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: T) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: T) -> DatabaseIntrospectionResult:
         return self._introspector.introspect_database(file_config)
 
-    def enrich_context(self, context: Any, description_provider: DescriptionProvider) -> Any:
+    def enrich_context(
+        self, context: DatabaseIntrospectionResult, description_provider: DescriptionProvider
+    ) -> DatabaseIntrospectionResult:
         return enrich_database_context(context, description_provider)
 
     def check_connection(self, full_type: str, file_config: T) -> None:
         self._connector.check_connection(file_config)
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: DatabaseIntrospectionResult) -> list[EmbeddableChunk]:
         return build_database_chunks(context)
 
     def run_sql(

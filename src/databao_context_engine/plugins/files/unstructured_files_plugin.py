@@ -1,6 +1,6 @@
 import re
 from io import BufferedReader
-from typing import Any, TypedDict
+from typing import TypedDict
 
 from databao_context_engine.pluginlib.build_plugin import BuildFilePlugin, EmbeddableChunk
 
@@ -10,7 +10,7 @@ class FileChunk(TypedDict):
     chunk_content: str
 
 
-class InternalUnstructuredFilesPlugin(BuildFilePlugin):
+class InternalUnstructuredFilesPlugin(BuildFilePlugin[dict]):
     id = "jetbrains/unstructured_files"
     name = "Unstructured Files Plugin"
     context_type = dict
@@ -27,14 +27,14 @@ class InternalUnstructuredFilesPlugin(BuildFilePlugin):
     def supported_types(self) -> set[str]:
         return self._SUPPORTED_FILES_EXTENSIONS
 
-    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
+    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> dict:
         file_content = self._read_file(file_buffer)
 
         return {
             "chunks": self._chunk_file(file_content),
         }
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return [self._create_embeddable_chunk_from_file_chunk(file_chunk) for file_chunk in context["chunks"]]
 
     def _create_embeddable_chunk_from_file_chunk(self, file_chunk: FileChunk) -> EmbeddableChunk:

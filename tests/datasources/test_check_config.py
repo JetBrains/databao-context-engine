@@ -28,8 +28,9 @@ class ConfigToValidate(AbstractConfigFile):
     port: int
 
 
-class DummyPluginWithSimpleConfig(BuildDatasourcePlugin[ConfigToValidate]):
+class DummyPluginWithSimpleConfig(BuildDatasourcePlugin[dict, ConfigToValidate]):
     config_file_type = ConfigToValidate
+    context_type = dict
 
     def supported_types(self) -> set[str]:
         return {"simple_config"}

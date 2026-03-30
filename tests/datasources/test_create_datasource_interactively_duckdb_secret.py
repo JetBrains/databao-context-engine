@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 import pytest
 from pydantic import BaseModel
@@ -21,7 +20,7 @@ class DummyConfigWithDuckDBSecret(BaseModel, AbstractConfigFile):
     duckdb_secret: DuckDBSecret | None = None
 
 
-class DummyPluginWithDuckDBSecretConfig(BuildDatasourcePlugin[DummyConfigWithDuckDBSecret]):
+class DummyPluginWithDuckDBSecretConfig(BuildDatasourcePlugin[dict, DummyConfigWithDuckDBSecret]):
     id = "dummy/with_duckdb_secret"
     name = "Dummy Plugin with DuckDBSecret Config"
     config_file_type = DummyConfigWithDuckDBSecret
@@ -30,10 +29,10 @@ class DummyPluginWithDuckDBSecretConfig(BuildDatasourcePlugin[DummyConfigWithDuc
     def supported_types(self) -> set[str]:
         return {"dummy_with_duckdb_secret"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: DummyConfigWithDuckDBSecret) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: DummyConfigWithDuckDBSecret) -> dict:
         return {}
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return []
 
 

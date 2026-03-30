@@ -23,7 +23,11 @@ class EmbeddableChunk:
     content: Any
 
 
-class BaseBuildPlugin(Protocol):
+ContextT = TypeVar("ContextT")
+ConfigFileT = TypeVar("ConfigFileT", bound="ConfigFile")
+
+
+class BaseBuildPlugin(Protocol[ContextT]):
     """The base protocol that all plugins inherit from.
 
     This should not be inherited directly, instead make sure to implement one of BuildDatasourcePlugin, DefaultBuildDatasourcePlugin or BuildFilePlugin.
@@ -36,7 +40,7 @@ class BaseBuildPlugin(Protocol):
 
     id: str
     name: str
-    context_type: type[Any]
+    context_type: type[ContextT]
 
     def supported_types(self) -> set[str]:
         """Returns the set of all supported types for this plugin.
@@ -48,7 +52,7 @@ class BaseBuildPlugin(Protocol):
         """
         ...
 
-    def enrich_context(self, context: Any, description_provider: DescriptionProvider) -> Any:
+    def enrich_context(self, context: ContextT, description_provider: DescriptionProvider) -> ContextT:
         """Optional step to enrich a context previously built.
 
         After a context has been built, this step will be called optionally to enrich it with LLM-generated content.
@@ -64,7 +68,7 @@ class BaseBuildPlugin(Protocol):
         """
         return context
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: ContextT) -> list[EmbeddableChunk]:
         """Divides the datasource context into meaningful chunks.
 
         The returned chunks will be used when searching the context from an AI prompt.
@@ -78,11 +82,8 @@ class BaseBuildPlugin(Protocol):
         ...
 
 
-T = TypeVar("T", bound="ConfigFile")
-
-
 @runtime_checkable
-class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
+class BuildDatasourcePlugin(BaseBuildPlugin[ContextT], Protocol[ContextT, ConfigFileT]):
     """A plugin that can be used to build the context of datasource, using a config file.
 
     Attributes:
@@ -94,9 +95,9 @@ class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
           This type must be compatible with Pydantic, which is the library used to parse and validate the config file.
     """
 
-    config_file_type: type[T]
+    config_file_type: type[ConfigFileT]
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: T) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: ConfigFileT) -> ContextT:
         """The method that will be called when a config file has been found for a data source supported by this plugin.
 
         Args:
@@ -111,7 +112,7 @@ class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
         """
         ...
 
-    def check_connection(self, full_type: str, file_config: T) -> None:
+    def check_connection(self, full_type: str, file_config: ConfigFileT) -> None:
         """Check whether the configuration to the datasource is working.
 
         The function is expected to succeed without a result if the connection is working.
@@ -130,7 +131,7 @@ class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
 
     def run_sql(
         self,
-        file_config: T,
+        file_config: ConfigFileT,
         sql: str,
         params: list[Any] | None = None,
         read_only: bool = True,
@@ -146,7 +147,7 @@ class BuildDatasourcePlugin(BaseBuildPlugin, Protocol[T]):
         raise NotSupportedError("This method is not implemented for this plugin")
 
 
-class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protocol):
+class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[ContextT, dict[str, Any]], Protocol[ContextT]):
     """Defines a protocol to implement for plugins that don't want to strongly type their config file.
 
     This is the same as BuildDatasourcePlugin, but it offers a shortcut to always get the config file as a dict.
@@ -156,7 +157,7 @@ class DefaultBuildDatasourcePlugin(BuildDatasourcePlugin[dict[str, Any]], Protoc
 
 
 @runtime_checkable
-class BuildFilePlugin(BaseBuildPlugin, Protocol):
+class BuildFilePlugin(BaseBuildPlugin[ContextT], Protocol[ContextT]):
     """A plugin that can be used to build the context of a raw file datasource.
 
     Attributes:
@@ -165,7 +166,7 @@ class BuildFilePlugin(BaseBuildPlugin, Protocol):
         context_type: The type returned when building the context
     """
 
-    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
+    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> ContextT:
         """The method that will be called when a file has been found as a data source supported by this plugin.
 
         Args:
