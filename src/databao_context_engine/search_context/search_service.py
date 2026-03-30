@@ -8,6 +8,7 @@ from databao_context_engine.llm.embeddings.provider import EmbeddingProvider
 from databao_context_engine.llm.prompts.provider import PromptProvider
 from databao_context_engine.search_context.chunk_search_repository import (
     ChunkSearchRepository,
+    ChunkType,
     SearchResult,
 )
 from databao_context_engine.services.embedding_shard_resolver import EmbeddingShardResolver
@@ -55,6 +56,7 @@ class SearchContextService:
         limit: int | None = None,
         rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         if limit is None:
             limit = 10
@@ -65,6 +67,7 @@ class SearchContextService:
             limit=limit,
             rag_mode=rag_mode,
             context_search_mode=context_search_mode,
+            chunk_types=chunk_types,
         )
 
         logger.debug(f"Found {len(search_results)} search results")
@@ -90,6 +93,7 @@ class SearchContextService:
         limit: int,
         rag_mode: RAG_MODE,
         context_search_mode: ContextSearchMode,
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         if context_search_mode == ContextSearchMode.KEYWORD_SEARCH:
             query_text = self._rewrite_search_query(text) if rag_mode == RAG_MODE.REWRITE_QUERY else text
@@ -98,6 +102,7 @@ class SearchContextService:
                 query_text=query_text,
                 limit=limit,
                 datasource_context_hashes=datasource_context_hashes,
+                chunk_types=chunk_types,
             )
 
         table_name, dimension = self._shard_resolver.resolve(
@@ -130,6 +135,7 @@ class SearchContextService:
                     dimension=dimension,
                     limit=limit,
                     datasource_context_hashes=datasource_context_hashes,
+                    chunk_types=chunk_types,
                 )
             case ContextSearchMode.HYBRID_SEARCH:
                 return self._chunk_search_repo.search_chunks_with_hybrid_search(
@@ -139,6 +145,7 @@ class SearchContextService:
                     dimension=dimension,
                     limit=limit,
                     datasource_context_hashes=datasource_context_hashes,
+                    chunk_types=chunk_types,
                 )
 
     @perf.perf_span("search_context.rewrite_query")

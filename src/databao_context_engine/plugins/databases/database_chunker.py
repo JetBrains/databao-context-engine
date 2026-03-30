@@ -39,6 +39,7 @@ def build_database_chunks(result: DatabaseIntrospectionResult) -> list[Embeddabl
 
 def _create_table_chunk(catalog_name: str, schema_name: str, table: DatabaseTable) -> EmbeddableChunk:
     return EmbeddableChunk(
+        type="table",
         embeddable_text=_build_table_chunk_text(table),
         content=DatabaseTableChunkContent(
             catalog_name=catalog_name,
@@ -52,6 +53,7 @@ def _create_column_chunk(
     catalog_name: str, schema_name: str, table: DatabaseTable, column: DatabaseColumn
 ) -> EmbeddableChunk:
     return EmbeddableChunk(
+        type="column",
         embeddable_text=_build_column_chunk_text(table, column),
         content=DatabaseColumnChunkContent(
             catalog_name=catalog_name,

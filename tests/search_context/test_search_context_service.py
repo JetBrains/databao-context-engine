@@ -27,6 +27,7 @@ def test_retrieve_returns_results():
     expected = [
         SearchResult(
             chunk_id=1,
+            chunk_type=None,
             display_text="a",
             embeddable_text="a",
             datasource_type=DatasourceType(full_type="full/type"),
@@ -35,6 +36,7 @@ def test_retrieve_returns_results():
         ),
         SearchResult(
             chunk_id=2,
+            chunk_type=None,
             display_text="b",
             embeddable_text="b",
             datasource_type=DatasourceType(full_type="full/type"),
@@ -73,6 +75,7 @@ def test_retrieve_returns_results():
         dimension=768,
         limit=10,
         datasource_context_hashes=datasource_context_hashes,
+        chunk_types=None,
     )
 
     assert result == expected
@@ -91,6 +94,7 @@ def test_retrieve_honors_limit():
     expected = [
         SearchResult(
             chunk_id=1,
+            chunk_type=None,
             display_text="x",
             embeddable_text="x",
             datasource_type=DatasourceType(full_type="full/type"),
@@ -135,6 +139,7 @@ def test_retrieve_keyword_mode_calls_bm25_search():
     expected = [
         SearchResult(
             chunk_id=1,
+            chunk_type=None,
             display_text="kw",
             embeddable_text="kw",
             datasource_type=DatasourceType(full_type="full/type"),
@@ -151,7 +156,6 @@ def test_retrieve_keyword_mode_calls_bm25_search():
         prompt_provider=None,
     )
     datasource_context_hashes = [_make_datasource_context_hash("full/kw.yaml")]
-
     result = retrieve_service.search(
         search_text="q",
         limit=3,
@@ -166,6 +170,7 @@ def test_retrieve_keyword_mode_calls_bm25_search():
         query_text="q",
         limit=3,
         datasource_context_hashes=datasource_context_hashes,
+        chunk_types=None,
     )
     assert result == expected
 
@@ -183,6 +188,7 @@ def test_retrieve_vector_mode_calls_vector_search():
     expected = [
         SearchResult(
             chunk_id=1,
+            chunk_type=None,
             display_text="vec",
             embeddable_text="vec",
             datasource_type=DatasourceType(full_type="full/type"),
@@ -214,6 +220,7 @@ def test_retrieve_vector_mode_calls_vector_search():
         dimension=768,
         limit=3,
         datasource_context_hashes=datasource_context_hashes,
+        chunk_types=None,
     )
     assert result == expected
 

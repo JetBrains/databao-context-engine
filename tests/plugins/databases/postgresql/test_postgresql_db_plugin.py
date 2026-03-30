@@ -366,6 +366,7 @@ def test_postgres_plugin_divide_into_chunks():
     assert len(chunks) == 3
     assert chunks == unordered(
         EmbeddableChunk(
+            type="table",
             embeddable_text="test is a database table with 2 columns. Here is the full list of columns for the table: id, name. best table",
             content=DatabaseTableChunkContent(
                 catalog_name="test",
@@ -382,6 +383,7 @@ def test_postgres_plugin_divide_into_chunks():
             ),
         ),
         EmbeddableChunk(
+            type="column",
             embeddable_text="id is a column with type int4 in the table test. It can not contain null values",
             content=DatabaseColumnChunkContent(
                 catalog_name="test",
@@ -391,6 +393,7 @@ def test_postgres_plugin_divide_into_chunks():
             ),
         ),
         EmbeddableChunk(
+            type="column",
             embeddable_text="name is a column with type varchar in the table test. It can contain null values",
             content=DatabaseColumnChunkContent(
                 catalog_name="test",

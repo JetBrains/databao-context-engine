@@ -23,6 +23,7 @@ class ChunkDTO:
     display_text: Optional[str]
     created_at: datetime
     datasource_context_hash_id: int
+    chunk_type: str | None = None
 
 
 @dataclass(frozen=True)

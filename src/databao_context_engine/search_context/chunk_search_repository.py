@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 import duckdb
@@ -13,9 +14,17 @@ from databao_context_engine.pluginlib.build_plugin import DatasourceType
 logger = logging.getLogger(__name__)
 
 
+class ChunkType(str, Enum):
+    """Enum of the supported chunk types to search."""
+
+    TABLE = "table"
+    COLUMN = "column"
+
+
 @dataclass(kw_only=True, frozen=True)
 class VectorSearchCandidate:
     chunk_id: int
+    chunk_type: ChunkType | None
     display_text: str
     embeddable_text: str
     cosine_distance: float
@@ -26,6 +35,7 @@ class VectorSearchCandidate:
 @dataclass(kw_only=True, frozen=True)
 class Bm25SearchCandidate:
     chunk_id: int
+    chunk_type: ChunkType | None
     display_text: str
     embeddable_text: str
     bm25_score: float
@@ -65,6 +75,7 @@ class KeywordSearchScore:
 @dataclass(kw_only=True, frozen=True)
 class SearchResult:
     chunk_id: int
+    chunk_type: ChunkType | None
     display_text: str
     embeddable_text: str
     datasource_type: DatasourceType
@@ -90,6 +101,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         """Read only similarity search on a specific embedding shard table."""
         vector_candidates = self._get_vector_candidates(
@@ -98,10 +110,12 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=limit,
             datasource_context_hashes=datasource_context_hashes,
+            chunk_types=chunk_types,
         )
         return [
             SearchResult(
                 chunk_id=candidate.chunk_id,
+                chunk_type=candidate.chunk_type,
                 display_text=candidate.display_text,
                 embeddable_text=candidate.embeddable_text,
                 datasource_type=candidate.datasource_type,
@@ -120,15 +134,26 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[VectorSearchCandidate]:
         """Read only vector candidates on a specific embedding shard table."""
         if not datasource_context_hashes:
             return []
 
         allowed_hashes_sql, hash_params = self._build_allowed_hashes_values(datasource_context_hashes)
+
+        chunk_types_param: list[list[ChunkType]]
+        if chunk_types:
+            search_candidates_chunk_type_filter = "WHERE c.chunk_type IN ?"
+            chunk_types_param = [chunk_types]
+        else:
+            chunk_types_param = []
+            search_candidates_chunk_type_filter = ""
+
         params: list[Any] = [
             *hash_params,
             list(search_vec),
+            *chunk_types_param,
             self._DEFAULT_DISTANCE_THRESHOLD,
             limit,
         ]
@@ -141,6 +166,7 @@ class ChunkSearchRepository:
             vector_candidates AS (
                 SELECT
                     c.chunk_id,
+                    c.chunk_type,
                     COALESCE(c.display_text, c.embeddable_text) AS display_text,
                     c.embeddable_text,
                     array_cosine_distance(e.vec, CAST(? AS FLOAT[{dimension}])) AS cosine_distance,
@@ -154,9 +180,11 @@ class ChunkSearchRepository:
                         ON h.datasource_id = ah.datasource_id
                         AND h.hash = ah.hash
                         AND h.hash_algorithm = ah.hash_algorithm
+                {search_candidates_chunk_type_filter}
             )
             SELECT
                 vc.chunk_id,
+                vc.chunk_type,
                 vc.display_text,
                 vc.embeddable_text,
                 vc.cosine_distance,
@@ -176,11 +204,12 @@ class ChunkSearchRepository:
         return [
             VectorSearchCandidate(
                 chunk_id=row[0],
-                display_text=row[1],
-                embeddable_text=row[2],
-                cosine_distance=row[3],
-                datasource_type=DatasourceType(full_type=row[4]),
-                datasource_id=DatasourceId.from_string_repr(row[5]),
+                chunk_type=ChunkType(row[1]) if row[1] else None,
+                display_text=row[2],
+                embeddable_text=row[3],
+                cosine_distance=row[4],
+                datasource_type=DatasourceType(full_type=row[5]),
+                datasource_id=DatasourceId.from_string_repr(row[6]),
             )
             for row in rows
         ]
@@ -195,6 +224,7 @@ class ChunkSearchRepository:
         dimension: int,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         """Hybrid retrieval combining vector similarity and BM25 with Reciprocal Rank Fusion (RRF).
 
@@ -208,12 +238,14 @@ class ChunkSearchRepository:
             dimension=dimension,
             limit=candidate_limit,
             datasource_context_hashes=datasource_context_hashes,
+            chunk_types=chunk_types,
         )
 
         bm25_candidates = self._get_bm25_candidates(
             query_text=search_text,
             limit=candidate_limit,
             datasource_context_hashes=datasource_context_hashes,
+            chunk_types=chunk_types,
         )
         return self._fuse_by_rrf(
             vector_candidates=vector_candidates,
@@ -228,17 +260,20 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[SearchResult]:
         """Read only BM25 search over chunk text."""
         bm25_candidates = self._get_bm25_candidates(
             query_text=query_text,
             limit=limit,
             datasource_context_hashes=datasource_context_hashes,
+            chunk_types=chunk_types,
         )
 
         return [
             SearchResult(
                 chunk_id=candidate.chunk_id,
+                chunk_type=candidate.chunk_type,
                 display_text=candidate.display_text,
                 embeddable_text=candidate.embeddable_text,
                 datasource_type=candidate.datasource_type,
@@ -255,12 +290,21 @@ class ChunkSearchRepository:
         query_text: str,
         limit: int,
         datasource_context_hashes: list[DatasourceContextHash],
+        chunk_types: list[ChunkType] | None = None,
     ) -> list[Bm25SearchCandidate]:
         if not datasource_context_hashes:
             return []
 
         allowed_hashes_sql, hash_params = self._build_allowed_hashes_values(datasource_context_hashes)
-        params: list[Any] = [*hash_params, query_text, limit]
+        chunk_types_param: list[list[ChunkType]]
+        if chunk_types:
+            search_candidates_chunk_type_filter = "WHERE c.chunk_type IN ?"
+            chunk_types_param = [chunk_types]
+        else:
+            chunk_types_param = []
+            search_candidates_chunk_type_filter = ""
+
+        params: list[Any] = [*hash_params, query_text, *chunk_types_param, limit]
 
         rows = self._conn.execute(
             f"""
@@ -270,6 +314,7 @@ class ChunkSearchRepository:
             bm25_candidates AS (
                 SELECT
                     c.chunk_id,
+                    c.chunk_type,
                     COALESCE(c.display_text, c.embeddable_text) AS display_text,
                     c.embeddable_text,
                     c.full_type,
@@ -285,9 +330,11 @@ class ChunkSearchRepository:
                         ON h.datasource_id = ah.datasource_id
                         AND h.hash = ah.hash
                         AND h.hash_algorithm = ah.hash_algorithm
+                {search_candidates_chunk_type_filter}
             )
             SELECT
                 b.chunk_id,
+                b.chunk_type,
                 b.display_text,
                 b.embeddable_text,
                 b.bm25_score,
@@ -307,11 +354,12 @@ class ChunkSearchRepository:
         return [
             Bm25SearchCandidate(
                 chunk_id=row[0],
-                display_text=row[1],
-                embeddable_text=row[2],
-                bm25_score=row[3],
-                datasource_type=DatasourceType(full_type=row[4]),
-                datasource_id=DatasourceId.from_string_repr(row[5]),
+                chunk_type=ChunkType(row[1]) if row[1] else None,
+                display_text=row[2],
+                embeddable_text=row[3],
+                bm25_score=row[4],
+                datasource_type=DatasourceType(full_type=row[5]),
+                datasource_id=DatasourceId.from_string_repr(row[6]),
             )
             for row in rows
         ]
@@ -365,6 +413,7 @@ class ChunkSearchRepository:
             results.append(
                 SearchResult(
                     chunk_id=chunk_id,
+                    chunk_type=data_candidate.chunk_type,
                     display_text=data_candidate.display_text,
                     embeddable_text=data_candidate.embeddable_text,
                     datasource_type=data_candidate.datasource_type,
