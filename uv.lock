@@ -579,7 +579,7 @@ wheels = [
 
 [[package]]
 name = "databao-context-engine"
-version = "0.7.1.dev2"
+version = "0.7.1"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
