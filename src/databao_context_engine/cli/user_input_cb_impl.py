@@ -15,29 +15,27 @@ class ClickUserInputCallback(UserInputCallback):
         default_value: Any | None = None,
         is_secret: bool = False,
     ) -> Any:
+        prompt_text = f"{property_key}?{' (Optional)' if not required else ''}"
+
+        show_default = default_value is not None and default_value != ""
         final_type = click.Choice(type.choices) if isinstance(type, Choice) else str
 
-        # click goes infinite loop if user gives emptry string as an input AND default_value is None
-        # in order to exit this loop we need to set default value to '' (so it gets accepted)
-        #
-        # Code snippet from click:
-        # while True:
-        #   value = prompt_func(prompt)
-        #     if value:
-        #       break
-        #     elif default is not None:
-        #       value = default
-        #       break
-        default_value = str(default_value) if default_value else "" if final_type is str else None
-        show_default: bool = default_value is not None and default_value != ""
+        # click.prompt does not let optional string fields be skipped cleanly when
+        # default is None, so use "" and let config_wizard normalize it back to None.
+        click_default = default_value
+        if final_type is str and default_value is None:
+            click_default = ""
 
-        prompt_text = f"{property_key}?{' (Optional)' if not required else ''}"
         return click.prompt(
-            text=prompt_text, default=default_value, hide_input=is_secret, type=final_type, show_default=show_default
+            text=prompt_text,
+            default=click_default,
+            hide_input=is_secret,
+            type=final_type,
+            show_default=show_default,
         )
 
     def confirm(self, text: str) -> bool:
         return click.confirm(text=text)
 
     def on_validation_error(self, property_key: str, input_value: Any, error_message: str) -> None:
-        click.echo(error_message)
+        click.echo(f"Invalid value for '{property_key}': {error_message}", err=True)
