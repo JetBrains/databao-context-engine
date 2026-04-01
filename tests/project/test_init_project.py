@@ -10,6 +10,7 @@ from databao_context_engine.project.layout import (
     EXAMPLES_FOLDER_NAME,
     GITIGNORE_FILE_NAME,
     LOGS_FOLDER_NAME,
+    SECRETS_FILE_NAME,
     SOURCE_FOLDER_NAME,
     is_project_dir_valid,
 )
@@ -47,6 +48,7 @@ def test_init_project_dir(tmp_path: Path):
         "output/dce.duckdb",
         f"{LOGS_FOLDER_NAME}/",
         f"{EXAMPLES_FOLDER_NAME}/",
+        SECRETS_FILE_NAME,
     ]
 
 

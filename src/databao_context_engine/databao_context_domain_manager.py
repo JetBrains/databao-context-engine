@@ -19,6 +19,7 @@ from databao_context_engine.datasources.check_config import (
 from databao_context_engine.datasources.check_config import (
     check_datasource_connection as check_datasource_connection_internal,
 )
+from databao_context_engine.datasources.config_secret_extraction import extract_secrets_from_config
 from databao_context_engine.datasources.config_wizard import (
     UserInputCallback,
     build_config_content_interactively,
@@ -35,6 +36,10 @@ from databao_context_engine.project.layout import (
 )
 from databao_context_engine.project.layout import (
     create_datasource_config_file as create_datasource_config_file_internal,
+)
+from databao_context_engine.project.project_secrets import (
+    merge_and_store_project_secrets,
+    resolve_project_references,
 )
 from databao_context_engine.serialization.yaml import to_yaml_string
 
@@ -194,8 +199,15 @@ class DatabaoContextDomainManager:
             The connection check result
         """
         datasource_name_without_folders = datasource_name.split("/")[-1]
+
+        resolved_config_content = (
+            resolve_project_references(self._project_layout, config_content)
+            if isinstance(config_content, Mapping)
+            else config_content
+        )
+
         actual_config_content = self._validate_and_dump_config_content(
-            config_content, datasource_name_without_folders, datasource_type, True
+            resolved_config_content, datasource_name_without_folders, datasource_type, True
         )
         return check_datasource_config_connection(
             plugin_loader=self._plugin_loader,
@@ -228,15 +240,20 @@ class DatabaoContextDomainManager:
             The path to the created datasource configuration file.
         """
         datasource_name_without_folders = datasource_name.split("/")[-1]
-        actual_config_content = self._validate_and_dump_config_content(
+        config_with_secret_refs = self._validate_and_dump_config_content(
             config_content, datasource_name_without_folders, datasource_type, validate_config_content
+        )
+        config_with_secret_refs = self._extract_and_store_secrets(
+            datasource_type=datasource_type,
+            datasource_name=datasource_name,
+            config_content=config_with_secret_refs,
         )
 
         return _create_datasource_config_file(
             project_layout=self._project_layout,
             datasource_type=datasource_type,
             datasource_name=datasource_name,
-            config_content=actual_config_content,
+            config_content=config_with_secret_refs,
             overwrite_existing=overwrite_existing,
         )
 
@@ -269,17 +286,12 @@ class DatabaoContextDomainManager:
             properties=config_properties, user_input_callback=user_input_callback
         )
 
-        datasource_name_without_folders = datasource_name.split("/")[-1]
-        actual_config_content = self._validate_and_dump_config_content(
-            config_content, datasource_name_without_folders, datasource_type, validate_config_content
-        )
-
-        return _create_datasource_config_file(
-            project_layout=self._project_layout,
+        return self.create_datasource_config(
             datasource_type=datasource_type,
             datasource_name=datasource_name,
-            config_content=actual_config_content,
+            config_content=config_content,
             overwrite_existing=overwrite_existing,
+            validate_config_content=validate_config_content,
         )
 
     @overload
@@ -366,6 +378,23 @@ class DatabaoContextDomainManager:
             actual_config_content = config_type_adapter.dump_python(config_content)
 
         return actual_config_content
+
+    def _extract_and_store_secrets(
+        self,
+        datasource_type: DatasourceType,
+        datasource_name: str,
+        config_content: dict[str, Any],
+    ) -> dict[str, Any]:
+        config_properties = self._plugin_loader.get_config_file_structure_for_datasource_type(
+            datasource_type=datasource_type
+        )
+        extracted = extract_secrets_from_config(
+            config_content=config_content,
+            properties=config_properties,
+            datasource_relative_path=datasource_name,
+        )
+        merge_and_store_project_secrets(self._project_layout, extracted.secrets)
+        return extracted.config_with_secret_refs
 
 
 def _create_datasource_config_file(

@@ -13,6 +13,7 @@ CONFIG_FILE_NAME = "dce.ini"
 DEPRECATED_ALL_RESULTS_FILE_NAME = "all_results.yaml"
 PERF_LOGS_FILE_NAME = "perf.jsonl"
 GITIGNORE_FILE_NAME = ".gitignore"
+SECRETS_FILE_NAME = ".secrets.yaml"
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,10 @@ class ProjectLayout:
     @property
     def db_path(self) -> Path:
         return self.output_dir / "dce.duckdb"
+
+    @property
+    def secrets_file(self) -> Path:
+        return get_secrets_file(self.project_dir)
 
 
 def ensure_project_dir(project_dir: Path) -> ProjectLayout:
@@ -77,6 +82,10 @@ def get_logs_dir(project_dir: Path) -> Path:
 
 def get_performance_logs_file(project_dir: Path) -> Path:
     return get_logs_dir(project_dir).joinpath(PERF_LOGS_FILE_NAME)
+
+
+def get_secrets_file(project_dir: Path) -> Path:
+    return project_dir.joinpath(SECRETS_FILE_NAME)
 
 
 def create_datasource_config_file(

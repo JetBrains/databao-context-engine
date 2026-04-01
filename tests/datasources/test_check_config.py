@@ -222,7 +222,7 @@ def test_check_datasource_connection_with_no_type(project_layout: ProjectLayout,
     }
 
 
-def test_check_datasource_connection_with_invalid_template(project_layout: ProjectLayout, plugin_loader):
+def test_check_datasource_connection_with_missing_env_reference(project_layout: ProjectLayout, plugin_loader):
     given_datasource_config_file(
         project_layout,
         "dummy/valid",
@@ -235,8 +235,8 @@ def test_check_datasource_connection_with_invalid_template(project_layout: Proje
     )
     given_datasource_config_file(
         project_layout,
-        "dummy/template_error",
-        {"name": "{{ unexisting_function() }}", "type": "dummy_default"},
+        "dummy/missing_env",
+        {"name": "${env:UNSET_TEST_ENV_VAR}", "type": "dummy_default"},
     )
 
     result = check_datasource_connection(project_layout, plugin_loader=plugin_loader)
@@ -244,5 +244,21 @@ def test_check_datasource_connection_with_invalid_template(project_layout: Proje
     assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
         "dummy/valid.yaml": "Valid",
         "dummy/invalid.yaml": "Invalid - Config file is invalid",
-        "dummy/template_error.yaml": "Invalid - Failed to prepare source",
+        "dummy/missing_env.yaml": "Invalid - Failed to prepare source",
+    }
+
+
+def test_check_datasource_connection_with_env_reference(project_layout: ProjectLayout, plugin_loader, monkeypatch):
+    monkeypatch.setenv("DUMMY_DATASOURCE_NAME", "my datasource name")
+
+    given_datasource_config_file(
+        project_layout,
+        "dummy/from_env",
+        {"name": "${env:DUMMY_DATASOURCE_NAME}", "type": "dummy_default"},
+    )
+
+    result = check_datasource_connection(project_layout, plugin_loader=plugin_loader)
+
+    assert {str(key): value.format(show_summary_only=True) for key, value in result.items()} == {
+        "dummy/from_env.yaml": "Unknown - Plugin doesn't support validating its config",
     }

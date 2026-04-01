@@ -6,6 +6,7 @@ import time_machine
 import yaml
 from pydantic import ValidationError
 
+import databao_context_engine.databao_context_domain_manager as domain_manager_module
 from databao_context_engine import (
     BuildDatasourceResult,
     ConfiguredDatasource,
@@ -19,8 +20,10 @@ from databao_context_engine import (
     DatasourceType,
 )
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
+from databao_context_engine.datasources.config_secret_extraction import SecretExtractionResult
 from databao_context_engine.datasources.datasource_context import DatasourceContextHash
 from databao_context_engine.project.layout import get_output_dir
+from databao_context_engine.project.project_secrets import merge_and_store_project_secrets
 from databao_context_engine.serialization.yaml import to_yaml_string
 from tests.utils.dummy_build_plugin import (
     DummyDefaultDatasourcePlugin,
@@ -467,6 +470,83 @@ def test_databao_context_domain_manager__check_datasource_config_connection(doma
     )
 
     assert result.connection_status == DatasourceConnectionStatus.VALID
+
+
+def test_databao_context_domain_manager__create_datasource_config__stores_extracted_secrets(
+    domain_manager,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        domain_manager_module,
+        "extract_secrets_from_config",
+        lambda config_content, properties, datasource_relative_path: SecretExtractionResult(
+            config_with_secret_refs={
+                "name": "my_datasource",
+                "type": "dummy_simple_pydantic",
+                "a": "12",
+                "b": "${secret:my_datasource.b}",
+            },
+            secrets={
+                "my_datasource.b": "plain-secret",
+            },
+        ),
+    )
+
+    configured_datasource = domain_manager.create_datasource_config(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content={
+            "a": "12",
+            "b": "plain-secret",
+        },
+    )
+
+    config_file_path = configured_datasource.datasource.id.absolute_path_to_config_file(domain_manager._project_layout)
+
+    assert configured_datasource.config == {
+        "name": "my_datasource",
+        "type": "dummy_simple_pydantic",
+        "a": "12",
+        "b": "${secret:my_datasource.b}",
+    }
+    assert yaml.safe_load(config_file_path.read_text()) == configured_datasource.config
+    assert yaml.safe_load(domain_manager._project_layout.secrets_file.read_text()) == {
+        "my_datasource.b": "plain-secret",
+    }
+
+
+def test_databao_context_domain_manager__check_datasource_config_connection__resolves_project_secret_reference(
+    domain_manager,
+):
+    merge_and_store_project_secrets(
+        domain_manager._project_layout,
+        {"dummy_simple_pydantic.my_datasource.a": 12},
+    )
+
+    result = domain_manager.check_datasource_config_connection(
+        datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+        datasource_name="my_datasource",
+        config_content={
+            "a": "${secret:dummy_simple_pydantic.my_datasource.a}",
+            "b": "some string",
+        },
+    )
+
+    assert result.connection_status == DatasourceConnectionStatus.VALID
+
+
+def test_databao_context_domain_manager__check_datasource_config_connection__fails_for_missing_project_secret_reference(
+    domain_manager,
+):
+    with pytest.raises(ValueError, match="dummy_simple_pydantic.my_datasource.a"):
+        domain_manager.check_datasource_config_connection(
+            datasource_type=DatasourceType(full_type="dummy_simple_pydantic"),
+            datasource_name="my_datasource",
+            config_content={
+                "a": "${secret:dummy_simple_pydantic.my_datasource.a}",
+                "b": "some string",
+            },
+        )
 
 
 def assert_build_context_result(
