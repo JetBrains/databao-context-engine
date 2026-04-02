@@ -57,6 +57,7 @@ from databao_context_engine.plugins.databases.snowflake.config_file import (
     SnowflakeConfigFile,
     SnowflakeConnectionProperties,
     SnowflakeKeyPairAuth,
+    SnowflakeOAuthAuth,
     SnowflakePasswordAuth,
     SnowflakeSSOAuth,
 )
@@ -134,6 +135,7 @@ __all__ = [
     "SnowflakeConfigFile",
     "SnowflakeConnectionProperties",
     "SnowflakeSSOAuth",
+    "SnowflakeOAuthAuth",
     "SnowflakeKeyPairAuth",
     "SnowflakePasswordAuth",
     "SQLiteConfigFile",
