@@ -33,9 +33,7 @@ class BaseDatabaseConfigFile(BaseModel, AbstractConfigFile):
     sampling: Annotated[SamplingConfig | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)] = Field(
         default=None
     )
-    profiling: Annotated[ProfilingConfig | None, ConfigPropertyAnnotation(ignored_for_config_wizard=True)] = Field(
-        default=None
-    )
+    profiling: Annotated[ProfilingConfig | None, ConfigPropertyAnnotation(required=True)] = Field(default=None)
 
 
 T = TypeVar("T", bound="BaseDatabaseConfigFile")

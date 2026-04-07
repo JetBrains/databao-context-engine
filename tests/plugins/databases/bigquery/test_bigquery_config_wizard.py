@@ -19,6 +19,7 @@ def project_manager(project_path: Path) -> DatabaoContextDomainManager:
 
 def test_add_bigquery_datasource_config_with_default_auth(project_manager):
     inputs = [
+        "",
         "my-gcp-project",
         "",
         "",
@@ -36,6 +37,9 @@ def test_add_bigquery_datasource_config_with_default_auth(project_manager):
     assert configured_datasource.config == {
         "type": "bigquery",
         "name": "my_bq",
+        "profiling": {
+            "enabled": False,
+        },
         "connection": {
             "project": "my-gcp-project",
             "auth": {},
@@ -45,6 +49,7 @@ def test_add_bigquery_datasource_config_with_default_auth(project_manager):
 
 def test_add_bigquery_datasource_config_with_service_account_key(project_manager):
     inputs = [
+        "",
         "my-gcp-project",
         "my_dataset",
         "",
@@ -64,6 +69,9 @@ def test_add_bigquery_datasource_config_with_service_account_key(project_manager
     assert configured_datasource.config == {
         "type": "bigquery",
         "name": "my_bq_sa",
+        "profiling": {
+            "enabled": False,
+        },
         "connection": {
             "project": "my-gcp-project",
             "dataset": "my_dataset",

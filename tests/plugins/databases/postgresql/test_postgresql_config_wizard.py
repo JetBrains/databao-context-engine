@@ -5,7 +5,7 @@ from databao_context_engine.plugins.databases.postgresql.postgresql_db_plugin im
 from tests.utils.config_wizard import MockUserInputCallback
 
 
-def test_add_parquet_datasource_config_with_all_defaults(project_path: Path):
+def test_add_postgres_datasource_config_with_all_defaults(project_path: Path):
     plugin_loader = DatabaoContextPluginLoader(
         plugins_by_type={
             DatasourceType(full_type="postgres"): PostgresqlDbPlugin(),
@@ -14,6 +14,7 @@ def test_add_parquet_datasource_config_with_all_defaults(project_path: Path):
     project_manager = DatabaoContextDomainManager(domain_dir=project_path, plugin_loader=plugin_loader)
 
     inputs = [
+        "",  # profiling.enabled
         "",  # host
         "",  # port
         "",  # database
@@ -29,4 +30,9 @@ def test_add_parquet_datasource_config_with_all_defaults(project_path: Path):
         validate_config_content=True,
     )
 
-    assert configured_datasource.config == {"connection": {"host": "localhost"}, "name": "my_pg", "type": "postgres"}
+    assert configured_datasource.config == {
+        "profiling": {"enabled": False},
+        "connection": {"host": "localhost"},
+        "name": "my_pg",
+        "type": "postgres",
+    }

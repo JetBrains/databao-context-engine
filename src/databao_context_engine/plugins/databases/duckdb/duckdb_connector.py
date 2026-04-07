@@ -23,3 +23,6 @@ class DuckDBConnector(BaseConnector[DuckDBConfigFile]):
     def execute(self, connection, sql: str, params) -> list[dict]:
         cur = connection.cursor()
         return fetchall_dicts(cur, sql, params)
+
+    def _connection_check_sql_query(self) -> str:
+        return "SELECT 1 FROM information_schema.tables LIMIT 1"
