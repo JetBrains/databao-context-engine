@@ -22,13 +22,17 @@ class SnowflakeSSOAuth(BaseModel):
     authenticator: str = Field(description='e.g. "externalbrowser"')
 
 
+class SnowflakeOAuthAuth(BaseModel):
+    token: Annotated[str, ConfigPropertyAnnotation(secret=True)]
+
+
 class SnowflakeConnectionProperties(BaseModel):
     account: Annotated[str, ConfigPropertyAnnotation(required=True)]
     warehouse: str | None = None
     database: str | None = None
     user: str | None = None
     role: str | None = None
-    auth: SnowflakePasswordAuth | SnowflakeKeyPairAuth | SnowflakeSSOAuth
+    auth: SnowflakePasswordAuth | SnowflakeKeyPairAuth | SnowflakeSSOAuth | SnowflakeOAuthAuth
     additional_properties: dict[str, Any] = {}
 
     def to_snowflake_kwargs(self) -> dict[str, Any]:
