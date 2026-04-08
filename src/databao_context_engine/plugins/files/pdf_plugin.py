@@ -1,8 +1,11 @@
+import typing
 from io import BufferedReader, BytesIO
-from typing import Any
 
 from databao_context_engine import BuildFilePlugin
 from databao_context_engine.pluginlib.build_plugin import EmbeddableChunk
+
+if typing.TYPE_CHECKING:
+    from docling_core.types import DoclingDocument
 
 
 class _LazyDoclingDocumentType:
@@ -18,7 +21,7 @@ class _LazyDoclingDocumentType:
         return self._cached
 
 
-class PDFPlugin(BuildFilePlugin):
+class PDFPlugin(BuildFilePlugin["DoclingDocument"]):
     id = "jetbrains/pdf"
     name = "PDF Plugin"
     context_type = _LazyDoclingDocumentType()
@@ -26,7 +29,7 @@ class PDFPlugin(BuildFilePlugin):
     def supported_types(self) -> set[str]:
         return {"pdf"}
 
-    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
+    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> "DoclingDocument":
         from docling.datamodel.base_models import DocumentStream, InputFormat
         from docling.datamodel.pipeline_options import PdfPipelineOptions
         from docling.document_converter import DocumentConverter, PdfFormatOption
@@ -44,7 +47,7 @@ class PDFPlugin(BuildFilePlugin):
         stream = DocumentStream(name=file_name, stream=BytesIO(pdf_bytes))
         return converter.convert(stream).document
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: "DoclingDocument") -> list[EmbeddableChunk]:
         from databao_context_engine.plugins.files.docling_chunker import DoclingChunker
 
         return DoclingChunker().index(context)

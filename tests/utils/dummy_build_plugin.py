@@ -56,7 +56,7 @@ class DummyConfigFileType(AbstractConfigFile):
     nested_dict: DummyConfigNested | None = None
 
 
-class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
+class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[dict, DummyConfigFileType]):
     id = "jetbrains/dummy_db"
     name = "Dummy DB Plugin"
     config_file_type = DummyConfigFileType
@@ -65,7 +65,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
     def supported_types(self) -> set[str]:
         return {"dummy_db"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: DummyConfigFileType) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: DummyConfigFileType) -> dict:
         return {
             "catalogs": [
                 {
@@ -91,7 +91,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
             ]
         }
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return [
             _convert_table_to_embedding_chunk(
                 table=table,
@@ -102,7 +102,7 @@ class DummyBuildDatasourcePlugin(BuildDatasourcePlugin[DummyConfigFileType]):
         ]
 
 
-class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
+class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin[dict]):
     id = "jetbrains/dummy_default"
     name = "Dummy Plugin with a default type"
     context_type = dict
@@ -110,14 +110,14 @@ class DummyDefaultDatasourcePlugin(DefaultBuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return {"dummy_default"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> dict:
         return {"ok": True}
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return [EmbeddableChunk(embeddable_text="Dummy chunk", content="Dummy content")]
 
 
-class DummyEnrichableDatasourcePlugin(DefaultBuildDatasourcePlugin):
+class DummyEnrichableDatasourcePlugin(DefaultBuildDatasourcePlugin[dict]):
     id = "jetbrains/dummy_enrichable"
     name = "Dummy Plugin with custom enrich context"
     context_type = dict
@@ -125,18 +125,18 @@ class DummyEnrichableDatasourcePlugin(DefaultBuildDatasourcePlugin):
     def supported_types(self) -> set[str]:
         return {"dummy_enrichable"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> dict:
         return {"value": datasource_name, "description": None}
 
-    def enrich_context(self, context: Any, description_provider: DescriptionProvider) -> Any:
+    def enrich_context(self, context: dict, description_provider: DescriptionProvider) -> dict:
         description = description_provider.describe(text=context["value"], context="dummy_enrichable")
         return {**context, "description": f"ENRICHED::{description}"}
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return []
 
 
-class DummyFilePlugin(BuildFilePlugin):
+class DummyFilePlugin(BuildFilePlugin[dict]):
     id = "jetbrains/dummy_file"
     name = "Dummy Plugin with a default type"
     context_type = dict
@@ -144,10 +144,10 @@ class DummyFilePlugin(BuildFilePlugin):
     def supported_types(self) -> set[str]:
         return {"dummy_txt"}
 
-    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> Any:
+    def build_file_context(self, full_type: str, file_name: str, file_buffer: BufferedReader) -> dict:
         return {"file_ok": True}
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return []
 
 
@@ -156,7 +156,7 @@ class AdditionalDummyConfigFile(AbstractConfigFile):
     other_field: str
 
 
-class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
+class AdditionalDummyPlugin(BuildDatasourcePlugin[dict, AdditionalDummyConfigFile]):
     id = "additional/dummy"
     name = "Additional Dummy Plugin"
     config_file_type = AdditionalDummyConfigFile
@@ -165,14 +165,14 @@ class AdditionalDummyPlugin(BuildDatasourcePlugin[AdditionalDummyConfigFile]):
     def supported_types(self) -> set[str]:
         return {"additional_dummy_type"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: AdditionalDummyConfigFile) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: AdditionalDummyConfigFile) -> dict:
         return {"additional_ok": True}
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return []
 
 
-class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomizeConfigProperties):
+class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin[dict], CustomizeConfigProperties):
     id = "dummy/no_config_type"
     name = "Dummy Plugin With No Config Type"
     context_type = dict
@@ -180,10 +180,10 @@ class DummyPluginWithNoConfigType(DefaultBuildDatasourcePlugin, CustomizeConfigP
     def supported_types(self) -> set[str]:
         return {"no_config_type"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: dict[str, Any]) -> dict:
         return {"no_config_ok": True}
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return []
 
     def get_config_file_properties(self) -> list[ConfigPropertyDefinition]:
@@ -223,7 +223,7 @@ class SimplePydanticConfig(BaseModel, AbstractConfigFile):
     b: str
 
 
-class DummyPluginWithSimplePydanticConfig(BuildDatasourcePlugin[SimplePydanticConfig]):
+class DummyPluginWithSimplePydanticConfig(BuildDatasourcePlugin[dict, SimplePydanticConfig]):
     id = "dummy/simple_pydantic_config"
     name = "Dummy Plugin with a simple Pydantic Config"
     config_file_type = SimplePydanticConfig
@@ -232,13 +232,13 @@ class DummyPluginWithSimplePydanticConfig(BuildDatasourcePlugin[SimplePydanticCo
     def supported_types(self) -> set[str]:
         return {"dummy_simple_pydantic"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: SimplePydanticConfig) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: SimplePydanticConfig) -> dict:
         return {"simple_pydantic_ok": True}
 
     def check_connection(self, full_type: str, file_config: SimplePydanticConfig) -> None:
         pass
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return []
 
 
@@ -249,7 +249,7 @@ class OtherPydanticConfig(BaseModel, AbstractConfigFile):
     b: str
 
 
-class DummyPluginWithOtherPydanticConfig(BuildDatasourcePlugin[OtherPydanticConfig]):
+class DummyPluginWithOtherPydanticConfig(BuildDatasourcePlugin[dict, OtherPydanticConfig]):
     id = "dummy/other_pydantic_config"
     name = "Dummy Plugin with an other Pydantic Config"
     config_file_type = OtherPydanticConfig
@@ -258,13 +258,13 @@ class DummyPluginWithOtherPydanticConfig(BuildDatasourcePlugin[OtherPydanticConf
     def supported_types(self) -> set[str]:
         return {"dummy_other_pydantic"}
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: OtherPydanticConfig) -> Any:
+    def build_context(self, full_type: str, datasource_name: str, file_config: OtherPydanticConfig) -> dict:
         return {"simple_pydantic_ok": True}
 
     def check_connection(self, full_type: str, file_config: OtherPydanticConfig) -> None:
         pass
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: dict) -> list[EmbeddableChunk]:
         return []
 
 

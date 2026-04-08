@@ -1,5 +1,3 @@
-from typing import Any
-
 from databao_context_engine.pluginlib.build_plugin import BuildDatasourcePlugin, EmbeddableChunk
 from databao_context_engine.plugins.resources.parquet_chunker import build_parquet_chunks
 from databao_context_engine.plugins.resources.parquet_introspector import (
@@ -8,7 +6,7 @@ from databao_context_engine.plugins.resources.parquet_introspector import (
 from databao_context_engine.plugins.resources.types import ParquetConfigFile, ParquetIntrospectionResult, parquet_type
 
 
-class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):
+class ParquetPlugin(BuildDatasourcePlugin[ParquetIntrospectionResult, ParquetConfigFile]):
     id = "jetbrains/parquet"
     name = "Parquet Plugin"
     config_file_type = ParquetConfigFile
@@ -20,10 +18,12 @@ class ParquetPlugin(BuildDatasourcePlugin[ParquetConfigFile]):
     def supported_types(self) -> set[str]:
         return {parquet_type}
 
-    def divide_context_into_chunks(self, context: Any) -> list[EmbeddableChunk]:
+    def divide_context_into_chunks(self, context: ParquetIntrospectionResult) -> list[EmbeddableChunk]:
         return build_parquet_chunks(context)
 
-    def build_context(self, full_type: str, datasource_name: str, file_config: ParquetConfigFile) -> Any:
+    def build_context(
+        self, full_type: str, datasource_name: str, file_config: ParquetConfigFile
+    ) -> ParquetIntrospectionResult:
         return self._introspector.introspect(file_config)
 
     def check_connection(self, full_type: str, file_config: ParquetConfigFile) -> None:
