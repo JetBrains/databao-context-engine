@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import os
+import pathlib
 import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from dbt.cli.main import dbtRunner
 from dbt.config.runtime import load_profile
-from dbt.flags import set_from_args
 
 from databao_context_engine.build_sources.plugin_execution import BuiltDatasourceContext
 from databao_context_engine.pluginlib.build_plugin import DatasourceType
@@ -63,16 +65,36 @@ def validate_project_path(project_path: Path) -> Path:
 
 
 def load_dbt_profile(project_path: Path) -> Any:
-    set_from_args(
-        argparse.Namespace(
-            PROFILES_DIR=str(project_path),
-            PROJECT_DIR=str(project_path),
-            profile=None,
-            target=None,
-            threads=None,
-        ),
-        None,
+    # TODO: We should ask for both the project path and the profile path as they're likely different
+    #   both should be optional and default to cwd if not provided and no env variable is set
+    cwd = pathlib.Path.cwd()
+
+    dbt_profiles_dir_env_var = os.environ.get("DBT_PROFILES_DIR")
+    dbt_profiles_dir_from_env = pathlib.Path(dbt_profiles_dir_env_var) if dbt_profiles_dir_env_var is not None else None
+
+    dbt_project_dir_env_var = os.environ.get("DBT_PROJECT_DIR")
+    dbt_project_dir_from_env = pathlib.Path(dbt_project_dir_env_var) if dbt_project_dir_env_var is not None else None
+
+    # Defaults profile path to the project path provided if no env variable was found
+    dbt_profiles_path = dbt_profiles_dir_from_env or project_path or cwd
+    dbt_project_path = project_path or dbt_project_dir_from_env or cwd
+
+    # The `debug` command runs a few validations on the project
+    # See: https://docs.getdbt.com/reference/commands/debug
+    #
+    # `--quiet` will show only error logs and suppress non-error logs.
+    #
+    # Running this command also has a side effect of mutating some global state in the dbt libraries.
+    # e.g. interacts with `load_profile` and adapters. Without this, `load_profile` throws an exception.
+    validation_result = dbtRunner().invoke(
+        ["debug", "--quiet", "--profiles-dir", str(dbt_profiles_path), "--project-dir", str(dbt_project_path)]
     )
+
+    if not validation_result.success and validation_result.exception is not None:
+        raise RuntimeError(
+            f"Error validating the dbt project. [profiles_path={str(dbt_profiles_path)}, project_path={str(dbt_project_path)}]]",
+        ) from validation_result.exception
+
     return load_profile(project_root=str(project_path), cli_vars={})
 
 
