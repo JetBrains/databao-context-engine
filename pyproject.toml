@@ -59,6 +59,10 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "click>=8.3.0",
+    "dbt-core~=1.10",
+    "dbt-postgres~=1.10",
+    "dbt-snowflake~=1.10",
+    "dbt-sqlite~=1.10",
     "mypy>=1.18.2",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
@@ -80,7 +84,7 @@ dce = "databao_context_engine.main:main"
 generate_configs_schemas = "databao_context_engine.generate_configs_schemas:main"
 
 [tool.uv]
-override-dependencies = ["urllib3>=2.6.3", "filelock>=3.20.3", "virtualenv>=20.36.1"]
+override-dependencies = ["urllib3>=2.6.3", "filelock>=3.20.3", "virtualenv>=20.36.1", "dbt-adapters~=1.22"]
 
 [tool.uv.build-backend]
 source-exclude = ["tests"]
